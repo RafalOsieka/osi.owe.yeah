@@ -41,9 +41,13 @@ How a Line item is divided between Participants: Even (equal parts), Units (whol
 _Avoid_: Split type, split method
 
 **Deposit**:
-A refundable charge on a Receipt for returnable packaging, tied to the Line items it was charged for.
+A refundable charge for returnable packaging, entered as a deposit per unit on the Line item it was charged for and split the same way. Never discounted.
 _Avoid_: Kaution, pfand, bottle fee
 
 **Deposit refund**:
-Money received back when returnable packaging is returned, often as a discount on a later Receipt.
+Money received back when returnable packaging is returned, recorded as a negative line on a Receipt (often a voucher redeemed at the till) and split on its own, by default evenly between all Participants.
 _Avoid_: Bottle return, refund, cashback
+
+**Income**:
+Money received by a Participant on behalf of some Participants, e.g. a cash Deposit refund; modelled as an Expense with a negative total.
+_Avoid_: Revenue, earnings, refund
