@@ -2,363 +2,671 @@
 <html lang="en">
 <head>
 <meta charset="utf-8">
-<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
-<title>Owe Yeah — Receipt entry prototype</title>
-<!-- Throwaway prototype for "How does entering a Receipt feel on a phone?". Not production code. -->
-<script src="https://unpkg.com/vue@3/dist/vue.global.prod.js"></script>
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>PROTOTYPE · Owe Yeah · Entering a Receipt</title>
+<!--
+  THROWAWAY PROTOTYPE (prototype skill, logic branch) for "How does entering a Receipt feel on a phone?" (issue #4).
+  Lives on the prototype/receipt-entry branch only. Never merge.
+  The layout question is a separate ticket (issue #15), so this file deliberately has no opinion on layout.
+  The first script block is a pure module (no DOM). The page around it is a thin shell.
+-->
 <style>
-  :root { --bg:#0f1115; --card:#1a1d24; --line:#2a2e38; --fg:#e8eaf0; --mut:#8a90a0; --acc:#4ade80; --warn:#fbbf24; --err:#f87171; --neg:#60a5fa; }
+  :root { --fg:#1d232b; --mut:#66707d; --line:#e3e6ea; --bg:#fafbfc; --card:#fff; --acc:#0f766e; --acc-soft:#e6f4f2; --bad:#b42318; --bad-soft:#fdecea; --warn:#a15c07; --warn-soft:#fdf3e1; }
   * { box-sizing:border-box; }
-  body { margin:0; background:var(--bg); color:var(--fg); font:16px/1.35 system-ui, sans-serif; padding-bottom:180px; }
-  header { position:sticky; top:0; background:var(--bg); padding:10px 12px; border-bottom:1px solid var(--line); z-index:5; }
-  header input.title { font-size:20px; font-weight:600; background:none; border:0; color:var(--fg); width:100%; padding:2px 0; }
-  .row { display:flex; gap:8px; align-items:center; }
-  .wrap { flex-wrap:wrap; }
-  .grow { flex:1; min-width:0; }
+  body { margin:0; background:var(--bg); color:var(--fg); font:15px/1.5 system-ui, -apple-system, "Segoe UI", sans-serif; }
+  main { max-width:760px; margin:0 auto; padding:20px 14px 60px; }
+  h1 { font-size:22px; margin:0 0 4px; }
+  h2 { font-size:17px; margin:28px 0 10px; }
+  h3 { font-size:14px; margin:18px 0 6px; color:var(--mut); text-transform:uppercase; letter-spacing:.04em; }
+  p { margin:6px 0; }
+  a { color:var(--acc); }
   .mut { color:var(--mut); font-size:13px; }
-  .card { background:var(--card); border-radius:12px; margin:10px 12px; padding:10px 12px; }
-  .chip { border:1px solid var(--line); background:none; color:var(--fg); border-radius:999px; padding:8px 14px; font-size:15px; min-height:40px; }
-  .chip.on { background:var(--acc); color:#04210f; border-color:var(--acc); font-weight:600; }
-  .chip.sm { padding:4px 10px; min-height:30px; font-size:13px; }
-  button { font:inherit; cursor:pointer; }
-  .btn { background:var(--line); color:var(--fg); border:0; border-radius:10px; padding:10px 14px; min-height:44px; }
-  .btn.pri { background:var(--acc); color:#04210f; font-weight:600; }
-  .btn.ghost { background:none; border:1px dashed var(--line); }
-  input.f, select.f { background:var(--bg); color:var(--fg); border:1px solid var(--line); border-radius:8px; padding:10px; font-size:17px; min-height:44px; width:100%; }
-  input.num { text-align:right; font-variant-numeric:tabular-nums; }
-  label.l { display:block; font-size:12px; color:var(--mut); margin:6px 0 2px; }
-  .line { border-top:1px solid var(--line); padding:10px 0; }
-  .line:first-child { border-top:0; }
-  .amt { font-variant-numeric:tabular-nums; white-space:nowrap; }
-  .neg { color:var(--neg); }
-  .warn { color:var(--warn); }
-  .err { color:var(--err); }
-  .seg { display:flex; border:1px solid var(--line); border-radius:10px; overflow:hidden; }
-  .seg button { flex:1; background:none; border:0; color:var(--fg); padding:8px; min-height:40px; }
-  .seg button.on { background:var(--line); font-weight:600; }
-  .stepper { display:flex; align-items:center; }
-  .stepper button { width:44px; height:44px; border:1px solid var(--line); background:none; color:var(--fg); font-size:20px; border-radius:8px; }
-  .stepper input { width:56px; text-align:center; margin:0 4px; }
-  footer { position:fixed; bottom:0; left:0; right:0; background:var(--card); border-top:1px solid var(--line); padding:10px 12px calc(10px + env(safe-area-inset-bottom)); z-index:5; }
-  table { width:100%; border-collapse:collapse; font-size:14px; }
-  td { padding:2px 0; }
-  td.r { text-align:right; font-variant-numeric:tabular-nums; }
-  details summary { cursor:pointer; color:var(--mut); font-size:14px; padding:6px 0; }
-  .sheet { position:fixed; inset:0; background:rgba(0,0,0,.6); z-index:10; display:flex; align-items:flex-end; }
-  .sheet > div { background:var(--card); width:100%; max-height:92vh; overflow:auto; border-radius:16px 16px 0 0; padding:14px 12px calc(14px + env(safe-area-inset-bottom)); }
-  .tag { font-size:11px; padding:2px 6px; border-radius:6px; background:var(--line); color:var(--mut); }
+  .card { background:var(--card); border:1px solid var(--line); border-radius:12px; padding:12px 14px; margin:10px 0; }
+  .tag { display:inline-block; font-size:11px; font-weight:600; letter-spacing:.04em; text-transform:uppercase; background:var(--warn-soft); color:var(--warn); padding:2px 8px; border-radius:6px; }
+  button { font:inherit; cursor:pointer; border:1px solid var(--line); background:var(--card); color:var(--fg); border-radius:8px; padding:7px 12px; min-height:38px; }
+  button:hover:not(:disabled) { border-color:var(--acc); }
+  button.on { background:var(--acc); border-color:var(--acc); color:#fff; }
+  button.pri { background:var(--acc); border-color:var(--acc); color:#fff; font-weight:600; }
+  button:disabled { opacity:.45; cursor:default; }
+  input, select { font:inherit; border:1px solid var(--line); border-radius:8px; padding:7px 9px; min-height:38px; background:#fff; color:var(--fg); }
+  input.amount { width:110px; text-align:right; font-variant-numeric:tabular-nums; }
+  input.qty { width:64px; text-align:center; }
+  .row { display:flex; flex-wrap:wrap; gap:8px; align-items:center; margin:6px 0; }
+  .reads { font-size:12px; color:var(--mut); min-width:90px; }
+  .reads.bad { color:var(--bad); }
+  .num { font-variant-numeric:tabular-nums; text-align:right; white-space:nowrap; }
+  table { width:100%; border-collapse:collapse; }
+  td, th { padding:5px 4px; border-bottom:1px solid var(--line); vertical-align:top; }
+  th { font-size:12px; color:var(--mut); font-weight:500; text-align:right; }
+  th:first-child { text-align:left; }
+  tr.total td { font-weight:700; border-bottom:0; }
+  tr.changed td { background:var(--acc-soft); }
+  .was { font-size:12px; color:var(--acc); }
+  .last { border-radius:10px; padding:10px 12px; margin:10px 0; }
+  .last.good { background:var(--acc-soft); }
+  .last.bad { background:var(--bad-soft); color:var(--bad); }
+  .status.ok { color:var(--acc); font-weight:600; }
+  .status.warn { color:var(--warn); font-weight:600; }
+  .problem { color:var(--bad); }
+  .ln { border:1px solid var(--line); border-radius:10px; padding:8px 10px; margin:6px 0; cursor:pointer; background:#fff; }
+  .ln.sel { border-color:var(--acc); box-shadow:0 0 0 1px var(--acc); }
+  .ln-top { display:flex; justify-content:space-between; gap:10px; font-weight:600; }
+  .ln .unassigned { color:var(--warn); font-size:13px; }
+  .tabs { display:flex; flex-wrap:wrap; gap:6px; }
+  ol.steps { padding-left:22px; }
+  ol.steps li { margin:6px 0; }
+  ol.steps .watch { font-size:13px; color:var(--mut); margin:3px 0 0; }
+  ol.steps li.done > button { background:var(--acc-soft); border-color:var(--acc-soft); }
+  .split-grid { display:grid; grid-template-columns:auto 1fr; gap:6px 10px; align-items:center; }
 </style>
 </head>
 <body>
-<div id="app">
-  <header>
-    <input class="title" v-model="r.title" placeholder="Receipt title">
-    <div class="row mut">
-      <span>Paid by</span>
-      <select class="f" style="width:auto;min-height:32px;padding:4px 8px;font-size:14px" v-model="r.mainPayer">
-        <option v-for="p in people" :value="p">{{ p }}</option>
-      </select>
-      <span class="grow"></span>
-      <span>{{ cur }}</span>
-    </div>
-  </header>
+<main>
+  <span class="tag">Prototype · throwaway</span>
+  <h1>Entering a Receipt: does the model hold up?</h1>
+  <p><b>The question.</b> We decided how a Receipt works: Line items with a unit price and quantity, an optional Line discount, a deposit per unit that follows the Line item's split, Deposit refunds as negative lines, a Receipt discount, Contributions, and Receipts left incomplete to split later. Push real shop situations through it. Is anything awkward, surprising, or allowed when it shouldn't be? Is it fast to enter at the till?</p>
+  <p class="mut"><b>Assumption:</b> this is the logic prototype. It checks the rules and the order you enter things in, not the screen layout. Layout options are in <a href="https://github.com/RafalOsieka/osi.owe.yeah/issues/15">Which Receipt entry layout works best on a phone?</a></p>
+  <p class="mut"><b>Proposals to react to</b> (not decided yet): a new Line item copies the previous Line item's split if that split was Even, otherwise it starts Even across everyone. Switching a line's Split mode starts that mode from scratch. Amounts accept <code>0,29</code>, <code>,29</code>, <code>.29</code> and <code>1.234,50</code>: the last separator is always the decimal one.</p>
+  <p class="mut">Use the walkthroughs at the bottom, or the free-play controls, in any order. Every amount is kept exact; cents appear only on screen, and <b>≈</b> marks a rounded value.</p>
 
-  <!-- Line items -->
+  <h2>The Receipt right now</h2>
+  <div id="state"></div>
+
+  <h2>Free play</h2>
   <div class="card">
-    <div v-if="!r.lines.length" class="mut">No Line items yet. Tap “Add line”, type the price, done — the split defaults to the last one you used.</div>
-    <div v-for="(ln, i) in r.lines" :key="ln.id" class="line" @click="edit(i)">
-      <div class="row">
-        <div class="grow">
-          <div>
-            <span v-if="ln.kind==='refund'" class="tag">Deposit refund</span>
-            {{ ln.name || (ln.kind==='refund' ? '' : 'Line ' + (i+1)) }}
-          </div>
-          <div class="mut">
-            <template v-if="ln.kind==='item'">{{ ln.qty }} × {{ fmt(num(ln.price)) }}</template>
-            <template v-if="calc.lines[i].discount"> · −{{ fmt(calc.lines[i].discount) }}</template>
-            <template v-if="calc.lines[i].deposit"> · Deposit {{ fmt(calc.lines[i].deposit) }}</template>
-            · {{ splitLabel(ln) }}
-          </div>
-        </div>
-        <div class="amt" :class="{neg: calc.lines[i].net < 0}">{{ fmt(calc.lines[i].net) }}</div>
-      </div>
-      <div v-if="calc.lines[i].error" class="err mut">⚠ {{ calc.lines[i].error }}</div>
-      <div v-else-if="calc.lines[i].unassigned" class="warn mut">◐ {{ fmt(calc.lines[i].unassigned) }} unassigned (counts as {{ r.mainPayer }}'s for now)</div>
-    </div>
-    <div class="row" style="margin-top:8px">
-      <button class="btn pri grow" @click="add('item')">+ Add line</button>
-      <button class="btn" @click="add('refund')">− Deposit refund</button>
-    </div>
-  </div>
-
-  <!-- Receipt-level extras -->
-  <div class="card">
-    <details>
-      <summary>Receipt discount {{ calc.receiptDiscount ? '(−' + fmt(calc.receiptDiscount) + ')' : '' }}</summary>
-      <div class="row">
-        <input class="f num grow" inputmode="decimal" v-model="r.discount.value" placeholder="0">
-        <div class="seg" style="width:110px">
-          <button :class="{on:r.discount.type==='amt'}" @click="r.discount.type='amt'">{{ cur }}</button>
-          <button :class="{on:r.discount.type==='pct'}" @click="r.discount.type='pct'">%</button>
-        </div>
-      </div>
-      <div class="mut">Spread by each Participant's total after Line discounts. Never applies to Deposits or Deposit refunds.</div>
-    </details>
-    <details>
-      <summary>Contributions {{ r.contribs.length ? '(' + r.contribs.length + ')' : '' }}</summary>
-      <div v-for="(c, i) in r.contribs" class="row" style="margin-bottom:6px">
-        <select class="f" style="width:90px" v-model="c.who"><option v-for="p in people.filter(p => p !== r.mainPayer)" :value="p">{{ p }}</option></select>
-        <input class="f num grow" inputmode="decimal" v-model="c.amount" placeholder="0">
-        <button class="btn" @click="r.contribs.splice(i,1)">✕</button>
-      </div>
-      <button class="btn ghost" @click="r.contribs.push({who: people.find(p => p !== r.mainPayer), amount:''})">+ Someone else paid part (e.g. cash tip)</button>
-    </details>
-  </div>
-
-  <!-- Summary footer -->
-  <footer>
+    <h3 style="margin-top:0">Add a Line item</h3>
     <div class="row">
-      <div class="grow">
-        <div style="font-size:20px;font-weight:600" class="amt">{{ fmt(calc.total) }} <span class="mut">{{ cur }}</span></div>
-        <div class="mut">
-          Deposits {{ fmt(calc.depositTotal) }}
-          <span v-if="calc.refundTotal"> · Refunds {{ fmt(calc.refundTotal) }}</span>
-          <span v-if="calc.incomplete" class="warn"> · Incomplete</span>
-          <span v-if="calc.hasError" class="err"> · Fix errors</span>
-        </div>
-      </div>
-      <button class="btn" @click="showShares = !showShares">{{ showShares ? 'Hide' : 'Who owes' }}</button>
+      <input id="itName" placeholder="Name (optional)" style="flex:1;min-width:140px">
     </div>
-    <table v-if="showShares" style="margin-top:6px">
-      <tr class="mut"><td></td><td class="r">share</td><td class="r">paid</td><td class="r">net</td></tr>
-      <tr v-for="p in people">
-        <td>{{ p }}</td>
-        <td class="r">{{ fmt(calc.share[p]) }}</td>
-        <td class="r">{{ fmt(calc.paid[p]) }}</td>
-        <td class="r" :class="{neg: calc.paid[p]-calc.share[p] > 0.004}">{{ fmt(calc.paid[p]-calc.share[p]) }}</td>
-      </tr>
-      <tr v-if="calc.unassigned" class="warn"><td colspan="4">{{ fmt(calc.unassigned) }} unassigned, shown in {{ r.mainPayer }}'s share</td></tr>
-    </table>
-  </footer>
+    <div class="row">
+      <label class="mut">Unit price</label>
+      <input id="itPrice" class="amount" inputmode="decimal" placeholder="0,29" data-reads="rdPrice"><span id="rdPrice" class="reads"></span>
+      <label class="mut">Quantity</label>
+      <input id="itQty" class="qty" inputmode="numeric" value="1">
+    </div>
+    <div class="row">
+      <label class="mut">Deposit per unit</label>
+      <input id="itDep" class="amount" inputmode="decimal" placeholder="none" data-reads="rdDep"><span id="rdDep" class="reads"></span>
+    </div>
+    <div class="row"><button class="pri" data-act="addItem">Add Line item</button></div>
 
-  <!-- Line editor sheet -->
-  <div v-if="ed" class="sheet" @click.self="close">
-    <div>
-      <template v-if="ed.kind==='item'">
-        <div class="row">
-          <div class="grow">
-            <label class="l">Name (optional)</label>
-            <input class="f" v-model="ed.name" placeholder="e.g. Water 1.5l">
-          </div>
-          <div style="width:130px">
-            <label class="l">Unit price</label>
-            <input ref="price" class="f num" inputmode="decimal" enterkeyhint="done" v-model="ed.price" placeholder="0.00" @keyup.enter="saveAndNext">
-          </div>
-        </div>
-        <div class="row" style="margin-top:6px">
-          <div>
-            <label class="l">Quantity</label>
-            <div class="stepper">
-              <button @click="ed.qty = Math.max(1, ed.qty-1)">−</button>
-              <input class="f" inputmode="numeric" v-model.number="ed.qty">
-              <button @click="ed.qty++">+</button>
-            </div>
-          </div>
-          <div class="grow" style="text-align:right">
-            <label class="l">Line total</label>
-            <div style="font-size:20px" class="amt">{{ fmt(num(ed.price) * (ed.qty||0)) }}</div>
-          </div>
-        </div>
-        <div class="row wrap" style="margin-top:8px">
-          <button class="chip sm" :class="{on: ed.showDeposit || num(ed.deposit)}" @click="ed.showDeposit = !ed.showDeposit">+ Deposit</button>
-          <button v-for="d in depositPresets" class="chip sm" @click="ed.deposit = d; ed.showDeposit = true">{{ d }}</button>
-          <button class="chip sm" :class="{on: ed.showDiscount || num(ed.discount.value)}" @click="ed.showDiscount = !ed.showDiscount">+ Discount</button>
-        </div>
-        <div v-if="ed.showDeposit" class="row">
-          <div class="grow"><label class="l">Deposit per unit</label><input class="f num" inputmode="decimal" v-model="ed.deposit" placeholder="0.25"></div>
-          <div class="mut" style="padding-top:20px">= {{ fmt(num(ed.deposit) * (ed.qty||0)) }}</div>
-        </div>
-        <div v-if="ed.showDiscount" class="row">
-          <div class="grow"><label class="l">Line discount</label><input class="f num" inputmode="decimal" v-model="ed.discount.value" placeholder="0"></div>
-          <div class="seg" style="width:110px;margin-top:18px">
-            <button :class="{on:ed.discount.type==='amt'}" @click="ed.discount.type='amt'">{{ cur }}</button>
-            <button :class="{on:ed.discount.type==='pct'}" @click="ed.discount.type='pct'">%</button>
-          </div>
-        </div>
-      </template>
-      <template v-else>
-        <div class="row">
-          <div class="grow">
-            <label class="l">Deposit refund (voucher amount)</label>
-            <input ref="price" class="f num" inputmode="decimal" enterkeyhint="done" v-model="ed.price" placeholder="0.00" @keyup.enter="saveAndNext">
-          </div>
-        </div>
-        <div class="mut">Entered as a positive number, recorded as negative. Split Even across everyone by default.</div>
-      </template>
-
-      <label class="l" style="margin-top:12px">Split</label>
-      <div class="seg">
-        <button :class="{on:ed.mode==='even'}" @click="ed.mode='even'">Even</button>
-        <button :class="{on:ed.mode==='units'}" @click="ed.mode='units'" :disabled="ed.kind==='refund' || ed.qty < 2" :style="{opacity: (ed.kind==='refund' || ed.qty < 2) ? .35 : 1}">Units</button>
-        <button :class="{on:ed.mode==='amounts'}" @click="ed.mode='amounts'">Amounts</button>
-      </div>
-
-      <div v-if="ed.mode==='even'" class="row wrap" style="margin-top:8px">
-        <button v-for="p in people" class="chip" :class="{on: ed.even.includes(p)}" @click="toggle(ed.even, p)">{{ p }}</button>
-        <button class="chip sm" @click="ed.even = ed.even.length === people.length ? [] : [...people]">{{ ed.even.length === people.length ? 'None' : 'All' }}</button>
-      </div>
-
-      <div v-if="ed.mode==='units'" style="margin-top:8px">
-        <div v-for="p in people" class="row" style="margin-bottom:4px">
-          <div class="grow">{{ p }}</div>
-          <div class="stepper">
-            <button @click="ed.units[p] = Math.max(0, (ed.units[p]||0)-1)">−</button>
-            <input class="f" inputmode="numeric" v-model.number="ed.units[p]">
-            <button @click="ed.units[p] = (ed.units[p]||0)+1">+</button>
-          </div>
-        </div>
-        <div class="mut" :class="{err: unitsLeft < 0, warn: unitsLeft > 0}">{{ unitsLeft === 0 ? 'All units assigned' : unitsLeft > 0 ? unitsLeft + ' unit(s) unassigned' : (-unitsLeft) + ' unit(s) too many' }}</div>
-      </div>
-
-      <div v-if="ed.mode==='amounts'" style="margin-top:8px">
-        <div v-for="p in people" class="row" style="margin-bottom:4px">
-          <div class="grow">{{ p }}</div>
-          <input class="f num" style="width:120px" inputmode="decimal" v-model="ed.amounts[p]" placeholder="0">
-          <button class="chip sm" @click="ed.amounts[p] = String(round2(edFull - amountsSumExcept(p)))">rest</button>
-        </div>
-        <div class="mut" :class="{err: amountsLeft < -0.004, warn: amountsLeft > 0.004}">
-          {{ Math.abs(amountsLeft) < 0.005 ? 'Adds up to the full-price Line total' : amountsLeft > 0 ? fmt(amountsLeft) + ' left to assign' : fmt(-amountsLeft) + ' too much' }}
-        </div>
-      </div>
-
-      <div class="row" style="margin-top:14px">
-        <button v-if="ed.index !== null" class="btn" @click="remove">Delete</button>
-        <span class="grow"></span>
-        <button class="btn" @click="save">Save</button>
-        <button class="btn pri" @click="saveAndNext">Save + next</button>
-      </div>
+    <h3>Add a Deposit refund</h3>
+    <div class="row">
+      <label class="mut">Voucher amount</label>
+      <input id="rfAmt" class="amount" inputmode="decimal" placeholder="3,75" data-reads="rdRf"><span id="rdRf" class="reads"></span>
+      <button class="pri" data-act="addRefund">Add Deposit refund</button>
     </div>
   </div>
-</div>
+
+  <div class="card" id="lineControls"></div>
+
+  <div class="card">
+    <h3 style="margin-top:0">Receipt discount</h3>
+    <div class="row">
+      <input id="rdVal" class="amount" inputmode="decimal" placeholder="10" data-reads="rdRd"><span id="rdRd" class="reads"></span>
+      <button data-act="receiptDiscount" data-kind="amount">Set as amount</button>
+      <button data-act="receiptDiscount" data-kind="percent">Set as %</button>
+      <button data-act="receiptDiscount" data-kind="none">Remove</button>
+    </div>
+    <div id="payerControls"></div>
+  </div>
+
+  <h2>Guided walkthroughs</h2>
+  <div id="walk"></div>
+</main>
 
 <script>
-const { createApp, reactive, ref, computed, nextTick } = Vue;
+/* ===== Receipt logic: a pure module. No DOM, no page state. Liftable into the real engine. ===== */
+const ReceiptLogic = (() => {
+  // Exact fractions on bigint. Nothing is rounded inside the Trip; cents exist only for display and settling.
+  const abs = x => (x < 0n ? -x : x);
+  const gcd = (a, b) => { a = abs(a); b = abs(b); while (b) [a, b] = [b, a % b]; return a || 1n; };
+  const q = (n, d = 1n) => { n = BigInt(n); d = BigInt(d); if (d < 0n) { n = -n; d = -d; } const g = gcd(n, d); return { n: n / g, d: d / g }; };
+  const ZERO = q(0), ONE = q(1), HUNDRED = q(100);
+  const add = (a, b) => q(a.n * b.d + b.n * a.d, a.d * b.d);
+  const sub = (a, b) => q(a.n * b.d - b.n * a.d, a.d * b.d);
+  const mul = (a, b) => q(a.n * b.n, a.d * b.d);
+  const div = (a, b) => q(a.n * b.d, a.d * b.n);
+  const neg = a => q(-a.n, a.d);
+  const cmp = (a, b) => { const x = a.n * b.d - b.n * a.d; return x < 0n ? -1 : x > 0n ? 1 : 0; };
+  const isZero = a => a.n === 0n;
+  const sum = xs => xs.reduce(add, ZERO);
+  // Whole cents, rounding half away from zero.
+  const toCents = a => { const t = a.n * 100n, c = t / a.d, r = t % a.d; return abs(r) * 2n >= a.d ? c + (t < 0n ? -1n : 1n) : c; };
+  const isWholeCents = a => 100n % a.d === 0n;
+  const formatMoney = a => { const c = toCents(a), m = abs(c); return (c < 0n ? '−' : '') + (m / 100n) + ',' + String(m % 100n).padStart(2, '0'); };
 
-// Accepts "0,29", ".29", "0.29", "1 234,50". Empty or garbage -> 0. The point: no fighting the keyboard for amounts below 1.
-const num = s => {
-  if (typeof s === 'number') return s;
-  const v = parseFloat(String(s ?? '').replace(/\s/g, '').replace(',', '.'));
-  return Number.isFinite(v) ? v : 0;
-};
-const round2 = x => Math.round(x * 100) / 100;
-const fmt = x => (Math.abs(x) < 0.005 ? 0 : x).toLocaleString('de-DE', { minimumFractionDigits: 2, maximumFractionDigits: 2 });
-let nextId = 1;
+  // Lenient amount input. The last "," or "." is the decimal separator; earlier ones are thousands grouping.
+  // "0,29", ",29", ".29", "0.29", "1 234,50", "1.234,50", "2,5 €" all work. Returns null when it isn't a number.
+  function parseAmount(text) {
+    let s = String(text ?? '').replace(/[\s\u00a0€]/g, '');
+    let sign = 1n;
+    if (s.startsWith('-') || s.startsWith('−')) { sign = -1n; s = s.slice(1); }
+    const at = Math.max(s.lastIndexOf(','), s.lastIndexOf('.'));
+    const whole = at < 0 ? s : s.slice(0, at).replace(/[.,]/g, '');
+    const frac = at < 0 ? '' : s.slice(at + 1);
+    if (!/^\d*$/.test(whole) || !/^\d*$/.test(frac) || !(whole + frac)) return null;
+    return q(sign * BigInt(whole + frac), 10n ** BigInt(frac.length));
+  }
 
-createApp({
-  setup() {
-    const people = ['Rafał', 'Ania', 'Kuba', 'Ola'];
-    const cur = 'EUR';
-    const depositPresets = ['0.25', '0.15', '0.08'];
-    const r = reactive({
-      title: 'Lidl, Berlin',
-      mainPayer: 'Rafał',
-      lines: [],
-      discount: { type: 'pct', value: '' },
-      contribs: [],
-    });
-    const showShares = ref(true);
-    const ed = ref(null);
-    const price = ref(null);
-    // The split of the last saved Line item becomes the default for the next one.
-    let lastSplit = { mode: 'even', even: [...people] };
+  const newReceipt = (participants, mainPayer) =>
+    ({ participants: [...participants], mainPayer, lines: [], receiptDiscount: null, contributions: [], nextLineId: 1 });
 
-    const blank = kind => ({
-      id: nextId++, index: null, kind, name: '', price: '', qty: 1, deposit: '', showDeposit: false, showDiscount: false,
-      discount: { type: 'amt', value: '' },
-      mode: kind === 'refund' ? 'even' : (lastSplit.mode === 'units' ? 'even' : lastSplit.mode),
-      even: kind === 'refund' ? [...people] : [...lastSplit.even],
-      units: {}, amounts: {},
-    });
+  const everyone = r => ({ mode: 'even', who: [...r.participants] });
+  const fullTotal = l => (l.kind === 'item' ? mul(l.unitPrice, q(l.quantity)) : neg(l.amount));
+  const splittable = l => (l.kind === 'item' ? fullTotal(l) : l.amount);
+  const discountOf = (d, base) => (!d ? ZERO : d.kind === 'percent' ? div(mul(base, d.value), HUNDRED) : d.value);
+  const itemsNet = r => sum(r.lines.filter(l => l.kind === 'item').map(l => sub(fullTotal(l), discountOf(l.discount, fullTotal(l)))));
 
-    const focusPrice = () => nextTick(() => price.value?.focus());
-    const add = kind => { ed.value = blank(kind); focusPrice(); };
-    const edit = i => { ed.value = { ...JSON.parse(JSON.stringify(r.lines[i])), index: i }; };
-    const close = () => { ed.value = null; };
-    const save = () => {
-      const e = ed.value;
-      const ln = JSON.parse(JSON.stringify(e));
-      if (e.index === null) r.lines.push(ln); else r.lines[e.index] = ln;
-      if (e.kind === 'item') lastSplit = { mode: e.mode, even: [...e.even] };
-      close();
+  function checkDiscount(d, base) {
+    if (!d.value) return 'The discount is not a number.';
+    if (cmp(d.value, ZERO) < 0) return 'A discount is entered as a positive number.';
+    if (d.kind === 'percent' && cmp(d.value, HUNDRED) > 0) return 'A discount can never exceed what it applies to, so 100 % at most.';
+    if (d.kind === 'amount' && cmp(d.value, base) > 0) return `A discount can never exceed what it applies to (${formatMoney(base)}).`;
+    return null;
+  }
+
+  // (receipt, action) => { receipt, rejected? }. A rejected action leaves the Receipt unchanged and says why.
+  function apply(r, a) {
+    const no = rejected => ({ receipt: r, rejected });
+    const ok = receipt => ({ receipt });
+    const withLine = (id, change) => {
+      const l = r.lines.find(x => x.id === id);
+      if (!l) return no('There is no such line.');
+      const res = change(l);
+      return typeof res === 'string' ? no(res) : ok({ ...r, lines: r.lines.map(x => (x.id === id ? res : x)) });
     };
-    const saveAndNext = () => { const k = ed.value.kind; save(); add(k === 'refund' ? 'item' : k); };
-    const remove = () => { r.lines.splice(ed.value.index, 1); close(); };
-    const toggle = (arr, p) => { const i = arr.indexOf(p); i < 0 ? arr.push(p) : arr.splice(i, 1); };
+    const append = line => ok({ ...r, lines: [...r.lines, { ...line, id: r.nextLineId }], nextLineId: r.nextLineId + 1 });
 
-    const edFull = computed(() => ed.value ? num(ed.value.price) * (ed.value.kind === 'refund' ? 1 : (ed.value.qty || 0)) : 0);
-    const unitsLeft = computed(() => ed.value ? (ed.value.qty || 0) - people.reduce((s, p) => s + (ed.value.units[p] || 0), 0) : 0);
-    const amountsSumExcept = x => people.filter(p => p !== x).reduce((s, p) => s + num(ed.value.amounts[p]), 0);
-    const amountsLeft = computed(() => ed.value ? edFull.value - amountsSumExcept(null) : 0);
-
-    // Weights per Participant plus an "unassigned" bucket that belongs to the Main payer until assigned.
-    const weightsOf = (ln, full) => {
-      const w = {}; let un = 0, error = null;
-      if (ln.mode === 'even') { people.forEach(p => w[p] = ln.even.includes(p) ? 1 : 0); if (!ln.even.length) un = 1; }
-      if (ln.mode === 'units') { people.forEach(p => w[p] = ln.units[p] || 0); un = (ln.qty || 0) - people.reduce((s, p) => s + w[p], 0); if (un < 0) error = 'More units assigned than bought'; }
-      if (ln.mode === 'amounts') { people.forEach(p => w[p] = num(ln.amounts[p])); un = Math.abs(full) - people.reduce((s, p) => s + w[p], 0); if (un < -0.004) error = 'Amounts exceed the Line total'; if (Math.abs(un) < 0.005) un = 0; }
-      return { w, un: Math.max(0, un), error };
-    };
-
-    const calc = computed(() => {
-      const share = Object.fromEntries(people.map(p => [p, 0]));
-      const itemShare = Object.fromEntries(people.map(p => [p, 0]));
-      let itemUn = 0, unassigned = 0, depositTotal = 0, refundTotal = 0, itemNet = 0, hasError = false;
-      const lines = r.lines.map(ln => {
-        const sign = ln.kind === 'refund' ? -1 : 1;
-        const full = sign * num(ln.price) * (ln.kind === 'refund' ? 1 : (ln.qty || 0));
-        const d = ln.kind === 'item' ? Math.min(Math.abs(full), ln.discount.type === 'pct' ? full * num(ln.discount.value) / 100 : num(ln.discount.value)) : 0;
-        const net = full - d;
-        const deposit = ln.kind === 'item' ? num(ln.deposit) * (ln.qty || 0) : 0;
-        const { w, un, error } = weightsOf(ln, full);
-        if (error) hasError = true;
-        const W = people.reduce((s, p) => s + w[p], 0) + un;
-        const lineUn = W ? (net + deposit) * un / W : 0;
-        people.forEach(p => {
-          const f = W ? w[p] / W : 0;
-          share[p] += (net + deposit) * f;
-          if (ln.kind === 'item') itemShare[p] += net * f;
-        });
-        if (ln.kind === 'item') { itemUn += W ? net * un / W : 0; itemNet += net; }
-        unassigned += lineUn;
-        depositTotal += deposit;
-        if (ln.kind === 'refund') refundTotal += full;
-        return { net: net + deposit, discount: d, deposit, error, unassigned: lineUn };
-      });
-      // Receipt discount: proportional to each Participant's item total after Line discounts (Deposits and refunds excluded).
-      const rd = Math.min(Math.max(0, itemNet), r.discount.type === 'pct' ? itemNet * num(r.discount.value) / 100 : num(r.discount.value));
-      if (itemNet > 0) {
-        people.forEach(p => share[p] -= rd * itemShare[p] / itemNet);
-        unassigned -= rd * itemUn / itemNet;
+    switch (a.type) {
+      case 'addLineItem': {
+        if (!a.unitPrice) return no('The unit price is not a number.');
+        if (cmp(a.unitPrice, ZERO) < 0) return no('A price can’t be negative. Returned bottles go in as a Deposit refund.');
+        if (!Number.isInteger(a.quantity) || a.quantity < 1) return no('Quantity is a whole number, at least 1.');
+        if (a.depositPerUnit && cmp(a.depositPerUnit, ZERO) < 0) return no('A deposit per unit can’t be negative.');
+        const prev = [...r.lines].reverse().find(l => l.kind === 'item');
+        const split = prev && prev.split.mode === 'even' ? { mode: 'even', who: [...prev.split.who] } : everyone(r);
+        const depositPerUnit = a.depositPerUnit && !isZero(a.depositPerUnit) ? a.depositPerUnit : null;
+        return append({ kind: 'item', name: a.name || '', unitPrice: a.unitPrice, quantity: a.quantity, depositPerUnit, discount: null, split });
       }
-      const total = lines.reduce((s, l) => s + l.net, 0) - rd;
-      share[r.mainPayer] += unassigned;
-      const paid = Object.fromEntries(people.map(p => [p, 0]));
-      const contribTotal = r.contribs.reduce((s, c) => s + num(c.amount), 0);
-      r.contribs.forEach(c => paid[c.who] += num(c.amount));
-      paid[r.mainPayer] += total - contribTotal;
-      return { lines, share, paid, total, depositTotal, refundTotal, receiptDiscount: rd, unassigned, incomplete: unassigned > 0.004, hasError };
+      case 'addDepositRefund':
+        if (!a.amount) return no('The voucher amount is not a number.');
+        if (cmp(a.amount, ZERO) <= 0) return no('Enter the voucher amount as a positive number. It is recorded as negative.');
+        return append({ kind: 'refund', name: a.name || '', amount: a.amount, split: everyone(r) });
+      case 'removeLine':
+        if (!r.lines.some(l => l.id === a.lineId)) return no('There is no such line.');
+        return ok({ ...r, lines: r.lines.filter(l => l.id !== a.lineId) });
+      case 'setLineDiscount':
+        return withLine(a.lineId, l => {
+          if (l.kind !== 'item') return 'A Deposit refund is never discounted.';
+          if (!a.discount) return { ...l, discount: null };
+          return checkDiscount(a.discount, fullTotal(l)) ?? { ...l, discount: a.discount };
+        });
+      case 'chooseSplitMode':
+        return withLine(a.lineId, l => {
+          if (a.mode === 'units' && (l.kind !== 'item' || l.quantity < 2)) return 'Units needs a quantity of 2 or more. For a single unit, use Even or Amounts.';
+          return { ...l, split: a.mode === 'even' ? everyone(r) : a.mode === 'units' ? { mode: 'units', units: {} } : { mode: 'amounts', amounts: {} } };
+        });
+      case 'setEven':
+        return withLine(a.lineId, l => ({ ...l, split: { mode: 'even', who: r.participants.filter(p => a.who.includes(p)) } }));
+      case 'toggleEven':
+        return withLine(a.lineId, l => {
+          if (l.split.mode !== 'even') return 'This line isn’t split Even.';
+          const has = l.split.who.includes(a.participant);
+          return { ...l, split: { mode: 'even', who: r.participants.filter(p => (p === a.participant ? !has : l.split.who.includes(p))) } };
+        });
+      case 'setUnits':
+        return withLine(a.lineId, l => {
+          if (l.split.mode !== 'units') return 'This line isn’t split by Units.';
+          if (!Number.isInteger(a.units) || a.units < 0) return 'Units are whole numbers, 0 or more.';
+          const units = { ...l.split.units, [a.participant]: a.units };
+          const assigned = Object.values(units).reduce((x, y) => x + y, 0);
+          if (assigned > l.quantity) return `That would assign ${assigned} units, but only ${l.quantity} were bought.`;
+          return { ...l, split: { mode: 'units', units } };
+        });
+      case 'setAmount':
+        return withLine(a.lineId, l => {
+          if (l.split.mode !== 'amounts') return 'This line isn’t split by Amounts.';
+          if (!a.amount) return 'That amount is not a number.';
+          if (cmp(a.amount, ZERO) < 0) return 'Amounts are entered as positive numbers.';
+          const amounts = { ...l.split.amounts, [a.participant]: a.amount };
+          const assigned = sum(Object.values(amounts));
+          if (cmp(assigned, splittable(l)) > 0) return `Amounts would add up to ${formatMoney(assigned)}, more than the full-price Line total of ${formatMoney(splittable(l))}.`;
+          return { ...l, split: { mode: 'amounts', amounts } };
+        });
+      case 'setReceiptDiscount': {
+        if (!a.discount) return ok({ ...r, receiptDiscount: null });
+        const err = checkDiscount(a.discount, itemsNet(r));
+        return err ? no(err) : ok({ ...r, receiptDiscount: a.discount });
+      }
+      case 'setMainPayer':
+        if (r.contributions.some(c => c.participant === a.participant)) return no(`${a.participant} already has a Contribution. Remove it first: the Main payer covers whatever the others don’t.`);
+        return ok({ ...r, mainPayer: a.participant });
+      case 'addContribution':
+        if (a.participant === r.mainPayer) return no(`${a.participant} is the Main payer and already covers whatever the others don’t.`);
+        if (!a.amount) return no('The Contribution is not a number.');
+        if (cmp(a.amount, ZERO) <= 0) return no('A Contribution is a positive amount.');
+        return ok({ ...r, contributions: [...r.contributions, { participant: a.participant, amount: a.amount }] });
+      case 'removeContribution':
+        return ok({ ...r, contributions: r.contributions.filter((_, i) => i !== a.index) });
+      default:
+        return no('Unknown action.');
+    }
+  }
+
+  // Weights for one line, plus the "rest": the weight nobody has been given yet. The rest belongs to the Main payer until assigned.
+  function weightsOf(l) {
+    const s = l.split;
+    if (s.mode === 'even') return { weights: Object.fromEntries(s.who.map(p => [p, ONE])), rest: s.who.length ? ZERO : ONE };
+    if (s.mode === 'units') {
+      const assigned = Object.values(s.units).reduce((x, y) => x + y, 0);
+      return { weights: Object.fromEntries(Object.entries(s.units).map(([p, u]) => [p, q(u)])), rest: q(l.quantity - assigned) };
+    }
+    return { weights: { ...s.amounts }, rest: sub(splittable(l), sum(Object.values(s.amounts))) };
+  }
+
+  // Everything derived from a Receipt. Exact values; the page decides how to show them.
+  function summarize(r) {
+    const P = r.participants;
+    const zeros = () => Object.fromEntries(P.map(p => [p, ZERO]));
+    const assigned = zeros(), itemGoods = zeros();
+    let unassigned = ZERO, itemGoodsUnassigned = ZERO;
+    const problems = [];
+
+    const lines = r.lines.map(l => {
+      const full = fullTotal(l);
+      const discount = l.kind === 'item' ? discountOf(l.discount, full) : ZERO;
+      const net = sub(full, discount);
+      const deposit = l.kind === 'item' && l.depositPerUnit ? mul(l.depositPerUnit, q(l.quantity)) : ZERO;
+      let { weights, rest } = weightsOf(l);
+      let W = add(sum(Object.values(weights)), rest);
+      if (isZero(W)) { rest = ONE; W = ONE; }
+      const perParticipant = {};
+      for (const p of P) {
+        const f = div(weights[p] ?? ZERO, W);
+        const goods = mul(net, f);
+        perParticipant[p] = add(goods, mul(deposit, f)); // the Deposit follows the Line item's weights
+        assigned[p] = add(assigned[p], perParticipant[p]);
+        if (l.kind === 'item') itemGoods[p] = add(itemGoods[p], goods);
+      }
+      const fRest = div(rest, W);
+      const lineUnassigned = mul(add(net, deposit), fRest);
+      unassigned = add(unassigned, lineUnassigned);
+      if (l.kind === 'item') itemGoodsUnassigned = add(itemGoodsUnassigned, mul(net, fRest));
+      return { line: l, full, discount, net, deposit, total: add(net, deposit), perParticipant, unassigned: lineUnassigned };
     });
 
-    const splitLabel = ln => {
-      if (ln.mode === 'even') return ln.even.length === people.length ? 'Even · everyone' : ln.even.length ? 'Even · ' + ln.even.join(', ') : 'Unassigned';
-      if (ln.mode === 'units') return 'Units · ' + people.filter(p => ln.units[p]).map(p => p + ' ' + ln.units[p]).join(', ');
-      return 'Amounts · ' + people.filter(p => num(ln.amounts[p])).map(p => p + ' ' + fmt(num(ln.amounts[p]))).join(', ');
-    };
+    // Receipt discount: spread by each Participant's Line item total after Line discounts. Never touches Deposits or Deposit refunds.
+    const base = add(sum(Object.values(itemGoods)), itemGoodsUnassigned);
+    let receiptDiscount = discountOf(r.receiptDiscount, base);
+    if (cmp(receiptDiscount, base) > 0) { problems.push(`The Receipt discount is larger than the Line items it applies to, so it is capped at ${formatMoney(base)}.`); receiptDiscount = base; }
+    if (!isZero(base) && !isZero(receiptDiscount)) {
+      for (const p of P) assigned[p] = sub(assigned[p], mul(receiptDiscount, div(itemGoods[p], base)));
+      unassigned = sub(unassigned, mul(receiptDiscount, div(itemGoodsUnassigned, base)));
+    }
 
-    return { people, cur, depositPresets, r, ed, price, showShares, calc, add, edit, close, save, saveAndNext, remove, toggle,
-      unitsLeft, amountsLeft, amountsSumExcept, edFull, splitLabel, num, fmt, round2 };
+    const items = lines.filter(x => x.line.kind === 'item');
+    const total = sub(sum(lines.map(x => x.total)), receiptDiscount);
+    const paid = zeros();
+    for (const c of r.contributions) paid[c.participant] = add(paid[c.participant], c.amount);
+    paid[r.mainPayer] = add(paid[r.mainPayer], sub(total, sum(r.contributions.map(c => c.amount))));
+    if (r.contributions.length && cmp(paid[r.mainPayer], ZERO) < 0) problems.push('Contributions are larger than the total, so the Main payer’s part is negative.');
+
+    const share = { ...assigned };
+    share[r.mainPayer] = add(share[r.mainPayer], unassigned); // unassigned value counts as the Main payer's own
+    const balance = Object.fromEntries(P.map(p => [p, sub(paid[p], share[p])]));
+
+    return {
+      lines, total, share, paid, balance, unassigned, problems,
+      incomplete: !isZero(unassigned),
+      itemsFull: sum(items.map(x => x.full)),
+      lineDiscounts: sum(items.map(x => x.discount)),
+      receiptDiscount,
+      depositsTotal: sum(items.map(x => x.deposit)),
+      refundsTotal: sum(lines.filter(x => x.line.kind === 'refund').map(x => x.full)),
+    };
+  }
+
+  return { newReceipt, apply, summarize, parseAmount, formatMoney, toCents, isWholeCents, cmp, isZero, neg, ZERO };
+})();
+</script>
+
+<script>
+/* ===== Page shell: renders the Receipt and dispatches actions. Throwaway. ===== */
+const L = ReceiptLogic;
+const PEOPLE = ['Rafał', 'Ania', 'Kuba', 'Ola'];
+const fresh = () => L.newReceipt(PEOPLE, 'Rafał');
+const amt = L.parseAmount;
+const money = L.formatMoney;
+const show = x => (L.isWholeCents(x) ? '' : '≈') + money(x);
+const esc = s => String(s).replace(/[&<>"]/g, c => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;' }[c]));
+const $ = s => document.querySelector(s);
+
+let receipt = fresh();
+let last = null;          // { text, rejected, before }
+let selectedLine = null;
+let scenario = 0, step = 0;
+
+const lineName = l => l.name || (l.kind === 'refund' ? 'Deposit refund' : 'Line ' + l.id);
+const findLine = id => receipt.lines.find(l => l.id === id);
+
+function dispatch(action, text) {
+  const before = L.summarize(receipt);
+  const label = text || describe(action);
+  const res = L.apply(receipt, action);
+  receipt = res.receipt;
+  last = { text: label, rejected: res.rejected, before };
+  if (!res.rejected && (action.type === 'addLineItem' || action.type === 'addDepositRefund')) selectedLine = receipt.nextLineId - 1;
+  if (!findLine(selectedLine)) selectedLine = receipt.lines.at(-1)?.id ?? null;
+  render();
+}
+
+function refuse(text, reason) { last = { text, rejected: reason, before: L.summarize(receipt) }; render(); }
+
+function describe(a) {
+  const n = id => { const l = findLine(id); return l ? `“${lineName(l)}”` : 'line ' + id; };
+  const d = x => (!x ? 'none' : x.value ? (x.kind === 'percent' ? money(x.value).replace(/,00$/, '') + ' %' : money(x.value)) : '?');
+  switch (a.type) {
+    case 'addLineItem': return `Add “${a.name || 'Line item'}”: ${a.quantity} × ${a.unitPrice ? money(a.unitPrice) : '?'}${a.depositPerUnit ? ', deposit ' + money(a.depositPerUnit) + ' each' : ''}`;
+    case 'addDepositRefund': return `Add a Deposit refund of ${a.amount ? money(a.amount) : '?'}`;
+    case 'removeLine': return `Remove ${n(a.lineId)}`;
+    case 'setLineDiscount': return `Line discount on ${n(a.lineId)}: ${d(a.discount)}`;
+    case 'chooseSplitMode': return `Split ${n(a.lineId)} by ${{ even: 'Even', units: 'Units', amounts: 'Amounts' }[a.mode]}`;
+    case 'setEven': return `Split ${n(a.lineId)} Even between ${a.who.join(', ') || 'nobody'}`;
+    case 'toggleEven': return `Tick or untick ${a.participant} on ${n(a.lineId)}`;
+    case 'setUnits': return `${a.participant} takes ${a.units} unit(s) of ${n(a.lineId)}`;
+    case 'setAmount': return `${a.participant} pays ${a.amount ? money(a.amount) : '?'} of ${n(a.lineId)}`;
+    case 'setReceiptDiscount': return `Receipt discount: ${d(a.discount)}`;
+    case 'setMainPayer': return `${a.participant} becomes the Main payer`;
+    case 'addContribution': return `${a.participant} contributes ${a.amount ? money(a.amount) : '?'}`;
+    case 'removeContribution': return 'Remove a Contribution';
+    default: return a.type;
+  }
+}
+
+function splitText(l) {
+  const s = l.split;
+  if (s.mode === 'even') return s.who.length === PEOPLE.length ? 'Even · everyone' : s.who.length ? 'Even · ' + s.who.join(', ') : 'Even · nobody ticked';
+  if (s.mode === 'units') { const e = Object.entries(s.units).filter(([, u]) => u); return 'Units · ' + (e.length ? e.map(([p, u]) => `${p} ${u}`).join(', ') : 'nothing assigned'); }
+  const e = Object.entries(s.amounts).filter(([, v]) => !L.isZero(v));
+  return 'Amounts · ' + (e.length ? e.map(([p, v]) => `${p} ${money(v)}`).join(', ') : 'nothing assigned');
+}
+
+function renderState() {
+  const sm = L.summarize(receipt);
+  const out = [];
+  if (last) out.push(`<div class="last ${last.rejected ? 'bad' : 'good'}"><b>${esc(last.text)}</b><br>${last.rejected ? 'Refused: ' + esc(last.rejected) : 'Done. Changed rows are highlighted below.'}</div>`);
+  const status = sm.incomplete
+    ? `<span class="status warn">Incomplete: ${show(sm.unassigned)} not assigned yet, counted as ${receipt.mainPayer}’s own for now.</span>`
+    : `<span class="status ok">Complete: everything is assigned.</span>`;
+  out.push(`<p>Main payer: <b>${receipt.mainPayer}</b> · ${receipt.lines.length ? status : '<span class="mut">No lines yet.</span>'}</p>`);
+  for (const p of sm.problems) out.push(`<p class="problem">⚠ ${esc(p)}</p>`);
+
+  out.push('<h3>Lines</h3>');
+  if (!sm.lines.length) out.push('<p class="mut">Add a Line item or start a walkthrough.</p>');
+  for (const x of sm.lines) {
+    const l = x.line;
+    const facts = l.kind === 'item'
+      ? [`${l.quantity} × ${money(l.unitPrice)} = ${money(x.full)}`]
+      : [`Voucher ${money(l.amount)}, recorded as ${money(x.full)}`];
+    if (!L.isZero(x.discount)) facts.push(`Line discount −${show(x.discount)}${l.discount.kind === 'percent' ? ` (${money(l.discount.value).replace(/,00$/, '')} %)` : ''}`);
+    if (!L.isZero(x.deposit)) facts.push(`Deposit ${l.quantity} × ${money(l.depositPerUnit)} = ${money(x.deposit)}`);
+    const parts = PEOPLE.filter(p => !L.isZero(x.perParticipant[p])).map(p => `${p} ${show(x.perParticipant[p])}`);
+    out.push(`<div class="ln ${l.id === selectedLine ? 'sel' : ''}" data-act="select" data-line="${l.id}">
+      <div class="ln-top"><span>${esc(lineName(l))}</span><span class="num">${show(x.total)}</span></div>
+      <div class="mut">${facts.join(' · ')}</div>
+      <div class="mut">Split: ${esc(splitText(l))}${parts.length ? ' → ' + parts.join(' · ') : ''}</div>
+      ${L.isZero(x.unassigned) ? '' : `<div class="unassigned">◐ ${show(x.unassigned)} not assigned yet</div>`}
+    </div>`);
+  }
+
+  out.push('<h3>Totals</h3><table>');
+  const row = (label, v, note = '') => out.push(`<tr><td>${label}${note ? ` <span class="mut">${note}</span>` : ''}</td><td class="num">${show(v)}</td></tr>`);
+  row('Line items at full price', sm.itemsFull);
+  if (!L.isZero(sm.lineDiscounts)) row('Line discounts', L.neg(sm.lineDiscounts));
+  if (!L.isZero(sm.receiptDiscount)) row('Receipt discount', L.neg(sm.receiptDiscount), receipt.receiptDiscount.kind === 'percent' ? `(${money(receipt.receiptDiscount.value).replace(/,00$/, '')} % of goods)` : '');
+  row('Deposits total', sm.depositsTotal, 'check against the printed Pfand');
+  if (!L.isZero(sm.refundsTotal)) row('Deposit refunds', sm.refundsTotal);
+  out.push(`<tr class="total"><td>Total</td><td class="num">${show(sm.total)}</td></tr></table>`);
+
+  out.push('<h3>Who owes what</h3><table><tr><th>Participant</th><th>Share</th><th>Paid</th><th>Balance</th></tr>');
+  for (const p of PEOPLE) {
+    const changed = last && !last.rejected && L.cmp(last.before.balance[p], sm.balance[p]) !== 0;
+    const b = sm.balance[p], sign = L.cmp(b, L.ZERO);
+    out.push(`<tr class="${changed ? 'changed' : ''}">
+      <td>${p}${p === receipt.mainPayer ? ' <span class="mut">(Main payer)</span>' : ''}</td>
+      <td class="num">${show(sm.share[p])}</td>
+      <td class="num">${show(sm.paid[p])}</td>
+      <td class="num">${sign > 0 ? 'gets back ' : sign < 0 ? 'owes ' : ''}${show(sign < 0 ? L.neg(b) : b)}${changed ? `<div class="was">was ${show(last.before.balance[p])}</div>` : ''}</td>
+    </tr>`);
+  }
+  out.push('</table>');
+  const shownShares = PEOPLE.reduce((s, p) => s + L.toCents(sm.share[p]), 0n);
+  if (shownShares !== L.toCents(sm.total)) out.push(`<p class="mut">Shown shares add up to ${money({ n: shownShares, d: 100n })}, but the total is ${money(sm.total)}. That is display rounding only: the Trip keeps the exact values, and the balances still add up to exactly 0.</p>`);
+  if (receipt.contributions.length) out.push(`<p class="mut">${receipt.mainPayer} covers ${show(sm.paid[receipt.mainPayer])}: the total minus the Contributions.</p>`);
+  $('#state').innerHTML = out.join('');
+}
+
+function renderLineControls() {
+  const l = findLine(selectedLine);
+  if (!l) { $('#lineControls').innerHTML = '<h3 style="margin-top:0">Change a line</h3><p class="mut">Add a line first, then tap it above to change it.</p>'; return; }
+  const id = l.id, s = l.split, out = [];
+  out.push(`<h3 style="margin-top:0">Change “${esc(lineName(l))}” <span class="mut">(tap another line above to switch)</span></h3>`);
+  out.push(`<div class="row"><span class="mut">Split mode</span>${['even', 'units', 'amounts'].map(m =>
+    `<button class="${s.mode === m ? 'on' : ''}" data-act="mode" data-line="${id}" data-mode="${m}">${{ even: 'Even', units: 'Units', amounts: 'Amounts' }[m]}</button>`).join('')}</div>`);
+  if (s.mode === 'even') {
+    out.push(`<div class="row">${PEOPLE.map(p => `<button class="${s.who.includes(p) ? 'on' : ''}" data-act="toggle" data-line="${id}" data-p="${p}">${p}</button>`).join('')}</div>`);
+  } else if (s.mode === 'units') {
+    const assigned = Object.values(s.units).reduce((a, b) => a + b, 0);
+    out.push(`<div class="split-grid">${PEOPLE.map(p => `<span>${p}</span><span class="row" style="margin:0">
+      <button data-act="unit" data-line="${id}" data-p="${p}" data-delta="-1">−</button><b class="num" style="min-width:24px;text-align:center">${s.units[p] || 0}</b>
+      <button data-act="unit" data-line="${id}" data-p="${p}" data-delta="1">+</button></span>`).join('')}</div>
+      <p class="mut">${assigned} of ${l.quantity} units assigned</p>`);
+  } else {
+    out.push(`<div class="split-grid">${PEOPLE.map((p, i) => `<span>${p}</span><span class="row" style="margin:0">
+      <input id="am-${i}" class="amount" inputmode="decimal" value="${s.amounts[p] ? money(s.amounts[p]) : ''}" data-reads="amr-${i}">
+      <button data-act="amount" data-line="${id}" data-p="${p}" data-i="${i}">Set</button><span id="amr-${i}" class="reads"></span></span>`).join('')}</div>`);
+  }
+  if (l.kind === 'item') {
+    out.push(`<div class="row"><span class="mut">Line discount</span><input id="ldVal" class="amount" inputmode="decimal" placeholder="0,40" data-reads="ldr"><span id="ldr" class="reads"></span>
+      <button data-act="lineDiscount" data-line="${id}" data-kind="amount">Set as amount</button>
+      <button data-act="lineDiscount" data-line="${id}" data-kind="percent">Set as %</button>
+      <button data-act="lineDiscount" data-line="${id}" data-kind="none">Remove</button></div>`);
+  }
+  out.push(`<div class="row"><button data-act="remove" data-line="${id}">Remove this line</button></div>`);
+  $('#lineControls').innerHTML = out.join('');
+}
+
+function renderPayerControls() {
+  const others = PEOPLE.filter(p => p !== receipt.mainPayer);
+  $('#payerControls').innerHTML = `
+    <h3>Main payer</h3>
+    <div class="row">${PEOPLE.map(p => `<button class="${p === receipt.mainPayer ? 'on' : ''}" data-act="payer" data-p="${p}">${p}</button>`).join('')}</div>
+    <h3>Contributions</h3>
+    ${receipt.contributions.map((c, i) => `<div class="row">${c.participant} paid ${money(c.amount)} <button data-act="uncontribute" data-i="${i}">Remove</button></div>`).join('')}
+    <div class="row">
+      <select id="ctWho">${others.map(p => `<option>${p}</option>`).join('')}</select>
+      <input id="ctAmt" class="amount" inputmode="decimal" placeholder="8,00" data-reads="ctr"><span id="ctr" class="reads"></span>
+      <button data-act="contribute">Add Contribution</button>
+    </div>`;
+}
+
+/* ----- Guided walkthroughs. Line ids are predictable because every walkthrough starts from an empty Receipt. ----- */
+const item = (name, price, quantity = 1, deposit) => ({ type: 'addLineItem', name, unitPrice: amt(price), quantity, depositPerUnit: deposit ? amt(deposit) : null });
+const SCENARIOS = [
+  {
+    title: 'Quick shop at the till',
+    story: 'Rafał pays at Lidl: bread for everyone, six bottles of water shared by Rafał and Ania, and chocolate for Ola. The receipt prints the Pfand once at the bottom: 1,50. Watch the Deposit follow the water’s split, with no line of its own.',
+    steps: [
+      { label: 'Add “Bread” for 2,49', action: item('Bread', '2,49'), watch: 'New lines start Even across everyone.' },
+      { label: 'Add “Water 1.5l”: 6 × 0,29, deposit 0,25 each', action: item('Water 1.5l', '0,29', 6, '0,25'), watch: 'It copied the Bread’s Even split. The Deposits total is 1,50, matching the printed Pfand.' },
+      { label: 'Split the water by Units', action: { type: 'chooseSplitMode', lineId: 2, mode: 'units' }, watch: 'No units assigned yet: the whole water line counts as Rafał’s own, and the Receipt is incomplete.' },
+      { label: 'Rafał takes 3 bottles', action: { type: 'setUnits', lineId: 2, participant: 'Rafał', units: 3 } },
+      { label: 'Ania takes 3 bottles', action: { type: 'setUnits', lineId: 2, participant: 'Ania', units: 3 }, watch: 'Complete again. Rafał and Ania each have 0,87 of water and 0,75 of Deposit.' },
+      { label: 'Add “Chocolate” for 0,89', action: item('Chocolate', '0,89'), watch: 'The water was split by Units, so the chocolate starts Even across everyone.' },
+      { label: 'Make the chocolate Ola’s only', action: { type: 'setEven', lineId: 3, who: ['Ola'] } },
+    ],
   },
-}).mount('#app');
+  {
+    title: 'Units with a Line discount',
+    story: 'The worked example from the Expense model: 5 beers at 2,00 with 1,00 off the line. Rafał and Ania drink two each, Kuba one, Ola none. The discount should follow the units.',
+    steps: [
+      { label: 'Add “Beer”: 5 × 2,00', action: item('Beer', '2,00', 5) },
+      { label: 'Take 1,00 off the line', action: { type: 'setLineDiscount', lineId: 1, discount: { kind: 'amount', value: amt('1') } } },
+      { label: 'Split by Units', action: { type: 'chooseSplitMode', lineId: 1, mode: 'units' } },
+      { label: 'Rafał drinks 2', action: { type: 'setUnits', lineId: 1, participant: 'Rafał', units: 2 } },
+      { label: 'Ania drinks 2', action: { type: 'setUnits', lineId: 1, participant: 'Ania', units: 2 } },
+      { label: 'Kuba drinks 1', action: { type: 'setUnits', lineId: 1, participant: 'Kuba', units: 1 }, watch: 'Expected: Rafał 3,60, Ania 3,60, Kuba 1,80, Ola 0.' },
+    ],
+  },
+  {
+    title: '−10 % coupon on a Pfand receipt',
+    story: 'A crate of 10 bottles at 0,53 (5,30) plus 0,25 Pfand per bottle (2,50), with a −10 % coupon. The coupon must not touch the Deposit, and a bottle voucher redeemed at the same till must not be discounted either.',
+    steps: [
+      { label: 'Add “Mineral water”: 10 × 0,53, deposit 0,25 each', action: item('Mineral water', '0,53', 10, '0,25') },
+      { label: 'Apply a 10 % Receipt discount', action: { type: 'setReceiptDiscount', discount: { kind: 'percent', value: amt('10') } }, watch: 'The discount is 0,53 (10 % of the 5,30), not 0,78.' },
+      { label: 'Redeem a 1,00 bottle voucher', action: { type: 'addDepositRefund', amount: amt('1,00') }, watch: 'Total 6,27 = 5,30 − 0,53 + 2,50 − 1,00. The refund is split Even across everyone.' },
+    ],
+  },
+  {
+    title: 'Voucher bigger than the shopping',
+    story: 'Ania returns a bag of bottles, gets a 3,75 voucher, and spends it on a 1,29 snack for herself. The bottles came from shared shopping. What does a negative total look like?',
+    steps: [
+      { label: 'Ania is the Main payer', action: { type: 'setMainPayer', participant: 'Ania' } },
+      { label: 'Add “Snack” for 1,29', action: item('Snack', '1,29') },
+      { label: 'Make the snack Ania’s only', action: { type: 'setEven', lineId: 1, who: ['Ania'] } },
+      { label: 'Add the 3,75 Deposit refund', action: { type: 'addDepositRefund', amount: amt('3,75') }, watch: 'The total is −2,46: Ania walked out with money. Each of the others gets back about 0,94 (exactly 0,9375), and Ania owes it to them.' },
+    ],
+  },
+  {
+    title: 'Type now, split later',
+    story: 'There’s a queue behind you, so you type the prices and split later in the car. Watch how the “copy the previous Even split” proposal behaves when the previous line has nobody ticked.',
+    steps: [
+      { label: 'Add “Coffee” for 3,20', action: item('Coffee', '3,20') },
+      { label: 'Untick everyone on the coffee', action: { type: 'setEven', lineId: 1, who: [] }, watch: 'Incomplete. The coffee counts as Rafał’s own until it is assigned.' },
+      { label: 'Add “Croissant” for 1,90', action: item('Croissant', '1,90'), watch: 'It copied the empty split, so it is unassigned too. Is that what you want at the till?' },
+      { label: 'Add “Juice” for 2,40', action: item('Juice', '2,40') },
+      { label: 'Later, in the car: the coffee was Kuba’s', action: { type: 'setEven', lineId: 1, who: ['Kuba'] } },
+      { label: 'The croissant was shared by Ania and Ola', action: { type: 'setEven', lineId: 2, who: ['Ania', 'Ola'] } },
+      { label: 'The juice was Rafał’s', action: { type: 'setEven', lineId: 3, who: ['Rafał'] }, watch: 'Complete.' },
+    ],
+  },
+  {
+    title: 'Cash tip from someone else',
+    story: 'Dinner for four, 64,00 on Rafał’s card. Kuba leaves an 8,00 tip in cash. It stays one Expense: the tip is a Line item, and Kuba’s cash is a Contribution.',
+    steps: [
+      { label: 'Add “Dinner” for 64,00', action: item('Dinner', '64,00') },
+      { label: 'Add “Tip” for 8,00', action: item('Tip', '8,00') },
+      { label: 'Kuba contributes 8,00 in cash', action: { type: 'addContribution', participant: 'Kuba', amount: amt('8,00') }, watch: 'Rafał covers 64,00, Kuba 8,00. Everyone’s share is 18,00.' },
+      { label: 'Try to make Kuba the Main payer', action: { type: 'setMainPayer', participant: 'Kuba' }, watch: 'Refused while Kuba has a Contribution. Is that the right call, or should the Contribution just disappear?' },
+    ],
+  },
+  {
+    title: 'Things that should be refused',
+    story: 'The steps starting with “Try” attempt something the rules forbid. Each should be refused with a clear reason and leave the Receipt unchanged. The other steps just set the scene.',
+    steps: [
+      { label: 'Add “Melon” for 1,99', action: item('Melon', '1,99') },
+      { label: 'Try Units on the melon (quantity 1)', action: { type: 'chooseSplitMode', lineId: 1, mode: 'units' } },
+      { label: 'Try 2,50 off the 1,99 melon', action: { type: 'setLineDiscount', lineId: 1, discount: { kind: 'amount', value: amt('2,50') } } },
+      { label: 'Add “Eggs”: 3 × 0,35', action: item('Eggs', '0,35', 3) },
+      { label: 'Split the eggs by Units, Rafał takes 2', action: null, multi: [{ type: 'chooseSplitMode', lineId: 2, mode: 'units' }, { type: 'setUnits', lineId: 2, participant: 'Rafał', units: 2 }] },
+      { label: 'Try: Ania takes 2 more eggs', action: { type: 'setUnits', lineId: 2, participant: 'Ania', units: 2 } },
+      { label: 'Try a price of −0,25', action: item('Bottle', '-0,25') },
+      { label: 'Try: Rafał (Main payer) contributes 5,00', action: { type: 'addContribution', participant: 'Rafał', amount: amt('5') } },
+      { label: 'Try a 150 % Receipt discount', action: { type: 'setReceiptDiscount', discount: { kind: 'percent', value: amt('150') } } },
+    ],
+  },
+  {
+    title: 'Cents that don’t add up',
+    story: 'A 10,00 pizza shared by three people. Nobody can pay exactly a third of a cent, so what does the screen show?',
+    steps: [
+      { label: 'Add “Pizza” for 10,00', action: item('Pizza', '10,00') },
+      { label: 'Share it between Rafał, Ania and Kuba', action: { type: 'setEven', lineId: 1, who: ['Rafał', 'Ania', 'Kuba'] }, watch: 'Each share shows ≈3,33, and the shares add up to 9,99 on screen. The exact values are kept, so the balances add up to exactly 0. Rounding happens only when settling.' },
+    ],
+  },
+];
+
+function startScenario(i) { scenario = i; step = 0; receipt = fresh(); last = null; selectedLine = null; render(); }
+
+function runStep() {
+  const s = SCENARIOS[scenario].steps[step];
+  if (s.multi) {
+    // A compound step: applied one after another, reported as one.
+    const before = L.summarize(receipt);
+    let rejected;
+    for (const a of s.multi) { const res = L.apply(receipt, a); receipt = res.receipt; rejected ??= res.rejected; }
+    last = { text: s.label, rejected, before };
+    step++;
+    render();
+    return;
+  }
+  step++;
+  dispatch(s.action, s.label);
+}
+
+function renderWalk() {
+  const sc = SCENARIOS[scenario];
+  $('#walk').innerHTML = `
+    <div class="tabs">${SCENARIOS.map((x, i) => `<button class="${i === scenario ? 'on' : ''}" data-act="tab" data-i="${i}">${x.title}</button>`).join('')}</div>
+    <div class="card">
+      <p>${sc.story}</p>
+      <ol class="steps">${sc.steps.map((x, i) => `<li class="${i < step ? 'done' : ''}">
+        <button ${i === step ? 'class="pri"' : ''} data-act="step" ${i === step ? '' : 'disabled'}>${i < step ? '✓ ' : ''}${x.label}</button>
+        ${i < step && x.watch ? `<p class="watch">${x.watch}</p>` : ''}</li>`).join('')}</ol>
+      <div class="row"><button data-act="tab" data-i="${scenario}">Start this walkthrough over</button>
+      ${step >= sc.steps.length ? '<span class="mut">Done. Free play keeps working on this Receipt.</span>' : ''}</div>
+    </div>`;
+}
+
+function render() { renderState(); renderLineControls(); renderPayerControls(); renderWalk(); }
+
+/* ----- Events ----- */
+const val = sel => $(sel)?.value ?? '';
+const discount = (kind, text) => (kind === 'none' ? null : { kind, value: amt(text) });
+
+document.addEventListener('click', e => {
+  const el = e.target.closest('[data-act]');
+  if (!el || el.disabled) return;
+  const d = el.dataset, lineId = Number(d.line);
+  switch (d.act) {
+    case 'select': selectedLine = lineId; render(); break;
+    case 'addItem': {
+      const depText = val('#itDep').trim();
+      const action = { type: 'addLineItem', name: val('#itName').trim(), unitPrice: amt(val('#itPrice')), quantity: Number(val('#itQty')), depositPerUnit: depText ? amt(depText) : null };
+      if (depText && !action.depositPerUnit) refuse(describe(action), 'The deposit per unit is not a number.');
+      else dispatch(action);
+      break;
+    }
+    case 'addRefund': dispatch({ type: 'addDepositRefund', amount: amt(val('#rfAmt')) }); break;
+    case 'mode': dispatch({ type: 'chooseSplitMode', lineId, mode: d.mode }); break;
+    case 'toggle': dispatch({ type: 'toggleEven', lineId, participant: d.p }); break;
+    case 'unit': {
+      const now = findLine(lineId).split.units[d.p] || 0;
+      dispatch({ type: 'setUnits', lineId, participant: d.p, units: now + Number(d.delta) });
+      break;
+    }
+    case 'amount': dispatch({ type: 'setAmount', lineId, participant: d.p, amount: amt(val('#am-' + d.i)) }); break;
+    case 'lineDiscount': dispatch({ type: 'setLineDiscount', lineId, discount: discount(d.kind, val('#ldVal')) }); break;
+    case 'remove': dispatch({ type: 'removeLine', lineId }); break;
+    case 'receiptDiscount': dispatch({ type: 'setReceiptDiscount', discount: discount(d.kind, val('#rdVal')) }); break;
+    case 'payer': dispatch({ type: 'setMainPayer', participant: d.p }); break;
+    case 'contribute': dispatch({ type: 'addContribution', participant: val('#ctWho'), amount: amt(val('#ctAmt')) }); break;
+    case 'uncontribute': dispatch({ type: 'removeContribution', index: Number(d.i) }); break;
+    case 'tab': startScenario(Number(d.i)); break;
+    case 'step': runStep(); break;
+  }
+});
+
+// Live "reads as" preview next to every amount field, so typing 0,29 / .29 / ,29 can be checked on the spot.
+document.addEventListener('input', e => {
+  const id = e.target.dataset?.reads;
+  if (!id) return;
+  const out = document.getElementById(id), text = e.target.value.trim(), v = amt(text);
+  out.textContent = !text ? '' : v ? 'reads as ' + (L.isWholeCents(v) ? money(v) : text) : 'not a number';
+  out.className = 'reads' + (text && !v ? ' bad' : '');
+});
+
+render();
 </script>
 </body>
 </html>
