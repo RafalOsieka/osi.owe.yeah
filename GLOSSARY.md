@@ -25,7 +25,7 @@ _Avoid_: Login, identity, profile
 ### Spending
 
 **Expense**:
-A single payment made by one or more Participants on behalf of some Participants of the Trip. Every Expense has at least one Line item; a plain Expense has exactly one.
+A single payment made by one or more Participants on behalf of some Participants of the Trip. Every Expense has a free-text title (e.g. "Lidl Rovinj", which also names the merchant) and at least one Line item; a plain Expense has exactly one.
 _Avoid_: Transaction, purchase, cost
 
 **Main payer**:
@@ -37,11 +37,11 @@ A fixed amount paid towards an Expense by a Participant other than its Main paye
 _Avoid_: Co-payment, partial payment
 
 **Receipt**:
-An Expense recorded item by item, mirroring the paper or digital receipt it came from. May carry a discount on the whole Receipt.
+An Expense recorded item by item, mirroring the paper or digital receipt it came from, with its Line items in the order they appear there. May carry a discount on the whole Receipt.
 _Avoid_: Bill, invoice, ticket
 
 **Line item**:
-One position on a Receipt: a product with its unit price, quantity, any discount applied to it, and how it is split.
+One position on a Receipt: a product with its unit price, whole-number quantity, any discount applied to it, and how it is split. Weighed goods are one unit at their line price.
 _Avoid_: Product, position, entry
 
 **Split mode**:
