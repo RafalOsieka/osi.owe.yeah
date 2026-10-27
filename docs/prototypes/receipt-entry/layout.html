@@ -1,0 +1,705 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<title>PROTOTYPE · Owe Yeah · Receipt entry layouts</title>
+<!--
+  THROWAWAY PROTOTYPE (prototype skill, UI branch, sub-shape B) for "Which Receipt entry layout works best on a phone?" (issue #15).
+  Lives on the prototype/receipt-entry branch only. Never merge.
+  Plan: three structurally different Receipt entry layouts on this one page, switched with ?variant=A|B|C and the floating bar at the bottom.
+  Assumption: there is no app yet to host it (scaffolding comes after the map), so this is a standalone page. Double-click it, or open it on a phone.
+  The rules come from receipt-logic.js. All variants edit the same in-memory Receipt, so you can switch mid-entry and compare.
+-->
+<style>
+  :root { --fg:#1d232b; --mut:#66707d; --line:#e3e6ea; --bg:#f4f5f7; --card:#fff; --acc:#0f766e; --acc-soft:#e6f4f2; --bad:#b42318; --bad-soft:#fdecea; --warn:#a15c07; --warn-soft:#fdf3e1; --switch-h:56px; }
+  * { box-sizing:border-box; }
+  body { margin:0; background:var(--bg); color:var(--fg); font:15px/1.45 system-ui, -apple-system, "Segoe UI", sans-serif; -webkit-tap-highlight-color:transparent; }
+  #app { max-width:480px; margin:0 auto; min-height:100vh; background:var(--bg); padding-bottom:calc(var(--switch-h) + 20px); }
+  button { font:inherit; cursor:pointer; border:1px solid var(--line); background:var(--card); color:var(--fg); border-radius:10px; padding:6px 11px; min-height:40px; }
+  button.on { background:var(--acc); border-color:var(--acc); color:#fff; }
+  button.pri { background:var(--acc); border-color:var(--acc); color:#fff; font-weight:600; }
+  button.link { border:0; background:none; color:var(--acc); padding:4px 0; min-height:0; text-align:left; }
+  button.icon { padding:4px 8px; min-height:34px; }
+  input, select { font:inherit; border:1px solid var(--line); border-radius:10px; padding:7px 9px; min-height:40px; background:#fff; color:var(--fg); min-width:0; }
+  input.amount { width:96px; text-align:right; font-variant-numeric:tabular-nums; }
+  input.title { border:0; background:transparent; font-size:19px; font-weight:700; padding:4px 0; width:100%; }
+  h3 { font-size:12px; margin:0 0 8px; color:var(--mut); text-transform:uppercase; letter-spacing:.05em; }
+  .mut { color:var(--mut); font-size:13px; }
+  .num { font-variant-numeric:tabular-nums; text-align:right; white-space:nowrap; }
+  .row { display:flex; flex-wrap:wrap; gap:6px; align-items:center; margin:6px 0; }
+  .card { background:var(--card); border-radius:14px; padding:12px; margin:10px; box-shadow:0 1px 2px rgba(0,0,0,.05); }
+  .seg { display:inline-flex; border:1px solid var(--line); border-radius:10px; overflow:hidden; }
+  .seg button { border:0; border-radius:0; min-height:36px; }
+  .pill { display:inline-block; font-size:12px; padding:2px 8px; border-radius:999px; background:#eef0f3; color:var(--mut); margin:2px 4px 2px 0; }
+  .pill.warn { background:var(--warn-soft); color:var(--warn); font-weight:600; }
+  .pill.ok { background:var(--acc-soft); color:var(--acc); font-weight:600; }
+  .conv { font-size:13px; color:var(--mut); }
+  .reads { font-size:12px; color:var(--mut); }
+  .reads.bad { color:var(--bad); }
+  .warnt { color:var(--warn); font-size:12px; }
+  .problem { color:var(--bad); font-size:13px; margin:4px 10px; }
+  .stepper { display:inline-flex; align-items:center; gap:4px; }
+  .stepper b { min-width:26px; text-align:center; font-variant-numeric:tabular-nums; }
+  .stepper button { min-width:40px; padding:4px; }
+
+  /* breakdown (shared content, each variant frames it differently) */
+  .bd { border-bottom:1px solid var(--line); }
+  .bd summary, .bd-row { display:flex; justify-content:space-between; gap:10px; padding:7px 0; list-style:none; cursor:pointer; }
+  .bd summary::-webkit-details-marker { display:none; }
+  .bd summary span:first-child::before { content:'▸ '; color:var(--mut); }
+  .bd[open] summary span:first-child::before { content:'▾ '; }
+  .bd-sub { display:flex; justify-content:space-between; gap:10px; font-size:13px; color:var(--mut); padding:2px 0 4px 16px; }
+  .bd-row { cursor:default; border-bottom:1px solid var(--line); }
+  .bd-total { font-weight:700; border-bottom:0; }
+  .bal { display:grid; grid-template-columns:1fr 1fr 1fr; gap:6px; margin-top:8px; text-align:center; font-size:13px; }
+  .bal div { background:#f6f7f9; border-radius:10px; padding:6px; }
+  .bal b { display:block; font-size:15px; }
+
+  /* switcher, toast, state panel: not part of the design being judged */
+  #switcher { position:fixed; left:50%; bottom:10px; transform:translateX(-50%); z-index:50; display:flex; align-items:center; gap:4px; background:#111; color:#fff; border-radius:999px; padding:5px 6px; box-shadow:0 6px 20px rgba(0,0,0,.35); font-size:13px; white-space:nowrap; }
+  #switcher button { background:transparent; color:#fff; border:0; min-height:34px; padding:4px 10px; border-radius:999px; }
+  #switcher button:hover { background:#333; }
+  #switcher .lbl { padding:0 6px; font-weight:600; }
+  #toast { position:fixed; left:50%; transform:translateX(-50%); bottom:calc(var(--switch-h) + 14px); z-index:60; max-width:440px; width:calc(100% - 24px); padding:10px 14px; border-radius:12px; font-size:14px; box-shadow:0 6px 20px rgba(0,0,0,.2); }
+  #toast.bad { background:var(--bad-soft); color:var(--bad); border:1px solid #f3c1bb; }
+  #toast.info { background:#fff; color:var(--fg); border:1px solid var(--line); }
+  #state { position:fixed; inset:0 0 calc(var(--switch-h) + 10px) 0; z-index:40; background:rgba(17,17,17,.96); color:#d8f3ee; font:12px/1.5 ui-monospace, Consolas, monospace; padding:14px; overflow:auto; white-space:pre-wrap; }
+
+  /* ===== Variant A: Till list ===== */
+  .a-head { position:sticky; top:0; z-index:5; background:var(--card); padding:10px 12px 8px; box-shadow:0 1px 0 var(--line); }
+  .a-tot { display:flex; justify-content:space-between; align-items:center; gap:8px; }
+  .a-tot .big { font-size:26px; font-weight:800; }
+  .a-tot .big small { font-size:13px; color:var(--mut); font-weight:600; }
+  .a-line { background:var(--card); margin:8px 10px; border-radius:14px; box-shadow:0 1px 2px rgba(0,0,0,.05); border:1px solid transparent; }
+  .a-line.warn { border-color:#f2d8ad; }
+  .a-line.open { border-color:var(--acc); }
+  .a-line-top { display:flex; justify-content:space-between; gap:10px; padding:10px 12px; cursor:pointer; }
+  .a-line-top .num { font-weight:700; font-size:16px; }
+  .a-ed { border-top:1px solid var(--line); padding:6px 12px 10px; }
+  .chip-s { display:inline-block; font-size:12px; color:var(--acc); background:var(--acc-soft); border-radius:6px; padding:1px 7px; margin-top:3px; }
+  .a-add { border:2px dashed #cfd5db; box-shadow:none; }
+  .a-add input.amount { width:120px; font-size:20px; }
+  .a-people { position:fixed; left:50%; transform:translateX(-50%); bottom:calc(var(--switch-h) + 10px); width:min(480px, 100%); z-index:20; display:flex; gap:6px; padding:8px 10px; background:rgba(255,255,255,.96); border-top:1px solid var(--line); overflow-x:auto; }
+  .a-people button { flex:1; min-width:84px; display:flex; flex-direction:column; align-items:center; padding:4px 6px; line-height:1.2; }
+  .a-people button small { color:var(--mut); font-size:12px; }
+  body.vA #app { padding-bottom:calc(var(--switch-h) + 90px); }
+  .sheet-bg { position:fixed; inset:0; background:rgba(0,0,0,.35); z-index:30; }
+  .sheet { position:fixed; left:50%; transform:translateX(-50%); bottom:0; width:min(480px, 100%); max-height:80vh; overflow:auto; z-index:31; background:#fff; border-radius:18px 18px 0 0; padding:14px 14px calc(var(--switch-h) + 24px); }
+  .sheet-h { display:flex; justify-content:space-between; align-items:center; margin-bottom:6px; }
+
+  /* ===== Variant B: Keypad & tape ===== */
+  .b-head { background:#1d232b; color:#fff; padding:10px 12px; position:sticky; top:0; z-index:5; }
+  .b-head input.title { color:#fff; }
+  .b-head .mut, .b-head .conv { color:#aab3bf; }
+  .b-head select, .b-head button.icon { background:#2b333d; color:#fff; border-color:#3a434e; }
+  .b-head button.link { color:#7dd3c7; }
+  .b-headrow { display:flex; justify-content:space-between; align-items:center; gap:8px; }
+  .b-headrow .big { font-size:24px; font-weight:800; }
+  .b-tabs { display:flex; gap:0; margin-top:8px; }
+  .b-tabs button { flex:1; background:transparent; color:#cfd6de; border:0; border-bottom:3px solid transparent; border-radius:0; }
+  .b-tabs button.on { color:#fff; border-bottom-color:#2dd4bf; background:transparent; }
+  .tape { margin:10px; background:#fffef8; border-radius:4px; padding:12px 12px 16px; font:14px/1.5 ui-monospace, Consolas, monospace; box-shadow:0 1px 3px rgba(0,0,0,.12); }
+  .tape-l { display:flex; justify-content:space-between; gap:8px; padding:3px 4px; border-radius:6px; cursor:pointer; }
+  .tape-l.sel { background:#e9f5f3; }
+  .tape-l .sub { color:var(--mut); font-size:12px; }
+  .tape-sep { border-top:1px dashed #b9bec5; margin:8px 0; }
+  .tape-ed { padding:6px 4px 8px; font:14px system-ui, sans-serif; }
+  body.vB.bType #app { padding-bottom:calc(var(--switch-h) + 330px); }
+  .kp { position:fixed; left:50%; transform:translateX(-50%); bottom:calc(var(--switch-h) + 10px); width:min(480px, 100%); z-index:20; background:#e9ecef; padding:8px; border-top:1px solid #d5d9de; }
+  .kp-fields { display:flex; gap:6px; margin:6px 0; }
+  .kp-fields button { flex:1; display:flex; flex-direction:column; align-items:flex-start; line-height:1.15; background:#fff; padding:5px 9px; }
+  .kp-fields button.on { background:#fff; color:var(--fg); border:2px solid var(--acc); }
+  .kp-fields button small { color:var(--mut); font-size:11px; text-transform:uppercase; letter-spacing:.04em; }
+  .kp-fields button b { font-size:19px; font-variant-numeric:tabular-nums; }
+  .kp-grid { display:grid; grid-template-columns:repeat(4, 1fr); gap:6px; }
+  .kp-grid button { min-height:46px; font-size:20px; background:#fff; border:0; box-shadow:0 1px 0 #c8cdd3; }
+  .kp-grid button.fn { font-size:14px; background:#dfe3e8; }
+  .kp-grid button.fn.on { background:var(--acc); color:#fff; }
+  .kp-grid button.go { background:var(--acc); color:#fff; font-size:16px; font-weight:700; }
+  .b-card { background:#fff; margin:12px 10px; border-radius:18px; padding:14px; box-shadow:0 4px 16px rgba(0,0,0,.08); }
+  .b-card-h { display:flex; justify-content:space-between; align-items:baseline; gap:8px; }
+  .b-card-h b { font-size:20px; }
+  .b-tiles { display:grid; grid-template-columns:1fr 1fr; gap:8px; margin:12px 0; }
+  .b-tile { border:2px solid var(--line); border-radius:14px; padding:10px; min-height:84px; display:flex; flex-direction:column; justify-content:space-between; background:#fff; text-align:left; }
+  .b-tile.on { border-color:var(--acc); background:var(--acc-soft); color:var(--fg); }
+  .b-tile .nm { font-weight:700; font-size:16px; }
+  .b-dots { display:flex; gap:6px; flex-wrap:wrap; margin:0 10px; }
+  .b-dots button { min-height:30px; font-size:12px; padding:2px 8px; }
+  .b-dots button.warn { border-color:#f2d8ad; background:var(--warn-soft); }
+  .stub { background:#fffef8; margin:10px; padding:12px; border-radius:4px; box-shadow:0 1px 3px rgba(0,0,0,.12); border-top:4px solid var(--acc); }
+  .stub-h { display:flex; justify-content:space-between; font-weight:700; font-size:16px; margin-bottom:4px; }
+
+  /* ===== Variant C: Split grid ===== */
+  .c-head { background:var(--card); padding:10px 12px; display:grid; grid-template-columns:1fr auto; gap:2px 10px; align-items:center; }
+  .c-head .big { font-size:22px; font-weight:800; }
+  .c-wrap { overflow-x:auto; margin:8px 0; }
+  table.grid { border-collapse:separate; border-spacing:0; width:100%; min-width:360px; background:#fff; font-size:14px; }
+  .grid th, .grid td { border-bottom:1px solid var(--line); padding:4px; text-align:center; vertical-align:middle; }
+  .grid th:first-child, .grid td:first-child { text-align:left; position:sticky; left:0; background:#fff; z-index:1; max-width:130px; padding-left:8px; }
+  .grid th button { min-height:34px; padding:2px 6px; font-size:13px; font-weight:600; width:100%; }
+  .grid td.c-name { cursor:pointer; }
+  .grid td.c-name b { display:block; overflow:hidden; text-overflow:ellipsis; white-space:nowrap; }
+  .grid tr.warn td:first-child { box-shadow:inset 4px 0 0 #f0b45a; }
+  .grid .cell { width:100%; min-height:44px; padding:2px; border-radius:8px; font-size:13px; line-height:1.15; }
+  .grid .cell.on { background:var(--acc-soft); color:var(--acc); border-color:#b5ded8; font-weight:600; }
+  .grid .cell small { display:block; font-size:11px; color:var(--mut); font-weight:400; }
+  .grid tr.sum td { background:#f8f9fa; font-weight:600; font-size:13px; }
+  .grid tr.sum td:first-child { background:#f8f9fa; }
+  .grid td.c-ed { text-align:left; background:#fbfcfc; padding:8px 10px; position:static; max-width:none; }
+  .badge { display:inline-block; font-size:10px; font-weight:700; border-radius:4px; padding:0 5px; background:#eef0f3; color:var(--mut); }
+  .grid th.colsel, .grid td.colsel { background:#f0faf8; }
+</style>
+</head>
+<body>
+<div id="app"></div>
+<div id="switcher"></div>
+<div id="toast" hidden></div>
+<pre id="state" hidden></pre>
+
+<script src="receipt-logic.js"></script>
+<script>
+/* ===== Shared page state and helpers. Throwaway. ===== */
+const L = ReceiptLogic;
+const PEOPLE = ['Rafał', 'Ania', 'Kuba', 'Ola'];
+const ME = 'Rafał'; // this device's Claim: the default Main payer
+const TRIP_CURRENCY = 'PLN';
+// Fake Provisional rates (1 unit in PLN), as if cached on the device. Real ones come from the backend (ADR 0003).
+const RATES = { EUR: '4,2650', PLN: '1', CZK: '0,1712', CHF: '4,5520' };
+const ZONES = [...new Set([Intl.DateTimeFormat().resolvedOptions().timeZone, 'Europe/Zagreb', 'Europe/Warsaw', 'UTC'])];
+
+const amt = L.parseAmount;
+const money = L.formatMoney;
+const show = x => (L.isWholeCents(x) ? '' : '≈') + money(x);
+const esc = s => String(s ?? '').replace(/[&<>"]/g, c => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;' }[c]));
+const $ = s => document.querySelector(s);
+const findLine = id => receipt.lines.find(l => l.id === id);
+const lineName = l => l.name || (l.kind === 'refund' ? 'Deposit refund' : 'Line ' + l.id);
+const discText = d => (d.kind === 'percent' ? money(d.value).replace(/,00$/, '') + ' %' : money(d.value));
+
+let receipt, meta, ui;
+
+function sample() {
+  let r = L.newReceipt(PEOPLE, ME);
+  const steps = [
+    { type: 'addLineItem', name: 'Bread', unitPrice: amt('2,49'), quantity: 1 },
+    { type: 'addLineItem', name: 'Water 1.5l', unitPrice: amt('0,29'), quantity: 6, depositPerUnit: amt('0,25') },
+    { type: 'chooseSplitMode', lineId: 2, mode: 'units' },
+    { type: 'setUnits', lineId: 2, participant: 'Rafał', units: 3 },
+    { type: 'setUnits', lineId: 2, participant: 'Ania', units: 3 },
+    { type: 'addLineItem', name: 'Chocolate', unitPrice: amt('0,89'), quantity: 1 },
+    { type: 'setEven', lineId: 3, who: ['Ola'] },
+    { type: 'addLineItem', name: 'Coffee', unitPrice: amt('3,20'), quantity: 1 },
+    { type: 'setEven', lineId: 4, who: [] },
+    { type: 'addDepositRefund', name: 'Bottle voucher', amount: amt('1,00') },
+  ];
+  for (const a of steps) r = L.apply(r, a).receipt;
+  return r;
+}
+
+function reset(withSample) {
+  receipt = withSample ? sample() : L.newReceipt(PEOPLE, ME);
+  meta = { title: withSample ? 'Lidl Rovinj' : '', currency: 'EUR', zone: ZONES[0], manualRate: null };
+  ui = { keep: {}, zoneOpen: false, manualOpen: false, stateOpen: ui?.stateOpen ?? false,
+    a: { open: null, qty: 1, dep: null, sheet: null, refundOpen: false },
+    b: { tab: 'type', field: 'price', price: '', qty: '', dep: '', refund: false, sel: null, cursor: null },
+    c: { open: null, col: null } };
+}
+
+// Apply a Receipt action. A refused action leaves the Receipt unchanged and says why.
+function run(action) {
+  const res = L.apply(receipt, action);
+  if (res.rejected) { toast(res.rejected, 'bad'); render(); return false; }
+  receipt = res.receipt;
+  render();
+  return true;
+}
+
+let toastTimer;
+function toast(text, kind = 'info') {
+  const t = $('#toast');
+  t.textContent = (kind === 'bad' ? 'Not done: ' : '') + text;
+  t.className = kind; t.hidden = false;
+  clearTimeout(toastTimer);
+  toastTimer = setTimeout(() => { t.hidden = true; }, 4500);
+}
+
+const keep = (key, attrs = '') => `data-keep="${key}" value="${esc(ui.keep[key] ?? '')}" ${attrs}`;
+const amountInput = (key, placeholder, cls = 'amount') =>
+  `<input class="${cls}" inputmode="decimal" placeholder="${placeholder}" ${keep(key)} data-reads="${key}-r"><span id="${key}-r" class="reads">${readsAs(ui.keep[key])}</span>`;
+function readsAs(text) {
+  text = (text ?? '').trim();
+  if (!text) return '';
+  const v = amt(text);
+  return v ? (L.isWholeCents(v) ? '= ' + money(v) : '') : 'not a number';
+}
+
+function lineFacts(l, x) {
+  if (l.kind === 'refund') return `Voucher ${money(l.amount)}, recorded as ${money(x.full)}`;
+  const f = [`${l.quantity} × ${money(l.unitPrice)}`];
+  if (l.depositPerUnit) f.push(`Pfand ${money(l.depositPerUnit)}/unit`);
+  if (l.discount) f.push(`−${discText(l.discount)}`);
+  return f.join(' · ');
+}
+function splitText(l) {
+  const s = l.split;
+  if (s.mode === 'even') return s.who.length === PEOPLE.length ? 'Everyone' : s.who.length ? s.who.join(', ') : 'Nobody yet';
+  if (s.mode === 'units') { const e = Object.entries(s.units).filter(([, u]) => u); return 'Units: ' + (e.length ? e.map(([p, u]) => `${p} ${u}`).join(', ') : 'none yet'); }
+  const e = Object.entries(s.amounts).filter(([, v]) => !L.isZero(v));
+  return 'Amounts: ' + (e.length ? e.map(([p, v]) => `${p} ${money(v)}`).join(', ') : 'none yet');
+}
+function shareHow(l, p) {
+  const s = l.split;
+  if (s.mode === 'even') return s.who.length === 1 ? 'all of it' : `split ${s.who.length} ways`;
+  if (s.mode === 'units') return `${s.units[p] || 0} of ${l.quantity} units`;
+  return 'typed amount';
+}
+const statusPill = sm => (!receipt.lines.length ? '' : sm.incomplete
+  ? `<span class="pill warn">◐ ${show(sm.unassigned)} not assigned · ${receipt.mainPayer}’s for now</span>`
+  : '<span class="pill ok">✓ All assigned</span>');
+const pfandPill = sm => (L.isZero(sm.depositsTotal) ? '' : `<span class="pill" title="Check against the printed Pfand">Pfand ${money(sm.depositsTotal)}</span>`);
+function balanceText(p, sm) {
+  const b = sm.balance[p], s = L.cmp(b, L.ZERO);
+  return s > 0 ? `gets back ${show(b)}` : s < 0 ? `owes ${show(L.neg(b))}` : 'even';
+}
+
+// Where a Participant's share comes from. Shared content; each variant frames it its own way.
+function breakdownList(p, sm, open = false) {
+  const b = sm.breakdown[p], out = [];
+  const items = b.lines.filter(t => t.line.kind === 'item'), refunds = b.lines.filter(t => t.line.kind === 'refund');
+  const group = (label, total, subs) => out.push(`<details class="bd" ${open ? 'open' : ''}><summary><span>${label}</span><span class="num">${show(total)}</span></summary>
+    ${subs.map(([t, v]) => `<div class="bd-sub"><span>${esc(t)}</span><span class="num">${show(v)}</span></div>`).join('')}</details>`);
+  const plain = (label, v, cls = '') => out.push(`<div class="bd-row ${cls}"><span>${label}</span><span class="num">${show(v)}</span></div>`);
+  if (items.length) group('Goods', b.goods, items.map(t => [`${lineName(t.line)} · ${shareHow(t.line, p)} of ${money(L.mul(t.line.unitPrice, L.q(t.line.quantity)))}`, t.goods]));
+  const disc = items.filter(t => !L.isZero(t.lineDiscount));
+  if (disc.length) group('Line discounts', L.neg(b.lineDiscount), disc.map(t => [`${lineName(t.line)} · −${discText(t.line.discount)}, same share as the goods`, L.neg(t.lineDiscount)]));
+  const dep = items.filter(t => !L.isZero(t.deposit));
+  if (dep.length) group('Deposit (follows the goods)', b.deposit, dep.map(t => [`${lineName(t.line)} · ${shareHow(t.line, p)} × ${money(t.line.depositPerUnit)}`, t.deposit]));
+  if (refunds.length) group('Deposit refunds', b.refunds, refunds.map(t => [`${lineName(t.line)} · ${shareHow(t.line, p)}`, t.refund]));
+  if (!L.isZero(b.receiptDiscount)) plain(`Receipt discount <span class="mut">(${discText(receipt.receiptDiscount)}, by goods after Line discounts)</span>`, L.neg(b.receiptDiscount));
+  if (!L.isZero(b.unassigned)) plain('<span class="warnt">◐ Not assigned yet, yours as Main payer</span>', b.unassigned);
+  if (!out.length) return '<p class="mut">Nothing on this Receipt.</p>';
+  plain('Share', sm.share[p], 'bd-total');
+  return out.join('');
+}
+const balanceBoxes = (p, sm) => `<div class="bal"><div>Share<b>${show(sm.share[p])}</b></div><div>Paid<b>${show(sm.paid[p])}</b></div><div>Balance<b>${balanceText(p, sm)}</b></div></div>`;
+
+// Expense currency, time zone (low-key) and Manual rate.
+function metaControls() {
+  const c = meta.currency;
+  return `<span class="row" style="margin:0;gap:4px">
+    <select data-change="currency" aria-label="Expense currency">${Object.keys(RATES).map(k => `<option ${k === c ? 'selected' : ''}>${k}</option>`).join('')}</select>
+    <button class="icon" data-act="zone" title="Time zone: ${esc(meta.zone)}">🕓</button>
+    ${ui.zoneOpen ? `<select data-change="zone">${ZONES.map(z => `<option ${z === meta.zone ? 'selected' : ''}>${z}</option>`).join('')}</select>` : ''}
+  </span>`;
+}
+function converted(sm) {
+  if (meta.currency === TRIP_CURRENCY) return '';
+  const m = meta.manualRate;
+  const v = m?.kind === 'charged' ? m.value : L.mul(sm.total, m ? m.value : amt(RATES[meta.currency]));
+  const note = m?.kind === 'charged' ? 'charged amount' : m ? 'manual rate' : 'provisional rate';
+  return `<span class="conv">${!m || !L.isWholeCents(v) ? '≈' : ''}${money(v)} ${TRIP_CURRENCY} · ${note}</span>`;
+}
+const rateText = r => (Number(r.n) / Number(r.d)).toFixed(4).replace('.', ',');
+function manualRate() {
+  if (meta.currency === TRIP_CURRENCY) return '';
+  const m = meta.manualRate;
+  if (!ui.manualOpen) return `<button class="link" data-act="manualOpen">${m
+    ? (m.kind === 'rate' ? `Rate: 1 ${meta.currency} = ${rateText(m.value)} ${TRIP_CURRENCY}` : `Charged ${money(m.value)} ${TRIP_CURRENCY}`) + ' · change'
+    : 'Paid by card or at an exchange office? Set the rate'}</button>`;
+  return `<div class="row">${amountInput('mr', m?.kind === 'rate' ? '4,30' : '30,12')}
+    <button data-act="manualSet" data-kind="charged">${TRIP_CURRENCY} charged</button>
+    <button data-act="manualSet" data-kind="rate">Rate</button>
+    <button data-act="manualClear">Automatic</button></div>`;
+}
+
+// Line editing pieces used by the Till list and the Split grid. The Keypad variant has its own.
+function lineFields(l) {
+  if (l.kind === 'refund') return `<div class="row"><input data-change="edit" data-field="name" data-line="${l.id}" value="${esc(l.name)}" placeholder="Name" style="flex:1">
+    <span class="mut">Voucher</span><input class="amount" inputmode="decimal" data-change="edit" data-field="amount" data-line="${l.id}" value="${money(l.amount)}"></div>`;
+  return `<div class="row"><input data-change="edit" data-field="name" data-line="${l.id}" value="${esc(l.name)}" placeholder="Name" style="flex:1"></div>
+    <div class="row"><input class="amount" inputmode="decimal" data-change="edit" data-field="unitPrice" data-line="${l.id}" value="${money(l.unitPrice)}">
+      <span class="mut">×</span><span class="stepper"><button data-act="qty" data-line="${l.id}" data-delta="-1">−</button><b>${l.quantity}</b><button data-act="qty" data-line="${l.id}" data-delta="1">+</button></span></div>
+    <div class="row"><span class="mut">Pfand/unit</span>${['', '0,25', '0,15'].map(v => `<button class="${(l.depositPerUnit ? money(l.depositPerUnit) : '') === v ? 'on' : ''}" data-act="dep" data-line="${l.id}" data-v="${v}">${v || 'none'}</button>`).join('')}
+      <input class="amount" style="width:70px" inputmode="decimal" placeholder="other" data-change="edit" data-field="depositPerUnit" data-line="${l.id}"></div>
+    <div class="row"><span class="mut">Discount</span><input class="amount" style="width:70px" inputmode="decimal" id="ld-${l.id}" value="${l.discount ? money(l.discount.value).replace(/,00$/, '') : ''}" placeholder="0,40">
+      <button data-act="lineDiscount" data-line="${l.id}" data-kind="amount">${meta.currency}</button><button data-act="lineDiscount" data-line="${l.id}" data-kind="percent">%</button>${l.discount ? `<button data-act="lineDiscount" data-line="${l.id}" data-kind="none">✕</button>` : ''}</div>`;
+}
+function splitControls(l) {
+  const s = l.split, id = l.id, out = [];
+  out.push(`<div class="row"><span class="seg">${['even', 'units', 'amounts'].map(m => `<button class="${s.mode === m ? 'on' : ''}" data-act="mode" data-line="${id}" data-mode="${m}">${{ even: 'Even', units: 'Units', amounts: 'Amounts' }[m]}</button>`).join('')}</span></div>`);
+  if (s.mode === 'even') out.push(`<div class="row">${PEOPLE.map(p => `<button class="${s.who.includes(p) ? 'on' : ''}" data-act="toggle" data-line="${id}" data-p="${p}">${p}</button>`).join('')}</div>`);
+  else if (s.mode === 'units') out.push(PEOPLE.map(p => `<div class="row" style="justify-content:space-between"><span>${p}</span><span class="stepper"><button data-act="unit" data-line="${id}" data-p="${p}" data-delta="-1">−</button><b>${s.units[p] || 0}</b><button data-act="unit" data-line="${id}" data-p="${p}" data-delta="1">+</button></span></div>`).join('')
+    + `<p class="mut">${Object.values(s.units).reduce((a, b) => a + b, 0)} of ${l.quantity} units assigned</p>`);
+  else out.push(PEOPLE.map(p => `<div class="row" style="justify-content:space-between"><span>${p}</span><input class="amount" inputmode="decimal" data-change="splitAmount" data-line="${id}" data-p="${p}" value="${s.amounts[p] ? money(s.amounts[p]) : ''}" placeholder="0,00"></div>`).join(''));
+  return out.join('');
+}
+const lineTools = l => `<div class="row"><button data-act="move" data-line="${l.id}" data-by="-1">↑</button><button data-act="move" data-line="${l.id}" data-by="1">↓</button><button data-act="remove" data-line="${l.id}" style="margin-left:auto;color:var(--bad)">Remove</button></div>`;
+
+function payersBlock() {
+  const others = PEOPLE.filter(p => p !== receipt.mainPayer);
+  return `<h3>Paid by</h3>
+    <div class="row">${PEOPLE.map(p => `<button class="${p === receipt.mainPayer ? 'on' : ''}" data-act="payer" data-p="${p}">${p}${p === ME ? ' (you)' : ''}</button>`).join('')}</div>
+    ${receipt.contributions.map((c, i) => `<div class="row">+ ${c.participant} paid ${money(c.amount)} <button class="icon" data-act="uncontribute" data-i="${i}">✕</button></div>`).join('')}
+    <div class="row"><select id="ctWho">${others.map(p => `<option>${p}</option>`).join('')}</select>${amountInput('ct', '8,00')}<button data-act="contribute">Also paid</button></div>`;
+}
+const receiptDiscountBlock = () => `<h3>Receipt discount</h3><div class="row">${amountInput('rd', receipt.receiptDiscount ? discText(receipt.receiptDiscount) : '10')}
+  <button data-act="receiptDiscount" data-kind="amount">${meta.currency}</button><button data-act="receiptDiscount" data-kind="percent">%</button>${receipt.receiptDiscount ? '<button data-act="receiptDiscount" data-kind="none">✕</button>' : ''}</div>
+  ${receipt.receiptDiscount ? `<p class="mut">Now: −${discText(receipt.receiptDiscount)} on the goods. Never on Pfand or vouchers.</p>` : ''}`;
+const problems = sm => sm.problems.map(p => `<p class="problem">⚠ ${esc(p)}</p>`).join('');
+
+/* ===== Variant A: Till list. One scrolling page: lines expand in place, the add form sits at the end, people live in a bottom strip. ===== */
+function VariantA(sm) {
+  const a = ui.a, out = [];
+  out.push(`<header class="a-head">
+    <input class="title" data-change="title" value="${esc(meta.title)}" placeholder="What is it? e.g. Lidl Rovinj">
+    <div class="a-tot">${metaControls()}<div class="big num">${show(sm.total)} <small>${meta.currency}</small></div></div>
+    <div>${converted(sm)} ${pfandPill(sm)} ${statusPill(sm)}</div>
+    ${manualRate()}
+  </header>${problems(sm)}`);
+  for (const x of sm.lines) {
+    const l = x.line, open = a.open === l.id;
+    out.push(`<div class="a-line ${open ? 'open' : ''} ${L.isZero(x.unassigned) ? '' : 'warn'}">
+      <div class="a-line-top" data-act="aOpen" data-line="${l.id}">
+        <div><b>${esc(lineName(l))}</b><div class="mut">${lineFacts(l, x)}</div><span class="chip-s">${esc(splitText(l))}</span>
+          ${L.isZero(x.unassigned) ? '' : `<div class="warnt">◐ ${show(x.unassigned)} not assigned</div>`}</div>
+        <div class="num">${show(x.total)}</div></div>
+      ${open ? `<div class="a-ed">${lineFields(l)}${splitControls(l)}${lineTools(l)}</div>` : ''}
+    </div>`);
+  }
+  out.push(`<div class="card a-add">
+    <div class="row">${amountInput('aPrice', 'Price', 'amount')}<span class="mut">×</span>
+      <span class="stepper"><button data-act="aQty" data-delta="-1">−</button><b>${a.qty}</b><button data-act="aQty" data-delta="1">+</button></span></div>
+    <div class="row"><span class="mut">Pfand/unit</span>${['', '0,25', '0,15'].map(v => `<button class="${(a.dep ?? '') === v ? 'on' : ''}" data-act="aDep" data-v="${v}">${v || 'none'}</button>`).join('')}</div>
+    <div class="row"><input placeholder="Name (optional)" ${keep('aName')} style="flex:1"><button class="pri" data-act="aAdd">Add</button></div>
+    ${a.refundOpen
+      ? `<div class="row"><span class="mut">Bottle voucher</span>${amountInput('aRefund', '3,75')}<button class="pri" data-act="aAddRefund">Add refund</button></div>`
+      : '<button class="link" data-act="aRefundOpen">+ Bottle voucher (Deposit refund)</button>'}
+  </div>
+  <div class="card">${payersBlock()}</div>
+  <div class="card">${receiptDiscountBlock()}</div>
+  <div class="a-people">${PEOPLE.map(p => `<button data-act="aSheet" data-p="${p}"><b>${p}</b><small>${show(sm.share[p])}</small></button>`).join('')}</div>`);
+  if (a.sheet) out.push(`<div class="sheet-bg" data-act="aSheet" data-p=""></div><div class="sheet">
+    <div class="sheet-h"><b style="font-size:18px">${a.sheet}’s share</b><button class="icon" data-act="aSheet" data-p="">✕</button></div>
+    ${breakdownList(a.sheet, sm)}${balanceBoxes(a.sheet, sm)}</div>`);
+  return out.join('');
+}
+
+/* ===== Variant B: Keypad & tape. Type at the till on a big keypad, the Receipt prints as a tape; split later card by card; check on per-person stubs. ===== */
+function VariantB(sm) {
+  const b = ui.b, out = [];
+  const pending = sm.lines.filter(x => !L.isZero(x.unassigned)).length;
+  out.push(`<header class="b-head">
+    <input class="title" data-change="title" value="${esc(meta.title)}" placeholder="What is it? e.g. Lidl Rovinj">
+    <div class="b-headrow">${metaControls()}<span class="big num">${show(sm.total)} <span class="mut">${meta.currency}</span></span></div>
+    <div>${converted(sm)}</div>
+    <div class="b-tabs">${[['type', 'Type'], ['split', `Split${pending ? ` (${pending})` : ''}`], ['check', 'Check']].map(([k, t]) => `<button class="${b.tab === k ? 'on' : ''}" data-act="bTab" data-tab="${k}">${t}</button>`).join('')}</div>
+  </header>${problems(sm)}`);
+  if (b.tab === 'type') out.push(bType(sm));
+  if (b.tab === 'split') out.push(bSplit(sm));
+  if (b.tab === 'check') out.push(bCheck(sm));
+  return out.join('');
+}
+function bType(sm) {
+  const b = ui.b, out = ['<div class="tape">'];
+  if (!sm.lines.length) out.push('<p class="mut" style="font-family:system-ui">Type a price on the keypad and press Add.</p>');
+  for (const x of sm.lines) {
+    const l = x.line, sel = b.sel === l.id;
+    out.push(`<div class="tape-l ${sel ? 'sel' : ''}" data-act="bSel" data-line="${l.id}"><span>${esc(lineName(l))}${L.isZero(x.unassigned) ? '' : ' <span class="warnt">◐</span>'}
+      <div class="sub">${l.kind === 'item' ? `${l.quantity} × ${money(l.unitPrice)}${l.depositPerUnit ? ` + Pfand ${l.quantity} × ${money(l.depositPerUnit)}` : ''}` : 'Deposit refund'}</div></span><span class="num">${money(x.total)}</span></div>`);
+    if (sel) out.push(`<div class="tape-ed"><div class="row"><input data-change="edit" data-field="name" data-line="${l.id}" value="${esc(l.name)}" placeholder="Name" style="flex:1"></div>
+      <div class="row"><button data-act="move" data-line="${l.id}" data-by="-1">↑</button><button data-act="move" data-line="${l.id}" data-by="1">↓</button>
+      <button data-act="bSplitLine" data-line="${l.id}">Split…</button><button data-act="remove" data-line="${l.id}" style="margin-left:auto;color:var(--bad)">Remove</button></div></div>`);
+  }
+  if (sm.lines.length) {
+    out.push('<div class="tape-sep"></div>');
+    if (!L.isZero(sm.depositsTotal)) out.push(`<div class="tape-l"><span>Pfand total <span class="sub">check the printed Pfand</span></span><span class="num">${money(sm.depositsTotal)}</span></div>`);
+    if (!L.isZero(sm.receiptDiscount)) out.push(`<div class="tape-l"><span>Receipt discount</span><span class="num">−${show(sm.receiptDiscount)}</span></div>`);
+    out.push(`<div class="tape-l" style="font-weight:700"><span>TOTAL ${meta.currency}</span><span class="num">${show(sm.total)}</span></div>`);
+  }
+  out.push('</div>');
+  // keypad
+  const price = amt(b.price), qty = Number(b.qty || '1'), dep = amt(b.dep);
+  const reads = !b.price ? '' : !price ? '<span class="reads bad">price is not a number</span>'
+    : b.refund ? `<span class="reads">voucher ${money(price)}, recorded as −${money(price)}</span>`
+    : `<span class="reads">${qty} × ${money(price)} = ${money(L.mul(price, L.q(qty)))}${dep ? ` + Pfand ${money(L.mul(dep, L.q(qty)))}` : ''}</span>`;
+  const f = (k, label, value) => `<button class="${b.field === k ? 'on' : ''}" data-act="bField" data-f="${k}"><small>${label}</small><b>${esc(value)}</b></button>`;
+  const key = (k, cls = '', label = k) => `<button class="${cls}" data-act="bKey" data-k="${k}">${label}</button>`;
+  out.push(`<div class="kp">
+    <div class="row" style="margin:0"><input placeholder="Name (optional)" ${keep('bName')} style="flex:1;min-height:36px"></div>
+    <div class="kp-fields">${f('price', b.refund ? 'Voucher' : 'Price', b.price || '0')}${b.refund ? '' : f('qty', 'Qty', b.qty || '1') + f('dep', 'Pfand/unit', b.dep || '—')}</div>
+    <div style="min-height:18px">${reads}</div>
+    <div class="kp-grid">
+      ${key('7')}${key('8')}${key('9')}${key('del', 'fn', '⌫')}
+      ${key('4')}${key('5')}${key('6')}${key('qty', 'fn' + (b.field === 'qty' ? ' on' : ''), '× Qty')}
+      ${key('1')}${key('2')}${key('3')}${key('dep', 'fn' + (b.field === 'dep' ? ' on' : ''), 'Pfand')}
+      ${key(',')}${key('0')}${key('refund', 'fn' + (b.refund ? ' on' : ''), 'Voucher')}${key('add', 'go', 'Add ↵')}
+    </div></div>`);
+  return out.join('');
+}
+function bSplit(sm) {
+  const b = ui.b;
+  if (!sm.lines.length) return '<div class="b-card"><p class="mut">Nothing to split yet. Type some lines first.</p></div>';
+  let x = sm.lines.find(y => y.line.id === b.cursor) ?? sm.lines.find(y => !L.isZero(y.unassigned)) ?? sm.lines[0];
+  const l = x.line, s = l.split, i = sm.lines.indexOf(x), id = l.id;
+  const tiles = PEOPLE.map(p => {
+    const part = x.perParticipant[p], has = !L.isZero(part);
+    if (s.mode === 'even') return `<button class="b-tile ${s.who.includes(p) ? 'on' : ''}" data-act="toggle" data-line="${id}" data-p="${p}"><span class="nm">${p}</span><span class="num">${has ? show(part) : '—'}</span></button>`;
+    if (s.mode === 'units') return `<div class="b-tile ${s.units[p] ? 'on' : ''}"><span class="nm">${p} <span class="mut">${has ? show(part) : ''}</span></span>
+      <span class="stepper"><button data-act="unit" data-line="${id}" data-p="${p}" data-delta="-1">−</button><b>${s.units[p] || 0}</b><button data-act="unit" data-line="${id}" data-p="${p}" data-delta="1">+</button></span></div>`;
+    return `<div class="b-tile ${has ? 'on' : ''}"><span class="nm">${p}</span><input class="amount" style="width:100%" inputmode="decimal" data-change="splitAmount" data-line="${id}" data-p="${p}" value="${s.amounts[p] ? money(s.amounts[p]) : ''}" placeholder="0,00"></div>`;
+  }).join('');
+  return `<div class="b-dots">${sm.lines.map((y, j) => `<button class="${y === x ? 'on' : L.isZero(y.unassigned) ? '' : 'warn'}" data-act="bCursor" data-line="${y.line.id}">${j + 1}</button>`).join('')}</div>
+  <div class="b-card">
+    <div class="mut">${i + 1} of ${sm.lines.length} · who had this?</div>
+    <div class="b-card-h"><b>${esc(lineName(l))}</b><span class="num" style="font-size:20px;font-weight:700">${show(x.total)}</span></div>
+    <div class="mut">${lineFacts(l, x)}${l.kind === 'item' && l.depositPerUnit ? ' · the Pfand follows this split' : ''}</div>
+    <div class="row" style="margin-top:10px"><span class="seg">${['even', 'units', 'amounts'].map(m => `<button class="${s.mode === m ? 'on' : ''}" data-act="mode" data-line="${id}" data-mode="${m}">${{ even: 'Even', units: 'Units', amounts: 'Amounts' }[m]}</button>`).join('')}</span>
+      ${s.mode === 'even' ? `<button data-act="bAll" data-line="${id}">Everyone</button>` : ''}</div>
+    <div class="b-tiles">${tiles}</div>
+    <div>${L.isZero(x.unassigned) ? '<span class="pill ok">✓ Assigned</span>' : `<span class="pill warn">◐ ${show(x.unassigned)} not assigned · ${receipt.mainPayer}’s for now</span>`}</div>
+    <div class="row" style="margin-top:12px"><button data-act="bStep" data-by="-1">‹ Prev</button>
+      <button class="pri" data-act="bNextOpen" style="flex:1">Next not assigned</button><button data-act="bStep" data-by="1">Next ›</button></div>
+  </div>`;
+}
+function bCheck(sm) {
+  return `<div class="card">${manualRate() || '<span class="mut">Paid in the Trip currency, no rate needed.</span>'} ${pfandPill(sm)} ${statusPill(sm)}</div>
+    <div class="card">${payersBlock()}</div>
+    <div class="card">${receiptDiscountBlock()}</div>
+    ${PEOPLE.map(p => `<div class="stub"><div class="stub-h"><span>${p}</span><span class="num">${show(sm.share[p])}</span></div>
+      ${breakdownList(p, sm)}${balanceBoxes(p, sm)}</div>`).join('')}`;
+}
+
+/* ===== Variant C: Split grid. Lines are rows, Participants are columns: you split by tapping cells, totals and payers are rows at the bottom. ===== */
+function VariantC(sm) {
+  const c = ui.c, out = [];
+  const col = p => (c.col === p ? 'colsel' : '');
+  out.push(`<header class="c-head">
+    <input class="title" data-change="title" value="${esc(meta.title)}" placeholder="What is it? e.g. Lidl Rovinj">
+    <span class="big num">${show(sm.total)}</span>
+    <span>${metaControls()}</span><span class="mut num">${meta.currency}</span>
+    <span style="grid-column:1/-1">${converted(sm)} ${pfandPill(sm)} ${statusPill(sm)}</span>
+    <span style="grid-column:1/-1">${manualRate()}</span>
+  </header>${problems(sm)}`);
+  out.push(`<div class="c-wrap"><table class="grid"><thead><tr><th>Line</th>${PEOPLE.map(p => `<th class="${col(p)}"><button class="${c.col === p ? 'on' : ''}" data-act="cCol" data-p="${p}">${p}</button></th>`).join('')}<th>${meta.currency}</th></tr></thead><tbody>`);
+  for (const x of sm.lines) {
+    const l = x.line, s = l.split;
+    const cell = p => {
+      const part = x.perParticipant[p], has = !L.isZero(part);
+      if (s.mode === 'even') return `<button class="cell ${s.who.includes(p) ? 'on' : ''}" data-act="toggle" data-line="${l.id}" data-p="${p}">${s.who.includes(p) ? show(part) : '·'}</button>`;
+      if (s.mode === 'units') return `<button class="cell ${s.units[p] ? 'on' : ''}" data-act="cUnit" data-line="${l.id}" data-p="${p}">${s.units[p] || 0}×${has ? `<small>${show(part)}</small>` : ''}</button>`;
+      return `<button class="cell ${has ? 'on' : ''}" data-act="cAmount" data-line="${l.id}" data-p="${p}">${s.amounts[p] ? money(s.amounts[p]) : '—'}${has ? `<small>${show(part)}</small>` : ''}</button>`;
+    };
+    out.push(`<tr class="${L.isZero(x.unassigned) ? '' : 'warn'}"><td class="c-name" data-act="cOpen" data-line="${l.id}"><b>${esc(lineName(l))}</b>
+        <span class="badge">${{ even: 'EVEN', units: 'UNITS', amounts: 'AMTS' }[s.mode]}</span> <span class="mut">${l.kind === 'item' ? `${l.quantity}×${money(l.unitPrice)}${l.depositPerUnit ? ' +Pf' : ''}` : 'refund'}</span></td>
+      ${PEOPLE.map(p => `<td class="${col(p)}">${cell(p)}</td>`).join('')}
+      <td class="num">${show(x.total)}${L.isZero(x.unassigned) ? '' : `<div class="warnt">◐ ${show(x.unassigned)}</div>`}</td></tr>`);
+    if (c.open === l.id) out.push(`<tr><td colspan="${PEOPLE.length + 2}" class="c-ed">${lineFields(l)}${splitControls(l)}${lineTools(l)}</td></tr>`);
+  }
+  const sumRow = (label, f, last = '') => out.push(`<tr class="sum"><td>${label}</td>${PEOPLE.map(p => `<td class="num ${col(p)}" style="text-align:center">${f(p)}</td>`).join('')}<td class="num">${last}</td></tr>`);
+  if (!L.isZero(sm.receiptDiscount)) sumRow('Receipt disc.', p => show(L.neg(sm.breakdown[p].receiptDiscount)), '−' + show(sm.receiptDiscount));
+  sumRow('Share', p => show(sm.share[p]), show(sm.total));
+  out.push(`<tr class="sum"><td>Paid <span class="mut">tap</span></td>${PEOPLE.map(p => {
+    const isMain = p === receipt.mainPayer;
+    return `<td class="${col(p)}"><button class="cell ${isMain || !L.isZero(sm.paid[p]) ? 'on' : ''}" data-act="cPaid" data-p="${p}">${L.isZero(sm.paid[p]) && !isMain ? '—' : show(sm.paid[p])}${isMain ? '<small>main</small>' : ''}</button></td>`;
+  }).join('')}<td></td></tr>`);
+  sumRow('Balance', p => { const v = sm.balance[p], s = L.cmp(v, L.ZERO); return s === 0 ? '0' : (s > 0 ? '+' : '') + show(v); });
+  out.push('</tbody></table></div>');
+  out.push('<p class="mut" style="margin:0 10px">Tap a cell: Even ticks or unticks, Units adds one (back to 0 after the last unit), Amounts asks for the amount. Tap a line name to edit it, a name in the header to see where that share comes from.</p>');
+  if (c.col) out.push(`<div class="card"><div class="sheet-h"><b>Where ${c.col}’s ${show(sm.share[c.col])} comes from</b><button class="icon" data-act="cCol" data-p="${c.col}">✕</button></div>${breakdownList(c.col, sm, true)}${balanceBoxes(c.col, sm)}</div>`);
+  out.push(`<div class="card"><h3>Add a line</h3>
+    <div class="row"><input placeholder="Name" ${keep('cName')} style="flex:1">${amountInput('cPrice', 'Price')}</div>
+    <div class="row"><span class="mut">Qty</span><input style="width:56px;text-align:center" inputmode="numeric" ${keep('cQty', 'placeholder="1"')}>
+      <span class="mut">Pfand/unit</span><input class="amount" style="width:70px" inputmode="decimal" ${keep('cDep', 'placeholder="—"')}>
+      <button class="pri" data-act="cAdd">Add</button></div>
+    <div class="row"><span class="mut">Bottle voucher</span>${amountInput('cRefund', '3,75')}<button data-act="cAddRefund">Add refund</button></div>
+  </div>
+  <div class="card">${receiptDiscountBlock()}</div>`);
+  return out.join('');
+}
+
+/* ===== Switcher, state panel, events ===== */
+const VARIANTS = [
+  { key: 'A', name: 'Till list', render: VariantA },
+  { key: 'B', name: 'Keypad & tape', render: VariantB },
+  { key: 'C', name: 'Split grid', render: VariantC },
+];
+let current = VARIANTS.find(v => v.key === new URLSearchParams(location.search).get('variant')) ?? VARIANTS[0];
+
+function setVariant(v) {
+  current = v;
+  const url = new URL(location.href);
+  url.searchParams.set('variant', v.key);
+  try { history.replaceState(null, '', url); } catch { /* some browsers refuse on file:// */ }
+  render();
+}
+const cycle = by => setVariant(VARIANTS[(VARIANTS.indexOf(current) + by + VARIANTS.length) % VARIANTS.length]);
+
+function stateDump(sm) {
+  const lines = sm.lines.map(x => `  ${x.line.id}. ${lineName(x.line)} [${x.line.kind}] ${lineFacts(x.line, x)}\n     split: ${splitText(x.line)}  total ${show(x.total)}${L.isZero(x.unassigned) ? '' : '  unassigned ' + show(x.unassigned)}`);
+  return [`PROTOTYPE STATE · variant ${current.key} (${current.name})`,
+    `title: ${meta.title || '—'} · currency: ${meta.currency} · zone: ${meta.zone} · manual rate: ${meta.manualRate ? meta.manualRate.kind + ' ' + money(meta.manualRate.value) : 'none'}`,
+    `main payer: ${receipt.mainPayer} · contributions: ${receipt.contributions.map(c => c.participant + ' ' + money(c.amount)).join(', ') || 'none'}`,
+    `receipt discount: ${receipt.receiptDiscount ? discText(receipt.receiptDiscount) : 'none'}`, 'lines:', ...lines,
+    `total ${show(sm.total)} · Pfand ${money(sm.depositsTotal)} · refunds ${money(sm.refundsTotal)} · ${sm.incomplete ? 'INCOMPLETE' : 'complete'}`,
+    ...PEOPLE.map(p => `  ${p.padEnd(6)} share ${show(sm.share[p]).padStart(8)}  paid ${show(sm.paid[p]).padStart(8)}  ${balanceText(p, sm)}`),
+  ].join('\n');
+}
+
+function render() {
+  const sm = L.summarize(receipt);
+  document.body.className = 'v' + current.key + (current.key === 'B' ? ' b' + ui.b.tab[0].toUpperCase() + ui.b.tab.slice(1) : '');
+  $('#app').innerHTML = current.render(sm);
+  $('#switcher').innerHTML = `<button data-act="prev" title="Previous variant (←)">‹</button><span class="lbl">${current.key} (${current.name})</span><button data-act="next" title="Next variant (→)">›</button>
+    <button data-act="state" title="Show the full state">{ }</button><button data-act="sample" title="Load the sample Receipt">Sample</button><button data-act="empty" title="Start an empty Receipt">Empty</button>`;
+  $('#state').hidden = !ui.stateOpen;
+  if (ui.stateOpen) $('#state').textContent = stateDump(sm);
+}
+
+const kv = k => ui.keep[k] ?? '';
+const clear = (...ks) => ks.forEach(k => delete ui.keep[k]);
+const focusSoon = sel => requestAnimationFrame(() => $(sel)?.focus());
+const discount = (kind, text) => (kind === 'none' ? null : { kind, value: amt(text) });
+
+const ACT = {
+  prev: () => cycle(-1), next: () => cycle(1),
+  state: () => { ui.stateOpen = !ui.stateOpen; render(); },
+  sample: () => { reset(true); render(); }, empty: () => { reset(false); render(); },
+  zone: () => { ui.zoneOpen = !ui.zoneOpen; render(); },
+  manualOpen: () => { ui.manualOpen = true; render(); },
+  manualClear: () => { meta.manualRate = null; ui.manualOpen = false; clear('mr'); render(); },
+  manualSet: d => {
+    const v = amt(kv('mr'));
+    if (!v || L.cmp(v, L.ZERO) <= 0) { toast(d.kind === 'rate' ? 'The rate is not a positive number.' : 'The charged amount is not a positive number.', 'bad'); return; }
+    meta.manualRate = { kind: d.kind, value: v }; ui.manualOpen = false; clear('mr'); render();
+  },
+  mode: d => run({ type: 'chooseSplitMode', lineId: +d.line, mode: d.mode }),
+  toggle: d => run({ type: 'toggleEven', lineId: +d.line, participant: d.p }),
+  unit: d => run({ type: 'setUnits', lineId: +d.line, participant: d.p, units: (findLine(+d.line).split.units[d.p] || 0) + Number(d.delta) }),
+  qty: d => run({ type: 'editLine', lineId: +d.line, quantity: findLine(+d.line).quantity + Number(d.delta) }),
+  dep: d => run({ type: 'editLine', lineId: +d.line, depositPerUnit: d.v ? amt(d.v) : null }),
+  lineDiscount: d => run({ type: 'setLineDiscount', lineId: +d.line, discount: discount(d.kind, $('#ld-' + d.line)?.value) }),
+  move: d => run({ type: 'moveLine', lineId: +d.line, by: Number(d.by) }),
+  remove: d => run({ type: 'removeLine', lineId: +d.line }),
+  payer: d => run({ type: 'setMainPayer', participant: d.p }),
+  uncontribute: d => run({ type: 'removeContribution', index: Number(d.i) }),
+  contribute: () => { if (run({ type: 'addContribution', participant: $('#ctWho').value, amount: amt(kv('ct')) })) { clear('ct'); render(); } },
+  receiptDiscount: d => { if (run({ type: 'setReceiptDiscount', discount: discount(d.kind, kv('rd')) })) { clear('rd'); render(); } },
+
+  // A
+  aOpen: d => { ui.a.open = ui.a.open === +d.line ? null : +d.line; render(); },
+  aQty: d => { ui.a.qty = Math.max(1, ui.a.qty + Number(d.delta)); render(); },
+  aDep: d => { ui.a.dep = d.v || null; render(); },
+  aRefundOpen: () => { ui.a.refundOpen = true; render(); focusSoon('[data-keep="aRefund"]'); },
+  aAdd: () => {
+    if (run({ type: 'addLineItem', name: kv('aName').trim(), unitPrice: amt(kv('aPrice')), quantity: ui.a.qty, depositPerUnit: ui.a.dep ? amt(ui.a.dep) : null })) {
+      clear('aName', 'aPrice'); ui.a.qty = 1; ui.a.dep = null; render(); focusSoon('[data-keep="aPrice"]');
+    }
+  },
+  aAddRefund: () => { if (run({ type: 'addDepositRefund', name: 'Bottle voucher', amount: amt(kv('aRefund')) })) { clear('aRefund'); ui.a.refundOpen = false; render(); } },
+  aSheet: d => { ui.a.sheet = d.p || null; render(); },
+
+  // B
+  bTab: d => { ui.b.tab = d.tab; render(); },
+  bSel: d => { ui.b.sel = ui.b.sel === +d.line ? null : +d.line; render(); },
+  bSplitLine: d => { ui.b.tab = 'split'; ui.b.cursor = +d.line; render(); },
+  bCursor: d => { ui.b.cursor = +d.line; render(); },
+  bField: d => { ui.b.field = d.f; render(); },
+  bAll: d => run({ type: 'setEven', lineId: +d.line, who: PEOPLE }),
+  bStep: d => {
+    const ids = receipt.lines.map(l => l.id), sm = L.summarize(receipt);
+    const now = sm.lines.find(y => y.line.id === ui.b.cursor) ?? sm.lines.find(y => !L.isZero(y.unassigned)) ?? sm.lines[0];
+    ui.b.cursor = ids[(ids.indexOf(now.line.id) + Number(d.by) + ids.length) % ids.length]; render();
+  },
+  bNextOpen: () => {
+    const sm = L.summarize(receipt), open = sm.lines.filter(y => !L.isZero(y.unassigned));
+    if (!open.length) { toast('Everything is assigned. Check the shares on the Check tab.'); return; }
+    const after = open.find(y => receipt.lines.indexOf(y.line) > receipt.lines.findIndex(l => l.id === ui.b.cursor));
+    ui.b.cursor = (after ?? open[0]).line.id; render();
+  },
+  bKey: d => {
+    const b = ui.b, k = d.k;
+    if (k === 'qty' || k === 'dep') { b.field = b.field === k ? 'price' : k; if (b.field === 'qty') b.qty = ''; }
+    else if (k === 'refund') { b.refund = !b.refund; b.field = 'price'; }
+    else if (k === 'del') b[b.field] = b[b.field].slice(0, -1);
+    else if (k === ',') { if (b.field !== 'qty' && !b[b.field].includes(',')) b[b.field] += ','; }
+    else if (k === 'add') {
+      const name = kv('bName').trim();
+      const ok = b.refund
+        ? run({ type: 'addDepositRefund', name: name || 'Bottle voucher', amount: amt(b.price) })
+        : run({ type: 'addLineItem', name, unitPrice: amt(b.price), quantity: Number(b.qty || '1'), depositPerUnit: b.dep ? amt(b.dep) : null });
+      if (ok) { Object.assign(b, { price: '', qty: '', dep: '', refund: false, field: 'price' }); clear('bName'); }
+    } else if (b.field !== 'qty' || b.qty.length < 3) b[b.field] += k;
+    render();
+  },
+
+  // C
+  cOpen: d => { ui.c.open = ui.c.open === +d.line ? null : +d.line; render(); },
+  cCol: d => { ui.c.col = ui.c.col === d.p ? null : d.p; render(); },
+  cUnit: d => {
+    const l = findLine(+d.line), now = l.split.units[d.p] || 0;
+    const others = Object.entries(l.split.units).filter(([p]) => p !== d.p).reduce((s, [, u]) => s + u, 0);
+    run({ type: 'setUnits', lineId: l.id, participant: d.p, units: now + 1 + others > l.quantity ? 0 : now + 1 });
+  },
+  cAmount: d => {
+    const l = findLine(+d.line), text = prompt(`${d.p}’s amount of “${lineName(l)}” (full price)`, l.split.amounts[d.p] ? money(l.split.amounts[d.p]) : '');
+    if (text !== null) run({ type: 'setAmount', lineId: l.id, participant: d.p, amount: amt(text || '0') });
+  },
+  cPaid: d => {
+    if (d.p === receipt.mainPayer) { toast(`${d.p} is the Main payer and covers whatever the others don’t. Tap someone else to add what they paid.`); return; }
+    const i = receipt.contributions.findIndex(c => c.participant === d.p);
+    const text = prompt(`How much did ${d.p} pay? Leave empty to make ${d.p} the Main payer instead.`, i >= 0 ? money(receipt.contributions[i].amount) : '');
+    if (text === null) return;
+    if (!text.trim()) { run({ type: 'setMainPayer', participant: d.p }); return; }
+    const before = receipt;
+    if (i >= 0) receipt = L.apply(receipt, { type: 'removeContribution', index: i }).receipt;
+    if (!run({ type: 'addContribution', participant: d.p, amount: amt(text) })) { receipt = before; render(); }
+  },
+  cAdd: () => {
+    if (run({ type: 'addLineItem', name: kv('cName').trim(), unitPrice: amt(kv('cPrice')), quantity: Number(kv('cQty') || '1'), depositPerUnit: kv('cDep') ? amt(kv('cDep')) : null })) {
+      clear('cName', 'cPrice', 'cQty', 'cDep'); render(); focusSoon('[data-keep="cName"]');
+    }
+  },
+  cAddRefund: () => { if (run({ type: 'addDepositRefund', name: 'Bottle voucher', amount: amt(kv('cRefund')) })) { clear('cRefund'); render(); } },
+};
+
+document.addEventListener('click', e => {
+  const el = e.target.closest('[data-act]');
+  if (!el || el.disabled) return;
+  ACT[el.dataset.act]?.(el.dataset);
+});
+
+document.addEventListener('change', e => {
+  const d = e.target.dataset, v = e.target.value;
+  if (d.change === 'title') meta.title = v;
+  else if (d.change === 'currency') { meta.currency = v; meta.manualRate = null; ui.manualOpen = false; render(); }
+  else if (d.change === 'zone') { meta.zone = v; ui.zoneOpen = false; render(); }
+  else if (d.change === 'splitAmount') run({ type: 'setAmount', lineId: +d.line, participant: d.p, amount: amt(v || '0') });
+  else if (d.change === 'edit') {
+    const value = d.field === 'name' ? v : d.field === 'quantity' ? Number(v) : d.field === 'depositPerUnit' && !v.trim() ? null : amt(v);
+    if (d.field === 'depositPerUnit' && v.trim() && !value) { toast('The deposit per unit is not a number.', 'bad'); render(); return; }
+    run({ type: 'editLine', lineId: +d.line, [d.field]: value });
+  }
+});
+
+document.addEventListener('input', e => {
+  const d = e.target.dataset;
+  if (d.keep) ui.keep[d.keep] = e.target.value;
+  if (d.reads) { const out = document.getElementById(d.reads); if (out) { out.textContent = readsAs(e.target.value); out.className = 'reads' + (readsAs(e.target.value) === 'not a number' ? ' bad' : ''); } }
+});
+
+document.addEventListener('keydown', e => {
+  const t = e.target;
+  if (t.matches?.('input, textarea, select, [contenteditable]')) {
+    if (e.key === 'Enter') { const add = { aPrice: 'aAdd', aName: 'aAdd', aRefund: 'aAddRefund', cName: 'cAdd', cPrice: 'cAdd', cQty: 'cAdd', cDep: 'cAdd', cRefund: 'cAddRefund' }[t.dataset.keep]; if (add) ACT[add]({}); }
+    return;
+  }
+  if (e.key === 'ArrowLeft') cycle(-1);
+  if (e.key === 'ArrowRight') cycle(1);
+});
+
+reset(true);
+render();
+</script>
+</body>
+</html>
