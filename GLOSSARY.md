@@ -59,3 +59,9 @@ _Avoid_: Bottle return, refund, cashback
 **Income**:
 Money received by a Participant on behalf of some Participants, e.g. a cash Deposit refund; modelled as an Expense with a negative total.
 _Avoid_: Revenue, earnings, refund
+
+### Working offline
+
+**Conflict**:
+Two Participants changed or deleted the same Expense independently, without seeing each other's change. Whoever syncs second chooses whose version to keep.
+_Avoid_: Merge conflict, clash, collision
