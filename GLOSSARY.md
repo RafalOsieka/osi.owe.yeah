@@ -60,6 +60,16 @@ _Avoid_: Bottle return, refund, cashback
 Money received by a Participant on behalf of some Participants, e.g. a cash Deposit refund; modelled as an Expense with a negative total.
 _Avoid_: Revenue, earnings, refund
 
+### Settling up
+
+**Repayment**:
+Money one Participant hands to another to even out their balances; modelled as an Expense with one payer and one recipient. Not counted as spending.
+_Avoid_: Settlement, transfer, reimbursement, payment
+
+**Settled**:
+A Trip in which every Participant's balance, rounded to whole cents, is zero.
+_Avoid_: Closed, done, paid off
+
 ### Currencies
 
 **Trip currency**:
