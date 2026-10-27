@@ -56,6 +56,10 @@ _Avoid_: Kaution, pfand, bottle fee
 Money received back when returnable packaging is returned, recorded as a negative line on a Receipt (often a voucher redeemed at the till) and split on its own, by default evenly between all Participants.
 _Avoid_: Bottle return, refund, cashback
 
+**Revision**:
+One saved version of an Expense, with who made it and when. Editing, deleting or restoring an Expense adds a Revision; Revisions are never changed or removed.
+_Avoid_: Version, snapshot, edit
+
 **Income**:
 Money received by a Participant on behalf of some Participants, e.g. a cash Deposit refund; modelled as an Expense with a negative total.
 _Avoid_: Revenue, earnings, refund
