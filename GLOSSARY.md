@@ -60,6 +60,20 @@ _Avoid_: Bottle return, refund, cashback
 Money received by a Participant on behalf of some Participants, e.g. a cash Deposit refund; modelled as an Expense with a negative total.
 _Avoid_: Revenue, earnings, refund
 
+### Currencies
+
+**Trip currency**:
+The one currency a Trip's balances are kept and settled in. Every Expense in another currency is converted into it.
+_Avoid_: Main currency, base currency, home currency
+
+**Manual rate**:
+An exchange rate someone typed in for one Expense, either as a rate or as the amount actually charged, e.g. by a card or an exchange office. It replaces the automatic rate for that Expense.
+_Avoid_: Custom rate, card rate, override
+
+**Provisional rate**:
+An exchange rate used for now because the final rate for that day is not known yet. Amounts converted with it are marked as approximate and update by themselves once the final rate arrives.
+_Avoid_: Estimated rate, temporary rate
+
 ### Working offline
 
 **Conflict**:
