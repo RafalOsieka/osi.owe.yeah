@@ -70,6 +70,10 @@ _Avoid_: Revenue, earnings, refund
 Money one Participant hands to another to even out their balances; modelled as an Expense with one payer and one recipient. Not counted as spending.
 _Avoid_: Settlement, transfer, reimbursement, payment
 
+**Reminder**:
+A nudge one Participant sends another about a suggested Repayment the other owes them. Sent by hand, never on a schedule.
+_Avoid_: Nudge, ping, dunning
+
 **Settled**:
 A Trip in which every Participant's balance, rounded to whole cents, is zero.
 _Avoid_: Closed, done, paid off
