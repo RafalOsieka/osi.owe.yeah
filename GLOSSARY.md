@@ -11,8 +11,16 @@ The shared container for all Expenses of one group of people, usually a single j
 _Avoid_: Group, tab, event, tricount
 
 **Participant**:
-A person taking part in a Trip who can pay for Expenses or share their cost.
+A person taking part in a Trip who can pay for Expenses or share their cost, whether or not they use the app.
 _Avoid_: Member, user, friend
+
+**Trip link**:
+The secret link to a Trip. Whoever has it can see and edit everything in the Trip.
+_Avoid_: Invite link, share link, code
+
+**Claim**:
+Which Participant a person says they are, on one device and for one Trip. It sets defaults, such as the Main payer of new Expenses, and grants no extra rights.
+_Avoid_: Login, identity, profile
 
 ### Spending
 
