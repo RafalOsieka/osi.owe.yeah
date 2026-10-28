@@ -28,7 +28,7 @@ _Polish avoid_: Zaproszenie, kod
 
 **Claim**:
 Which Participant a person says they are, on one device and for one Trip. It sets defaults, such as the Main payer of new Expenses, and grants no extra rights.
-_Polish_: Przypisanie
+_Polish_: Przypisanie (a term for code and docs only; the UI asks "Kim jesteś?" and never shows the word)
 _Avoid_: Login, identity, profile
 _Polish avoid_: Logowanie, tożsamość, profil, roszczenie
 

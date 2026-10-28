@@ -1,4 +1,5 @@
 import { z } from 'zod';
+import { participantSchema } from './participant.ts';
 
 /**
  * The currencies our rate provider (Frankfurter) covers. Only these can be a Trip currency,
@@ -58,3 +59,21 @@ export const tripSchema = z.object({
 });
 
 export type Trip = z.infer<typeof tripSchema>;
+
+/**
+ * A Trip with its Participants, as the client creates it and the whole-Trip pull returns
+ * it. Participant names may repeat; ids may not.
+ */
+export const tripWithParticipantsSchema = tripSchema.extend({
+  participants: z
+    .array(participantSchema)
+    .max(100)
+    .refine(
+      (participants) => new Set(participants.map(({ id }) => id)).size === participants.length,
+      {
+        message: 'Participant ids must be unique',
+      },
+    ),
+});
+
+export type TripWithParticipants = z.infer<typeof tripWithParticipantsSchema>;

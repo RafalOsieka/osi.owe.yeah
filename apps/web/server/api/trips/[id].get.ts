@@ -1,30 +1,21 @@
-import { TRIP_TOKEN_HEADER, tripIdSchema, tripSchema, type Trip } from '@osi/owe-yeah-domain';
-import { and, eq } from 'drizzle-orm';
-import { createError, defineEventHandler, getRequestHeader, getRouterParam } from 'nuxt/server';
+import type { TripWithParticipants } from '@osi/owe-yeah-domain';
+import { asc, eq } from 'drizzle-orm';
+import { defineEventHandler } from 'nuxt/server';
 import { getDb } from '../../db';
-import { trips } from '../../db/schema';
-import { hashTripToken } from '../../utils/trip-token';
+import { participants } from '../../db/schema';
+import { requireTrip } from '../../utils/trip-access';
 
-/**
- * The whole-Trip pull. The Trip link's token in the `x-trip-token` header is the only
- * credential (ADR 0001); a missing or wrong token and an unknown Trip are refused alike,
- * so the answer never tells whether a Trip exists.
- */
-export default defineEventHandler(async (event): Promise<Trip> => {
-  const id = tripIdSchema.safeParse(getRouterParam(event, 'id'));
-  const token = getRequestHeader(event, TRIP_TOKEN_HEADER);
-  if (!id.success || !token) throw invalidTripLink();
+/** The whole-Trip pull: the Trip with its Participants, in the order they were added. */
+export default defineEventHandler(async (event): Promise<TripWithParticipants> => {
+  const trip = await requireTrip(event);
 
-  const [trip] = await getDb()
-    .select({ id: trips.id, name: trips.name, currency: trips.currency })
-    .from(trips)
-    .where(and(eq(trips.id, id.data), eq(trips.tokenHash, hashTripToken(token))));
-  if (!trip) throw invalidTripLink();
+  const tripParticipants = await getDb()
+    .select({ id: participants.id, name: participants.name })
+    .from(participants)
+    .where(eq(participants.tripId, trip.id))
+    // Participants created in one transaction share `createdAt`; their UUIDv7 ids then
+    // keep the order the device generated them in.
+    .orderBy(asc(participants.createdAt), asc(participants.id));
 
-  // Narrows the stored currency to a Trip currency.
-  return tripSchema.parse(trip);
+  return { ...trip, participants: tripParticipants };
 });
-
-function invalidTripLink() {
-  return createError({ status: 401, statusText: 'Invalid Trip link' });
-}
