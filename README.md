@@ -24,12 +24,16 @@ pnpm workspace on [Vite+](https://viteplus.dev) (`vp`); Node and pnpm versions a
 
 ```sh
 vp install
+vp run dev           # web app on http://localhost:3000
+vp run build
 vp run lint          # Oxlint + ESLint
 vp run format:check  # Oxfmt (`vp run format` to fix)
 vp run type-check
 vp run test:unit
+vp run test:nuxt     # web component tests
 ```
 
+- `apps/web` (`@osi/owe-yeah-web`): Nuxt SPA with Nuxt UI, `en`/`pl` i18n and dark mode.
 - `packages/domain` (`@osi/owe-yeah-domain`): pure TypeScript domain rules on exact rationals.
 - `tools/oxlint/anti-slop`: custom Oxlint rules, frozen copy from `osi.time.tracker`.
 

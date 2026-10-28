@@ -4,18 +4,24 @@
   "private": true,
   "type": "module",
   "scripts": {
-    "type-check": "vp run --log grouped --filter \"./packages/*\" type-check",
-    "test:unit": "vp run --log grouped --filter \"./packages/*\" test:unit && vp test run --project anti-slop",
+    "dev": "vp run --filter @osi/owe-yeah-web dev",
+    "build": "vp run --filter @osi/owe-yeah-web build",
+    "preview": "vp run --filter @osi/owe-yeah-web preview",
+    "type-check": "vp run --log grouped --filter \"./packages/*\" --filter \"./apps/*\" type-check",
+    "test:unit": "vp run --log grouped --filter \"./packages/*\" --filter \"./apps/*\" test:unit && vp test run --project anti-slop",
+    "test:nuxt": "vp run --filter @osi/owe-yeah-web test:nuxt",
     "lint": "vp lint && eslint .",
     "lint:fix": "vp lint --fix && eslint . --fix",
     "format": "vp fmt",
     "format:check": "vp fmt --check"
   },
   "devDependencies": {
+    "@intlify/eslint-plugin-vue-i18n": "^4.5.1",
     "@typescript-eslint/parser": "^8.72.1",
     "eslint": "^10.13.0",
     "eslint-config-prettier": "^10.1.8",
     "eslint-plugin-oxlint": "^1.89.0",
+    "eslint-plugin-vuejs-accessibility": "^2.6.3",
     "typescript": "^6.0.3",
     "vite-plus": "catalog:"
   },

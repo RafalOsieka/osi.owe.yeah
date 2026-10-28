@@ -1,0 +1,9 @@
+{
+  "app": {
+    "title": "Owe Yeah"
+  },
+  "trips": {
+    "title": "Moje wyjazdy",
+    "empty": "Nie masz jeszcze żadnych wyjazdów."
+  }
+}
