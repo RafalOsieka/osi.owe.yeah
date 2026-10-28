@@ -58,7 +58,6 @@ export default withNuxt()
         {
           ignoreNodes: ['script', 'style'],
           ignorePattern: '^[-#:()&+×/°′″%.,!?@\\s]+$',
-          ignoreText: ['Owe Yeah'],
         },
       ],
     },
@@ -102,10 +101,7 @@ export default withNuxt()
   .append({
     // YAML has no ESLint parser here; Oxlint covers it.
     ignores: [
-      '.nuxt',
-      '.output',
       'node_modules',
-      'dist',
       'apps/web/.nuxt',
       'apps/web/.output',
       'packages/*/dist',

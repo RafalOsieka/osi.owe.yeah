@@ -18,7 +18,6 @@ export default defineNuxtConfig({
       cookieSecure: process.env.NODE_ENV === 'production',
       cookieCrossOrigin: false,
       alwaysRedirect: false,
-      redirectOn: 'root',
     },
   },
   css: ['~/assets/css/main.css'],
@@ -41,18 +40,13 @@ export default defineNuxtConfig({
     csrf: false,
     // Off in development, so Vite's many module requests don't exhaust the shared bucket.
     rateLimiter: process.env.NODE_ENV === 'development' ? false : undefined,
-    headers: {
-      contentSecurityPolicy: {
-        'img-src': ["'self'", 'data:'],
-      },
-    },
   },
   typescript: {
     // Disabled: the in-dev checker breaks under Nuxt's `/_nuxt/` base
     // (fi3ework/vite-plugin-checker#661). `type-check` still runs `vue-tsc` in CI.
     typeCheck: false,
     tsConfig: {
-      // Nuxt tests are included by default.
+      // Adds unit tests to the app tsconfig; `test/nuxt` is already included by Nuxt.
       include: ['../test/unit/**/*'],
     },
   },

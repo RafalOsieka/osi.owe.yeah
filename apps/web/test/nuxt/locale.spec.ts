@@ -7,13 +7,12 @@ describe('app locale', () => {
     await useNuxtApp().$i18n.setLocale('en');
   });
 
-  it('renders the shell in Polish once the locale is pl', async () => {
-    const wrapper = await mountSuspended(App, { route: '/' });
-    expect(wrapper.text()).toContain('My Trips');
+  it('marks the document as Polish once the locale is pl', async () => {
+    await mountSuspended(App, { route: '/' });
+    await expect.poll(() => document.documentElement.lang).toBe('en');
 
     await useNuxtApp().$i18n.setLocale('pl');
-    await nextTick();
 
-    expect(wrapper.text()).toContain('Moje wyjazdy');
+    await expect.poll(() => document.documentElement.lang).toBe('pl');
   });
 });
