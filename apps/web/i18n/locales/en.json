@@ -5,7 +5,8 @@
   "myTrips": {
     "title": "My Trips",
     "empty": "No Trips yet.",
-    "create": "New Trip"
+    "create": "New Trip",
+    "noClaim": "You haven't said who you are yet."
   },
   "trip": {
     "create": {
@@ -15,6 +16,10 @@
       "nameInvalid": "Give the Trip a name of up to 100 characters.",
       "currency": "Trip currency",
       "currencyHelp": "All balances are kept and settled in it.",
+      "participantsHelp": "Who's coming? Names may repeat, and you can add more later.",
+      "participant": "Participant {number}",
+      "addParticipant": "Add another",
+      "removeParticipant": "Remove Participant",
       "submit": "Create Trip",
       "failed": "The Trip could not be created. Check your connection and try again."
     },
@@ -22,5 +27,21 @@
     "invalidLink": "This Trip link doesn't work.",
     "invalidLinkHelp": "Ask for the Trip link again.",
     "loadFailed": "The Trip could not be loaded. Check your connection and try again."
+  },
+  "participants": {
+    "title": "Participants",
+    "namePlaceholder": "Name",
+    "nameInvalid": "Give the Participant a name of up to 50 characters.",
+    "new": "New Participant",
+    "add": "Add",
+    "addFailed": "The Participant could not be added. Check your connection and try again."
+  },
+  "claim": {
+    "title": "Who are you?",
+    "help": "Pick yourself, so this device can fill in defaults for you. It gives you no extra rights.",
+    "notListed": "Not on the list?",
+    "addMe": "Add me",
+    "youAre": "You are {name}",
+    "change": "Change"
   }
 }

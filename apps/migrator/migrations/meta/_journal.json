@@ -15,6 +15,13 @@
       "when": 1793216750300,
       "tag": "0001_add_trip_token",
       "breakpoints": true
+    },
+    {
+      "idx": 2,
+      "version": "7",
+      "when": 1793220279587,
+      "tag": "0002_add_participants",
+      "breakpoints": true
     }
   ]
 }

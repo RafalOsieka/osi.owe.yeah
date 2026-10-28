@@ -5,7 +5,8 @@
   "myTrips": {
     "title": "Moje podróże",
     "empty": "Nie masz jeszcze żadnych podróży.",
-    "create": "Nowa podróż"
+    "create": "Nowa podróż",
+    "noClaim": "Nie wskazano jeszcze, kim jesteś."
   },
   "trip": {
     "create": {
@@ -15,6 +16,10 @@
       "nameInvalid": "Nadaj podróży nazwę o długości do 100 znaków.",
       "currency": "Waluta podróży",
       "currencyHelp": "W tej walucie prowadzone i rozliczane są wszystkie salda.",
+      "participantsHelp": "Kto jedzie? Imiona mogą się powtarzać, a kolejnych uczestników dodasz później.",
+      "participant": "Uczestnik {number}",
+      "addParticipant": "Dodaj kolejnego",
+      "removeParticipant": "Usuń uczestnika",
       "submit": "Utwórz podróż",
       "failed": "Nie udało się utworzyć podróży. Sprawdź połączenie i spróbuj ponownie."
     },
@@ -22,5 +27,21 @@
     "invalidLink": "Ten link do podróży nie działa.",
     "invalidLinkHelp": "Poproś ponownie o link do podróży.",
     "loadFailed": "Nie udało się wczytać podróży. Sprawdź połączenie i spróbuj ponownie."
+  },
+  "participants": {
+    "title": "Uczestnicy",
+    "namePlaceholder": "Imię",
+    "nameInvalid": "Nadaj uczestnikowi imię o długości do 50 znaków.",
+    "new": "Nowy uczestnik",
+    "add": "Dodaj",
+    "addFailed": "Nie udało się dodać uczestnika. Sprawdź połączenie i spróbuj ponownie."
+  },
+  "claim": {
+    "title": "Kim jesteś?",
+    "help": "Wskaż siebie, a to urządzenie podpowie za ciebie domyślne wartości. Nie daje to żadnych dodatkowych uprawnień.",
+    "notListed": "Nie ma cię na liście?",
+    "addMe": "Dodaj mnie",
+    "youAre": "Jesteś: {name}",
+    "change": "Zmień"
   }
 }
