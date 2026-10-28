@@ -1,0 +1,42 @@
+# Local development database. The app itself runs on the host (`vp run dev`),
+# and migrations are applied from the host (`vp run db:migrate`).
+#
+# Start:  docker compose -f compose.dev.yml up -d
+# Stop:   docker compose -f compose.dev.yml down      # keeps the volume
+# Wipe:   docker compose -f compose.dev.yml down -v   # deletes the dev database
+#
+# PostgreSQL: 127.0.0.1:5433 (postgres / postgres, db owe_yeah), matching the
+# DATABASE_URL in .env.example. Override the port with DEV_POSTGRES_PORT (and
+# update DATABASE_URL to match). 5433 rather than 5432, so this stack can run
+# alongside other local Postgres instances (e.g. osi.time.tracker).
+#
+# Credentials are fixed on purpose: compose reads the repository `.env`, whose
+# POSTGRES_* variables belong to compose.prod.yaml. Interpolating them here
+# would give the dev database the production password and break DATABASE_URL.
+# They only apply when the volume is first created; after changing them, wipe.
+
+# Explicit project name so this stack never shares containers/volumes with
+# compose.prod.yaml (osi-owe-yeah-prod), which lives in the same directory.
+name: osi-owe-yeah
+
+services:
+  db:
+    image: postgres:18-alpine
+    restart: unless-stopped
+    environment:
+      POSTGRES_USER: postgres
+      POSTGRES_PASSWORD: postgres
+      POSTGRES_DB: owe_yeah
+    ports:
+      # Bound to loopback: a dev database with a well-known password stays off the LAN.
+      - '127.0.0.1:${DEV_POSTGRES_PORT:-5433}:5432'
+    volumes:
+      - pg-owe-yeah-dev:/var/lib/postgresql
+    healthcheck:
+      test: ['CMD-SHELL', 'pg_isready -U postgres -d owe_yeah']
+      interval: 10s
+      timeout: 5s
+      retries: 5
+
+volumes:
+  pg-owe-yeah-dev:

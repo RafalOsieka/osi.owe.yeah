@@ -11,6 +11,8 @@
     "test:unit": "vp run --log grouped --filter \"./packages/*\" --filter \"./apps/*\" test:unit && vp test run --project anti-slop",
     "test:nuxt": "vp run --filter @osi/owe-yeah-web test:nuxt",
     "test:e2e:db": "vp run --filter @osi/owe-yeah-web test:e2e:db",
+    "test:e2e:api": "vp run --filter @osi/owe-yeah-web test:e2e:api",
+    "test:e2e:ui": "vp run --filter @osi/owe-yeah-web test:e2e:ui",
     "db:generate": "vp run --filter @osi/owe-yeah-web db:generate",
     "db:migrate": "vp run --filter @osi/owe-yeah-migrator migrate",
     "lint": "vp lint && eslint .",

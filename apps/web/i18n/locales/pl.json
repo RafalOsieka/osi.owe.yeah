@@ -2,8 +2,25 @@
   "app": {
     "title": "Owe Yeah"
   },
-  "trips": {
+  "myTrips": {
     "title": "Moje podróże",
-    "empty": "Nie masz jeszcze żadnych podróży."
+    "empty": "Nie masz jeszcze żadnych podróży.",
+    "create": "Nowa podróż"
+  },
+  "trip": {
+    "create": {
+      "title": "Nowa podróż",
+      "name": "Nazwa",
+      "namePlaceholder": "Chorwacja {year}",
+      "nameInvalid": "Nadaj podróży nazwę o długości do 100 znaków.",
+      "currency": "Waluta podróży",
+      "currencyHelp": "W tej walucie prowadzone i rozliczane są wszystkie salda.",
+      "submit": "Utwórz podróż",
+      "failed": "Nie udało się utworzyć podróży. Sprawdź połączenie i spróbuj ponownie."
+    },
+    "currency": "Waluta podróży: {currency}",
+    "invalidLink": "Ten link do podróży nie działa.",
+    "invalidLinkHelp": "Poproś ponownie o link do podróży.",
+    "loadFailed": "Nie udało się wczytać podróży. Sprawdź połączenie i spróbuj ponownie."
   }
 }

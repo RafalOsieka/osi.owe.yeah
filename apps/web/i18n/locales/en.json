@@ -2,8 +2,25 @@
   "app": {
     "title": "Owe Yeah"
   },
-  "trips": {
+  "myTrips": {
     "title": "My Trips",
-    "empty": "No Trips yet."
+    "empty": "No Trips yet.",
+    "create": "New Trip"
+  },
+  "trip": {
+    "create": {
+      "title": "New Trip",
+      "name": "Name",
+      "namePlaceholder": "Croatia {year}",
+      "nameInvalid": "Give the Trip a name of up to 100 characters.",
+      "currency": "Trip currency",
+      "currencyHelp": "All balances are kept and settled in it.",
+      "submit": "Create Trip",
+      "failed": "The Trip could not be created. Check your connection and try again."
+    },
+    "currency": "Trip currency: {currency}",
+    "invalidLink": "This Trip link doesn't work.",
+    "invalidLinkHelp": "Ask for the Trip link again.",
+    "loadFailed": "The Trip could not be loaded. Check your connection and try again."
   }
 }

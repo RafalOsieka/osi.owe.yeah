@@ -13,6 +13,9 @@ export const trips = pgTable('trips', {
   name: text().notNull(),
   // ISO 4217 code of the Trip currency, in which all balances are kept.
   currency: char({ length: 3 }).notNull(),
+  // SHA-256 (hex) of the Trip link's token. The token itself is never stored, and is
+  // independent of the id so a "regenerate link" can replace it later (ADR 0001).
+  tokenHash: text().notNull().unique(),
   createdAt: timestamp({ withTimezone: true }).notNull().defaultNow(),
   // Bumped by Drizzle on every update made through the schema.
   updatedAt: timestamp({ withTimezone: true })

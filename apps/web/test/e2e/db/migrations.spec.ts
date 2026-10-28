@@ -35,7 +35,9 @@ describeDb('committed migrations', () => {
     const { db, sql } = createDatabaseClient(databaseUrl, 1);
     try {
       const id = '019a2b3c-4d5e-7f00-8a1b-2c3d4e5f6a7b';
-      await db.insert(trips).values({ id, name: 'Croatia 2026', currency: 'EUR' });
+      await db
+        .insert(trips)
+        .values({ id, name: 'Croatia 2026', currency: 'EUR', tokenHash: 'croatia' });
 
       const [trip] = await db.select().from(trips);
       expect(trip).toMatchObject({ id, name: 'Croatia 2026', currency: 'EUR' });
@@ -52,7 +54,7 @@ describeDb('committed migrations', () => {
     try {
       const [created] = await db
         .insert(trips)
-        .values({ name: 'Tatry', currency: 'PLN' })
+        .values({ name: 'Tatry', currency: 'PLN', tokenHash: 'tatry' })
         .returning();
       // The version nibble (first of the third group) is 7 for UUIDv7.
       expect(created?.id).toMatch(/^[0-9a-f]{8}-[0-9a-f]{4}-7[0-9a-f]{3}-/);

@@ -14,6 +14,10 @@
 !apps/migrator/src
 !apps/migrator/migrations
 
+# Domain package: TypeScript source, bundled into the web app
+!packages/domain/package.json
+!packages/domain/src
+
 # Web app (Nuxt): config, source, locales
 !apps/web/package.json
 !apps/web/nuxt.config.ts

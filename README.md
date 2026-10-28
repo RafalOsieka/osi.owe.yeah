@@ -24,6 +24,8 @@ pnpm workspace on [Vite+](https://viteplus.dev) (`vp`); Node and pnpm versions a
 
 ```sh
 vp install
+cp .env.example .env                       # DATABASE_URL points at the dev database
+docker compose -f compose.dev.yml up -d    # dev PostgreSQL on 127.0.0.1:5433
 vp run dev           # web app on http://localhost:3000
 vp run build
 vp run lint          # Oxlint + ESLint
@@ -32,6 +34,8 @@ vp run type-check
 vp run test:unit
 vp run test:nuxt     # web component tests
 vp run test:e2e:db   # database tests; needs Docker (starts postgres:18-alpine)
+vp run test:e2e:api  # API tests against the built app; needs Docker
+vp run test:e2e:ui   # Playwright journeys; needs Docker and `vp exec playwright install chromium` in apps/web
 vp run db:generate   # write a SQL migration from the Drizzle schema
 vp run db:migrate    # apply committed migrations to DATABASE_URL (see .env.example)
 ```

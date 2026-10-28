@@ -5,8 +5,8 @@ import { runMigrations } from './index.ts';
 
 /**
  * The one-shot migrate step: applies pending migrations to `DATABASE_URL` and
- * returns the process exit code. Only error messages are printed, never error
- * objects, which could carry connection details.
+ * returns the process exit code. Only error messages (including the `cause`
+ * chain) are printed, never error objects, which could carry connection details.
  */
 export async function main(env: NodeJS.ProcessEnv): Promise<number> {
   const databaseUrl = env.DATABASE_URL?.trim();
@@ -21,9 +21,31 @@ export async function main(env: NodeJS.ProcessEnv): Promise<number> {
     console.log('Migrations applied successfully.');
     return 0;
   } catch (error) {
-    console.error('Migration failed:', error instanceof Error ? error.message : String(error));
+    console.error(
+      'Migration failed:',
+      describeError(error instanceof Error ? error : new Error(String(error))),
+    );
     return 1;
   }
+}
+
+/**
+ * Joins the messages of an error and its `cause` chain. Drizzle wraps driver
+ * errors in a generic "Failed query: …", so the real reason (e.g. "password
+ * authentication failed") is only visible in the cause.
+ */
+export function describeError(error: Error): string {
+  const messages: string[] = [];
+  const seen = new Set<unknown>();
+  let current: unknown = error;
+
+  while (current !== undefined && !seen.has(current)) {
+    seen.add(current);
+    messages.push(current instanceof Error ? current.message : String(current));
+    current = current instanceof Error ? current.cause : undefined;
+  }
+
+  return messages.join('\n  Caused by: ');
 }
 
 const invokedDirectly =

@@ -9,6 +9,10 @@ dist
 # Test coverage
 coverage
 
+# Playwright outputs
+test-results
+playwright-report
+
 # Node dependencies
 node_modules
 

@@ -8,6 +8,9 @@ const HOST_PORT = 54810;
 const SERVER_URL = `postgres://postgres:postgres@127.0.0.1:${HOST_PORT}`;
 const ADMIN_URL = `${SERVER_URL}/postgres`;
 
+/** The container's default database: empty in a fresh container, so the ui suite migrates it. */
+export const DEFAULT_DATABASE_URL = ADMIN_URL;
+
 /** Returns true when a usable Docker CLI is available on the host. */
 export function isDockerAvailable(): boolean {
   try {

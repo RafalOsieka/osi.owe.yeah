@@ -1,5 +1,5 @@
 import { afterEach, describe, expect, it, vi } from 'vite-plus/test';
-import { main } from '../src/cli.ts';
+import { describeError, main } from '../src/cli.ts';
 
 describe('main', () => {
   afterEach(() => {
@@ -25,5 +25,23 @@ describe('main', () => {
       main({ DATABASE_URL: 'postgres://user:pass@127.0.0.1:1/db?connect_timeout=2' }),
     ).resolves.toBe(1);
     expect(error.mock.calls[0]).toEqual(['Migration failed:', expect.any(String)]);
+  });
+});
+
+describe('describeError', () => {
+  it('includes the messages of the cause chain', () => {
+    const driverError = new Error('password authentication failed for user "postgres"');
+    const wrapped = new Error('Failed query: CREATE SCHEMA', { cause: driverError });
+
+    expect(describeError(wrapped)).toBe(
+      'Failed query: CREATE SCHEMA\n  Caused by: password authentication failed for user "postgres"',
+    );
+  });
+
+  it('stops on a cyclic cause', () => {
+    const error = new Error('loop');
+    error.cause = error;
+
+    expect(describeError(error)).toBe('loop');
   });
 });
