@@ -45,6 +45,25 @@ describeDb('committed migrations', () => {
     }
   });
 
+  it('give a Trip inserted without an id a UUIDv7, and bump updatedAt on update', async () => {
+    await runMigrations(databaseUrl);
+
+    const { db, sql } = createDatabaseClient(databaseUrl, 1);
+    try {
+      const [created] = await db
+        .insert(trips)
+        .values({ name: 'Tatry', currency: 'PLN' })
+        .returning();
+      // The version nibble (first of the third group) is 7 for UUIDv7.
+      expect(created?.id).toMatch(/^[0-9a-f]{8}-[0-9a-f]{4}-7[0-9a-f]{3}-/);
+
+      const [updated] = await db.update(trips).set({ name: 'Tatry 2026' }).returning();
+      expect(updated?.updatedAt.getTime()).toBeGreaterThan(created?.updatedAt.getTime() ?? 0);
+    } finally {
+      await sql.end({ timeout: 5 });
+    }
+  });
+
   it('apply nothing on a second run', async () => {
     await runMigrations(databaseUrl);
     const { sql } = createDatabaseClient(databaseUrl, 1);

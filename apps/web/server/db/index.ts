@@ -11,5 +11,3 @@ export function getDb(): Database {
   client ??= createDatabaseClient();
   return client.db;
 }
-
-export { createDatabaseClient, resolveDatabaseUrl } from './client';
