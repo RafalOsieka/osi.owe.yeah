@@ -51,7 +51,10 @@ test('claim a Participant, see the Claim in My Trips, and "Add me" on another de
   await expect(opened.getByText('You are Kasia')).toBeVisible();
   await expect(opened.getByRole('listitem').filter({ hasText: 'Kasia' })).toHaveCount(2);
 
-  // The Claim can be changed at any time.
+  // The Claim can be changed at any time, or the change cancelled.
+  await opened.getByRole('button', { name: 'Change' }).click();
+  await opened.getByRole('button', { name: 'Cancel' }).click();
+  await expect(opened.getByText('You are Kasia')).toBeVisible();
   await opened.getByRole('button', { name: 'Change' }).click();
   await opened.getByRole('button', { name: 'Ania' }).click();
   await expect(opened.getByText('You are Ania')).toBeVisible();
@@ -78,6 +81,31 @@ test('a Claim changed after coming back through My Trips is still there after a 
 
   await page.reload();
   await expect(page.getByText('You are Ania')).toBeVisible();
+});
+
+test('retrying a Participant whose response was lost adds them once', async ({ page }) => {
+  await page.goto('/trips/new');
+  await page.getByLabel('Name').fill('Mazury 2026');
+  await page.getByRole('button', { name: 'Create Trip' }).click();
+  await expect(page.getByRole('heading', { name: 'Mazury 2026' })).toBeVisible();
+
+  // The first add reaches the server, but its response never comes back.
+  await page.route(
+    '**/participants',
+    async (route) => {
+      await route.fetch();
+      await route.abort();
+    },
+    { times: 1 },
+  );
+  await page.getByLabel('New Participant').fill('Ola');
+  await page.getByRole('button', { name: 'Add', exact: true }).click();
+  await expect(page.getByText('The Participant could not be added.')).toBeVisible();
+
+  await page.getByLabel('New Participant').fill('Ola');
+  await page.getByRole('button', { name: 'Add', exact: true }).click();
+  await expect(page.getByText('The Participant could not be added.')).toBeHidden();
+  await expect(page.getByRole('listitem').filter({ hasText: 'Ola' })).toHaveCount(1);
 });
 
 test('a Trip link with a wrong token shows no Trip', async ({ page }) => {

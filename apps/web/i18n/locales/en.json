@@ -42,6 +42,7 @@
     "notListed": "Not on the list?",
     "addMe": "Add me",
     "youAre": "You are {name}",
-    "change": "Change"
+    "change": "Change",
+    "cancel": "Cancel"
   }
 }

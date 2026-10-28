@@ -2,9 +2,14 @@
 import type { Participant } from '@osi/owe-yeah-domain';
 
 // "Who are you?": the device picks one of the Trip's Participants as its Claim, or uses
-// "Add me" to create a new Participant and Claim it in one step.
+// "Add me" to create a new Participant and Claim it in one step. With a current Claim,
+// it can also be cancelled, keeping that Claim.
 defineProps<{ participants: readonly Participant[]; current?: Participant | null }>();
-const emit = defineEmits<{ claim: [participant: Participant]; addMe: [name: string] }>();
+const emit = defineEmits<{
+  claim: [participant: Participant];
+  addMe: [name: string];
+  cancel: [];
+}>();
 </script>
 
 <template>
@@ -30,5 +35,13 @@ const emit = defineEmits<{ claim: [participant: Participant]; addMe: [name: stri
         @submit="emit('addMe', $event)"
       />
     </div>
+    <template v-if="current" #footer>
+      <UButton
+        variant="ghost"
+        color="neutral"
+        :label="$t('claim.cancel')"
+        @click="emit('cancel')"
+      />
+    </template>
   </UCard>
 </template>

@@ -38,15 +38,23 @@ function claimParticipant(participant: Participant): void {
   changingClaim.value = false;
 }
 
-async function addParticipant(name: string): Promise<Participant | undefined> {
+// Each form keeps its id until an add succeeds, so a retry after a lost response is the
+// same addition (the server keeps the last name sent) rather than a second Participant.
+const pendingIds = { add: uuidv7(), addMe: uuidv7() };
+
+async function addParticipant(
+  name: string,
+  form: keyof typeof pendingIds = 'add',
+): Promise<Participant | undefined> {
   addFailed.value = false;
-  const participant: Participant = { id: uuidv7(), name };
+  const participant: Participant = { id: pendingIds[form], name };
   try {
     await $fetch(`/api/trips/${tripId}/participants`, {
       method: 'POST',
       headers,
       body: participant,
     });
+    pendingIds[form] = uuidv7();
     await refresh();
     return participant;
   } catch {
@@ -57,7 +65,7 @@ async function addParticipant(name: string): Promise<Participant | undefined> {
 
 // "Add me": create a Participant and Claim it in one step.
 async function addMe(name: string): Promise<void> {
-  const participant = await addParticipant(name);
+  const participant = await addParticipant(name, 'addMe');
   if (participant) claimParticipant(participant);
 }
 
@@ -84,6 +92,7 @@ useHead({ title: () => trip.value?.name ?? t('trip.invalidLink') });
           :current="claim"
           @claim="claimParticipant"
           @add-me="addMe"
+          @cancel="changingClaim = false"
         />
         <div v-else class="flex items-center gap-2">
           <span>{{ $t('claim.youAre', { name: claim?.name }) }}</span>
@@ -105,7 +114,7 @@ useHead({ title: () => trip.value?.name ?? t('trip.invalidLink') });
           <ParticipantNameForm
             :label="$t('participants.new')"
             :submit-label="$t('participants.add')"
-            @submit="addParticipant"
+            @submit="addParticipant($event)"
           />
         </section>
       </UPageBody>
