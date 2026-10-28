@@ -1,0 +1,28 @@
+{
+  "$schema": "https://json.schemastore.org/package.json",
+  "name": "@osi/owe-yeah-migrator",
+  "version": "0.0.0",
+  "private": true,
+  "type": "module",
+  "description": "Applies the committed SQL migrations and exits",
+  "exports": {
+    ".": "./src/index.ts"
+  },
+  "scripts": {
+    "migrate": "node src/cli.ts",
+    "type-check": "tsc -p tsconfig.json",
+    "test:unit": "vp test run"
+  },
+  "dependencies": {
+    "drizzle-orm": "^0.45.4",
+    "postgres": "^3.4.9"
+  },
+  "devDependencies": {
+    "@types/node": "^26.6.5",
+    "typescript": "^6.0.3",
+    "vite-plus": "catalog:"
+  },
+  "engines": {
+    "node": ">=24"
+  }
+}
