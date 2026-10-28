@@ -1,0 +1,55 @@
+# Production stack: PostgreSQL, the one-shot migrator and the app. HTTPS is
+# terminated by the existing reverse proxy, which forwards to the app port.
+#
+# Setup:  cp .env.example .env   # then set the "Production compose" section
+# Start:  docker compose -f compose.prod.yaml up -d --build
+# Stop:   docker compose -f compose.prod.yaml down     # keeps the database volume
+#
+# POSTGRES_PASSWORD is required; the stack refuses to start without it. The
+# database port is not published.
+
+name: osi-owe-yeah-prod
+
+services:
+  db:
+    image: postgres:18-alpine
+    restart: unless-stopped
+    environment:
+      POSTGRES_USER: ${POSTGRES_USER:-postgres}
+      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD:?POSTGRES_PASSWORD is required}
+      POSTGRES_DB: ${POSTGRES_DB:-owe_yeah}
+    volumes:
+      - pg-owe-yeah:/var/lib/postgresql
+    healthcheck:
+      test: ['CMD-SHELL', 'pg_isready -U $${POSTGRES_USER} -d $${POSTGRES_DB}']
+      interval: 10s
+      timeout: 5s
+      retries: 5
+
+  # Runs to completion before `app` starts; a failed migration keeps the app down.
+  migrate:
+    build:
+      context: .
+      target: migrator
+    restart: 'no'
+    environment:
+      DATABASE_URL: postgres://${POSTGRES_USER:-postgres}:${POSTGRES_PASSWORD:?POSTGRES_PASSWORD is required}@db:5432/${POSTGRES_DB:-owe_yeah}
+    depends_on:
+      db:
+        condition: service_healthy
+
+  app:
+    build:
+      context: .
+      target: runtime
+    restart: unless-stopped
+    ports:
+      - '${APP_BIND:-127.0.0.1}:${APP_PORT:-3000}:3000'
+    environment:
+      DATABASE_URL: postgres://${POSTGRES_USER:-postgres}:${POSTGRES_PASSWORD:?POSTGRES_PASSWORD is required}@db:5432/${POSTGRES_DB:-owe_yeah}
+    depends_on:
+      migrate:
+        condition: service_completed_successfully
+
+volumes:
+  pg-owe-yeah:
