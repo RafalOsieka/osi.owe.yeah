@@ -1,4 +1,5 @@
 import { tripSchema } from '@osi/owe-yeah-domain';
+import { createError, defineEventHandler, readValidatedBody, setResponseStatus } from 'nuxt/server';
 import { getDb } from '../../db';
 import { trips } from '../../db/schema';
 import { createTripToken, hashTripToken } from '../../utils/trip-token';
@@ -8,7 +9,7 @@ import { createTripToken, hashTripToken } from '../../utils/trip-token';
  * ever sent: the server keeps just its hash.
  */
 export default defineEventHandler(async (event) => {
-  const trip = await readValidatedBody(event, tripSchema.parse);
+  const trip = await readValidatedBody(event, tripSchema);
   const token = createTripToken();
 
   const created = await getDb()
@@ -18,7 +19,7 @@ export default defineEventHandler(async (event) => {
     .returning({ id: trips.id });
 
   if (created.length === 0) {
-    throw createError({ statusCode: 409, statusMessage: 'A Trip with this id already exists' });
+    throw createError({ status: 409, statusText: 'A Trip with this id already exists' });
   }
 
   setResponseStatus(event, 201);

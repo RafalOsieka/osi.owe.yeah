@@ -2,7 +2,7 @@
   "app": {
     "title": "Owe Yeah"
   },
-  "trips": {
+  "myTrips": {
     "title": "My Trips",
     "empty": "No Trips yet.",
     "create": "New Trip"
@@ -11,7 +11,7 @@
     "create": {
       "title": "New Trip",
       "name": "Name",
-      "namePlaceholder": "Croatia 2026",
+      "namePlaceholder": "Croatia {year}",
       "nameInvalid": "Give the Trip a name of up to 100 characters.",
       "currency": "Trip currency",
       "currencyHelp": "All balances are kept and settled in it.",

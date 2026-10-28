@@ -1,5 +1,6 @@
 import { TRIP_TOKEN_HEADER, tripIdSchema, tripSchema, type Trip } from '@osi/owe-yeah-domain';
 import { and, eq } from 'drizzle-orm';
+import { createError, defineEventHandler, getRequestHeader, getRouterParam } from 'nuxt/server';
 import { getDb } from '../../db';
 import { trips } from '../../db/schema';
 import { hashTripToken } from '../../utils/trip-token';
@@ -11,7 +12,7 @@ import { hashTripToken } from '../../utils/trip-token';
  */
 export default defineEventHandler(async (event): Promise<Trip> => {
   const id = tripIdSchema.safeParse(getRouterParam(event, 'id'));
-  const token = getHeader(event, TRIP_TOKEN_HEADER);
+  const token = getRequestHeader(event, TRIP_TOKEN_HEADER);
   if (!id.success || !token) throw invalidTripLink();
 
   const [trip] = await getDb()
@@ -25,5 +26,5 @@ export default defineEventHandler(async (event): Promise<Trip> => {
 });
 
 function invalidTripLink() {
-  return createError({ statusCode: 401, statusMessage: 'Invalid Trip link' });
+  return createError({ status: 401, statusText: 'Invalid Trip link' });
 }

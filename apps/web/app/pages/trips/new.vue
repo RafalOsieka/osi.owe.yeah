@@ -47,7 +47,7 @@ async function create(): Promise<void> {
         <UFormField name="name" :label="$t('trip.create.name')">
           <UInput
             v-model="state.name"
-            :placeholder="$t('trip.create.namePlaceholder')"
+            :placeholder="$t('trip.create.namePlaceholder', { year: new Date().getFullYear() })"
             class="w-full"
           />
         </UFormField>

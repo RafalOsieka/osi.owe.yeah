@@ -2,7 +2,7 @@
   "app": {
     "title": "Owe Yeah"
   },
-  "trips": {
+  "myTrips": {
     "title": "Moje podróże",
     "empty": "Nie masz jeszcze żadnych podróży.",
     "create": "Nowa podróż"
@@ -11,7 +11,7 @@
     "create": {
       "title": "Nowa podróż",
       "name": "Nazwa",
-      "namePlaceholder": "Chorwacja 2026",
+      "namePlaceholder": "Chorwacja {year}",
       "nameInvalid": "Nadaj podróży nazwę o długości do 100 znaków.",
       "currency": "Waluta podróży",
       "currencyHelp": "W tej walucie prowadzone i rozliczane są wszystkie salda.",

@@ -10,7 +10,7 @@ function isMessage(entry: string | Catalog): entry is string {
   return typeof entry === 'string';
 }
 
-// Dotted paths of every message in a catalog, e.g. `trips.title`.
+// Dotted paths of every message in a catalog, e.g. `myTrips.title`.
 function messagePaths(catalog: Catalog, prefix = ''): string[] {
   return Object.entries(catalog).flatMap(([key, entry]) =>
     isMessage(entry) ? [prefix + key] : messagePaths(entry, `${prefix}${key}.`),
