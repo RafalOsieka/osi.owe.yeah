@@ -1,0 +1,35 @@
+# Allowlist: ignore everything, then re-include only what the image build needs.
+# Later patterns win, so the trailing block re-excludes junk nested inside allowed dirs.
+*
+
+# Workspace manifests
+!package.json
+!pnpm-lock.yaml
+!pnpm-workspace.yaml
+
+# Migrator: bundled by `vp pack` into the `migrator` image with its SQL migrations
+!apps/migrator/package.json
+!apps/migrator/tsconfig.json
+!apps/migrator/vite.config.ts
+!apps/migrator/src
+!apps/migrator/migrations
+
+# Web app (Nuxt): config, source, locales
+!apps/web/package.json
+!apps/web/nuxt.config.ts
+!apps/web/tsconfig.json
+!apps/web/.nuxtrc
+!apps/web/app
+!apps/web/i18n
+!apps/web/server
+
+# Never let these through even when nested inside an allowed directory
+**/node_modules
+**/dist
+**/.output
+**/.nuxt
+**/.data
+**/test
+**/*.spec.ts
+**/*.log
+**/.DS_Store

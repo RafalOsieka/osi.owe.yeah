@@ -124,6 +124,26 @@ jobs:
       - name: Run build
         run: vp run build
 
+  images:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+
+      - name: Build migrator image
+        run: docker build --target migrator --tag owe-yeah-migrator .
+
+      - name: Build runtime image
+        run: docker build --target runtime --tag owe-yeah-runtime .
+
+      # The final images carry only `node`: no package manager or toolchain.
+      - name: Check images hold no dev tooling
+        run: |
+          for image in owe-yeah-migrator owe-yeah-runtime; do
+            docker run --rm --entrypoint sh "$image" -c \
+              'for tool in npm npx pnpm yarn corepack vp; do if command -v "$tool"; then exit 1; fi; done'
+          done
+
   db:
     runs-on: ubuntu-latest
     needs: [lint, format, type-check, unit, nuxt, build]

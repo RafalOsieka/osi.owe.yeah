@@ -37,9 +37,20 @@ vp run db:migrate    # apply committed migrations to DATABASE_URL (see .env.exam
 ```
 
 - `apps/web` (`@osi/owe-yeah-web`): Nuxt SPA with Nuxt UI, `en`/`pl` i18n and dark mode. Its server holds the Drizzle schema (`server/db/schema`) for PostgreSQL 18.
-- `apps/migrator` (`@osi/owe-yeah-migrator`): one-shot step that applies the committed SQL migrations in `apps/migrator/migrations` and exits.
+- `apps/migrator` (`@osi/owe-yeah-migrator`): one-shot step that applies the committed SQL migrations in `apps/migrator/migrations` and exits. `vp run build` bundles it for the migrator image.
 - `packages/domain` (`@osi/owe-yeah-domain`): pure TypeScript domain rules on exact rationals.
 - `tools/oxlint/anti-slop`: custom Oxlint rules, frozen copy from `osi.time.tracker`.
+
+## Deployment
+
+`Dockerfile` builds two images: `runtime` (the default target, the Nitro server for the SPA and API) and `migrator`. `compose.prod.yaml` runs `db` (PostgreSQL 18), `migrate` (runs to completion before `app` starts) and `app`, published on `127.0.0.1:3000` for the existing reverse proxy, which terminates HTTPS.
+
+```sh
+cp .env.example .env   # fill in POSTGRES_PASSWORD
+docker compose -f compose.prod.yaml up -d --build
+```
+
+The rate limiter (nuxt-security) keys clients by the first `X-Forwarded-For` value, falling back to the socket address. The reverse proxy must therefore **overwrite** `X-Forwarded-For` with the real client IP (nginx: `proxy_set_header X-Forwarded-For $remote_addr;`). Without the header, every user shares the proxy's limit; if the proxy appends to a client-sent header, clients can spoof their way past the limit.
 
 ## Naming
 
