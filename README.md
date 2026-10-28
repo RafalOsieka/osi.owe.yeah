@@ -31,9 +31,13 @@ vp run format:check  # Oxfmt (`vp run format` to fix)
 vp run type-check
 vp run test:unit
 vp run test:nuxt     # web component tests
+vp run test:e2e:db   # database tests; needs Docker (starts postgres:18-alpine)
+vp run db:generate   # write a SQL migration from the Drizzle schema
+vp run db:migrate    # apply committed migrations to DATABASE_URL (see .env.example)
 ```
 
-- `apps/web` (`@osi/owe-yeah-web`): Nuxt SPA with Nuxt UI, `en`/`pl` i18n and dark mode.
+- `apps/web` (`@osi/owe-yeah-web`): Nuxt SPA with Nuxt UI, `en`/`pl` i18n and dark mode. Its server holds the Drizzle schema (`server/db/schema`) for PostgreSQL 18.
+- `apps/migrator` (`@osi/owe-yeah-migrator`): one-shot step that applies the committed SQL migrations in `apps/migrator/migrations` and exits.
 - `packages/domain` (`@osi/owe-yeah-domain`): pure TypeScript domain rules on exact rationals.
 - `tools/oxlint/anti-slop`: custom Oxlint rules, frozen copy from `osi.time.tracker`.
 

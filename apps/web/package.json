@@ -10,12 +10,16 @@
     "postinstall": "nuxt prepare",
     "type-check": "nuxt typecheck",
     "test:unit": "vp test run --project unit",
-    "test:nuxt": "vp test run --project nuxt"
+    "test:nuxt": "vp test run --project nuxt",
+    "test:e2e:db": "vp test run --project e2e-db",
+    "db:generate": "drizzle-kit generate"
   },
   "dependencies": {
     "@nuxt/ui": "^4.12.0",
+    "drizzle-orm": "^0.45.4",
     "nuxt": "^4.6.2",
     "nuxt-security": "^2.7.0",
+    "postgres": "^3.4.9",
     "tailwindcss": "^4.3.3",
     "vue": "^3.5.44",
     "vue-router": "^5.4.0"
@@ -25,8 +29,10 @@
     "@nuxt/eslint": "^1.17.0",
     "@nuxt/test-utils": "^4.3.4",
     "@nuxtjs/i18n": "^10.6.0",
+    "@osi/owe-yeah-migrator": "workspace:*",
     "@types/node": "^26.6.5",
     "@vue/test-utils": "^2.5.1",
+    "drizzle-kit": "^0.31.11",
     "happy-dom": "^20.14.5",
     "typescript": "^6.0.3",
     "vite-plus": "catalog:",

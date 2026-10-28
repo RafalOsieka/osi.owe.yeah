@@ -11,6 +11,16 @@ export default defineConfig({
           environment: 'node',
         },
       },
+      {
+        test: {
+          name: 'e2e-db',
+          include: ['test/e2e/db/**/*.{test,spec}.ts'],
+          environment: 'node',
+          globalSetup: ['test/e2e/harness/global-setup-db.ts'],
+          hookTimeout: 120_000,
+          testTimeout: 60_000,
+        },
+      },
       await defineVitestProject({
         test: {
           name: 'nuxt',
