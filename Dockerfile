@@ -47,11 +47,12 @@ FROM ghcr.io/voidzero-dev/vite-plus:1.3.0 AS web-build
 WORKDIR /app
 
 # Manifests first for layer caching. The image runs as the non-root `vp` user, so
-# copied files must be owned by it. The web app's dev dependency on the migrator
-# (the db e2e harness) puts its manifest in the filtered install.
+# copied files must be owned by it. The web app depends on the domain package, and its
+# dev dependency on the migrator (the e2e harness) puts that manifest in the install too.
 COPY --chown=vp:vp package.json pnpm-lock.yaml pnpm-workspace.yaml ./
 COPY --chown=vp:vp apps/web/package.json apps/web/
 COPY --chown=vp:vp apps/migrator/package.json apps/migrator/
+COPY --chown=vp:vp packages/domain/package.json packages/domain/
 
 # Skip postinstall (`nuxt prepare`): the source isn't copied yet.
 RUN vp install --frozen-lockfile --ignore-scripts --filter "@osi/owe-yeah-web..."

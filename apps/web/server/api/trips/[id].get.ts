@@ -1,0 +1,29 @@
+import { TRIP_TOKEN_HEADER, tripIdSchema, tripSchema, type Trip } from '@osi/owe-yeah-domain';
+import { and, eq } from 'drizzle-orm';
+import { getDb } from '../../db';
+import { trips } from '../../db/schema';
+import { hashTripToken } from '../../utils/trip-token';
+
+/**
+ * The whole-Trip pull. The Trip link's token in the `x-trip-token` header is the only
+ * credential (ADR 0001); a missing or wrong token and an unknown Trip are refused alike,
+ * so the answer never tells whether a Trip exists.
+ */
+export default defineEventHandler(async (event): Promise<Trip> => {
+  const id = tripIdSchema.safeParse(getRouterParam(event, 'id'));
+  const token = getHeader(event, TRIP_TOKEN_HEADER);
+  if (!id.success || !token) throw invalidTripLink();
+
+  const [trip] = await getDb()
+    .select({ id: trips.id, name: trips.name, currency: trips.currency })
+    .from(trips)
+    .where(and(eq(trips.id, id.data), eq(trips.tokenHash, hashTripToken(token))));
+  if (!trip) throw invalidTripLink();
+
+  // Narrows the stored currency to a Trip currency.
+  return tripSchema.parse(trip);
+});
+
+function invalidTripLink() {
+  return createError({ statusCode: 401, statusMessage: 'Invalid Trip link' });
+}

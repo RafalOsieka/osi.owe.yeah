@@ -21,6 +21,17 @@ export default defineConfig({
           testTimeout: 60_000,
         },
       },
+      {
+        test: {
+          name: 'e2e-api',
+          include: ['test/e2e/api/**/*.{test,spec}.ts'],
+          environment: 'node',
+          globalSetup: ['test/e2e/harness/global-setup-server.ts'],
+          // Covers building the app before the suite starts its server.
+          hookTimeout: 300_000,
+          testTimeout: 30_000,
+        },
+      },
       await defineVitestProject({
         test: {
           name: 'nuxt',

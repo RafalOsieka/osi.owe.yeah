@@ -33,6 +33,11 @@ export default defineNuxtConfig({
     fallback: 'light',
   },
   compatibilityDate: '2025-07-15',
+  // Nitro defaults to es2019, which lacks the BigInt literals the domain package's exact
+  // arithmetic uses; the server runs on Node 24.
+  nitro: {
+    esbuild: { options: { target: 'es2022' } },
+  },
   devtools: { enabled: true },
   security: {
     // The Trip link is the credential (ADR 0001) and there are no cookie sessions, so CSRF
