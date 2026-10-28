@@ -24,6 +24,8 @@ pnpm workspace on [Vite+](https://viteplus.dev) (`vp`); Node and pnpm versions a
 
 ```sh
 vp install
+cp .env.example .env                       # DATABASE_URL points at the dev database
+docker compose -f compose.dev.yml up -d    # dev PostgreSQL on 127.0.0.1:5433
 vp run dev           # web app on http://localhost:3000
 vp run build
 vp run lint          # Oxlint + ESLint
