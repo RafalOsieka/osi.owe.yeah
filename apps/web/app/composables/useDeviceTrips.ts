@@ -44,13 +44,14 @@ let deviceTrips: Ref<DeviceTrip[]> | undefined;
  * device's local Trip store arrives. Shared by every caller and saved on every change.
  */
 export function useDeviceTrips() {
-  if (!deviceTrips) {
-    const trips = ref(load());
-    // Every change replaces the list, so a shallow watch sees them all.
-    watch(trips, (value) => localStorage.setItem(STORAGE_KEY, JSON.stringify(value)));
-    deviceTrips = trips;
+  const trips = (deviceTrips ??= ref(load()));
+
+  // Saved here rather than by a watcher: a watcher would belong to the first caller's
+  // component and stop when it unmounts, silently ending the saving.
+  function save(next: DeviceTrip[]): void {
+    trips.value = next;
+    localStorage.setItem(STORAGE_KEY, JSON.stringify(next));
   }
-  const trips = deviceTrips;
 
   /** Most recently opened first. */
   const opened = computed(() =>
@@ -73,13 +74,13 @@ export function useDeviceTrips() {
       claim: claimed,
       openedAt: new Date().toISOString(),
     };
-    trips.value = [...trips.value.filter(({ id }) => id !== trip.id), entry];
+    save([...trips.value.filter(({ id }) => id !== trip.id), entry]);
   }
 
   /** Sets which Participant this device is in a Trip it has opened. */
   function claim(tripId: string, participant: Participant): void {
-    trips.value = trips.value.map((known) =>
-      known.id === tripId ? { ...known, claim: participant } : known,
+    save(
+      trips.value.map((known) => (known.id === tripId ? { ...known, claim: participant } : known)),
     );
   }
 

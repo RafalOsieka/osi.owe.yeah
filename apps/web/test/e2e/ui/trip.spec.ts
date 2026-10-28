@@ -58,6 +58,28 @@ test('claim a Participant, see the Claim in My Trips, and "Add me" on another de
   await device.close();
 });
 
+test('a Claim changed after coming back through My Trips is still there after a reload', async ({
+  page,
+}) => {
+  await page.goto('/trips/new');
+  await page.getByLabel('Name').fill('Bieszczady 2026');
+  await page.getByLabel('Participant 1').fill('Kasia');
+  await page.getByRole('button', { name: 'Add another' }).click();
+  await page.getByLabel('Participant 2').fill('Ania');
+  await page.getByRole('button', { name: 'Create Trip' }).click();
+  await page.getByRole('button', { name: 'Kasia' }).click();
+
+  // Leaving the Trip page unmounts it; My Trips must still save what happens next.
+  await page.getByRole('link', { name: 'Owe Yeah' }).click();
+  await page.getByRole('listitem').filter({ hasText: 'Bieszczady 2026' }).click();
+  await page.getByRole('button', { name: 'Change' }).click();
+  await page.getByRole('button', { name: 'Ania' }).click();
+  await expect(page.getByText('You are Ania')).toBeVisible();
+
+  await page.reload();
+  await expect(page.getByText('You are Ania')).toBeVisible();
+});
+
 test('a Trip link with a wrong token shows no Trip', async ({ page }) => {
   await page.goto('/trips/019a2b3c-4d5e-7f00-8a1b-2c3d4e5f6a7b#not-the-token');
 
