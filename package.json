@@ -1,0 +1,40 @@
+{
+  "$schema": "https://json.schemastore.org/package.json",
+  "name": "osi-owe-yeah",
+  "private": true,
+  "type": "module",
+  "scripts": {
+    "type-check": "vp run --log grouped --filter \"./packages/*\" type-check",
+    "test:unit": "vp run --log grouped --filter \"./packages/*\" test:unit && vp test run --project anti-slop",
+    "lint": "vp lint && eslint .",
+    "lint:fix": "vp lint --fix && eslint . --fix",
+    "format": "vp fmt",
+    "format:check": "vp fmt --check"
+  },
+  "devDependencies": {
+    "@typescript-eslint/parser": "^8.72.1",
+    "eslint": "^10.13.0",
+    "eslint-config-prettier": "^10.1.8",
+    "eslint-plugin-oxlint": "^1.89.0",
+    "typescript": "^6.0.3",
+    "vite-plus": "catalog:"
+  },
+  "author": "Rafal Osieka",
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/RafalOsieka/osi.owe.yeah.git"
+  },
+  "license": "MIT",
+  "devEngines": {
+    "runtime": {
+      "name": "node",
+      "version": "^24.21.0",
+      "onFail": "download"
+    },
+    "packageManager": {
+      "name": "pnpm",
+      "version": "^12.8.1",
+      "onFail": "download"
+    }
+  }
+}

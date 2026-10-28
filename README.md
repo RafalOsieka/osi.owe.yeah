@@ -18,6 +18,21 @@ Owe Yeah will help groups record who paid for what, split costs between particip
 > [!NOTE]
 > Owe Yeah is at the concept stage. No application is available yet; features and implementation details will evolve as development begins.
 
+## Development
+
+pnpm workspace on [Vite+](https://viteplus.dev) (`vp`); Node and pnpm versions are pinned in `package.json` `devEngines`.
+
+```sh
+vp install
+vp run lint          # Oxlint + ESLint
+vp run format:check  # Oxfmt (`vp run format` to fix)
+vp run type-check
+vp run test:unit
+```
+
+- `packages/domain` (`@osi/owe-yeah-domain`): pure TypeScript domain rules on exact rationals.
+- `tools/oxlint/anti-slop`: custom Oxlint rules, frozen copy from `osi.time.tracker`.
+
 ## Naming
 
 - **Full app name:** Owe Yeah - Split expenses
