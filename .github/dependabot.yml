@@ -1,0 +1,24 @@
+version: 2
+updates:
+  - package-ecosystem: 'npm'
+    directory: '/'
+    schedule:
+      interval: 'weekly'
+    # Vite+ pins vite, vitest and coverage together; upgrade them with `vp migrate`,
+    # never one package at a time.
+    ignore:
+      - dependency-name: 'vite-plus'
+      - dependency-name: 'vite'
+      - dependency-name: 'vitest'
+      - dependency-name: '@vitest/*'
+      - dependency-name: '@voidzero-dev/*'
+    groups:
+      nuxt:
+        patterns:
+          - 'nuxt'
+          - '@nuxt/*'
+
+  - package-ecosystem: 'github-actions'
+    directory: '/'
+    schedule:
+      interval: 'weekly'

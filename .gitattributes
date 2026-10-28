@@ -1,0 +1,9 @@
+# Always check out text files with LF endings, regardless of core.autocrlf, to match
+# the formatter's `endOfLine: 'lf'`. Binary files are detected and left untouched.
+* text=auto eol=lf
+
+# Collapse changes to these directories in GitHub pull request diffs by default.
+# `linguist-generated=true` tells GitHub to treat the files as generated:
+# their diffs are hidden (collapsed) by default in PRs and they are excluded
+# from language statistics. Reviewers can still expand the diff on demand.
+.junie/** linguist-generated=true
