@@ -42,8 +42,8 @@ USER node
 
 CMD ["node", "dist/cli.mjs"]
 
-# ── build ─────────────────────────────────────────────────────────────────────
-FROM ghcr.io/voidzero-dev/vite-plus:1.3.0 AS build
+# ── web-build ─────────────────────────────────────────────────────────────────
+FROM ghcr.io/voidzero-dev/vite-plus:1.3.0 AS web-build
 WORKDIR /app
 
 # Manifests first for layer caching. The image runs as the non-root `vp` user, so
@@ -66,7 +66,7 @@ RUN vp exec --filter @osi/owe-yeah-web nuxt prepare \
 # API on port 3000; `DATABASE_URL` is supplied at container start, never baked in.
 FROM slim-node AS runtime
 
-COPY --from=build /app/apps/web/.output .
+COPY --from=web-build /app/apps/web/.output .
 
 USER node
 

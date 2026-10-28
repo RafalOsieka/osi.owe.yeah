@@ -46,9 +46,11 @@ vp run db:migrate    # apply committed migrations to DATABASE_URL (see .env.exam
 `Dockerfile` builds two images: `runtime` (the default target, the Nitro server for the SPA and API) and `migrator`. `compose.prod.yaml` runs `db` (PostgreSQL 18), `migrate` (runs to completion before `app` starts) and `app`, published on `127.0.0.1:3000` for the existing reverse proxy, which terminates HTTPS.
 
 ```sh
-cp .env.example .env   # set POSTGRES_PASSWORD
+cp .env.example .env   # fill in POSTGRES_PASSWORD
 docker compose -f compose.prod.yaml up -d --build
 ```
+
+The rate limiter (nuxt-security) keys clients by the first `X-Forwarded-For` value, falling back to the socket address. The reverse proxy must therefore **overwrite** `X-Forwarded-For` with the real client IP (nginx: `proxy_set_header X-Forwarded-For $remote_addr;`). Without the header, every user shares the proxy's limit; if the proxy appends to a client-sent header, clients can spoof their way past the limit.
 
 ## Naming
 
