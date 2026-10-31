@@ -12,7 +12,7 @@ export const storedExpenseSchema = expenseSchema.extend({ version: expenseVersio
 
 export type StoredExpense = z.infer<typeof storedExpenseSchema>;
 
-/** The whole Trip as the pull returns it: details, Participants and Expenses, newest first. */
+/** The whole Trip as the pull returns it: details, Participants and Expenses. */
 export const tripSnapshotSchema = tripWithParticipantsSchema.extend({
   expenses: z.array(storedExpenseSchema),
 });

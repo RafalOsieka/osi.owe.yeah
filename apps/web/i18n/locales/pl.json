@@ -57,7 +57,7 @@
     "amount": "Kwota",
     "amountInvalid": "Podaj kwotę większą od zera, bez części ułamkowej. | Podaj kwotę większą od zera, z najwyżej 1 miejscem po przecinku. | Podaj kwotę większą od zera, z najwyżej {decimals} miejscami po przecinku.",
     "paidBy": "Kto zapłacił",
-    "summary": "Płatnik: {name} · {time}",
+    "summary": "Główny płatnik: {name} · {time}",
     "payerMissing": "Wskaż, kto zapłacił.",
     "forWhom": "Za kogo",
     "participantsMissing": "Zaznacz co najmniej jednego uczestnika.",

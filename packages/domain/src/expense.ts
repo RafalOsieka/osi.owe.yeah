@@ -112,7 +112,8 @@ export function localDateTime(time: ExpenseTime): string {
 
 /**
  * An Expense time from a local date and time (`YYYY-MM-DDTHH:mm`) in a zone. A local time
- * that a DST change skips or repeats resolves to the earlier instant.
+ * that a DST change skips moves forward by the gap; one it repeats takes the earlier instant
+ * (Temporal's `compatible` disambiguation).
  */
 export function expenseTimeFromLocal(local: string, zone: string): ExpenseTime {
   const instant = Temporal.PlainDateTime.from(local).toZonedDateTime(zone).toInstant();

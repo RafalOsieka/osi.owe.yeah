@@ -25,16 +25,19 @@ export default defineEventHandler(async (event): Promise<PushResponse> => {
   const snapshot = { ...trip, participants: await loadParticipants(trip.id) };
 
   const results: ChangeResult[] = [];
-  for (const change of changes) results.push(await apply(change, snapshot));
+  for (const change of changes) results.push(await applyChange(change, snapshot));
   return { results };
 });
 
-async function apply(change: ExpenseChange, trip: TripWithParticipants): Promise<ChangeResult> {
+async function applyChange(
+  change: ExpenseChange,
+  trip: TripWithParticipants,
+): Promise<ChangeResult> {
   const changeId = change.id;
   const problems = expenseProblems(change.expense, trip);
   if (problems.length > 0) return { changeId, status: 'rejected', problems };
 
-  const applied = await write(change, trip.id);
+  const applied = await storeChange(change, trip.id);
   if (applied) return { changeId, status: 'accepted', version: applied.version };
 
   // Not applied: the Expense is not where or at the version the change expected.
@@ -65,7 +68,7 @@ async function apply(change: ExpenseChange, trip: TripWithParticipants): Promise
  * version, in one conditional statement so concurrent pushes cannot both win. Returns the
  * new version, or nothing when the change did not apply.
  */
-async function write(change: ExpenseChange, tripId: string) {
+async function storeChange(change: ExpenseChange, tripId: string) {
   const { id, ...state } = change.expense;
   const db = getDb();
 

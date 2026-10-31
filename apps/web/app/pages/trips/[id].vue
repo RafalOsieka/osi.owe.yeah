@@ -101,26 +101,28 @@ function changeFor(expense: Expense, baseVersion: number | null): ExpenseChange 
 async function saveExpense(expense: Expense): Promise<void> {
   saveRefusals.value = [];
   const change = changeFor(expense, editing.value?.expense?.version ?? null);
-  try {
-    const {
-      results: [result],
-    } = await $fetch(`/api/trips/${tripId}/push`, {
-      method: 'POST',
-      headers,
-      body: { changes: [change] },
-    });
-    if (result?.status === 'accepted') {
-      pendingChange = undefined;
-      editing.value = null;
-    } else if (result?.status === 'conflict') {
-      saveRefusals.value = [t('expense.refused.conflict')];
-    } else if (result?.status === 'rejected') {
-      saveRefusals.value = result.problems.map((problem) => t(`expense.refused.${problem}`));
-    }
-    await refresh();
-  } catch {
+  const result = await $fetch(`/api/trips/${tripId}/push`, {
+    method: 'POST',
+    headers,
+    body: { changes: [change] },
+  }).then(
+    ({ results }) => results[0],
+    () => null,
+  );
+  if (result === null) {
     saveRefusals.value = [t('expense.saveFailed')];
+    return;
   }
+
+  if (result?.status === 'accepted') {
+    pendingChange = undefined;
+    editing.value = null;
+  } else if (result?.status === 'conflict') {
+    saveRefusals.value = [t('expense.refused.conflict')];
+  } else if (result?.status === 'rejected') {
+    saveRefusals.value = result.problems.map((problem) => t(`expense.refused.${problem}`));
+  }
+  await refresh();
 }
 
 useHead({ title: () => trip.value?.name ?? t('trip.invalidLink') });
