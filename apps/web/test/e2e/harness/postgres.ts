@@ -4,7 +4,8 @@ import postgres from 'postgres';
 import { describe } from 'vitest';
 
 const CONTAINER_NAME = 'osi-owe-yeah-e2e-pg';
-const HOST_PORT = 54810;
+// Below the dynamic port range (49152+), which Windows/Hyper-V may reserve in blocks.
+const HOST_PORT = 25810;
 const SERVER_URL = `postgres://postgres:postgres@127.0.0.1:${HOST_PORT}`;
 const ADMIN_URL = `${SERVER_URL}/postgres`;
 
