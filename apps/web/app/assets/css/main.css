@@ -1,2 +1,34 @@
 @import 'tailwindcss';
 @import '@nuxt/ui';
+
+/*
+ * Page changes are instant, as on a phone. Form-layout pages slide in from the right and
+ * back out: their `viewTransition` meta adds the `forward` and `back` types.
+ */
+::view-transition-old(root),
+::view-transition-new(root) {
+  /* The default `plus-lighter` would blend the two opaque pages while one slides. */
+  mix-blend-mode: normal;
+  animation: none;
+}
+
+html:active-view-transition-type(forward)::view-transition-new(root) {
+  animation: 250ms ease-out both slide-from-right;
+}
+
+html:active-view-transition-type(back)::view-transition-old(root) {
+  z-index: 1;
+  animation: 250ms ease-in both slide-to-right;
+}
+
+@keyframes slide-from-right {
+  from {
+    translate: 100% 0;
+  }
+}
+
+@keyframes slide-to-right {
+  to {
+    translate: 100% 0;
+  }
+}
