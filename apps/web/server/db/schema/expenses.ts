@@ -1,16 +1,20 @@
 import type { Expense } from '@osi/owe-yeah-domain';
+import { sql } from 'drizzle-orm';
 import { index, integer, jsonb, pgTable, timestamp, uuid } from 'drizzle-orm/pg-core';
 import { trips } from './trips';
 
 /**
  * An Expense of a Trip. The whole Expense is the unit of change and of Conflict (ADR 0002),
- * so its state is kept as one JSON document and only read back whole. The id is a UUIDv7
- * generated on the client, so Expenses can be created offline.
+ * so its state is kept as one JSON document and only read back whole. The id is a UUIDv7,
+ * normally generated on the client so Expenses can be created offline; Postgres 18's
+ * `uuidv7()` fills it in when an insert omits it.
  */
 export const expenses = pgTable(
   'expenses',
   {
-    id: uuid().primaryKey(),
+    id: uuid()
+      .primaryKey()
+      .default(sql`uuidv7()`),
     tripId: uuid()
       .notNull()
       .references(() => trips.id, { onDelete: 'cascade' }),

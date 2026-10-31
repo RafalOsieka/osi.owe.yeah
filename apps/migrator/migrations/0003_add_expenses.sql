@@ -1,5 +1,5 @@
 CREATE TABLE "expenses" (
-	"id" uuid PRIMARY KEY NOT NULL,
+	"id" uuid PRIMARY KEY DEFAULT uuidv7() NOT NULL,
 	"trip_id" uuid NOT NULL,
 	"version" integer NOT NULL,
 	"last_change_id" uuid NOT NULL,

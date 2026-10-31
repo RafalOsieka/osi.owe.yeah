@@ -1,5 +1,5 @@
 {
-  "id": "6567dcb0-18c8-4f38-aede-f49e415bb638",
+  "id": "86e56c93-5947-4bb1-a03a-a1a4f5d30b6e",
   "prevId": "55c87546-1742-4b45-8706-da81eced3fe7",
   "version": "7",
   "dialect": "postgresql",
@@ -12,7 +12,8 @@
           "name": "id",
           "type": "uuid",
           "primaryKey": true,
-          "notNull": true
+          "notNull": true,
+          "default": "uuidv7()"
         },
         "trip_id": {
           "name": "trip_id",
