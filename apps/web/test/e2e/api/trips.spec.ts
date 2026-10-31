@@ -1,7 +1,12 @@
 import { fileURLToPath } from 'node:url';
 import {
   TRIP_TOKEN_HEADER,
+  type ChangeResult,
+  type Expense,
+  type ExpenseChange,
   type Participant,
+  type PushResponse,
+  type TripSnapshot,
   type TripWithParticipants,
 } from '@osi/owe-yeah-domain';
 import { createTest, fetch } from '@nuxt/test-utils/e2e';
@@ -53,10 +58,59 @@ function addParticipant(tripId: string, added: Participant, token?: string): Pro
   });
 }
 
+async function pulled(tripId: string, token: string): Promise<TripSnapshot> {
+  // SAFETY: a 200 from the whole-Trip pull is a TripSnapshot.
+  return (await (await pullTrip(tripId, token)).json()) as TripSnapshot;
+}
+
 async function pulledParticipants(tripId: string, token: string): Promise<Participant[]> {
-  // SAFETY: a 200 from the whole-Trip pull is a TripWithParticipants.
-  const trip = (await (await pullTrip(tripId, token)).json()) as TripWithParticipants;
-  return trip.participants;
+  return (await pulled(tripId, token)).participants;
+}
+
+/** A plain Expense of 24.50 EUR paid by `payer`, split evenly between `ticked`. */
+function plainExpense(payer: Participant, ticked: Participant[] = [payer]): Expense {
+  return {
+    id: uuidv7(),
+    title: 'Lidl Rovinj',
+    currency: 'EUR',
+    time: { instant: '2026-07-14T21:30:00Z', zone: 'Europe/Zagreb' },
+    mainPayerId: payer.id,
+    lineItems: [
+      { unitPrice: 2450, split: { mode: 'even', participantIds: ticked.map(({ id }) => id) } },
+    ],
+  };
+}
+
+function change(expense: Expense, baseVersion: number | null = null): ExpenseChange {
+  return { id: uuidv7(), baseVersion, expense };
+}
+
+function pushResponse(tripId: string, changes: ExpenseChange[], token?: string): Promise<Response> {
+  const headers = new Headers({ 'content-type': 'application/json' });
+  if (token) headers.set(TRIP_TOKEN_HEADER, token);
+  return fetch(`/api/trips/${tripId}/push`, {
+    method: 'POST',
+    headers,
+    body: JSON.stringify({ changes }),
+  });
+}
+
+/** Pushes changes and returns their results, expecting the push itself to succeed. */
+async function push(tripId: string, token: string, ...changes: ExpenseChange[]) {
+  const response = await pushResponse(tripId, changes, token);
+  expect(response.status).toBe(200);
+  // SAFETY: a 200 from the push endpoint is a PushResponse, checked just above.
+  const { results } = (await response.json()) as PushResponse;
+  return results;
+}
+
+/** A Trip with Kasia and Ania, created on the server. */
+async function tripWithKasiaAndAnia() {
+  const kasia = participant('Kasia');
+  const ania = participant('Ania');
+  const trip = newTrip('Croatia 2026', [kasia, ania]);
+  const token = await createdToken(trip);
+  return { trip, token, kasia, ania };
 }
 
 describeApi('Trip API', () => {
@@ -77,7 +131,7 @@ describeApi('Trip API', () => {
     const response = await pullTrip(trip.id, token);
 
     expect(response.status).toBe(200);
-    expect(await response.json()).toEqual(trip);
+    expect(await response.json()).toEqual({ ...trip, expenses: [] });
   });
 
   it('creates a Trip with Participants whose names repeat, and pulls them in order', async () => {
@@ -180,5 +234,91 @@ describeApi('Trip API', () => {
 
     expect((await createTrip(trip)).status).toBe(409);
     expect((await pullTrip(trip.id, token)).status).toBe(200);
+  });
+
+  it('creates an Expense through the push at version 1, and pulls it', async () => {
+    const { trip, token, kasia, ania } = await tripWithKasiaAndAnia();
+    const created = change(plainExpense(kasia, [kasia, ania]));
+
+    expect(await push(trip.id, token, created)).toEqual<ChangeResult[]>([
+      { changeId: created.id, status: 'accepted', version: 1 },
+    ]);
+    expect((await pulled(trip.id, token)).expenses).toEqual([{ ...created.expense, version: 1 }]);
+  });
+
+  it('edits an Expense based on its current version, and bumps the version', async () => {
+    const { trip, token, kasia, ania } = await tripWithKasiaAndAnia();
+    const expense = plainExpense(kasia);
+    await push(trip.id, token, change(expense));
+    const edited = change({ ...expense, title: 'Konzum', mainPayerId: ania.id }, 1);
+
+    expect(await push(trip.id, token, edited)).toEqual<ChangeResult[]>([
+      { changeId: edited.id, status: 'accepted', version: 2 },
+    ]);
+    expect((await pulled(trip.id, token)).expenses).toEqual([{ ...edited.expense, version: 2 }]);
+  });
+
+  it('answers a retried change with its first result, applying it once', async () => {
+    const { trip, token, kasia } = await tripWithKasiaAndAnia();
+    const created = change(plainExpense(kasia));
+
+    await push(trip.id, token, created);
+    expect(await push(trip.id, token, created)).toEqual<ChangeResult[]>([
+      { changeId: created.id, status: 'accepted', version: 1 },
+    ]);
+    expect((await pulled(trip.id, token)).expenses).toHaveLength(1);
+  });
+
+  it('reports a Conflict for a change based on an older version, keeping the Expense', async () => {
+    const { trip, token, kasia } = await tripWithKasiaAndAnia();
+    const expense = plainExpense(kasia);
+    await push(trip.id, token, change(expense));
+    await push(trip.id, token, change({ ...expense, title: 'Konzum' }, 1));
+    const stale = change({ ...expense, title: 'Spar' }, 1);
+
+    const current = { ...expense, title: 'Konzum', version: 2 };
+    expect(await push(trip.id, token, stale)).toEqual<ChangeResult[]>([
+      { changeId: stale.id, status: 'conflict', current },
+    ]);
+    expect((await pulled(trip.id, token)).expenses).toEqual([current]);
+  });
+
+  it('refuses an Expense that breaks a Trip rule, saying why and keeping the Expense', async () => {
+    const { trip, token, kasia } = await tripWithKasiaAndAnia();
+    const expense = plainExpense(kasia);
+    await push(trip.id, token, change(expense));
+    const refused = change({ ...plainExpense(participant('Stranger')), id: expense.id }, 1);
+
+    expect(await push(trip.id, token, refused)).toEqual<ChangeResult[]>([
+      {
+        changeId: refused.id,
+        status: 'rejected',
+        problems: ['unknownMainPayer', 'unknownParticipant'],
+      },
+    ]);
+    expect((await pulled(trip.id, token)).expenses).toEqual([{ ...expense, version: 1 }]);
+  });
+
+  it("refuses an Expense id another Trip uses, and an edit of an Expense it doesn't have", async () => {
+    const other = await tripWithKasiaAndAnia();
+    const taken = plainExpense(other.kasia);
+    await push(other.trip.id, other.token, change(taken));
+    const { trip, token, kasia } = await tripWithKasiaAndAnia();
+    const reused = change({ ...plainExpense(kasia), id: taken.id });
+    const missing = change(plainExpense(kasia), 1);
+
+    expect(await push(trip.id, token, reused, missing)).toEqual<ChangeResult[]>([
+      { changeId: reused.id, status: 'rejected', problems: ['expenseIdTaken'] },
+      { changeId: missing.id, status: 'rejected', problems: ['unknownExpense'] },
+    ]);
+    expect((await pulled(other.trip.id, other.token)).expenses).toEqual([{ ...taken, version: 1 }]);
+  });
+
+  it("refuses a push without the Trip's token, or with a malformed Expense", async () => {
+    const { trip, token, kasia } = await tripWithKasiaAndAnia();
+
+    expect((await pushResponse(trip.id, [change(plainExpense(kasia))])).status).toBe(401);
+    const blank = change({ ...plainExpense(kasia), title: ' ' });
+    expect((await pushResponse(trip.id, [blank], token)).status).toBe(400);
   });
 });

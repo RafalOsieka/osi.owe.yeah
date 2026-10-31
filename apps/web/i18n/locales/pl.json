@@ -44,5 +44,43 @@
     "youAre": "Jesteś: {name}",
     "change": "Zmień",
     "cancel": "Anuluj"
+  },
+  "expense": {
+    "list": "Wydatki",
+    "empty": "Nie ma jeszcze żadnych wydatków.",
+    "add": "Dodaj wydatek",
+    "new": "Nowy wydatek",
+    "edit": "Edytuj wydatek",
+    "title": "Tytuł",
+    "titlePlaceholder": "Lidl Rovinj",
+    "titleInvalid": "Nadaj wydatkowi tytuł o długości do 100 znaków.",
+    "amount": "Kwota",
+    "amountInvalid": "Podaj kwotę większą od zera, bez części ułamkowej. | Podaj kwotę większą od zera, z najwyżej 1 miejscem po przecinku. | Podaj kwotę większą od zera, z najwyżej {decimals} miejscami po przecinku.",
+    "paidBy": "Kto zapłacił",
+    "summary": "Płatnik: {name} · {time}",
+    "payerMissing": "Wskaż, kto zapłacił.",
+    "forWhom": "Za kogo",
+    "participantsMissing": "Zaznacz co najmniej jednego uczestnika.",
+    "when": "Kiedy",
+    "timeMissing": "Podaj, kiedy zapłacono.",
+    "timeZone": "Strefa czasowa",
+    "save": "Zapisz",
+    "saveFailed": "Nie udało się zapisać wydatku. Sprawdź połączenie i spróbuj ponownie.",
+    "refused": {
+      "title": "Wydatek nie został zapisany",
+      "conflict": "W międzyczasie ktoś inny zmienił ten wydatek. Zamknij formularz, aby zobaczyć jego wersję.",
+      "unknownMainPayer": "Osoby, która zapłaciła, nie ma już w podróży.",
+      "unknownParticipant": "Któregoś z zaznaczonych uczestników nie ma już w podróży.",
+      "currencyNotTripCurrency": "Wydatek musi być w walucie podróży.",
+      "expenseIdTaken": "Ten wydatek należy do innej podróży.",
+      "unknownExpense": "Ten wydatek już nie istnieje."
+    }
+  },
+  "balances": {
+    "title": "Salda",
+    "participant": "Uczestnik",
+    "paid": "Zapłacono",
+    "share": "Udział",
+    "balance": "Saldo"
   }
 }

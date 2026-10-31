@@ -26,3 +26,23 @@ export function rational(numerator: bigint, denominator = 1n): Rational {
     denominator: (sign * denominator) / divisor,
   };
 }
+
+/** The exact sum of two Rationals. */
+export function add(a: Rational, b: Rational): Rational {
+  return rational(
+    a.numerator * b.denominator + b.numerator * a.denominator,
+    a.denominator * b.denominator,
+  );
+}
+
+/** The exact difference `a - b`. */
+export function subtract(a: Rational, b: Rational): Rational {
+  return add(a, rational(-b.numerator, b.denominator));
+}
+
+/** `value` rounded to the nearest whole number, halves away from zero. */
+export function roundHalfAwayFromZero(value: Rational): bigint {
+  const magnitude = abs(value.numerator);
+  const rounded = (2n * magnitude + value.denominator) / (2n * value.denominator);
+  return value.numerator < 0n ? -rounded : rounded;
+}
