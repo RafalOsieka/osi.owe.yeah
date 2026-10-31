@@ -102,8 +102,14 @@ _Polish_: Spłata
 _Avoid_: Settlement, transfer, reimbursement, payment
 _Polish avoid_: Rozliczenie, przelew, zwrot, płatność
 
+**Suggested Repayment**:
+A Repayment the app proposes so that balances even out with as few transfers as possible. It is only a proposal until someone records it as a Repayment.
+_Polish_: Sugerowana spłata
+_Avoid_: Settlement, debt, transfer, Repayment (on its own)
+_Polish avoid_: Rozliczenie, dług, przelew, spłata (on its own)
+
 **Reminder**:
-A nudge one Participant sends another about a suggested Repayment the other owes them. Sent by hand, never on a schedule.
+A nudge one Participant sends another about a Suggested Repayment the other owes them. Sent by hand, never on a schedule.
 _Polish_: Przypomnienie
 _Avoid_: Nudge, ping, dunning
 _Polish avoid_: Ponaglenie, monit

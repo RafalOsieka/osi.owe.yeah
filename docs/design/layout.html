@@ -1,0 +1,576 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Owe Yeah: app layout</title>
+<style>
+:root {
+  --bg: #f1f5f9; --page: #ffffff; --elevated: #f8fafc; --accented: #f1f5f9;
+  --text: #0f172a; --muted: #64748b; --dimmed: #94a3b8; --border: #e2e8f0;
+  --primary: #059669; --primary-soft: #d1fae5; --primary-ink: #065f46;
+  --error: #dc2626; --error-soft: #fee2e2; --warning: #d97706; --warning-soft: #fef3c7;
+  --a1: #0ea5e9; --a2: #f59e0b; --a3: #8b5cf6; --a4: #ec4899;
+  --later: #7c3aed; --later-soft: #ede9fe;
+}
+@media (prefers-color-scheme: dark) {
+  :root:not([data-theme="light"]) {
+    --bg: #020617; --page: #0f172a; --elevated: #1e293b; --accented: #1e293b;
+    --text: #f1f5f9; --muted: #94a3b8; --dimmed: #64748b; --border: #1e293b;
+    --primary: #34d399; --primary-soft: #064e3b; --primary-ink: #a7f3d0;
+    --error: #f87171; --error-soft: #450a0a; --warning: #fbbf24; --warning-soft: #451a03;
+    --later: #c4b5fd; --later-soft: #2e1065;
+  }
+}
+:root[data-theme="dark"] {
+  --bg: #020617; --page: #0f172a; --elevated: #1e293b; --accented: #1e293b;
+  --text: #f1f5f9; --muted: #94a3b8; --dimmed: #64748b; --border: #1e293b;
+  --primary: #34d399; --primary-soft: #064e3b; --primary-ink: #a7f3d0;
+  --error: #f87171; --error-soft: #450a0a; --warning: #fbbf24; --warning-soft: #451a03;
+  --later: #c4b5fd; --later-soft: #2e1065;
+}
+* { box-sizing: border-box; }
+body { margin: 0; background: var(--bg); color: var(--text); font: 15px/1.5 system-ui, -apple-system, "Segoe UI", sans-serif; }
+.doc { max-width: 1240px; margin: 0 auto; padding: 32px 20px 80px; }
+.doc > header { max-width: 75ch; }
+h1 { font-size: 28px; margin: 0 0 8px; }
+h2 { font-size: 21px; margin: 56px 0 6px; padding-top: 16px; border-top: 1px solid var(--border); }
+p, .rules { max-width: 75ch; }
+.lede, .why { color: var(--muted); }
+.why b, .lede b { color: var(--text); }
+.rules { padding-left: 20px; color: var(--muted); font-size: 14px; }
+.rules li { margin: 4px 0; }
+.rules b { color: var(--text); }
+code { font-family: ui-monospace, Menlo, Consolas, monospace; font-size: .9em; }
+.toolbar { display: flex; gap: 12px; align-items: center; flex-wrap: wrap; margin: 16px 0 0; font-size: 13px; color: var(--muted); }
+.toolbar button { font: inherit; padding: 4px 10px; border-radius: 6px; border: 1px solid var(--border); background: var(--page); color: var(--text); cursor: pointer; }
+.toolbar button:focus-visible { outline: 2px solid var(--primary); outline-offset: 2px; }
+.legend-later { display: inline-flex; align-items: center; gap: 6px; }
+.legend-later i { display: inline-block; width: 28px; height: 16px; border: 1.5px dashed var(--later); border-radius: 4px; }
+.row { display: flex; flex-wrap: wrap; gap: 28px; margin-top: 20px; align-items: flex-start; }
+figure { margin: 0; width: 340px; max-width: 100%; }
+figcaption { margin-top: 10px; font-size: 13.5px; color: var(--muted); }
+figcaption strong { display: block; color: var(--text); font-size: 15px; margin-bottom: 2px; }
+figcaption ul { margin: 4px 0 0; padding-left: 18px; }
+
+/* ---------- phone ---------- */
+.phone { position: relative; width: 340px; max-width: 100%; height: 700px; border-radius: 34px; border: 8px solid #0b1220; background: var(--page); overflow: hidden; display: flex; flex-direction: column; box-shadow: 0 10px 30px rgb(15 23 42 / .12); font-size: 14px; }
+.phone.tall { height: 820px; }
+.status { height: 26px; flex: none; display: flex; justify-content: space-between; align-items: center; padding: 0 20px; font-size: 11px; font-weight: 600; }
+.bar { flex: none; height: 52px; display: flex; align-items: center; gap: 4px; padding: 0 8px; border-bottom: 1px solid var(--border); }
+.bar .ttl { flex: 1; min-width: 0; line-height: 1.15; }
+.bar .ttl b, .bar .ttl small { display: block; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+.bar .ttl b { font-size: 16px; }
+.bar .ttl small { color: var(--muted); font-size: 11.5px; }
+.ib { width: 36px; height: 36px; display: grid; place-items: center; border-radius: 8px; color: var(--text); background: none; border: 0; flex: none; position: relative; }
+.ib svg, .ic { width: 20px; height: 20px; }
+.ic { display: inline-block; vertical-align: -4px; flex: none; }
+.sm { width: 15px; height: 15px; vertical-align: -3px; flex: none; }
+.scroll { flex: 1; overflow: hidden; padding: 12px 14px 90px; position: relative; }
+.dot { position: absolute; top: 7px; right: 6px; width: 8px; height: 8px; border-radius: 50%; background: var(--warning); border: 2px solid var(--page); }
+
+.hero { border-radius: 14px; padding: 14px 16px; background: var(--primary-soft); color: var(--primary-ink); }
+.hero small { font-size: 12px; opacity: .85; display: block; }
+.hero .big { font-size: 26px; font-weight: 700; font-variant-numeric: tabular-nums; letter-spacing: -.01em; }
+.hero .sub { font-size: 12px; margin-top: 2px; }
+.strip { display: flex; justify-content: space-between; align-items: center; padding: 8px 12px; border-radius: 10px; background: var(--primary-soft); color: var(--primary-ink); font-size: 13px; }
+.strip b { font-variant-numeric: tabular-nums; }
+
+.day { font-size: 12px; font-weight: 600; color: var(--muted); margin: 14px 0 4px; text-transform: uppercase; letter-spacing: .04em; display: flex; justify-content: space-between; gap: 8px; }
+.day span:last-child { font-variant-numeric: tabular-nums; text-transform: none; letter-spacing: 0; font-weight: 500; flex: none; }
+.ex { display: flex; gap: 10px; align-items: center; padding: 9px 0; border-bottom: 1px solid var(--border); }
+.ex:last-child { border-bottom: 0; }
+.ex .mid { flex: 1; min-width: 0; line-height: 1.3; }
+.ex .mid b, .ex .mid small { display: block; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+.ex .mid b { font-weight: 600; }
+.ex .mid small { color: var(--muted); font-size: 12px; }
+.ex .amt { flex: none; text-align: right; font-variant-numeric: tabular-nums; line-height: 1.3; }
+.ex .amt b { font-weight: 600; display: block; }
+.ex .amt small { font-size: 11.5px; color: var(--muted); }
+.ex .amt small.pos { color: var(--primary); }
+.ex .amt small.neg { color: var(--error); }
+
+.av { flex: none; width: 34px; height: 34px; border-radius: 50%; display: grid; place-items: center; color: #fff; font-weight: 700; font-size: 13px; }
+.av.s { width: 26px; height: 26px; font-size: 11px; }
+.av.xs { width: 20px; height: 20px; font-size: 9px; }
+.ania { background: var(--a1); } .kasia { background: var(--a4); } .bartek { background: var(--a2); } .marek { background: var(--a3); }
+
+.badge { display: inline-flex; align-items: center; gap: 3px; font-size: 10.5px; font-weight: 600; padding: 0 6px; border-radius: 99px; vertical-align: 1px; }
+.badge.warn { background: var(--warning-soft); color: var(--warning); }
+.badge.err { background: var(--error-soft); color: var(--error); }
+.badge.ok { background: var(--primary-soft); color: var(--primary-ink); }
+.badge.neutral { background: var(--accented); color: var(--muted); }
+
+.tabs { position: absolute; left: 0; right: 0; bottom: 0; height: 64px; border-top: 1px solid var(--border); background: var(--page); display: flex; padding-bottom: 6px; }
+.tabs span { flex: 1; display: flex; flex-direction: column; align-items: center; justify-content: center; gap: 2px; font-size: 11px; color: var(--muted); }
+.tabs span.on { color: var(--primary); font-weight: 600; }
+.fab { position: absolute; right: 16px; bottom: 80px; height: 50px; padding: 0 18px 0 14px; border-radius: 16px; background: var(--primary); color: var(--page); display: flex; align-items: center; gap: 6px; font-weight: 600; box-shadow: 0 6px 16px rgb(5 150 105 / .35); border: 0; font-size: 14px; }
+.fab.solo { bottom: 20px; }
+.fab svg { width: 20px; height: 20px; }
+
+.sugg { display: flex; align-items: center; gap: 8px; padding: 10px 12px; border-radius: 12px; background: var(--elevated); margin-top: 8px; }
+.sugg .mid { flex: 1; min-width: 0; line-height: 1.2; font-size: 13px; }
+.sugg .mid span { display: block; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+.sugg .mid b { font-variant-numeric: tabular-nums; display: block; font-size: 15px; }
+.arrow { color: var(--dimmed); font-size: 13px; }
+.btn { font: inherit; font-size: 12.5px; font-weight: 600; padding: 6px 10px; border-radius: 8px; border: 0; background: var(--primary); color: var(--page); white-space: nowrap; flex: none; }
+.btn.ghost { background: none; color: var(--primary); padding: 6px; }
+.btn.outline { background: none; color: var(--text); border: 1px solid var(--border); }
+.btn.block { display: block; width: 100%; padding: 12px; font-size: 15px; border-radius: 12px; }
+.sect { font-size: 12px; font-weight: 600; color: var(--muted); text-transform: uppercase; letter-spacing: .04em; margin: 18px 0 4px; }
+
+/* diverging balance bars */
+.div .r { display: grid; grid-template-columns: 64px 1fr 1fr; align-items: center; height: 30px; font-size: 12.5px; }
+.div .r > span:first-child { font-weight: 500; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; padding-right: 4px; }
+.div .l, .div .rt { height: 100%; display: flex; align-items: center; }
+.div .l { justify-content: flex-end; border-right: 1.5px solid var(--dimmed); }
+.div i { display: block; height: 16px; }
+.div .l i { background: var(--error); border-radius: 4px 0 0 4px; opacity: .85; }
+.div .rt i { background: var(--primary); border-radius: 0 4px 4px 0; opacity: .85; }
+.div em { font-style: normal; font-variant-numeric: tabular-nums; font-size: 11.5px; padding: 0 5px; color: var(--muted); white-space: nowrap; }
+.div .me > span:first-child { font-weight: 700; }
+.axis { display: flex; justify-content: space-between; font-size: 11px; color: var(--dimmed); padding-left: 64px; }
+
+/* forms */
+.amount-in { text-align: center; padding: 18px 0 10px; }
+.amount-in .v { font-size: 40px; font-weight: 700; font-variant-numeric: tabular-nums; letter-spacing: -.02em; }
+.amount-in .v span { color: var(--muted); font-size: 22px; font-weight: 600; margin-left: 4px; }
+.pill { display: inline-block; margin-top: 4px; font-size: 12px; padding: 2px 8px; border: 1px solid var(--border); border-radius: 99px; color: var(--muted); }
+.fld { margin-top: 14px; }
+.fld > label { display: flex; justify-content: space-between; font-size: 12.5px; font-weight: 600; margin-bottom: 5px; }
+.fld > label span { color: var(--primary); font-weight: 500; }
+.fld .help { font-size: 12px; color: var(--muted); margin-top: 4px; }
+.inp { border: 1px solid var(--border); border-radius: 10px; padding: 9px 11px; background: var(--page); display: flex; align-items: center; justify-content: space-between; gap: 6px; font-size: 16px; }
+.inp .ph { color: var(--dimmed); }
+.chips { display: flex; flex-wrap: wrap; gap: 6px; }
+.chip { display: inline-flex; align-items: center; gap: 6px; padding: 3px 10px 3px 3px; border-radius: 99px; border: 1px solid var(--border); font-size: 13px; max-width: 10rem; }
+.chip > span:last-child { white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+.chip.on { border-color: var(--primary); background: var(--primary-soft); color: var(--primary-ink); font-weight: 600; }
+.lowkey { font-size: 12px; color: var(--muted); margin-top: 14px; display: flex; gap: 6px; align-items: center; flex-wrap: wrap; }
+.lowkey u { text-decoration-color: var(--dimmed); text-underline-offset: 2px; }
+.footer { position: absolute; left: 0; right: 0; bottom: 0; padding: 10px 14px 16px; background: var(--page); border-top: 1px solid var(--border); }
+.addline { margin-top: 16px; border: 1.5px dashed var(--border); border-radius: 12px; padding: 10px; text-align: center; color: var(--muted); font-size: 13px; }
+
+/* detail */
+.dt-title { font-size: 20px; font-weight: 700; line-height: 1.25; overflow-wrap: anywhere; margin: 4px 0 2px; }
+.dt-total { font-size: 30px; font-weight: 700; font-variant-numeric: tabular-nums; }
+.dt-meta { font-size: 12.5px; color: var(--muted); }
+.share { display: flex; align-items: center; gap: 10px; padding: 7px 0; }
+.share .mid { flex: 1; min-width: 0; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+.share .amt { flex: none; font-variant-numeric: tabular-nums; }
+.notice { display: flex; gap: 8px; align-items: flex-start; padding: 10px 12px; border-radius: 12px; background: var(--error-soft); color: var(--error); font-size: 12.5px; }
+.danger-link { color: var(--error); font-weight: 600; font-size: 14px; padding: 10px 0; }
+
+/* overlays */
+.scrim { position: absolute; inset: 0; background: rgb(2 6 23 / .45); }
+.sheet { position: absolute; left: 0; right: 0; bottom: 0; background: var(--page); border-radius: 20px 20px 0 0; padding: 8px 16px 20px; }
+.sheet .grip { width: 40px; height: 4px; border-radius: 4px; background: var(--border); margin: 0 auto 12px; }
+.sheet h3 { margin: 0; font-size: 18px; }
+.sheet p { margin: 2px 0 12px; color: var(--muted); font-size: 13px; }
+.pick { display: grid; grid-template-columns: repeat(2, 1fr); gap: 8px; }
+.pick div { display: flex; align-items: center; gap: 8px; padding: 10px; border: 1px solid var(--border); border-radius: 12px; font-weight: 600; min-width: 0; }
+.fade { opacity: .55; }
+
+/* lists */
+.trip { display: flex; gap: 12px; align-items: center; padding: 12px; border: 1px solid var(--border); border-radius: 14px; margin-top: 10px; }
+.trip .mid { flex: 1; min-width: 0; line-height: 1.3; }
+.trip .mid b, .trip .mid small { display: block; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+.trip .mid small { color: var(--muted); font-size: 12px; }
+.trip .amt { flex: none; text-align: right; font-variant-numeric: tabular-nums; font-weight: 600; font-size: 13.5px; }
+.thumb { width: 42px; height: 42px; border-radius: 12px; display: grid; place-items: center; background: var(--primary-soft); color: var(--primary-ink); flex: none; }
+.list-row { display: flex; align-items: center; gap: 10px; padding: 11px 2px; border-bottom: 1px solid var(--border); }
+.list-row .mid { flex: 1; min-width: 0; line-height: 1.3; }
+.list-row small { color: var(--muted); }
+.list-row.danger { color: var(--error); border: 0; }
+.logo { width: 26px; height: 26px; border-radius: 8px; border: 1.5px dashed var(--later); flex: none; margin-left: 6px; }
+.empty { text-align: center; padding: 70px 10px 0; color: var(--muted); }
+.empty .ic { width: 40px; height: 40px; color: var(--dimmed); }
+.empty b { display: block; color: var(--text); font-size: 16px; margin: 10px 0 2px; }
+.empty .acts { display: flex; gap: 8px; justify-content: center; margin-top: 16px; }
+
+/* later tickets */
+.later { outline: 1.5px dashed var(--later); outline-offset: 2px; border-radius: 6px; position: relative; }
+.later[data-t]::after { content: attr(data-t); position: absolute; top: -9px; right: -4px; font: 600 9.5px/1.4 ui-monospace, Menlo, Consolas, monospace; color: var(--later); background: var(--later-soft); padding: 0 4px; border-radius: 4px; pointer-events: none; z-index: 1; }
+.ib.later[data-t]::after { top: -4px; right: -6px; }
+</style>
+</head>
+<body>
+<svg width="0" height="0" style="position:absolute" aria-hidden="true">
+  <defs>
+    <symbol id="i-back" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="m15 18-6-6 6-6"/></symbol>
+    <symbol id="i-plus" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round"><path d="M12 5v14M5 12h14"/></symbol>
+    <symbol id="i-x" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><path d="M18 6 6 18M6 6l12 12"/></symbol>
+    <symbol id="i-share" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="9" cy="8" r="4"/><path d="M2 21a7 7 0 0 1 14 0M19 8v6M16 11h6"/></symbol>
+    <symbol id="i-cloud" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M17.5 19H9a7 7 0 1 1 6.7-9h1.8a4.5 4.5 0 1 1 0 9Z"/><path d="M12 16v-5M9.5 13.5 12 11l2.5 2.5"/></symbol>
+    <symbol id="i-list" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M4 2v20l2-1 2 1 2-1 2 1 2-1 2 1 2-1 2 1V2l-2 1-2-1-2 1-2-1-2 1-2-1-2 1Z"/><path d="M16 8H8M16 12H8M13 16H8"/></symbol>
+    <symbol id="i-scale" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M12 3v18M7 21h10M3 7h18M6 7l-3 7a3 3 0 0 0 6 0ZM18 7l-3 7a3 3 0 0 0 6 0Z"/></symbol>
+    <symbol id="i-cog" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="3"/><path d="M19.4 15a1.7 1.7 0 0 0 .3 1.8l.1.1a2 2 0 1 1-2.8 2.8l-.1-.1a1.7 1.7 0 0 0-1.8-.3 1.7 1.7 0 0 0-1 1.5V21a2 2 0 1 1-4 0v-.1a1.7 1.7 0 0 0-1.1-1.5 1.7 1.7 0 0 0-1.8.3l-.1.1a2 2 0 1 1-2.8-2.8l.1-.1a1.7 1.7 0 0 0 .3-1.8 1.7 1.7 0 0 0-1.5-1H3a2 2 0 1 1 0-4h.1a1.7 1.7 0 0 0 1.5-1.1 1.7 1.7 0 0 0-.3-1.8l-.1-.1a2 2 0 1 1 2.8-2.8l.1.1a1.7 1.7 0 0 0 1.8.3H9a1.7 1.7 0 0 0 1-1.5V3a2 2 0 1 1 4 0v.1a1.7 1.7 0 0 0 1 1.5 1.7 1.7 0 0 0 1.8-.3l.1-.1a2 2 0 1 1 2.8 2.8l-.1.1a1.7 1.7 0 0 0-.3 1.8V9a1.7 1.7 0 0 0 1.5 1H21a2 2 0 1 1 0 4h-.1a1.7 1.7 0 0 0-1.5 1Z"/></symbol>
+    <symbol id="i-alert" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="m21.7 18-8-14a2 2 0 0 0-3.4 0l-8 14A2 2 0 0 0 4 21h16a2 2 0 0 0 1.7-3Z"/><path d="M12 9v4M12 17h.01"/></symbol>
+    <symbol id="i-map" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M14.1 4.1 9.9 1.9a2 2 0 0 0-1.8 0L3.6 4.2A1 1 0 0 0 3 5.1v14.3a1 1 0 0 0 1.4.9l3.7-1.9a2 2 0 0 1 1.8 0l4.2 2.1a2 2 0 0 0 1.8 0l4.5-2.3a1 1 0 0 0 .6-.9V3.3a1 1 0 0 0-1.4-.9l-3.7 1.9a2 2 0 0 1-1.8 0ZM9 2v16M15 6v16"/></symbol>
+    <symbol id="i-dots" viewBox="0 0 24 24" fill="currentColor"><circle cx="5" cy="12" r="1.6"/><circle cx="12" cy="12" r="1.6"/><circle cx="19" cy="12" r="1.6"/></symbol>
+    <symbol id="i-chev" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="m9 18 6-6-6-6"/></symbol>
+    <symbol id="i-down" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="m6 9 6 6 6-6"/></symbol>
+    <symbol id="i-check" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><path d="M20 6 9 17l-5-5"/></symbol>
+  </defs>
+</svg>
+
+<div class="doc">
+<header>
+  <h1>Owe Yeah: app layout</h1>
+  <p class="lede">The target layout for the app, decided in a design session on 1 November 2026. It is a mobile app first: on a wide screen the same layout sits in a centered column about 480 px wide. Each screen below is what to build; anything with a <b>dashed purple outline</b> arrives with the ticket named on it and is <b>not</b> built by the layout tickets. Data is invented: Trip "Croatia 2026", and this device has claimed <b>Ania</b>.</p>
+  <div class="toolbar"><button type="button" id="theme">Toggle dark mode</button><span class="legend-later"><i></i> arrives with a later ticket (#nn)</span></div>
+</header>
+
+<h2>Rules that apply everywhere</h2>
+<ul class="rules">
+  <li><b>Three layouts.</b> <code>default</code> for app pages (My Trips, New Trip): a header with the app mark. <code>trip</code> for the Trip's tabs: the Trip header and a bottom tab bar (Expenses · Balances · Trip). <code>form</code> for full-screen forms and detail pages: back or close, a title cut to one line, and a fixed action at the bottom. No tab bar.</li>
+  <li><b>Routes.</b> <code>/trips/:id</code> (Expenses), <code>/trips/:id/balances</code>, <code>/trips/:id/settings</code> (the "Trip" tab), <code>/trips/:id/expenses/new</code>, <code>/trips/:id/expenses/:expenseId</code> and <code>…/edit</code>. A parent <code>trips/[id].vue</code> loads the Trip once for its children.</li>
+  <li><b>The Trip link's token is only needed to join.</b> Opening <code>/trips/:id#token</code> stores the token with the Trip on the device, then replaces the URL with <code>/trips/:id</code>. Every request takes the token from the device. A device that does not know the Trip is told to open it with its Trip link.</li>
+  <li><b>Mobile navigation.</b> Forms and detail pages slide in from the right and out on back (View Transitions, instant where unsupported); switching tabs is instant. Back goes back in history, or to the parent screen when there is none (a deep link). System back closes an open sheet first. Header and tab bar respect safe areas (<code>viewport-fit=cover</code>). Each tab keeps its scroll position. Inputs are at least 16 px (no iOS zoom), amounts use <code>inputmode="decimal"</code>.</li>
+  <li><b>Floating button only where needed.</b> For now only the Expenses tab has one ("+ Expense").</li>
+  <li><b>Long text never pushes amounts.</b> Rows and headers keep text on one line and cut it with "…"; amounts never shrink or wrap. Full text wraps only on the detail page and the Trip tab. Status badges sit on the subtitle line, not beside the title. Participant chips and bar labels have a maximum width.</li>
+  <li><b>Participants have avatars.</b> <code>UAvatar</code> with the initial and a color from a fixed palette of about 8, picked by the Participant's id, so it is the same on every device.</li>
+  <li><b>Color.</b> Primary emerald, neutral slate. The balance card is green when you're owed, red when you owe, neutral when you're even or have no Claim. Color mode follows the system; the manual toggle lives in the My Trips "⋯" menu.</li>
+</ul>
+
+<!-- ===================================================== shell -->
+<h2>The Trip: three tabs</h2>
+<p class="why">The Trip header holds back to My Trips, the Trip name with "You are Ania · EUR" (tap to change who you are, or "Who are you?" without a Claim), and icons for sync and Invite once those exist.</p>
+<div class="row">
+
+<figure>
+<div class="phone">
+  <div class="status"><span>9:41</span><span>●●● 5G</span></div>
+  <div class="bar">
+    <button class="ib" aria-label="Back to My Trips"><svg><use href="#i-back"/></svg></button>
+    <div class="ttl"><b>Croatia 2026</b><small>You are Ania · EUR</small></div>
+    <button class="ib later" data-t="#27" aria-label="2 changes not synced"><svg><use href="#i-cloud"/></svg><span class="dot"></span></button>
+    <button class="ib later" data-t="#39" aria-label="Invite"><svg><use href="#i-share"/></svg></button>
+  </div>
+  <div class="scroll">
+    <div class="strip"><span>You're owed</span><b>84,20 €</b></div>
+    <div class="day"><span>Today · Thu 12 Jun</span><span>131,30 €</span></div>
+    <div class="ex"><span class="av ania">A</span><div class="mid"><b>Lidl Rovinj</b><small>Ania paid · for all 4</small></div><div class="amt"><b>68,40 €</b><small class="pos">you lent 51,30</small></div></div>
+    <div class="ex"><span class="av marek">M</span><div class="mid"><b>Fuel</b><small>Marek paid · for all 4</small></div><div class="amt"><b>62,90 €</b><small class="neg">your share ≈ 15,73</small></div></div>
+    <div class="day"><span>Wed 11 Jun</span><span>302,00 €</span></div>
+    <div class="ex"><span class="av bartek">B</span><div class="mid"><b>Konoba Batelina</b><small><span class="badge err later" data-t="#28">Conflict</span> Bartek paid · for all 4</small></div><div class="amt"><b>184,00 €</b><small class="neg">your share 46,00</small></div></div>
+    <div class="ex"><span class="av kasia">K</span><div class="mid"><b>Ferry tickets</b><small><span class="badge neutral later" data-t="#27">not synced</span> Kasia paid · for 3</small></div><div class="amt"><b>59,00 €</b><small>not for you</small></div></div>
+    <div class="ex"><span class="av ania">A</span><div class="mid"><b>Plodine Poreč</b><small class="later" data-t="#31"><span class="badge warn">2 unassigned</span> Receipt · 14 items</small></div><div class="amt"><b>59,00 €</b><small class="pos">you lent 44,25</small></div></div>
+  </div>
+  <button class="fab"><svg><use href="#i-plus"/></svg>Expense</button>
+  <nav class="tabs"><span class="on"><svg class="ic"><use href="#i-list"/></svg>Expenses</span><span><svg class="ic"><use href="#i-scale"/></svg>Balances</span><span><svg class="ic"><use href="#i-cog"/></svg>Trip</span></nav>
+</div>
+<figcaption><strong>Expenses tab · <code>/trips/:id</code></strong>
+<ul>
+<li>Newest first, grouped by each Expense's own local day, with the day's total.</li>
+<li>Row: Main payer's avatar, title, "Ania paid · for all 4", total, and what it means for you: "you lent X" when you paid, "your share X" when someone else did, "not for you". Without a Claim that line is left out.</li>
+<li>Tapping a row opens the Expense's detail page. There is no edit from the list.</li>
+</ul></figcaption>
+</figure>
+
+<figure>
+<div class="phone tall">
+  <div class="status"><span>9:41</span><span>●●● 5G</span></div>
+  <div class="bar">
+    <button class="ib" aria-label="Back to My Trips"><svg><use href="#i-back"/></svg></button>
+    <div class="ttl"><b>Croatia 2026</b><small>You are Ania · EUR</small></div>
+    <button class="ib later" data-t="#39" aria-label="Invite"><svg><use href="#i-share"/></svg></button>
+  </div>
+  <div class="scroll">
+    <div class="hero"><small>You're owed</small><div class="big">84,20 €</div><div class="sub">You paid 237,30 € · your share 153,10 €</div></div>
+    <div class="later" data-t="#30 · Remind #42" style="margin-top:14px;padding:2px 0">
+      <div class="sect" style="margin-top:4px">To settle</div>
+      <div class="sugg"><span class="av s marek">M</span><div class="mid"><span>Marek pays you</span><b>51,80 €</b></div><button class="btn ghost">Remind</button><button class="btn">Record</button></div>
+      <div class="sugg"><span class="av s kasia">K</span><div class="mid"><span>Kasia pays you</span><b>32,40 €</b></div><button class="btn ghost">Remind</button><button class="btn">Record</button></div>
+    </div>
+    <div class="sect">Everyone</div>
+    <div class="axis"><span>owes</span><span>is owed</span></div>
+    <div class="div">
+      <div class="r me"><span>Ania</span><span class="l"></span><span class="rt"><i style="width:84%"></i><em>+84,20</em></span></div>
+      <div class="r"><span>Bartek</span><span class="l"></span><span class="rt"><i style="width:12.6%"></i><em>+12,60</em></span></div>
+      <div class="r"><span>Kasia</span><span class="l"><em>−45,00</em><i style="width:45%"></i></span><span class="rt"></span></div>
+      <div class="r"><span>Marek</span><span class="l"><em>−51,80</em><i style="width:51.8%"></i></span><span class="rt"></span></div>
+    </div>
+    <div class="later" data-t="#30" style="margin-top:14px;padding:2px 0">
+      <div class="sect" style="margin-top:4px">Other suggested Repayments</div>
+      <div class="sugg"><span class="av s kasia">K</span><span class="arrow">→</span><span class="av s bartek">B</span><div class="mid"><span>Kasia pays Bartek</span><b>12,60 €</b></div><button class="btn outline">Record</button></div>
+      <div class="lowkey" style="margin-top:8px;color:var(--primary)">Record another Repayment</div>
+    </div>
+    <div class="lowkey" style="justify-content:space-between"><span>Trip total 612,40 €</span><span class="later" data-t="#36"><svg class="sm" style="color:var(--warning)"><use href="#i-alert"/></svg> 1 Provisional rate</span></div>
+  </div>
+  <nav class="tabs"><span><svg class="ic"><use href="#i-list"/></svg>Expenses</span><span class="on"><svg class="ic"><use href="#i-scale"/></svg>Balances</span><span><svg class="ic"><use href="#i-cog"/></svg>Trip</span></nav>
+</div>
+<figcaption><strong>Balances tab · <code>/trips/:id/balances</code></strong>
+<ul>
+<li>Balance card: "You're owed / You owe / You're even", with what you paid and your share. Without a Claim, the card shows the Trip total instead.</li>
+<li>Diverging bars, one per Participant: owing to the left in red, owed to the right in green, the amount on the bar, your own row in bold. Hand-built; <code>UChart</code> only draws vertical bars.</li>
+<li>Tapping a bar opens that Participant's breakdown later (#35).</li>
+<li>"To settle" lists your own suggested Repayments first; Settled replaces the card and suggestions with "All settled" (#30).</li>
+</ul></figcaption>
+</figure>
+
+<figure>
+<div class="phone tall">
+  <div class="status"><span>9:41</span><span>●●● 5G</span></div>
+  <div class="bar">
+    <button class="ib" aria-label="Back to My Trips"><svg><use href="#i-back"/></svg></button>
+    <div class="ttl"><b>Croatia 2026</b><small>You are Ania · EUR</small></div>
+  </div>
+  <div class="scroll">
+    <button class="btn block later" data-t="#39" style="display:flex;justify-content:center;gap:8px;align-items:center"><svg class="ic"><use href="#i-share"/></svg>Invite</button>
+    <div class="sect">Participants</div>
+    <div class="list-row"><span class="av s ania">A</span><div class="mid">Ania <span class="badge ok">you</span></div></div>
+    <div class="list-row"><span class="av s kasia">K</span><div class="mid">Kasia</div></div>
+    <div class="list-row"><span class="av s bartek">B</span><div class="mid">Bartek</div></div>
+    <div class="list-row"><span class="av s marek">M</span><div class="mid">Marek</div></div>
+    <div class="list-row" style="color:var(--primary)"><svg class="ic"><use href="#i-plus"/></svg><div class="mid">Add Participant</div></div>
+    <div class="sect">On this device</div>
+    <div class="list-row"><div class="mid">Who you are<br><small>Ania</small></div><svg class="ic" style="color:var(--dimmed)"><use href="#i-chev"/></svg></div>
+    <div class="list-row later" data-t="#41"><div class="mid">Notifications<br><small>Off</small></div><svg class="ic" style="color:var(--dimmed)"><use href="#i-chev"/></svg></div>
+    <div class="sect">This Trip</div>
+    <div class="list-row later" data-t="#38"><div class="mid">Name and Trip currency<br><small>Croatia 2026 · EUR</small></div><svg class="ic" style="color:var(--dimmed)"><use href="#i-chev"/></svg></div>
+    <div class="list-row later" data-t="#29"><div class="mid">Recently deleted</div><svg class="ic" style="color:var(--dimmed)"><use href="#i-chev"/></svg></div>
+    <div class="list-row danger later" data-t="#38"><div class="mid">Forget this Trip</div></div>
+  </div>
+  <nav class="tabs"><span><svg class="ic"><use href="#i-list"/></svg>Expenses</span><span><svg class="ic"><use href="#i-scale"/></svg>Balances</span><span class="on"><svg class="ic"><use href="#i-cog"/></svg>Trip</span></nav>
+</div>
+<figcaption><strong>Trip tab · <code>/trips/:id/settings</code></strong>
+<ul>
+<li>Everything that is not money. Today: the Participants with "Add Participant" (a sheet with one name field), and "Who you are", which opens the "Who are you?" sheet.</li>
+<li>Full names wrap here instead of being cut.</li>
+</ul></figcaption>
+</figure>
+</div>
+
+<!-- ===================================================== expense -->
+<h2>An Expense: detail, form and the empty Trip</h2>
+<div class="row">
+
+<figure>
+<div class="phone tall">
+  <div class="status"><span>9:41</span><span>●●● 5G</span></div>
+  <div class="bar">
+    <button class="ib" aria-label="Back"><svg><use href="#i-back"/></svg></button>
+    <div class="ttl"><b>Fuel</b></div>
+    <button class="btn ghost" style="font-size:14px">Edit</button>
+  </div>
+  <div class="scroll" style="padding-bottom:20px">
+    <div class="notice later" data-t="#28"><svg class="sm"><use href="#i-alert"/></svg><span>Kasia changed this Expense too. Choose which version to keep.</span></div>
+    <div class="dt-title" style="margin-top:14px">Fuel</div>
+    <div class="dt-total">62,90 €</div>
+    <div class="dt-meta">Thu 12 Jun 2026, 14:32 · Europe/Zagreb</div>
+    <div class="sect">Paid by</div>
+    <div class="share"><span class="av s marek">M</span><div class="mid">Marek</div><div class="amt">62,90 €</div></div>
+    <div class="sect">For whom · Even</div>
+    <div class="share"><span class="av s ania">A</span><div class="mid"><b>Ania</b></div><div class="amt">≈ 15,73 €</div></div>
+    <div class="share"><span class="av s kasia">K</span><div class="mid">Kasia</div><div class="amt">≈ 15,73 €</div></div>
+    <div class="share"><span class="av s bartek">B</span><div class="mid">Bartek</div><div class="amt">≈ 15,73 €</div></div>
+    <div class="share"><span class="av s marek">M</span><div class="mid">Marek</div><div class="amt">≈ 15,73 €</div></div>
+    <div class="later" data-t="#29" style="margin-top:18px;padding:4px 2px">
+      <div class="lowkey" style="margin-top:0;justify-content:space-between"><span>Last edited by Kasia, 2 h ago</span><span style="color:var(--primary);font-weight:600">History</span></div>
+      <div class="danger-link">Delete Expense</div>
+    </div>
+  </div>
+</div>
+<figcaption><strong>Expense detail · <code>/trips/:id/expenses/:expenseId</code></strong>
+<ul>
+<li><code>form</code> layout: back, the title cut to one line, and Edit.</li>
+<li>Full title (wrapping), total, local date and time with its zone, Main payer, and each Participant's share.</li>
+<li>Later tickets add, in order: the Conflict or "not synced: reason" notice on top (#28, #27), Contributions under "Paid by" (#34), Line items (#31), the converted total (#36), tapping a share for its breakdown (#35), and the footer with "last edited by", History and Delete (#29).</li>
+</ul></figcaption>
+</figure>
+
+<figure>
+<div class="phone">
+  <div class="status"><span>9:41</span><span>●●● 5G</span></div>
+  <div class="bar">
+    <button class="ib" aria-label="Close"><svg><use href="#i-x"/></svg></button>
+    <div class="ttl"><b>New Expense</b></div>
+  </div>
+  <div class="scroll" style="padding-bottom:20px">
+    <div class="amount-in"><div class="v">62,90<span>€</span></div><span class="pill later" data-t="#36">EUR <svg class="sm"><use href="#i-down"/></svg></span></div>
+    <div class="fld"><label>Title</label><div class="inp">Fuel</div></div>
+    <div class="fld"><label>Paid by</label><div class="chips"><span class="chip"><span class="av xs ania">A</span><span>Ania</span></span><span class="chip"><span class="av xs kasia">K</span><span>Kasia</span></span><span class="chip"><span class="av xs bartek">B</span><span>Bartek</span></span><span class="chip on"><span class="av xs marek">M</span><span>Marek</span></span></div></div>
+    <div class="fld"><label>For whom <span>All</span></label><div class="chips"><span class="chip on"><span class="av xs ania">A</span><span>Ania</span></span><span class="chip on"><span class="av xs kasia">K</span><span>Kasia</span></span><span class="chip on"><span class="av xs bartek">B</span><span>Bartek</span></span><span class="chip on"><span class="av xs marek">M</span><span>Marek</span></span></div></div>
+    <div class="lowkey"><span>Today 14:32 ·</span><u>Europe/Zagreb</u></div>
+    <div class="addline later" data-t="#31"><svg class="sm"><use href="#i-plus"/></svg> Itemise as a Receipt</div>
+  </div>
+  <div class="footer"><button class="btn block">Save Expense</button></div>
+</div>
+<figcaption><strong>Expense form · <code>…/expenses/new</code> and <code>…/:expenseId/edit</code></strong>
+<ul>
+<li>Full-screen <code>form</code> layout with a fixed Save button that stays above the keyboard.</li>
+<li>A large amount field first (lenient parser, decimal keypad), then title, "Paid by" as single-choice avatar chips (defaults to your Claim), "For whom" as toggle chips (defaults to everyone, "All" toggles all).</li>
+<li>Time and zone are one quiet line; tapping it opens the date, time and zone fields.</li>
+<li>Refusals show in an alert above the Save button.</li>
+<li>"Itemise as a Receipt" grows the one Line item into the Till list (#31), on this same page.</li>
+</ul></figcaption>
+</figure>
+
+<figure>
+<div class="phone">
+  <div class="status"><span>9:41</span><span>●●● 5G</span></div>
+  <div class="bar">
+    <button class="ib" aria-label="Back to My Trips"><svg><use href="#i-back"/></svg></button>
+    <div class="ttl"><b>Croatia 2026</b><small>You are Ania · EUR</small></div>
+  </div>
+  <div class="scroll">
+    <div class="empty"><svg class="ic"><use href="#i-list"/></svg><b>No Expenses yet</b>Whoever pays for something adds it here.
+      <div class="acts"><button class="btn">Add the first Expense</button><button class="btn outline later" data-t="#39">Invite</button></div>
+    </div>
+  </div>
+  <nav class="tabs"><span class="on"><svg class="ic"><use href="#i-list"/></svg>Expenses</span><span><svg class="ic"><use href="#i-scale"/></svg>Balances</span><span><svg class="ic"><use href="#i-cog"/></svg>Trip</span></nav>
+</div>
+<figcaption><strong>A new Trip</strong>
+<ul>
+<li>Where creating a Trip lands. <code>UEmpty</code> with "Add the first Expense"; no floating button while the list is empty.</li>
+<li>Balances with no Expenses shows "You're even" and every bar at zero.</li>
+</ul></figcaption>
+</figure>
+</div>
+
+<!-- ===================================================== getting in -->
+<h2>Getting in: My Trips, New Trip, "Who are you?"</h2>
+<div class="row">
+
+<figure>
+<div class="phone">
+  <div class="status"><span>9:41</span><span>●●● 5G</span></div>
+  <div class="bar">
+    <span class="logo later" data-t="logo" aria-hidden="true"></span>
+    <div class="ttl" style="padding-left:6px"><b style="font-size:20px">Owe Yeah</b></div>
+    <button class="ib" aria-label="More: color mode"><svg><use href="#i-dots"/></svg></button>
+  </div>
+  <div class="scroll">
+    <div class="trip"><div class="thumb"><svg class="ic"><use href="#i-map"/></svg></div><div class="mid"><b>Croatia 2026</b><small>You are Ania</small></div><div class="amt later" data-t="#27" style="color:var(--primary)">+84,20 €</div></div>
+    <div class="trip"><div class="thumb"><svg class="ic"><use href="#i-map"/></svg></div><div class="mid"><b>Mazury weekend</b><small>You are Ania <span class="later" data-t="#27" style="color:var(--warning)">· 2 not synced</span></small></div><div class="amt later" data-t="#27" style="color:var(--error)">−18,50 zł</div></div>
+    <div class="trip"><div class="thumb" style="background:var(--warning-soft);color:var(--warning)"><svg class="ic"><use href="#i-map"/></svg></div><div class="mid"><b>Flat bills</b><small>Who are you?</small></div></div>
+    <div class="trip" style="opacity:.7"><div class="thumb" style="background:var(--accented);color:var(--muted)"><svg class="ic"><use href="#i-check"/></svg></div><div class="mid"><b>Alps 2025</b><small>You are Ania</small></div><span class="badge ok later" data-t="#30">Settled</span></div>
+  </div>
+  <button class="fab solo"><svg><use href="#i-plus"/></svg>New Trip</button>
+</div>
+<figcaption><strong>My Trips · <code>/</code></strong>
+<ul>
+<li><code>default</code> layout: the app mark (logo ticket), "Owe Yeah", and a "⋯" menu holding color mode.</li>
+<li>Rows: Trip name and "You are Ania" or "Who are you?", most recently opened first. "+ New Trip" floats; with no Trips, <code>UEmpty</code> offers it instead.</li>
+<li>Your balance and sync state per Trip arrive with the device store (#27); Settled sorts lower (#30).</li>
+</ul></figcaption>
+</figure>
+
+<figure>
+<div class="phone">
+  <div class="status"><span>9:41</span><span>●●● 5G</span></div>
+  <div class="bar">
+    <button class="ib" aria-label="Close"><svg><use href="#i-x"/></svg></button>
+    <div class="ttl"><b>New Trip</b></div>
+  </div>
+  <div class="scroll" style="padding-bottom:20px">
+    <div class="fld" style="margin-top:4px"><label>Name</label><div class="inp"><span class="ph">Croatia 2026</span></div></div>
+    <div class="fld"><label>Trip currency</label><div class="inp">EUR · Euro <svg class="sm" style="color:var(--muted)"><use href="#i-down"/></svg></div><div class="help">All balances are kept and settled in it.</div></div>
+    <div class="fld"><label>Your name</label><div class="inp">Ania</div><div class="help">You'll be this Participant on this device.</div></div>
+    <div class="fld"><label>Who else is coming?</label>
+      <div class="inp" style="margin-bottom:6px">Kasia <svg class="sm" style="color:var(--muted)"><use href="#i-x"/></svg></div>
+      <div class="inp" style="margin-bottom:6px"><span class="ph">Name</span></div>
+      <div class="lowkey" style="margin-top:4px;color:var(--primary);font-weight:600"><svg class="sm"><use href="#i-plus"/></svg> Add another</div>
+    </div>
+  </div>
+  <div class="footer"><button class="btn block">Create Trip</button></div>
+</div>
+<figcaption><strong>New Trip · <code>/trips/new</code></strong>
+<ul>
+<li><code>form</code> layout with a fixed "Create Trip".</li>
+<li>"Your name" is the first Participant, and creating the Trip makes it this device's Claim, so the creator is never asked "Who are you?".</li>
+<li>Lands on the empty Expenses tab.</li>
+</ul></figcaption>
+</figure>
+
+<figure>
+<div class="phone">
+  <div class="status"><span>9:41</span><span>●●● 5G</span></div>
+  <div class="bar fade"><button class="ib"><svg><use href="#i-back"/></svg></button><div class="ttl"><b>Croatia 2026</b><small>Who are you? · EUR</small></div></div>
+  <div class="scroll fade">
+    <div class="day"><span>Today</span><span></span></div>
+    <div class="ex"><span class="av ania">A</span><div class="mid"><b>Lidl Rovinj</b><small>Ania paid</small></div><div class="amt"><b>68,40 €</b></div></div>
+    <div class="ex"><span class="av marek">M</span><div class="mid"><b>Fuel</b><small>Marek paid</small></div><div class="amt"><b>62,90 €</b></div></div>
+  </div>
+  <div class="scrim"></div>
+  <div class="sheet">
+    <div class="grip"></div>
+    <h3>Who are you?</h3>
+    <p>Pick yourself, so this device can fill in defaults for you. It gives you no extra rights.</p>
+    <div class="pick"><div><span class="av s ania">A</span>Ania</div><div><span class="av s kasia">K</span>Kasia</div><div><span class="av s bartek">B</span>Bartek</div><div><span class="av s marek">M</span>Marek</div></div>
+    <div class="fld"><label>Not on the list?</label><div class="inp"><span class="ph">Name</span><button class="btn">Add me</button></div></div>
+    <div style="text-align:center;margin-top:12px"><button class="btn ghost" style="color:var(--muted)">Just looking</button></div>
+  </div>
+</div>
+<figcaption><strong>"Who are you?" sheet</strong>
+<ul>
+<li>A <code>UDrawer</code> over the Trip, opened the first time a device opens a Trip without a Claim.</li>
+<li>"Just looking" closes it; the header subtitle then reads "Who are you?" and reopens it, as does "Who you are" on the Trip tab.</li>
+</ul></figcaption>
+</figure>
+</div>
+
+<!-- ===================================================== stress -->
+<h2>Long text</h2>
+<p class="why">Trip name and Expense title up to 100 characters, Participant names up to 50, large amounts. A UI e2e check at 360 px with these values asserts the page never scrolls sideways.</p>
+<div class="row">
+
+<figure>
+<div class="phone">
+  <div class="status"><span>9:41</span><span>●●● 5G</span></div>
+  <div class="bar">
+    <button class="ib" aria-label="Back to My Trips"><svg><use href="#i-back"/></svg></button>
+    <div class="ttl"><b>Summer road trip through Croatia, Slovenia and Montenegro with the whole extended family 2026</b><small>You are Aleksandra Wiśniewska-Brzęczyszczykiewicz · EUR</small></div>
+  </div>
+  <div class="scroll">
+    <div class="day"><span>Saturday, 13 June 2026</span><span>124 812,40 €</span></div>
+    <div class="ex"><span class="av kasia">A</span><div class="mid"><b>Konzum supermarket Rovinj, weekly groceries, drinks, sunscreen, charcoal and one very long receipt</b><small>Aleksandra Wiśniewska-Brzęczyszczykiewicz paid · for all 12</small></div><div class="amt"><b>123 456,78 €</b><small class="pos">you lent ≈ 113 168,72</small></div></div>
+    <div class="ex"><span class="av marek">M</span><div class="mid"><b>Fuel</b><small>Maximilian Alexander von Hohenberg-Schwarzenstein paid · for 3</small></div><div class="amt"><b>1 355,62 €</b><small class="neg">your share ≈ 451,87</small></div></div>
+  </div>
+  <button class="fab"><svg><use href="#i-plus"/></svg>Expense</button>
+  <nav class="tabs"><span class="on"><svg class="ic"><use href="#i-list"/></svg>Expenses</span><span><svg class="ic"><use href="#i-scale"/></svg>Balances</span><span><svg class="ic"><use href="#i-cog"/></svg>Trip</span></nav>
+</div>
+<figcaption><strong>Rows and header cut, amounts win</strong>
+<ul><li>Title and subtitle are each one line with "…"; the amount column keeps its full width.</li><li>Header title and subtitle are cut the same way.</li></ul></figcaption>
+</figure>
+
+<figure>
+<div class="phone">
+  <div class="status"><span>9:41</span><span>●●● 5G</span></div>
+  <div class="bar">
+    <button class="ib" aria-label="Back"><svg><use href="#i-back"/></svg></button>
+    <div class="ttl"><b>Konzum supermarket Rovinj, weekly groceries, drinks, sunscreen, charcoal and one very long receipt</b></div>
+    <button class="btn ghost" style="font-size:14px">Edit</button>
+  </div>
+  <div class="scroll">
+    <div class="dt-title">Konzum supermarket Rovinj, weekly groceries, drinks, sunscreen, charcoal and one very long receipt</div>
+    <div class="dt-total">123 456,78 €</div>
+    <div class="dt-meta">Sat 13 Jun 2026, 18:05 · Europe/Zagreb</div>
+    <div class="sect">For whom · Even</div>
+    <div class="share"><span class="av s kasia">A</span><div class="mid">Aleksandra Wiśniewska-Brzęczyszczykiewicz</div><div class="amt">≈ 10 288,07 €</div></div>
+    <div class="share"><span class="av s marek">M</span><div class="mid">Maximilian Alexander von Hohenberg-Schwarzenstein</div><div class="amt">≈ 10 288,07 €</div></div>
+    <div class="sect">Everyone</div>
+    <div class="div">
+      <div class="r me"><span>Aleksandra Wiśniewska-Brzęczyszczykiewicz</span><span class="l"></span><span class="rt"><i style="width:70%"></i><em>+113 168,72</em></span></div>
+      <div class="r"><span>Maximilian Alexander von Hohenberg</span><span class="l"><em>−9 836,19</em><i style="width:20%"></i></span><span class="rt"></span></div>
+    </div>
+  </div>
+</div>
+<figcaption><strong>Detail page wraps; names in rows and bars are cut</strong>
+<ul><li>The detail page shows the whole title, wrapped.</li><li>Names in share rows, chips and bar labels are cut at a fixed maximum width; avatars only show the initial.</li></ul></figcaption>
+</figure>
+</div>
+</div>
+
+<script>
+document.getElementById('theme').addEventListener('click', () => {
+  const root = document.documentElement;
+  const dark = root.dataset.theme
+    ? root.dataset.theme === 'dark'
+    : matchMedia('(prefers-color-scheme: dark)').matches;
+  root.dataset.theme = dark ? 'light' : 'dark';
+});
+</script>
+</body>
+</html>
