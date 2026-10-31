@@ -20,6 +20,17 @@ export default defineNuxtConfig({
       alwaysRedirect: false,
     },
   },
+  app: {
+    head: {
+      // `viewport-fit=cover` lets the app draw under notches; headers and the tab bar pad
+      // themselves with the safe-area insets.
+      viewport: 'width=device-width, initial-scale=1, viewport-fit=cover',
+    },
+  },
+  // Form-layout pages slide in and out; see `main.css`.
+  experimental: {
+    viewTransition: true,
+  },
   css: ['~/assets/css/main.css'],
   // Bundle every Lucide icon referenced in app source, so icons never need a runtime fetch.
   icon: {

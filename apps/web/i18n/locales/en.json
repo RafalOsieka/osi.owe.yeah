@@ -1,12 +1,12 @@
 {
   "app": {
-    "title": "Owe Yeah"
+    "title": "Owe Yeah",
+    "more": "More"
   },
   "myTrips": {
     "title": "My Trips",
     "empty": "No Trips yet.",
-    "create": "New Trip",
-    "noClaim": "You haven't said who you are yet."
+    "create": "New Trip"
   },
   "trip": {
     "create": {
@@ -16,25 +16,36 @@
       "nameInvalid": "Give the Trip a name of up to 100 characters.",
       "currency": "Trip currency",
       "currencyHelp": "All balances are kept and settled in it.",
-      "participantsHelp": "Who's coming? Names may repeat, and you can add more later.",
       "participant": "Participant {number}",
       "addParticipant": "Add another",
       "removeParticipant": "Remove Participant",
       "submit": "Create Trip",
-      "failed": "The Trip could not be created. Check your connection and try again."
+      "failed": "The Trip could not be created. Check your connection and try again.",
+      "me": "Your name",
+      "meHelp": "You will be this Participant on this device.",
+      "others": "Who else is coming?",
+      "othersHelp": "Names may repeat, and you can add more later."
     },
-    "currency": "Trip currency: {currency}",
     "invalidLink": "This Trip link doesn't work.",
     "invalidLinkHelp": "Ask for the Trip link again.",
-    "loadFailed": "The Trip could not be loaded. Check your connection and try again."
+    "loadFailed": "The Trip could not be loaded. Check your connection and try again.",
+    "backToMyTrips": "Back to My Trips",
+    "subtitle": "{who} · {currency}",
+    "tabs": "Trip tabs",
+    "tab": "Trip",
+    "settings": {
+      "onThisDevice": "On this device"
+    }
   },
   "participants": {
     "title": "Participants",
     "namePlaceholder": "Name",
     "nameInvalid": "Give the Participant a name of up to 50 characters.",
-    "new": "New Participant",
     "add": "Add",
-    "addFailed": "The Participant could not be added. Check your connection and try again."
+    "addFailed": "The Participant could not be added. Check your connection and try again.",
+    "name": "Name",
+    "addParticipant": "Add Participant",
+    "you": "you"
   },
   "claim": {
     "title": "Who are you?",
@@ -42,12 +53,14 @@
     "notListed": "Not on the list?",
     "addMe": "Add me",
     "youAre": "You are {name}",
-    "change": "Change",
-    "cancel": "Cancel"
+    "cancel": "Cancel",
+    "justLooking": "Just looking",
+    "whoYouAre": "Who you are",
+    "nobody": "Not said yet"
   },
   "expense": {
     "list": "Expenses",
-    "empty": "No Expenses yet.",
+    "empty": "No Expenses yet",
     "add": "Add Expense",
     "new": "New Expense",
     "edit": "Edit Expense",
@@ -74,7 +87,10 @@
       "currencyNotTripCurrency": "The Expense must be in the Trip currency.",
       "expenseIdTaken": "This Expense belongs to another Trip.",
       "unknownExpense": "This Expense no longer exists."
-    }
+    },
+    "emptyHelp": "Whoever pays for something adds it here.",
+    "addFirst": "Add the first Expense",
+    "addShort": "Expense"
   },
   "balances": {
     "title": "Balances",
@@ -82,5 +98,15 @@
     "paid": "Paid",
     "share": "Share",
     "balance": "Balance"
+  },
+  "colorMode": {
+    "title": "Color mode",
+    "system": "System",
+    "light": "Light",
+    "dark": "Dark"
+  },
+  "form": {
+    "back": "Back",
+    "close": "Close"
   }
 }

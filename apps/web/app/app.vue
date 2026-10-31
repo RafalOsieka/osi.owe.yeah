@@ -18,8 +18,15 @@ useHead({
 <template>
   <UApp :locale="uiLocale">
     <NuxtRouteAnnouncer />
-    <NuxtLayout>
-      <NuxtPage />
-    </NuxtLayout>
+    <!-- A phone app first: wide screens get the same layout in a centered column. Each page
+         wraps itself in its layout (`<NuxtLayout name>`), so layouts can take a title and a
+         fixed action. -->
+    <div class="min-h-dvh bg-muted">
+      <div
+        class="mx-auto min-h-dvh max-w-120 bg-default ps-[env(safe-area-inset-left)] pe-[env(safe-area-inset-right)]"
+      >
+        <NuxtPage />
+      </div>
+    </div>
   </UApp>
 </template>

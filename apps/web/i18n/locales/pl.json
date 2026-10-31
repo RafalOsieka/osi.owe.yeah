@@ -1,12 +1,12 @@
 {
   "app": {
-    "title": "Owe Yeah"
+    "title": "Owe Yeah",
+    "more": "Więcej"
   },
   "myTrips": {
     "title": "Moje podróże",
     "empty": "Nie masz jeszcze żadnych podróży.",
-    "create": "Nowa podróż",
-    "noClaim": "Nie wskazano jeszcze, kim jesteś."
+    "create": "Nowa podróż"
   },
   "trip": {
     "create": {
@@ -16,25 +16,36 @@
       "nameInvalid": "Nadaj podróży nazwę o długości do 100 znaków.",
       "currency": "Waluta podróży",
       "currencyHelp": "W tej walucie prowadzone i rozliczane są wszystkie salda.",
-      "participantsHelp": "Kto jedzie? Imiona mogą się powtarzać, a kolejnych uczestników dodasz później.",
       "participant": "Uczestnik {number}",
       "addParticipant": "Dodaj kolejnego",
       "removeParticipant": "Usuń uczestnika",
       "submit": "Utwórz podróż",
-      "failed": "Nie udało się utworzyć podróży. Sprawdź połączenie i spróbuj ponownie."
+      "failed": "Nie udało się utworzyć podróży. Sprawdź połączenie i spróbuj ponownie.",
+      "me": "Twoje imię",
+      "meHelp": "Na tym urządzeniu będziesz tym uczestnikiem.",
+      "others": "Kto jeszcze jedzie?",
+      "othersHelp": "Imiona mogą się powtarzać, a kolejnych uczestników dodasz później."
     },
-    "currency": "Waluta podróży: {currency}",
     "invalidLink": "Ten link do podróży nie działa.",
     "invalidLinkHelp": "Poproś ponownie o link do podróży.",
-    "loadFailed": "Nie udało się wczytać podróży. Sprawdź połączenie i spróbuj ponownie."
+    "loadFailed": "Nie udało się wczytać podróży. Sprawdź połączenie i spróbuj ponownie.",
+    "backToMyTrips": "Wróć do moich podróży",
+    "subtitle": "{who} · {currency}",
+    "tabs": "Karty podróży",
+    "tab": "Podróż",
+    "settings": {
+      "onThisDevice": "Na tym urządzeniu"
+    }
   },
   "participants": {
     "title": "Uczestnicy",
     "namePlaceholder": "Imię",
     "nameInvalid": "Nadaj uczestnikowi imię o długości do 50 znaków.",
-    "new": "Nowy uczestnik",
     "add": "Dodaj",
-    "addFailed": "Nie udało się dodać uczestnika. Sprawdź połączenie i spróbuj ponownie."
+    "addFailed": "Nie udało się dodać uczestnika. Sprawdź połączenie i spróbuj ponownie.",
+    "name": "Imię",
+    "addParticipant": "Dodaj uczestnika",
+    "you": "ty"
   },
   "claim": {
     "title": "Kim jesteś?",
@@ -42,12 +53,14 @@
     "notListed": "Nie ma cię na liście?",
     "addMe": "Dodaj mnie",
     "youAre": "Jesteś: {name}",
-    "change": "Zmień",
-    "cancel": "Anuluj"
+    "cancel": "Anuluj",
+    "justLooking": "Tylko przeglądam",
+    "whoYouAre": "Kim jesteś",
+    "nobody": "Jeszcze nie wskazano"
   },
   "expense": {
     "list": "Wydatki",
-    "empty": "Nie ma jeszcze żadnych wydatków.",
+    "empty": "Nie ma jeszcze żadnych wydatków",
     "add": "Dodaj wydatek",
     "new": "Nowy wydatek",
     "edit": "Edytuj wydatek",
@@ -74,7 +87,10 @@
       "currencyNotTripCurrency": "Wydatek musi być w walucie podróży.",
       "expenseIdTaken": "Ten wydatek należy do innej podróży.",
       "unknownExpense": "Ten wydatek już nie istnieje."
-    }
+    },
+    "emptyHelp": "Kto za coś płaci, dodaje to tutaj.",
+    "addFirst": "Dodaj pierwszy wydatek",
+    "addShort": "Wydatek"
   },
   "balances": {
     "title": "Salda",
@@ -82,5 +98,15 @@
     "paid": "Zapłacono",
     "share": "Udział",
     "balance": "Saldo"
+  },
+  "colorMode": {
+    "title": "Motyw",
+    "system": "Systemowy",
+    "light": "Jasny",
+    "dark": "Ciemny"
+  },
+  "form": {
+    "back": "Wstecz",
+    "close": "Zamknij"
   }
 }
