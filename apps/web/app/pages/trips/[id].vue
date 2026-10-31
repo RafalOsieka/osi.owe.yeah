@@ -1,5 +1,11 @@
 <script setup lang="ts">
-import { TRIP_TOKEN_HEADER, type Participant } from '@osi/owe-yeah-domain';
+import {
+  TRIP_TOKEN_HEADER,
+  type Expense,
+  type ExpenseChange,
+  type Participant,
+  type StoredExpense,
+} from '@osi/owe-yeah-domain';
 import { v7 as uuidv7 } from 'uuid';
 
 // A Trip link is `/trips/<id>#<token>`: the token in the fragment is the only credential
@@ -69,6 +75,56 @@ async function addMe(name: string): Promise<void> {
   if (participant) claimParticipant(participant);
 }
 
+// The Expense form: `null` when closed, `{ expense: null }` for a new Expense.
+const editing = ref<{ expense: StoredExpense | null } | null>(null);
+const formOpen = computed({
+  get: () => editing.value !== null,
+  set: (open) => {
+    if (!open) editing.value = null;
+  },
+});
+// Why the last save was refused, shown in the form; the Expense itself stays as it was.
+const saveRefusals = ref<string[]>([]);
+watch(editing, () => (saveRefusals.value = []));
+
+// A resend of the very same change keeps its id, so a lost response is not applied twice.
+let pendingChange: { key: string; id: string } | undefined;
+
+function changeFor(expense: Expense, baseVersion: number | null): ExpenseChange {
+  const key = JSON.stringify({ expense, baseVersion });
+  if (pendingChange?.key !== key) pendingChange = { key, id: uuidv7() };
+  return { id: pendingChange.id, baseVersion, expense };
+}
+
+// Sends the Expense's full new state through the sync push. Until the offline outbox
+// arrives, this needs a connection.
+async function saveExpense(expense: Expense): Promise<void> {
+  saveRefusals.value = [];
+  const change = changeFor(expense, editing.value?.expense?.version ?? null);
+  const result = await $fetch(`/api/trips/${tripId}/push`, {
+    method: 'POST',
+    headers,
+    body: { changes: [change] },
+  }).then(
+    ({ results }) => results[0],
+    () => null,
+  );
+  if (result === null) {
+    saveRefusals.value = [t('expense.saveFailed')];
+    return;
+  }
+
+  if (result?.status === 'accepted') {
+    pendingChange = undefined;
+    editing.value = null;
+  } else if (result?.status === 'conflict') {
+    saveRefusals.value = [t('expense.refused.conflict')];
+  } else if (result?.status === 'rejected') {
+    saveRefusals.value = result.problems.map((problem) => t(`expense.refused.${problem}`));
+  }
+  await refresh();
+}
+
 useHead({ title: () => trip.value?.name ?? t('trip.invalidLink') });
 </script>
 
@@ -98,6 +154,52 @@ useHead({ title: () => trip.value?.name ?? t('trip.invalidLink') });
           <span>{{ $t('claim.youAre', { name: claim?.name }) }}</span>
           <UButton variant="link" :label="$t('claim.change')" @click="changingClaim = true" />
         </div>
+
+        <section class="space-y-3" aria-labelledby="expenses-heading">
+          <div class="flex items-center justify-between gap-2">
+            <h2 id="expenses-heading" class="text-lg font-semibold">{{ $t('expense.list') }}</h2>
+            <UButton
+              icon="i-lucide-plus"
+              :label="$t('expense.add')"
+              :disabled="trip.participants.length === 0"
+              @click="editing = { expense: null }"
+            />
+          </div>
+          <ExpenseList
+            v-if="trip.expenses.length > 0"
+            :expenses="trip.expenses"
+            :participants="trip.participants"
+            @open="editing = { expense: $event }"
+          />
+          <p v-else class="text-sm text-muted">{{ $t('expense.empty') }}</p>
+        </section>
+
+        <section class="space-y-3" aria-labelledby="balances-heading">
+          <h2 id="balances-heading" class="text-lg font-semibold">{{ $t('balances.title') }}</h2>
+          <BalancesTable :trip="trip" :claim-id="claim?.id" />
+        </section>
+
+        <UModal
+          v-model:open="formOpen"
+          :title="editing?.expense ? $t('expense.edit') : $t('expense.new')"
+        >
+          <template #body>
+            <ExpenseForm
+              :trip="trip"
+              :expense="editing?.expense"
+              :claim-id="claim?.id"
+              @submit="saveExpense"
+            >
+              <UAlert
+                v-if="saveRefusals.length > 0"
+                color="error"
+                icon="i-lucide-circle-alert"
+                :title="$t('expense.refused.title')"
+                :description="saveRefusals.join(' ')"
+              />
+            </ExpenseForm>
+          </template>
+        </UModal>
 
         <section class="space-y-3">
           <h2 class="text-lg font-semibold">{{ $t('participants.title') }}</h2>

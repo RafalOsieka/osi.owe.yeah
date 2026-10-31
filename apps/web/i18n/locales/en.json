@@ -44,5 +44,43 @@
     "youAre": "You are {name}",
     "change": "Change",
     "cancel": "Cancel"
+  },
+  "expense": {
+    "list": "Expenses",
+    "empty": "No Expenses yet.",
+    "add": "Add Expense",
+    "new": "New Expense",
+    "edit": "Edit Expense",
+    "title": "Title",
+    "titlePlaceholder": "Lidl Rovinj",
+    "titleInvalid": "Give the Expense a title of up to 100 characters.",
+    "amount": "Amount",
+    "amountInvalid": "Enter a whole amount above zero. | Enter an amount above zero with at most 1 decimal place. | Enter an amount above zero with at most {decimals} decimal places.",
+    "paidBy": "Paid by",
+    "summary": "Paid by {name} · {time}",
+    "payerMissing": "Pick who paid.",
+    "forWhom": "For whom",
+    "participantsMissing": "Tick at least one Participant.",
+    "when": "When",
+    "timeMissing": "Enter when it was paid.",
+    "timeZone": "Time zone",
+    "save": "Save",
+    "saveFailed": "The Expense could not be saved. Check your connection and try again.",
+    "refused": {
+      "title": "The Expense was not saved",
+      "conflict": "Someone else changed this Expense in the meantime. Close the form to see their version.",
+      "unknownMainPayer": "Who paid is no longer in the Trip.",
+      "unknownParticipant": "Someone ticked is no longer in the Trip.",
+      "currencyNotTripCurrency": "The Expense must be in the Trip currency.",
+      "expenseIdTaken": "This Expense belongs to another Trip.",
+      "unknownExpense": "This Expense no longer exists."
+    }
+  },
+  "balances": {
+    "title": "Balances",
+    "participant": "Participant",
+    "paid": "Paid",
+    "share": "Share",
+    "balance": "Balance"
   }
 }

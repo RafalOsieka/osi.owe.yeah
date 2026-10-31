@@ -113,3 +113,55 @@ test('a Trip link with a wrong token shows no Trip', async ({ page }) => {
 
   await expect(page.getByRole('heading', { name: "This Trip link doesn't work." })).toBeVisible();
 });
+
+test('record a plain Expense, edit it, and see the balances', async ({ page }) => {
+  await page.goto('/trips/new');
+  await page.getByLabel('Name').fill('Istria 2026');
+  await page.getByLabel('Participant 1').fill('Kasia');
+  await page.getByRole('button', { name: 'Add another' }).click();
+  await page.getByLabel('Participant 2').fill('Ania');
+  await page.getByRole('button', { name: 'Add another' }).click();
+  await page.getByLabel('Participant 3').fill('Ola');
+  await page.getByRole('button', { name: 'Create Trip' }).click();
+  await page.getByRole('button', { name: 'Kasia' }).click();
+
+  // The Main payer defaults to the Claim, and everyone is ticked.
+  await page.getByRole('button', { name: 'Add Expense' }).click();
+  const form = page.getByRole('dialog');
+  await expect(form.getByLabel('Paid by')).toHaveText('Kasia');
+  for (const name of ['Kasia', 'Ania', 'Ola']) {
+    await expect(form.getByRole('checkbox', { name })).toBeChecked();
+  }
+  await form.getByLabel('Title').fill('Lidl Rovinj');
+  // Too many decimals for EUR is refused before anything is sent.
+  await form.getByLabel('Amount').fill('10,001');
+  await form.getByRole('button', { name: 'Save' }).click();
+  await expect(form.getByText('Enter an amount above zero')).toBeVisible();
+  await form.getByLabel('Amount').fill('10');
+  await form.getByLabel('When').fill('2026-07-14T23:30');
+  await form.getByRole('button', { name: 'Save' }).click();
+  await expect(form).toBeHidden();
+
+  const expenses = page.getByRole('region', { name: 'Expenses' });
+  await expect(expenses.getByRole('heading', { name: 'Tuesday, July 14, 2026' })).toBeVisible();
+  await expect(expenses.getByRole('button', { name: /Lidl Rovinj/ })).toContainText('€10.00');
+
+  // 10.00 for three doesn't split into whole cents.
+  const balances = page.getByRole('region', { name: 'Balances' });
+  await expect(balances.getByRole('row', { name: /Kasia/ })).toContainText('≈ €6.67');
+  await expect(balances.getByRole('row', { name: /Ola/ })).toContainText('≈ -€3.33');
+
+  await expenses.getByRole('button', { name: /Lidl Rovinj/ }).click();
+  await expect(form.getByLabel('Amount')).toHaveValue('10.00');
+  await expect(form.getByLabel('When')).toHaveValue('2026-07-14T23:30');
+  await form.getByLabel('Amount').fill('4,50');
+  await form.getByRole('checkbox', { name: 'Ola' }).uncheck();
+  await form.getByRole('button', { name: 'Save' }).click();
+  await expect(form).toBeHidden();
+
+  await expect(expenses.getByRole('button', { name: /Lidl Rovinj/ })).toContainText('€4.50');
+  await expect(balances.getByRole('row', { name: /Kasia/ })).toContainText('€2.25');
+  await expect(balances.getByRole('row', { name: /Ania/ })).toContainText('-€2.25');
+  await expect(balances.getByRole('row', { name: /Ola/ })).toContainText('€0.00');
+  await expect(balances).not.toContainText('≈');
+});
