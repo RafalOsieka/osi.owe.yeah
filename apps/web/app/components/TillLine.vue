@@ -2,19 +2,21 @@
 import {
   MAX_UNITS,
   fromMinor,
-  lineItemProblem,
+  lineItemProblems,
   lineItemShares,
+  parseMoney,
   splitFromScratch,
   type Participant,
   type Rational,
   type SplitMode,
 } from '@osi/owe-yeah-domain';
-import { lineItemFromDraft, type DraftLineItem } from '~/utils/receipt-draft';
+import { discountFromDraft, lineItemFromDraft, type DraftLineItem } from '~/utils/receipt-draft';
 
 // One Line item of the Till list. Collapsed, it reads as on the paper Receipt: name, quantity
-// × unit price, how it is split, its total, and what is not assigned yet. Open, it is edited
-// in place: name, unit price, quantity, Split mode and that mode's inputs, moving it up or
-// down, and removing it. Switching the Split mode starts that mode from scratch.
+// × unit price, how it is split, its Line discount, its total after that discount, and what
+// is not assigned yet. Open, it is edited in place: name, unit price, quantity, Line
+// discount, Split mode and that mode's inputs, moving it up or down, and removing it.
+// Switching the Split mode starts that mode from scratch.
 const { participants, currency, position, first, last } = defineProps<{
   participants: readonly Participant[];
   currency: string;
@@ -36,7 +38,21 @@ const bare = (amount: Rational) => formatMoney(amount, currency, locale.value, '
 
 const item = computed(() => lineItemFromDraft(line.value, currency));
 const shares = computed(() => item.value && lineItemShares(item.value, currency));
-const problem = computed(() => item.value && lineItemProblem(item.value));
+const problems = computed(() => (item.value ? lineItemProblems(item.value) : []));
+const priceReadable = computed(() => parseMoney(line.value.price, currency) !== null);
+const discountReadable = computed(() => discountFromDraft(line.value.discount, currency) !== null);
+const discountText = computed(
+  () =>
+    item.value?.discount &&
+    shares.value &&
+    formatDiscount(item.value.discount, shares.value.discountOff, currency, locale.value),
+);
+const discountError = computed(() => {
+  if (!discountReadable.value) return t('receipt.discountUnreadable');
+  return problems.value.includes('lineDiscountExceedsLineTotal')
+    ? t('receipt.problem.lineDiscountExceedsLineTotal')
+    : undefined;
+});
 const unassigned = computed(() =>
   shares.value && shares.value.unassigned.numerator !== 0n ? shares.value.unassigned : null,
 );
@@ -118,7 +134,7 @@ const modes: readonly SplitMode[] = ['even', 'units', 'amounts'];
 <template>
   <li
     class="rounded-lg border"
-    :class="unassigned || !item || problem ? 'border-warning/60' : 'border-default'"
+    :class="unassigned || !item || problems.length ? 'border-warning/60' : 'border-default'"
   >
     <button
       type="button"
@@ -140,16 +156,25 @@ const modes: readonly SplitMode[] = ['even', 'units', 'amounts'];
               : splitText(line.split, participants)
           }}
         </span>
-        <span v-if="!item" class="block text-xs text-warning">{{ $t('receipt.checkPrice') }}</span>
-        <span v-else-if="problem" class="block text-xs text-warning">
+        <span v-if="discountText" class="block truncate text-xs text-muted">
+          {{ $t('receipt.lineDiscountFact', { discount: discountText }) }}
+        </span>
+        <span v-if="!item" class="block text-xs text-warning">
+          {{
+            priceReadable && !discountReadable
+              ? $t('receipt.discountUnreadable')
+              : $t('receipt.checkPrice')
+          }}
+        </span>
+        <span v-for="problem in problems" :key="problem" class="block text-xs text-warning">
           {{ $t(`receipt.problem.${problem}`) }}
         </span>
-        <span v-else-if="unassigned" class="block text-xs text-warning">
+        <span v-if="unassigned && problems.length === 0" class="block text-xs text-warning">
           {{ $t('receipt.notAssigned', { amount: money(unassigned) }) }}
         </span>
       </span>
       <span class="shrink-0 font-semibold tabular-nums">
-        {{ shares && money(shares.total) }}
+        {{ shares && money(shares.net) }}
       </span>
     </button>
 
@@ -168,7 +193,7 @@ const modes: readonly SplitMode[] = ['even', 'units', 'amounts'];
             :model-value="line.price"
             inputmode="decimal"
             class="w-full"
-            :color="item ? undefined : 'error'"
+            :color="priceReadable ? undefined : 'error'"
             @update:model-value="update({ price: String($event) })"
           >
             <template #trailing>
@@ -186,6 +211,17 @@ const modes: readonly SplitMode[] = ['even', 'units', 'amounts'];
         </UFormField>
       </div>
       <p class="text-xs text-muted">{{ $t('receipt.weighedHelp') }}</p>
+
+      <div>
+        <DiscountField
+          :model-value="line.discount"
+          :label="$t('receipt.lineDiscount')"
+          :currency="currency"
+          :error="discountError"
+          @update:model-value="update({ discount: $event })"
+        />
+        <p class="mt-1 text-xs text-muted">{{ $t('receipt.perUnitDiscountHelp') }}</p>
+      </div>
 
       <div role="group" :aria-label="$t('receipt.splitMode')">
         <UFieldGroup class="w-full">

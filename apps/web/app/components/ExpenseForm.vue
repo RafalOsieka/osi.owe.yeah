@@ -1,16 +1,15 @@
 <script setup lang="ts">
 import {
-  add,
   deviceTimeZone,
   expenseTimeFromLocal,
   expenseTitleSchema,
   fromMinor,
   isReceipt,
-  lineItemShares,
   localDateTime,
   minorUnits,
   parseMoney,
-  rational,
+  receiptDiscountExceeds,
+  receiptShares,
   roundMoney,
   type LineItem,
   type SplitExpense,
@@ -20,9 +19,13 @@ import type { RouteLocationRaw } from 'vue-router';
 import { v7 as uuidv7 } from 'uuid';
 import type { LocalExpense } from '~/sync/local-trip';
 import {
+  discountFromDraft,
+  draftFromDiscount,
   draftFromLineItem,
   draftLineItem,
   lineItemFromDraft,
+  noDiscount,
+  type DraftDiscount,
   type DraftLineItem,
 } from '~/utils/receipt-draft';
 
@@ -30,7 +33,8 @@ import {
 // whether it is money received (Income, saved with a negative amount so nobody types a minus),
 // title, Main payer (who received it, for Income), who it is for, and when. "Itemise as a
 // Receipt" grows the one Line item into the Till list on the same page: the amount becomes the
-// computed Receipt total, and each Line item has its own split. A Receipt may be saved with
+// computed Receipt total, each Line item has its own split and Line discount, and a Receipt
+// discount below "Paid by" comes off them all. A Receipt may be saved with
 // value not assigned yet, which counts as the Main payer's until it is. Saving keeps the
 // Expense's full new state on the device, to sync later, and returns to `parent`'s screen, or
 // wherever the form was opened from. An Expense that breaks a Trip rule is not saved; why
@@ -58,6 +62,8 @@ type ExpenseFormState = {
   zone: string;
   /** The Till list's Line items once itemised as a Receipt; `null` for a plain Expense. */
   lineItems: DraftLineItem[] | null;
+  /** The Receipt discount, used once itemised. */
+  discount: DraftDiscount;
 };
 
 // Read once: the form is mounted afresh each time it opens.
@@ -76,6 +82,7 @@ function initialState(): ExpenseFormState {
         received: false,
         participantIds: everyone,
         lineItems: expense.lineItems.map((item) => draftFromLineItem(item, expense.currency)),
+        discount: draftFromDiscount(expense.discount, expense.currency),
       };
     }
     return {
@@ -84,6 +91,7 @@ function initialState(): ExpenseFormState {
       received: price < 0,
       participantIds: lineItem!.split.mode === 'even' ? [...lineItem!.split.participantIds] : [],
       lineItems: null,
+      discount: noDiscount(),
     };
   }
   const zone = deviceTimeZone();
@@ -97,6 +105,7 @@ function initialState(): ExpenseFormState {
     local: localDateTime({ instant: new Date().toISOString(), zone }),
     zone,
     lineItems: null,
+    discount: noDiscount(),
   };
 }
 
@@ -137,19 +146,34 @@ function itemise(): void {
         ];
 }
 
-// The Receipt as typed so far: its Line items (`null` where one can't be read yet), the
-// computed total of those that can, and the value not assigned to anyone yet.
+// The Receipt as typed so far: its Line items (`null` where one can't be read yet), its
+// Receipt discount (`null` while it can't be read), and what the readable ones come to: the
+// computed total, what the discount takes off, and the value not assigned to anyone yet.
 const receipt = computed(() => {
   if (!state.lineItems) return null;
   const { currency } = trip.value;
   const items = state.lineItems.map((draft) => lineItemFromDraft(draft, currency));
-  const lines = items.flatMap((item) => (item ? [lineItemShares(item, currency)] : []));
-  const zero = rational(0n);
+  const discount = discountFromDraft(state.discount, currency);
+  // What can be read so far, as the domain sees a Receipt.
+  const readable = {
+    lineItems: items.flatMap((item) => (item ? [item] : [])),
+    discount: discount ?? undefined,
+    currency,
+  };
+  const shares = receiptShares(readable);
   return {
     items,
-    total: lines.reduce((sum, line) => add(sum, line.total), zero),
-    unassigned: lines.reduce((sum, line) => add(sum, line.unassigned), zero),
+    discount,
+    total: shares.total,
+    off: shares.discountOff,
+    unassigned: shares.unassigned,
+    discountExceeds: receiptDiscountExceeds(readable),
   };
+});
+
+const discountError = computed(() => {
+  if (receipt.value?.discount === null) return t('receipt.discountUnreadable');
+  return receipt.value?.discountExceeds ? t('receipt.receiptDiscountExceeds') : undefined;
 });
 
 const payerName = computed(
@@ -177,6 +201,9 @@ function validate(form: Partial<ExpenseFormState>): FormError[] {
       errors.push({ name: 'lineItems', message: t('receipt.lineItemsMissing') });
     } else if (receipt.value.items.includes(null)) {
       errors.push({ name: 'lineItems', message: t('receipt.lineItemsUnreadable') });
+    }
+    if (receipt.value.discount === null) {
+      errors.push({ name: 'discount', message: t('receipt.discountUnreadable') });
     }
   } else {
     if (parseMoney(form.amount ?? '', trip.value.currency) === null) {
@@ -223,6 +250,8 @@ async function submit(): Promise<void> {
       time: expenseTimeFromLocal(state.local, state.zone),
       mainPayerId: state.mainPayerId,
       lineItems: lineItems(),
+      // Left out when there is none, as the device store and the server keep it.
+      ...(receipt.value?.discount && { discount: receipt.value.discount }),
     },
     // Based on the Expense as the form read it when it opened.
     expense?.base ?? { version: null },
@@ -241,6 +270,13 @@ async function submit(): Promise<void> {
         <output aria-labelledby="receipt-total-label" class="block text-4xl font-bold tabular-nums">
           {{ formatMoney(receipt.total, trip.currency, locale) }}
         </output>
+        <p v-if="receipt.discount" class="mt-1 text-sm text-muted">
+          {{
+            $t('receipt.receiptDiscountFact', {
+              discount: formatDiscount(receipt.discount, receipt.off, trip.currency, locale),
+            })
+          }}
+        </p>
         <p v-if="receipt.unassigned.numerator !== 0n" class="mt-1 text-sm text-warning">
           {{
             $t('receipt.unassignedTotal', {
@@ -287,6 +323,14 @@ async function submit(): Promise<void> {
           name="mainPayerId"
         />
       </UFormField>
+
+      <DiscountField
+        v-if="state.lineItems"
+        v-model="state.discount"
+        :label="$t('receipt.receiptDiscount')"
+        :currency="trip.currency"
+        :error="discountError"
+      />
 
       <UFormField v-if="!state.lineItems" name="participantIds">
         <div role="group" aria-labelledby="for-whom-label">

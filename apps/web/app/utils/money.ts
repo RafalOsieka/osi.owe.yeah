@@ -1,4 +1,4 @@
-import { minorUnits, roundMoney, type Rational } from '@osi/owe-yeah-domain';
+import { minorUnits, negate, roundMoney, type Discount, type Rational } from '@osi/owe-yeah-domain';
 
 /**
  * How `formatMoney` writes an amount: with its currency (`€3.33`), with its currency and sign
@@ -39,4 +39,24 @@ export function formatMoney(
         });
   const formatted = format.format(decimal);
   return exact ? formatted : `≈ ${formatted}`;
+}
+
+/**
+ * A Line or Receipt discount as entered, as the UI shows it: an amount with a minus
+ * ("−€1.00"), or a percentage ("−12.5%") followed by what it takes off (`off`).
+ */
+export function formatDiscount(
+  discount: Discount,
+  off: Rational,
+  currency: string,
+  locale: string,
+): string {
+  const money = formatMoney(negate(off), currency, locale);
+  if (discount.kind === 'amount') return money;
+  const percent = new Intl.NumberFormat(locale, {
+    style: 'percent',
+    maximumFractionDigits: 2,
+    signDisplay: 'always',
+  }).format(-discount.basisPoints / 10_000);
+  return `${percent} · ${money}`;
 }

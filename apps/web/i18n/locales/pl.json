@@ -92,7 +92,9 @@
       "repaymentToSelf": "Spłata wymaga dwóch różnych uczestników.",
       "negativeLineItem": "Otrzymane pieniądze mogą być tylko zwykłym wydatkiem; paragon nie ma ujemnych pozycji.",
       "unitsExceedQuantity": "Pozycja ma przypisanych więcej sztuk, niż liczy.",
-      "amountsExceedLineTotal": "Kwoty pozycji sumują się do więcej niż jej wartość."
+      "amountsExceedLineTotal": "Kwoty pozycji sumują się do więcej niż jej wartość.",
+      "lineDiscountExceedsLineTotal": "Pozycja ma rabat większy niż jej wartość.",
+      "receiptDiscountExceedsLineItems": "Rabat na paragon jest większy niż pozycje po ich własnych rabatach."
     },
     "emptyHelp": "Kto za coś płaci, dodaje to tutaj.",
     "addFirst": "Dodaj pierwszy wydatek",
@@ -135,6 +137,14 @@
     "unitPrice": "Cena jednostkowa",
     "quantity": "Ilość",
     "weighedHelp": "Towar na wagę to jedna sztuka w cenie całej pozycji.",
+    "lineDiscount": "Rabat na pozycję",
+    "receiptDiscount": "Rabat na paragon",
+    "discountKind": "{label}: kwota lub procent",
+    "discountUnreadable": "Sprawdź rabat.",
+    "perUnitDiscountHelp": "Rabat na sztukę wpisz dla całej pozycji: 2 × 0,20 to 0,40.",
+    "lineDiscountFact": "Rabat {discount}",
+    "receiptDiscountFact": "Rabat na paragon {discount}",
+    "receiptDiscountExceeds": "Rabat jest większy niż pozycje po ich własnych rabatach.",
     "splitMode": "Sposób podziału",
     "mode": {
       "even": "Po równo",
@@ -146,7 +156,8 @@
     "unitsAssigned": "Przypisane sztuki: {assigned} z {quantity}",
     "problem": {
       "unitsExceedQuantity": "Przypisano więcej sztuk, niż kupiono.",
-      "amountsExceedLineTotal": "Kwoty sumują się do więcej niż wartość pozycji."
+      "amountsExceedLineTotal": "Kwoty sumują się do więcej niż wartość pozycji.",
+      "lineDiscountExceedsLineTotal": "Rabat jest większy niż wartość pozycji."
     },
     "moveUp": "Przesuń w górę",
     "moveDown": "Przesuń w dół",
@@ -217,7 +228,9 @@
       "participantIdTaken": "ten uczestnik należy do innej podróży.",
       "negativeLineItem": "paragon nie ma ujemnych pozycji.",
       "unitsExceedQuantity": "pozycja ma przypisanych więcej sztuk, niż liczy.",
-      "amountsExceedLineTotal": "kwoty pozycji sumują się do więcej niż jej wartość."
+      "amountsExceedLineTotal": "kwoty pozycji sumują się do więcej niż jej wartość.",
+      "lineDiscountExceedsLineTotal": "rabat pozycji jest większy niż jej wartość.",
+      "receiptDiscountExceedsLineItems": "rabat na paragon jest większy niż pozycje po ich własnych rabatach."
     },
     "pullToRefresh": "Pociągnij, aby zsynchronizować",
     "releaseToRefresh": "Puść, aby zsynchronizować"

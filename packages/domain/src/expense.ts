@@ -1,8 +1,10 @@
 import { Temporal } from 'temporal-polyfill';
 import { z } from 'zod';
+import { discountExceeds, discountSchema } from './discount.ts';
 import {
   LINE_ITEM_PROBLEMS,
-  lineItemProblem,
+  goodsMinor,
+  lineItemProblems,
   lineItemSchema,
   minorAmountSchema,
   splitParticipantIds,
@@ -61,12 +63,14 @@ const expenseBase = {
 };
 
 /**
- * An Expense split by its Line items, in the order of the Receipt. A plain Expense has
- * exactly one; with a negative total it is Income.
+ * An Expense split by its Line items, in the order of the Receipt, with an optional Receipt
+ * discount on all of them. A plain Expense has exactly one Line item; with a negative total
+ * it is Income.
  */
 const splitExpenseSchema = z.object({
   ...expenseBase,
   lineItems: z.array(lineItemSchema).min(1).max(500),
+  discount: discountSchema.optional(),
 });
 
 /**
@@ -93,12 +97,20 @@ export function isRepayment<E extends Expense>(expense: E): expense is Extract<E
 
 /**
  * Whether an Expense is a Receipt, entered Line item by Line item, rather than a plain
- * Expense (or Income), whose one Line item is unnamed, a single unit and split Even.
+ * Expense (or Income), whose one Line item is unnamed, a single unit, undiscounted and split
+ * Even, with no Receipt discount.
  */
 export function isReceipt(expense: Expense): boolean {
   if (isRepayment(expense)) return false;
   const [only, ...more] = expense.lineItems;
-  return more.length > 0 || only!.name !== '' || only!.quantity > 1 || only!.split.mode !== 'even';
+  return (
+    more.length > 0 ||
+    only!.name !== '' ||
+    only!.quantity > 1 ||
+    only!.split.mode !== 'even' ||
+    only!.discount !== undefined ||
+    expense.discount !== undefined
+  );
 }
 
 /** An Expense without its id, as the server keeps its state; one type per kind of Expense. */
@@ -116,6 +128,7 @@ export const expenseProblemSchema = z.enum([
   'repaymentToSelf',
   'negativeLineItem',
   ...LINE_ITEM_PROBLEMS,
+  'receiptDiscountExceedsLineItems',
 ]);
 
 export type ExpenseProblem = z.infer<typeof expenseProblemSchema>;
@@ -124,7 +137,8 @@ export type ExpenseProblem = z.infer<typeof expenseProblemSchema>;
  * The rules an Expense must follow within its Trip; empty when it may be saved. The device
  * checks them before pushing and the server again before accepting. A Repayment's recipient
  * counts as its ticked Participant. Only a plain Expense (Income) may have a negative Line
- * item, and every split must fit its Line item (`lineItemProblem`).
+ * item, every Line item must fit together (`lineItemProblems`), and the Receipt discount
+ * may not take off more than the Line items come to after their Line discounts.
  */
 export function expenseProblems(expense: Expense, trip: TripWithParticipants): ExpenseProblem[] {
   const known = new Set(trip.participants.map(({ id }) => id));
@@ -144,10 +158,22 @@ export function expenseProblems(expense: Expense, trip: TripWithParticipants): E
     if (lineItems.length > 1 && lineItems.some(({ unitPrice }) => unitPrice < 0)) {
       problems.push('negativeLineItem');
     }
-    const lineProblems = new Set(lineItems.map(lineItemProblem));
+    const lineProblems = new Set(lineItems.flatMap(lineItemProblems));
     problems.push(...LINE_ITEM_PROBLEMS.filter((problem) => lineProblems.has(problem)));
+    if (receiptDiscountExceeds(expense)) problems.push('receiptDiscountExceedsLineItems');
   }
   return problems;
+}
+
+/**
+ * Whether a Receipt discount takes off more than the Line items come to after their Line
+ * discounts; checked while the Receipt is entered as well as before it is saved.
+ */
+export function receiptDiscountExceeds({
+  lineItems,
+  discount,
+}: Pick<SplitExpense, 'lineItems' | 'discount'>): boolean {
+  return discountExceeds(discount, goodsMinor(lineItems));
 }
 
 function zoned(time: ExpenseTime): Temporal.ZonedDateTime {

@@ -64,6 +64,15 @@ describe('expenseSchema', () => {
     expect(expenseSchema.parse({ ...lidl, lineItems: [saved] })).toEqual(lidl);
   });
 
+  it('keeps a Line discount and a Receipt discount as entered', () => {
+    const discounted: Expense = {
+      ...lidl,
+      lineItems: [{ ...lidl.lineItems[0]!, discount: { kind: 'amount', amount: 100 } }],
+      discount: { kind: 'percent', basisPoints: 1250 },
+    };
+    expect(expenseSchema.parse(discounted)).toEqual(discounted);
+  });
+
   it('accepts a Repayment: one payer, one recipient and an amount, with no Line items', () => {
     expect(expenseSchema.parse(repayment)).toEqual(repayment);
   });
@@ -75,6 +84,8 @@ describe('expenseSchema', () => {
     ['no Line item', { ...lidl, lineItems: [] }],
     ['a fractional amount', { ...lidl, lineItems: [{ ...lidl.lineItems[0], unitPrice: 24.5 }] }],
     ['a zero amount', { ...lidl, lineItems: [{ ...lidl.lineItems[0], unitPrice: 0 }] }],
+    ['a zero discount', { ...lidl, discount: { kind: 'amount', amount: 0 } }],
+    ['a fractional percent', { ...lidl, discount: { kind: 'percent', basisPoints: 12.5 } }],
     ['a quantity of zero', { ...lidl, lineItems: [{ ...lidl.lineItems[0], quantity: 0 }] }],
     ['a fractional quantity', { ...lidl, lineItems: [{ ...lidl.lineItems[0], quantity: 1.5 }] }],
     [

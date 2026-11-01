@@ -1,82 +1,141 @@
-import { isRepayment, type Expense } from './expense.ts';
-import { splitWeights, type LineItem } from './line-item.ts';
+import { takenOff } from './discount.ts';
+import { isRepayment, type Expense, type SplitExpense } from './expense.ts';
+import {
+  goodsMinor,
+  lineNetMinor,
+  lineTotalMinor,
+  splitWeights,
+  type LineItem,
+} from './line-item.ts';
 import { fromMinor } from './money.ts';
 import { add, divide, multiply, negate, rational, subtract, type Rational } from './rational.ts';
 
-/** One Line item's full-price total and who bears how much of it, exact and unrounded. */
+/**
+ * One Line item's full price, its Line discount, and who bears how much of what is left,
+ * exact and unrounded, in the Expense currency.
+ */
 export type LineItemShares = {
-  /** Unit price × quantity, in the Expense currency. */
+  /** Unit price × quantity: the full price. */
   total: Rational;
-  /** Each assigned Participant's part by id, in the order the split names them. */
+  /** What the Line discount takes off the full price; zero without one. */
+  discountOff: Rational;
+  /** The total after the Line discount, which the split shares. */
+  net: Rational;
+  /** Each assigned Participant's part of `net` by id, in the order the split names them. */
   shares: ReadonlyMap<string, Rational>;
-  /** The part nobody has been given yet; zero once the line is fully assigned. */
+  /** The part of `net` nobody has been given yet; zero once the line is fully assigned. */
   unassigned: Rational;
 };
 
-/** What an Expense cost in total, and who bears how much of it, exact and unrounded. */
-export type ExpenseShares = {
-  /** The sum of the Line items, or what a Repayment handed over, in the Expense currency. */
+/**
+ * What a Receipt's Line items come to after both discounts, and how much of it each
+ * Participant has been given so far, exact and unrounded, in the Expense currency.
+ */
+export type ReceiptShares = {
+  /** The Line items after their Line discounts, less the Receipt discount. */
   total: Rational;
-  /**
-   * Each Participant's share by id, in the order the splits name them. The Main payer's
-   * includes the value not assigned yet, which is theirs until it is.
-   */
-  shares: ReadonlyMap<string, Rational>;
+  /** What the Receipt discount takes off; zero without one. */
+  discountOff: Rational;
+  /** Each assigned Participant's part by id, in the order the splits name them. */
+  assigned: ReadonlyMap<string, Rational>;
   /** The value not assigned to anyone yet: non-zero for an incomplete Receipt. */
   unassigned: Rational;
-  /** Each Line item's shares, in the Expense's order; none for a Repayment. */
+  /** Each Line item's shares before the Receipt discount, in the Receipt's order. */
   lineItems: readonly LineItemShares[];
 };
 
+/** What an Expense cost in total, and who bears how much of it, exact and unrounded. */
+export type ExpenseShares = Omit<ReceiptShares, 'assigned'> & {
+  /**
+   * Each Participant's share by id, in the order the splits name them. The Main payer's
+   * includes the value not assigned yet, which is theirs until it is. A Repayment's
+   * recipient bears all of it.
+   */
+  shares: ReadonlyMap<string, Rational>;
+};
+
 const zero = rational(0n);
+const one = rational(1n);
 
 /**
- * A Line item's total shared in proportion to its split's weights (`splitWeights`); the
- * weight nobody has been given is the unassigned part.
+ * A Line item's full price less its Line discount, shared in proportion to its split's
+ * weights (`splitWeights`), so the discount lands on whoever had the item; the weight nobody
+ * has been given is the unassigned part.
  */
 export function lineItemShares(item: LineItem, currency: string): LineItemShares {
-  const total = multiply(fromMinor(item.unitPrice, currency), rational(BigInt(item.quantity)));
+  const total = multiply(rational(lineTotalMinor(item)), fromMinor(1, currency));
+  const net = multiply(lineNetMinor(item), fromMinor(1, currency));
   const { weights, rest } = splitWeights(item);
   const whole = [...weights.values()].reduce((sum, weight) => sum + weight, rest);
-  const part = (weight: bigint) => multiply(total, divide(rational(weight), rational(whole)));
+  const part = (weight: bigint) => multiply(net, divide(rational(weight), rational(whole)));
   return {
     total,
+    discountOff: subtract(total, net),
+    net,
     shares: new Map([...weights].map(([id, weight]) => [id, part(weight)])),
     unassigned: part(rest),
   };
 }
 
 /**
- * An Expense's total and each Participant's share of it: every Line item is shared by its
- * split, the value not assigned yet counts as the Main payer's own, and a Repayment is borne
- * wholly by its recipient, which evens out what the payer handed over. Used for balances
- * and to show an Expense.
+ * A Receipt's Line items shared by their splits (`lineItemShares`), then the Receipt
+ * discount spread in proportion to what each Participant, and the value not assigned yet,
+ * has after Line discounts. Shows the Receipt total while it is entered; `expenseShares`
+ * builds on it.
+ */
+export function receiptShares({
+  lineItems,
+  discount,
+  currency,
+}: Pick<SplitExpense, 'lineItems' | 'discount' | 'currency'>): ReceiptShares {
+  const lines = lineItems.map((item) => lineItemShares(item, currency));
+  // In minor units, as the Receipt discount is entered.
+  const goods = goodsMinor(lineItems);
+  const off = takenOff(discount, goods);
+  // Every part keeps the same fraction of itself; at zero goods there is nothing to discount.
+  const kept = goods.numerator === 0n ? one : subtract(one, divide(off, goods));
+  const unit = fromMinor(1, currency);
+
+  const assigned = new Map<string, Rational>();
+  for (const line of lines) {
+    for (const [id, part] of line.shares) assigned.set(id, add(assigned.get(id) ?? zero, part));
+  }
+  for (const [id, part] of assigned) assigned.set(id, multiply(part, kept));
+  const unassigned = lines.reduce((sum, line) => add(sum, line.unassigned), zero);
+  return {
+    total: multiply(subtract(goods, off), unit),
+    discountOff: multiply(off, unit),
+    assigned,
+    unassigned: multiply(unassigned, kept),
+    lineItems: lines,
+  };
+}
+
+/**
+ * An Expense's total and each Participant's share of it: a Receipt (or plain Expense) is
+ * shared as `receiptShares` works out, with the value not assigned yet counted as the Main
+ * payer's own, and a Repayment is borne wholly by its recipient, which evens out what the
+ * payer handed over. Used for balances and to show an Expense.
  */
 export function expenseShares(expense: Expense): ExpenseShares {
   if (isRepayment(expense)) {
     const amount = fromMinor(expense.amount, expense.currency);
     return {
       total: amount,
+      discountOff: zero,
       shares: new Map([[expense.recipientId, amount]]),
       unassigned: zero,
       lineItems: [],
     };
   }
 
-  const lineItems = expense.lineItems.map((item) => lineItemShares(item, expense.currency));
-  const shares = new Map<string, Rational>();
-  const credit = (id: string, amount: Rational) =>
-    shares.set(id, add(shares.get(id) ?? zero, amount));
-  for (const line of lineItems) for (const [id, part] of line.shares) credit(id, part);
-
-  const unassigned = lineItems.reduce((sum, line) => add(sum, line.unassigned), zero);
-  if (unassigned.numerator !== 0n) credit(expense.mainPayerId, unassigned);
-  return {
-    total: lineItems.reduce((sum, line) => add(sum, line.total), zero),
-    shares,
-    unassigned,
-    lineItems,
-  };
+  const { assigned, ...receipt } = receiptShares(expense);
+  const shares = new Map(assigned);
+  if (receipt.unassigned.numerator !== 0n) {
+    const { mainPayerId } = expense;
+    shares.set(mainPayerId, add(shares.get(mainPayerId) ?? zero, receipt.unassigned));
+  }
+  return { ...receipt, shares };
 }
 
 /**
