@@ -18,7 +18,7 @@ function expense(id: string, mainPayerId: string, unitPrice: number, participant
     currency: 'EUR',
     time: { instant: '2026-07-14T10:00:00Z', zone: 'Europe/Zagreb' },
     mainPayerId,
-    lineItems: [{ unitPrice, split: { mode: 'even', participantIds } }],
+    lineItems: [{ name: '', unitPrice, quantity: 1, split: { mode: 'even', participantIds } }],
     version: 1,
     deleted: false,
     edited: null,

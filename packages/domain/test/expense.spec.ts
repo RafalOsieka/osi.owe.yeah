@@ -25,7 +25,14 @@ const lidl: Expense = {
   currency: 'EUR',
   time: { instant: '2026-07-14T21:30:00Z', zone: 'Europe/Zagreb' },
   mainPayerId: kasia.id,
-  lineItems: [{ unitPrice: 2450, split: { mode: 'even', participantIds: [kasia.id, ania.id] } }],
+  lineItems: [
+    {
+      name: '',
+      unitPrice: 2450,
+      quantity: 1,
+      split: { mode: 'even', participantIds: [kasia.id, ania.id] },
+    },
+  ],
 };
 
 const repayment: Expense = {
@@ -52,6 +59,11 @@ describe('expenseSchema', () => {
     expect(expenseSchema.parse(refund)).toEqual(refund);
   });
 
+  it('reads an Expense saved before Receipts as one unnamed unit', () => {
+    const { name: _name, quantity: _quantity, ...saved } = lidl.lineItems[0]!;
+    expect(expenseSchema.parse({ ...lidl, lineItems: [saved] })).toEqual(lidl);
+  });
+
   it('accepts a Repayment: one payer, one recipient and an amount, with no Line items', () => {
     expect(expenseSchema.parse(repayment)).toEqual(repayment);
   });
@@ -61,19 +73,21 @@ describe('expenseSchema', () => {
     ['an unknown time zone', { ...lidl, time: { ...lidl.time, zone: 'Mars/Olympus' } }],
     ['a time without an offset', { ...lidl, time: { ...lidl.time, instant: '2026-07-14T21:30' } }],
     ['no Line item', { ...lidl, lineItems: [] }],
-    ['two Line items', { ...lidl, lineItems: [...lidl.lineItems, ...lidl.lineItems] }],
     ['a fractional amount', { ...lidl, lineItems: [{ ...lidl.lineItems[0], unitPrice: 24.5 }] }],
     ['a zero amount', { ...lidl, lineItems: [{ ...lidl.lineItems[0], unitPrice: 0 }] }],
-    [
-      'nobody ticked',
-      { ...lidl, lineItems: [{ unitPrice: 2450, split: { mode: 'even', participantIds: [] } }] },
-    ],
+    ['a quantity of zero', { ...lidl, lineItems: [{ ...lidl.lineItems[0], quantity: 0 }] }],
+    ['a fractional quantity', { ...lidl, lineItems: [{ ...lidl.lineItems[0], quantity: 1.5 }] }],
     [
       'a Participant ticked twice',
       {
         ...lidl,
         lineItems: [
-          { unitPrice: 2450, split: { mode: 'even', participantIds: [ania.id, ania.id] } },
+          {
+            name: '',
+            unitPrice: 2450,
+            quantity: 1,
+            split: { mode: 'even', participantIds: [ania.id, ania.id] },
+          },
         ],
       },
     ],
@@ -94,7 +108,14 @@ describe('expenseProblems', () => {
     const expense: Expense = {
       ...lidl,
       mainPayerId: stranger,
-      lineItems: [{ unitPrice: 2450, split: { mode: 'even', participantIds: [stranger] } }],
+      lineItems: [
+        {
+          name: '',
+          unitPrice: 2450,
+          quantity: 1,
+          split: { mode: 'even', participantIds: [stranger] },
+        },
+      ],
     };
     expect(expenseProblems(expense, trip)).toEqual(['unknownMainPayer', 'unknownParticipant']);
   });

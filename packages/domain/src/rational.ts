@@ -40,6 +40,16 @@ export function subtract(a: Rational, b: Rational): Rational {
   return add(a, negate(b));
 }
 
+/** The exact product of two Rationals. */
+export function multiply(a: Rational, b: Rational): Rational {
+  return rational(a.numerator * b.numerator, a.denominator * b.denominator);
+}
+
+/** The exact quotient `a / b`. Throws when `b` is zero. */
+export function divide(a: Rational, b: Rational): Rational {
+  return rational(a.numerator * b.denominator, a.denominator * b.numerator);
+}
+
 /** `value` rounded to the nearest whole number, halves away from zero. */
 export function roundHalfAwayFromZero(value: Rational): bigint {
   const magnitude = abs(value.numerator);

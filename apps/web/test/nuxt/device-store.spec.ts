@@ -77,4 +77,52 @@ describe('the device store', () => {
       held: { current: { ...lidl, version: 3, deleted: false, edited: null } },
     });
   });
+
+  it('reads Expenses kept before Receipts as one unnamed unit, in the Trip and the outbox', async () => {
+    const name = uuidv7();
+    const line = { unitPrice: 2450, split: { mode: 'even', participantIds: [] } };
+    const lidl = {
+      id: uuidv7(),
+      title: 'Lidl Rovinj',
+      currency: 'EUR',
+      time: { instant: '2026-07-14T21:30:00Z', zone: 'Europe/Zagreb' },
+      mainPayerId: uuidv7(),
+      lineItems: [line],
+    };
+    const stored = { ...lidl, version: 2, deleted: false, edited: null };
+    const meta = { claimId: null, deviceId: uuidv7() };
+    const v2 = new Dexie(name);
+    v2.version(2).stores({ trips: 'id', outbox: '++seq, tripId' });
+    const tripId = uuidv7();
+    await v2.table('trips').add({
+      id: tripId,
+      token: 'the-token',
+      claim: null,
+      openedAt: '2026-07-01T10:00:00.000Z',
+      snapshot: {
+        id: tripId,
+        name: 'Croatia 2026',
+        currency: 'EUR',
+        participants: [],
+        version: 7,
+        expenses: [stored],
+      },
+    });
+    const change = { ...meta, id: uuidv7(), kind: 'expense', base: { version: 2 }, deleted: false };
+    await v2.table('outbox').add({
+      tripId,
+      change: { ...change, expense: lidl },
+      held: { changeId: change.id, status: 'conflict', current: stored, currentClaimId: null },
+    });
+    v2.close();
+
+    const db = new DeviceDb(name);
+    const [trip] = await db.trips.toArray();
+    const [entry] = await db.outbox.toArray();
+
+    const migrated = { ...lidl, lineItems: [{ ...line, name: '', quantity: 1 }] };
+    expect(trip?.snapshot?.expenses).toEqual([{ ...stored, ...migrated }]);
+    expect(entry?.change).toEqual({ ...change, expense: migrated });
+    expect(entry?.held).toMatchObject({ current: { ...stored, ...migrated } });
+  });
 });

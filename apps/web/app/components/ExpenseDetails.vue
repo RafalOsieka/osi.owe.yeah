@@ -1,20 +1,45 @@
 <script setup lang="ts">
-import { expenseShares, isRepayment, type Expense, type Rational } from '@osi/owe-yeah-domain';
+import {
+  expenseShares,
+  fromMinor,
+  isReceipt,
+  isRepayment,
+  type Expense,
+  type Rational,
+} from '@osi/owe-yeah-domain';
 
 // An Expense in full, as its detail page and an old Revision show it: the full title, total,
 // when it was paid in its own zone, the Main payer (who received it, for Income), and each
-// Participant's share, the claimed Participant's in bold. A Repayment shows who paid whom.
+// Participant's share, the claimed Participant's in bold. A Repayment shows who paid whom. A
+// Receipt also lists its Line items, with how each is split and what is not assigned yet.
 const { expense } = defineProps<{ expense: Expense }>();
 
 const { trip, claim } = useOpenTrip();
-const { locale } = useI18n();
+const { t, locale } = useI18n();
+const splitText = useSplitText();
 
 const money = (amount: Rational) => formatMoney(amount, expense.currency, locale.value);
 
 const details = computed(() => {
-  const { total, shares } = expenseShares(expense);
+  const { total, shares, unassigned, lineItems } = expenseShares(expense);
+  const receipt = isReceipt(expense) && !isRepayment(expense);
   return {
     total,
+    unassigned: unassigned.numerator === 0n ? null : unassigned,
+    lineItems: receipt
+      ? expense.lineItems.map((item, index) => ({
+          name: item.name || t('receipt.unnamed', { position: index + 1 }),
+          quantity: item.quantity,
+          unitPrice: formatMoney(
+            fromMinor(item.unitPrice, expense.currency),
+            expense.currency,
+            locale.value,
+            'number',
+          ),
+          split: splitText(item.split, trip.value.participants),
+          ...lineItems[index]!,
+        }))
+      : null,
     repayment: isRepayment(expense),
     income: total.numerator < 0n,
     when: formatExpenseTime(expense.time, locale.value),
@@ -47,9 +72,47 @@ const details = computed(() => {
       </div>
     </section>
 
+    <section v-if="details.lineItems" aria-labelledby="line-items-heading">
+      <h2 id="line-items-heading" class="mt-5 mb-1 text-xs font-semibold text-muted uppercase">
+        {{ $t('receipt.lineItems') }}
+      </h2>
+      <ol>
+        <li
+          v-for="(line, index) in details.lineItems"
+          :key="index"
+          class="flex items-start gap-2 border-b border-default py-1.5 last:border-b-0"
+        >
+          <span class="min-w-0 flex-1 leading-snug">
+            <span class="block wrap-anywhere">{{ line.name }}</span>
+            <span class="block text-xs text-muted">
+              {{
+                line.quantity > 1
+                  ? $t('receipt.facts', {
+                      quantity: line.quantity,
+                      price: line.unitPrice,
+                      split: line.split,
+                    })
+                  : line.split
+              }}
+            </span>
+            <span v-if="line.unassigned.numerator !== 0n" class="block text-xs text-warning">
+              {{ $t('receipt.notAssigned', { amount: money(line.unassigned) }) }}
+            </span>
+          </span>
+          <span class="shrink-0 tabular-nums">{{ money(line.total) }}</span>
+        </li>
+      </ol>
+    </section>
+
     <section aria-labelledby="for-whom-heading">
       <h2 id="for-whom-heading" class="mt-5 mb-1 text-xs font-semibold text-muted uppercase">
-        {{ details.repayment ? $t('repayment.paidTo') : $t('expense.forWhomEven') }}
+        {{
+          details.repayment
+            ? $t('repayment.paidTo')
+            : details.lineItems
+              ? $t('receipt.shares')
+              : $t('expense.forWhomEven')
+        }}
       </h2>
       <ul>
         <li
@@ -67,6 +130,14 @@ const details = computed(() => {
           <span class="shrink-0 tabular-nums">{{ money(share) }}</span>
         </li>
       </ul>
+      <p v-if="details.unassigned" class="mt-1 text-sm text-warning">
+        {{
+          $t('receipt.unassignedTotal', {
+            amount: money(details.unassigned),
+            name: details.payer?.name ?? '?',
+          })
+        }}
+      </p>
     </section>
   </div>
 </template>

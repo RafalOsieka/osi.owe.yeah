@@ -89,7 +89,10 @@
       "unknownMainPayer": "Who paid is no longer in the Trip.",
       "unknownParticipant": "Someone ticked is no longer in the Trip.",
       "currencyNotTripCurrency": "The Expense must be in the Trip currency.",
-      "repaymentToSelf": "A Repayment needs two different Participants."
+      "repaymentToSelf": "A Repayment needs two different Participants.",
+      "negativeLineItem": "Only a plain Expense can be money received; a Receipt has no negative Line items.",
+      "unitsExceedQuantity": "A Line item has more units assigned than it has.",
+      "amountsExceedLineTotal": "A Line item has Amounts that add up to more than its total."
     },
     "emptyHelp": "Whoever pays for something adds it here.",
     "addFirst": "Add the first Expense",
@@ -113,6 +116,48 @@
     "deleted": "Deleted “{title}”. It is kept in Recently deleted.",
     "undo": "Undo",
     "deleteRefused": "The Expense was not deleted"
+  },
+  "receipt": {
+    "itemise": "Itemise as a Receipt",
+    "total": "Receipt total",
+    "lineItems": "Line items",
+    "shares": "Shares",
+    "summary": "Receipt · no items | Receipt · 1 item | Receipt · {count} items",
+    "unassignedBadge": "{count} unassigned",
+    "unassignedTotal": "{amount} not assigned yet, counted as {name}'s until it is.",
+    "notAssigned": "{amount} not assigned yet",
+    "nobodyYet": "nobody yet",
+    "unnamed": "Line item {position}",
+    "facts": "{quantity} × {price} · {split}",
+    "checkPrice": "Check the unit price.",
+    "name": "Name",
+    "namePlaceholder": "Name (optional)",
+    "unitPrice": "Unit price",
+    "quantity": "Quantity",
+    "weighedHelp": "Weighed goods are one unit at the line price.",
+    "splitMode": "Split mode",
+    "mode": {
+      "even": "Even",
+      "units": "Units",
+      "amounts": "Amounts"
+    },
+    "unitsFor": "Units for {name}",
+    "amountFor": "Amount for {name}",
+    "unitsAssigned": "{assigned} of {quantity} units assigned",
+    "problem": {
+      "unitsExceedQuantity": "More units assigned than bought.",
+      "amountsExceedLineTotal": "The Amounts add up to more than the Line total."
+    },
+    "moveUp": "Move up",
+    "moveDown": "Move down",
+    "remove": "Remove",
+    "addLineItem": "Add a Line item",
+    "newUnitPrice": "New Line item unit price",
+    "newQuantity": "New Line item quantity",
+    "newName": "New Line item name",
+    "add": "Add",
+    "lineItemsMissing": "Add at least one Line item.",
+    "lineItemsUnreadable": "Check the prices and Amounts of the Line items marked."
   },
   "repayment": {
     "title": "Repayment",
@@ -169,7 +214,10 @@
       "repaymentToSelf": "a Repayment needs two different Participants.",
       "expenseIdTaken": "this Expense belongs to another Trip.",
       "unknownExpense": "this Expense no longer exists.",
-      "participantIdTaken": "this Participant belongs to another Trip."
+      "participantIdTaken": "this Participant belongs to another Trip.",
+      "negativeLineItem": "a Receipt has no negative Line items.",
+      "unitsExceedQuantity": "a Line item has more units assigned than it has.",
+      "amountsExceedLineTotal": "a Line item's Amounts add up to more than its total."
     },
     "pullToRefresh": "Pull to sync",
     "releaseToRefresh": "Release to sync"

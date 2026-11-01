@@ -12,7 +12,7 @@ function expense(mainPayerId: string, unitPrice: number, participantIds: string[
     currency: 'EUR',
     time: { instant: '2026-06-12T12:32:00Z', zone: 'Europe/Zagreb' },
     mainPayerId,
-    lineItems: [{ unitPrice, split: { mode: 'even', participantIds } }],
+    lineItems: [{ name: '', unitPrice, quantity: 1, split: { mode: 'even', participantIds } }],
   };
 }
 

@@ -140,7 +140,12 @@ function plainExpense(payer: Participant, ticked: Participant[] = [payer]): Expe
     time: { instant: '2026-07-14T21:30:00Z', zone: 'Europe/Zagreb' },
     mainPayerId: payer.id,
     lineItems: [
-      { unitPrice: 2450, split: { mode: 'even', participantIds: ticked.map(({ id }) => id) } },
+      {
+        name: '',
+        unitPrice: 2450,
+        quantity: 1,
+        split: { mode: 'even', participantIds: ticked.map(({ id }) => id) },
+      },
     ],
   };
 }
