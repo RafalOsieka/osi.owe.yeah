@@ -11,7 +11,9 @@ function revision(version: number, unitPrice: number, deleted = false): Revision
     currency: 'EUR',
     time: { instant: '2026-07-14T21:30:00Z', zone: 'Europe/Zagreb' },
     mainPayerId: kasia,
-    lineItems: [{ unitPrice, split: { mode: 'even', participantIds: [kasia] } }],
+    lineItems: [
+      { name: '', unitPrice, quantity: 1, split: { mode: 'even', participantIds: [kasia] } },
+    ],
   };
   return { version, expense, deleted, edited: { by: kasia, at: '2026-07-15T08:00:00.000Z' } };
 }

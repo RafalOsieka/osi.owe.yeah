@@ -74,7 +74,9 @@ const forBoth = (id: string, mainPayerId: string, unitPrice: number): StoredExpe
   id,
   title: unitPrice < 0 ? 'Deposit refund' : 'Dinner',
   mainPayerId,
-  lineItems: [{ unitPrice, split: { mode: 'even', participantIds: [ania, bartek] } }],
+  lineItems: [
+    { name: '', unitPrice, quantity: 1, split: { mode: 'even', participantIds: [ania, bartek] } },
+  ],
 });
 
 const repaid = (id: string, mainPayerId: string, recipientId: string, amount: number) => ({

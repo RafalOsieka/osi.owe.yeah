@@ -42,7 +42,9 @@ async function tripWithExpenses(
         mainPayerId: people[0]!.id,
         lineItems: [
           {
+            name: '',
             unitPrice: amount,
+            quantity: 1,
             split: { mode: 'even' as const, participantIds: people.map((p) => p.id) },
           },
         ],
@@ -330,6 +332,83 @@ test('a Trip and an Expense made offline reach a second device once back online'
   await expect(otherPage.getByRole('link', { name: /Ferry tickets/ })).toContainText(
     'Kasia paid · for all 2',
   );
+  await other.close();
+});
+
+test('a Receipt entered offline at the till, Line item by Line item, reaches a second device', async ({
+  page,
+  context,
+  browser,
+}) => {
+  await page.goto('/');
+  await page.waitForFunction(() => navigator.serviceWorker.controller !== null);
+  await context.setOffline(true);
+  await createTrip(page, 'Istria 2026', 'Kasia', ['Ania', 'Ola']);
+
+  await page.getByRole('link', { name: 'Add the first Expense' }).click();
+  await page.getByLabel('Title').fill('Lidl Rovinj');
+  await page.getByRole('button', { name: 'Itemise as a Receipt' }).click();
+  const adding = page.getByRole('group', { name: 'Add a Line item' });
+  const addLine = async (price: string, name: string, quantity = '1') => {
+    await adding.getByLabel('New Line item unit price').fill(price);
+    await adding.getByLabel('New Line item quantity').fill(quantity);
+    await adding.getByLabel('New Line item name').fill(name);
+    await adding.getByRole('button', { name: 'Add' }).click();
+  };
+  const lines = page.getByRole('region', { name: 'Line items' }).getByRole('listitem');
+  const line = (name: string) => lines.filter({ hasText: name }).first();
+
+  // Six waters copy the bread's Even split, then go to Kasia and Ania by Units.
+  await addLine('2,49', 'Bread');
+  await addLine(',29', 'Water', '6');
+  await expect(line('Water')).toContainText('6 × 0.29 · Even · for all 3');
+  await line('Water').getByRole('button', { name: /Water/ }).click();
+  await line('Water').getByRole('button', { name: 'Units' }).click();
+  await expect(line('Water')).toContainText('€1.74 not assigned yet');
+  await line('Water').getByLabel('Units for Kasia').fill('3');
+  await line('Water').getByLabel('Units for Ania').fill('3');
+  await line('Water').getByLabel('Units for Ania').blur();
+  await expect(line('Water')).toContainText('6 of 6 units assigned');
+  await expect(line('Water')).not.toContainText('not assigned yet');
+
+  // After a Units split the next line starts Even across everyone; nobody had it yet.
+  await addLine('0,89', 'Chocolate');
+  await expect(line('Chocolate')).toContainText('Even · for all 3');
+  await line('Chocolate')
+    .getByRole('button', { name: /Chocolate/ })
+    .click();
+  await line('Chocolate').getByRole('button', { name: 'All', exact: true }).click();
+  await expect(line('Chocolate')).toContainText('Even · nobody yet');
+  // Reordered to match the paper Receipt.
+  await line('Chocolate').getByRole('button', { name: 'Move up' }).click();
+  await expect(lines).toHaveText([/Bread/, /Chocolate/, /Water/]);
+
+  await expect(page.getByRole('status', { name: 'Receipt total' })).toHaveText('€5.12');
+  await expect(page.getByRole('main')).toContainText(
+    "€0.89 not assigned yet, counted as Kasia's until it is.",
+  );
+  await page.getByRole('button', { name: 'Save Expense' }).click();
+  const row = page.getByRole('link', { name: /Lidl Rovinj/ });
+  await expect(row).toContainText('not synced');
+  await expect(row).toContainText('1 unassigned');
+  await expect(row).toContainText('Receipt · 3 items');
+
+  await context.setOffline(false);
+  await expect(row).not.toContainText('not synced');
+
+  const other = await browser.newContext();
+  const otherPage = await other.newPage();
+  await otherPage.goto(await tripLinkOnDevice(page));
+  await otherPage.getByRole('dialog').getByRole('button', { name: 'Ania' }).click();
+  const otherRow = otherPage.getByRole('link', { name: /Lidl Rovinj/ });
+  // A third of the bread and three waters: 0.83 + 0.87.
+  await expect(otherRow).toContainText('your share 1.70');
+  await expect(otherRow).toContainText('1 unassigned');
+  await otherRow.click();
+  const items = otherPage.getByRole('region', { name: 'Line items' }).getByRole('listitem');
+  await expect(items).toHaveCount(3);
+  await expect(items.nth(1)).toContainText('Chocolate');
+  await expect(items.nth(2)).toContainText('6 × 0.29 · Units · Kasia 3, Ania 3');
   await other.close();
 });
 

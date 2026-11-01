@@ -11,10 +11,19 @@ export {
   tripVersionSchema,
 } from './snapshot.ts';
 export type { Edited, Revision, StoredExpense, TripSnapshot } from './snapshot.ts';
-export { claimView, expenseShares } from './shares.ts';
+export { claimView, expenseShares, lineItemShares } from './shares.ts';
+export {
+  lineItemProblem,
+  lineItemSchema,
+  newLineItemSplit,
+  splitFromScratch,
+  splitParticipantIds,
+  splitSchema,
+} from './line-item.ts';
+export type { LineItem, LineItemProblem, Split, SplitMode } from './line-item.ts';
 export { balances, isSettled, spendingTotal, suggestedRepayments } from './settle-up.ts';
 export type { ParticipantBalance, SuggestedRepayment } from './settle-up.ts';
-export type { ClaimView, ExpenseShares } from './shares.ts';
+export type { ClaimView, ExpenseShares, LineItemShares } from './shares.ts';
 export type { RoundedMoney } from './money.ts';
 export {
   deviceTimeZone,
@@ -25,6 +34,7 @@ export {
   expenseTimeFromLocal,
   expenseTimeSchema,
   groupByLocalDay,
+  isReceipt,
   isRepayment,
   expenseTitleSchema,
   localDateTime,

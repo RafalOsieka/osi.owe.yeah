@@ -3,6 +3,7 @@ import {
   claimView,
   expenseShares,
   groupByLocalDay,
+  isReceipt,
   isRepayment,
   spendingTotal,
   type Rational,
@@ -10,9 +11,10 @@ import {
 import type { LocalExpense, LocalTrip } from '~/sync/local-trip';
 
 // The Trip's Expenses, newest first, under a heading for each Expense's own local day with
-// what was spent that day (net of Income, without Repayments). Each row opens the Expense's detail page and, with a Claim, says what
-// the Expense means for the claimed Participant, and marks it while it is not synced, or in
-// Conflict.
+// what was spent that day (net of Income, without Repayments). Each row opens the Expense's
+// detail page and, with a Claim, says what the Expense means for the claimed Participant, and
+// marks it while it is not synced, or in Conflict. A Receipt reads "Receipt · N items", marked
+// with how many Line items are not fully assigned yet.
 const { trip, claimId = null } = defineProps<{
   trip: LocalTrip;
   claimId?: string | null;
@@ -50,7 +52,7 @@ function forYou(expense: LocalExpense): { text: string; tone: string } | null {
 const days = computed(() =>
   groupByLocalDay(trip.expenses).map(({ day, expenses }) => {
     const rows = expenses.map((expense) => {
-      const { total, shares } = expenseShares(expense);
+      const { total, shares, lineItems } = expenseShares(expense);
       const count = shares.size;
       const payer = participants.value.get(expense.mainPayerId)?.name ?? '?';
       const forWhom =
@@ -58,7 +60,9 @@ const days = computed(() =>
           ? t('expense.forAll', { count })
           : t('expense.forSome', { count });
       let summary: string;
-      if (isRepayment(expense)) {
+      if (isReceipt(expense)) {
+        summary = t('receipt.summary', lineItems.length);
+      } else if (isRepayment(expense)) {
         const recipient = participants.value.get(expense.recipientId)?.name ?? '?';
         summary = t('repayment.fromTo', { payer, recipient });
       } else if (total.numerator < 0n) {
@@ -71,6 +75,7 @@ const days = computed(() =>
         total,
         payer: participants.value.get(expense.mainPayerId),
         summary,
+        unassigned: lineItems.filter(({ unassigned }) => unassigned.numerator !== 0n).length,
         forYou: forYou(expense),
       };
     });
@@ -122,6 +127,14 @@ function dayHeading(day: string): string {
                   v-else-if="row.expense.unsynced"
                   :label="$t('sync.notSynced')"
                   color="neutral"
+                  variant="subtle"
+                  size="sm"
+                  class="me-1"
+                />
+                <UBadge
+                  v-if="row.unassigned > 0"
+                  :label="$t('receipt.unassignedBadge', row.unassigned)"
+                  color="warning"
                   variant="subtle"
                   size="sm"
                   class="me-1"

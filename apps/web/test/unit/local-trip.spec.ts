@@ -15,7 +15,14 @@ function expense(id: string, title: string): Expense {
     currency: 'EUR',
     time: { instant: '2026-07-14T21:30:00Z', zone: 'Europe/Zagreb' },
     mainPayerId: kasia.id,
-    lineItems: [{ unitPrice: 2450, split: { mode: 'even', participantIds: [kasia.id] } }],
+    lineItems: [
+      {
+        name: '',
+        unitPrice: 2450,
+        quantity: 1,
+        split: { mode: 'even', participantIds: [kasia.id] },
+      },
+    ],
   };
 }
 

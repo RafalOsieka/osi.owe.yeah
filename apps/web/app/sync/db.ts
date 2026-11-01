@@ -1,5 +1,7 @@
 import {
+  expenseSchema,
   participantSchema,
+  storedExpenseSchema,
   tripIdSchema,
   type ChangeResult,
   type ExpenseChange,
@@ -92,6 +94,36 @@ export class DeviceDb extends Dexie {
           }
         });
     });
+    this.version(3).upgrade(async (tx) => {
+      await tx
+        .table<DeviceTrip, string>('trips')
+        .toCollection()
+        .modify((trip) => {
+          if (!trip.snapshot) return;
+          trip.snapshot = {
+            ...trip.snapshot,
+            expenses: trip.snapshot.expenses.map((expense) =>
+              beforeReceipts(storedExpenseSchema, expense),
+            ),
+          };
+        });
+      await tx
+        .table<OutboxEntry, number>('outbox')
+        .toCollection()
+        .modify((entry) => {
+          if (entry.change.kind !== 'expense') return;
+          entry.change = {
+            ...entry.change,
+            expense: beforeReceipts(expenseSchema, entry.change.expense),
+          };
+          if (entry.held?.status === 'conflict') {
+            entry.held = {
+              ...entry.held,
+              current: beforeReceipts(storedExpenseSchema, entry.held.current),
+            };
+          }
+        });
+    });
     this.on('populate', (tx) => tx.table('trips').bulkAdd(tripsFromLocalStorage()));
   }
 }
@@ -102,6 +134,14 @@ export class DeviceDb extends Dexie {
  */
 function beforeRevisions(expense: StoredExpense): StoredExpense {
   return { ...expense, deleted: false, edited: null };
+}
+
+/**
+ * An Expense kept by version 2 of the store, from before Receipts, read again with `schema`,
+ * whose defaults make each Line item one unnamed unit. Anything unreadable is kept as it was.
+ */
+function beforeReceipts<E>(schema: z.ZodType<E>, expense: E): E {
+  return schema.safeParse(expense).data ?? expense;
 }
 
 const LEGACY_KEY = 'owe-yeah:trips';

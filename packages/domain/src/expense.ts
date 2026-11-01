@@ -1,5 +1,12 @@
 import { Temporal } from 'temporal-polyfill';
 import { z } from 'zod';
+import {
+  LINE_ITEM_PROBLEMS,
+  lineItemProblem,
+  lineItemSchema,
+  minorAmountSchema,
+  splitParticipantIds,
+} from './line-item.ts';
 import { participantIdSchema } from './participant.ts';
 import { TRIP_CURRENCIES, type TripWithParticipants } from './trip.ts';
 
@@ -41,35 +48,6 @@ export const expenseTimeSchema = z.object({
 
 export type ExpenseTime = z.infer<typeof expenseTimeSchema>;
 
-/** An Even split: equal parts for every ticked Participant, each ticked once. */
-const evenSplitSchema = z.object({
-  mode: z.literal('even'),
-  participantIds: z
-    .array(participantIdSchema)
-    .min(1)
-    .max(100)
-    .refine((ids) => new Set(ids).size === ids.length, {
-      message: 'A Participant can be ticked only once',
-    }),
-});
-
-/** An amount in whole minor units of its currency (cents for EUR), so it stays exact in JSON. */
-const minorAmountSchema = z.number().int().positive().max(Number.MAX_SAFE_INTEGER);
-
-/**
- * One position of an Expense. A negative unit price is money received, which makes a plain
- * Expense Income; it is never zero.
- */
-const lineItemSchema = z.object({
-  unitPrice: z
-    .number()
-    .int()
-    .min(-Number.MAX_SAFE_INTEGER)
-    .max(Number.MAX_SAFE_INTEGER)
-    .refine((price) => price !== 0, { message: 'A Line item is never zero' }),
-  split: evenSplitSchema,
-});
-
 /**
  * What every Expense has. It carries its own currency, which for now must be the Trip
  * currency. `mainPayerId` is who paid, or who received the money of an Income.
@@ -83,12 +61,12 @@ const expenseBase = {
 };
 
 /**
- * An Expense split by its Line items. A plain Expense has exactly one; with a negative total
- * it is Income.
+ * An Expense split by its Line items, in the order of the Receipt. A plain Expense has
+ * exactly one; with a negative total it is Income.
  */
 const splitExpenseSchema = z.object({
   ...expenseBase,
-  lineItems: z.array(lineItemSchema).length(1),
+  lineItems: z.array(lineItemSchema).min(1).max(500),
 });
 
 /**
@@ -113,6 +91,16 @@ export function isRepayment<E extends Expense>(expense: E): expense is Extract<E
   return 'recipientId' in expense;
 }
 
+/**
+ * Whether an Expense is a Receipt, entered Line item by Line item, rather than a plain
+ * Expense (or Income), whose one Line item is unnamed, a single unit and split Even.
+ */
+export function isReceipt(expense: Expense): boolean {
+  if (isRepayment(expense)) return false;
+  const [only, ...more] = expense.lineItems;
+  return more.length > 0 || only!.name !== '' || only!.quantity > 1 || only!.split.mode !== 'even';
+}
+
 /** An Expense without its id, as the server keeps its state; one type per kind of Expense. */
 export type ExpenseState = Expense extends infer E
   ? E extends unknown
@@ -126,6 +114,8 @@ export const expenseProblemSchema = z.enum([
   'unknownParticipant',
   'currencyNotTripCurrency',
   'repaymentToSelf',
+  'negativeLineItem',
+  ...LINE_ITEM_PROBLEMS,
 ]);
 
 export type ExpenseProblem = z.infer<typeof expenseProblemSchema>;
@@ -133,13 +123,14 @@ export type ExpenseProblem = z.infer<typeof expenseProblemSchema>;
 /**
  * The rules an Expense must follow within its Trip; empty when it may be saved. The device
  * checks them before pushing and the server again before accepting. A Repayment's recipient
- * counts as its ticked Participant.
+ * counts as its ticked Participant. Only a plain Expense (Income) may have a negative Line
+ * item, and every split must fit its Line item (`lineItemProblem`).
  */
 export function expenseProblems(expense: Expense, trip: TripWithParticipants): ExpenseProblem[] {
   const known = new Set(trip.participants.map(({ id }) => id));
   const ticked = isRepayment(expense)
     ? [expense.recipientId]
-    : expense.lineItems.flatMap(({ split }) => split.participantIds);
+    : expense.lineItems.flatMap(({ split }) => splitParticipantIds(split));
   const problems: ExpenseProblem[] = [];
 
   if (!known.has(expense.mainPayerId)) problems.push('unknownMainPayer');
@@ -147,6 +138,14 @@ export function expenseProblems(expense: Expense, trip: TripWithParticipants): E
   if (expense.currency !== trip.currency) problems.push('currencyNotTripCurrency');
   if (isRepayment(expense) && expense.recipientId === expense.mainPayerId) {
     problems.push('repaymentToSelf');
+  }
+  if (!isRepayment(expense)) {
+    const { lineItems } = expense;
+    if (lineItems.length > 1 && lineItems.some(({ unitPrice }) => unitPrice < 0)) {
+      problems.push('negativeLineItem');
+    }
+    const lineProblems = new Set(lineItems.map(lineItemProblem));
+    problems.push(...LINE_ITEM_PROBLEMS.filter((problem) => lineProblems.has(problem)));
   }
   return problems;
 }
