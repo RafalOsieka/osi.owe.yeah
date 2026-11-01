@@ -1,16 +1,17 @@
 <script setup lang="ts">
-import { expenseShares, type Rational } from '@osi/owe-yeah-domain';
 import type { AlertProps } from '@nuxt/ui';
+import { toExpense } from '~/sync/local-trip';
 
-// An Expense's detail page: the full title, total, when it was paid in its own zone, the
-// Main payer, and each Participant's share; on top, why it is not synced yet if it isn't.
-// A Conflict opens the Conflict screen; a rejected change is fixed with Edit or discarded.
-// Edit opens the Expense form. Should the Expense go (e.g. a discarded new one), so does the
-// page.
+// An Expense's detail page: the Expense in full; on top, why it is not synced yet if it
+// isn't; at the bottom, who last edited it and when, its History, and Delete. A Conflict
+// opens the Conflict screen; a rejected change is fixed with Edit or discarded. Edit opens the
+// Expense form. Delete moves it to Recently deleted, with Undo for a moment. Should the
+// Expense go (deleted, or a discarded new one), so does the page.
 definePageMeta({ viewTransition: { toTypes: ['forward'], fromTypes: ['back'] } });
 
-const { trip, claim, discardChanges } = useOpenTrip();
+const { trip, discardChanges, deleteExpense, saveExpense } = useOpenTrip();
 const { t, locale } = useI18n();
+const toast = useToast();
 const route = useRoute();
 const back = useBack();
 
@@ -23,23 +24,37 @@ watch(expense, (now, before) => {
   if (before && !now) void back(tripPage.value);
 });
 
-const money = (amount: Rational) => formatMoney(amount, trip.value.currency, locale.value);
-
-const details = computed(() => {
-  if (!expense.value) return null;
-  const { time, mainPayerId } = expense.value;
-  const { total, shares } = expenseShares(expense.value);
-  return {
-    total,
-    when: formatExpenseTime(time, locale.value),
-    payer: trip.value.participants.find(({ id }) => id === mainPayerId),
-    // In the Trip's order.
-    shares: trip.value.participants.flatMap((participant) => {
-      const share = shares.get(participant.id);
-      return share ? [{ participant, share }] : [];
-    }),
-  };
+// "Last edited by Kasia, 2 hr. ago", by the server's clock once it has the change.
+const lastEdited = computed(() => {
+  const edited = expense.value?.edited;
+  if (!edited) return null;
+  const name = trip.value.participants.find(({ id }) => id === edited.by)?.name;
+  const when = edited.at
+    ? formatTimeAgo(edited.at, new Date(), locale.value)
+    : t('history.notSyncedYet');
+  return name ? t('history.lastEditedBy', { name, when }) : t('history.lastEdited', { when });
 });
+
+// Which Trip rules the last delete broke; the Expense stays as it was.
+const refusals = ref<string[]>([]);
+
+async function remove(): Promise<void> {
+  if (!expense.value) return;
+  const deleted = toExpense(expense.value);
+  const refused = await deleteExpense(deleted, expense.value.base);
+  refusals.value = refused.map((problem) => t(`expense.refused.${problem}`));
+  if (refused.length > 0) return;
+  toast.add({
+    title: t('expense.deleted', { title: deleted.title }),
+    actions: [{ label: t('expense.undo'), onClick: () => void restore(deleted.id) }],
+  });
+}
+
+// Undo: the deleted Expense saved again, on top of its deletion.
+async function restore(deletedId: string): Promise<void> {
+  const deleted = trip.value.deletedExpenses.find(({ id }) => id === deletedId);
+  if (deleted) await saveExpense(toExpense(deleted), deleted.base);
+}
 
 // Why the Expense as shown hasn't reached the others yet, and what can be done about it.
 const notSynced = computed((): AlertProps | null => {
@@ -85,46 +100,36 @@ useHead({ title: () => expense.value?.title ?? t('expense.notFound') });
       />
     </template>
 
-    <template v-if="expense && details">
+    <template v-if="expense">
       <UAlert v-if="notSynced" v-bind="notSynced" variant="subtle" class="mb-4" />
-      <p class="text-xl leading-tight font-bold wrap-anywhere">{{ expense.title }}</p>
-      <p class="mt-0.5 text-3xl font-bold tabular-nums">{{ money(details.total) }}</p>
-      <p class="text-sm text-muted">
-        {{ $t('expense.timeInZone', { time: details.when, zone: expense.time.zone }) }}
-      </p>
+      <ExpenseDetails :expense="expense" />
 
-      <section aria-labelledby="paid-by-heading">
-        <h2 id="paid-by-heading" class="mt-5 mb-1 text-xs font-semibold text-muted uppercase">
-          {{ $t('expense.paidBy') }}
-        </h2>
-        <div v-if="details.payer" class="flex items-center gap-2.5 py-1.5">
-          <ParticipantAvatar :participant="details.payer" />
-          <span class="min-w-0 flex-1 truncate">{{ details.payer.name }}</span>
-          <span class="shrink-0 tabular-nums">{{ money(details.total) }}</span>
+      <footer class="mt-6 border-t border-default pt-3">
+        <div class="flex items-center gap-2">
+          <p v-if="lastEdited" class="min-w-0 flex-1 text-sm text-muted">{{ lastEdited }}</p>
+          <UButton
+            variant="link"
+            :label="$t('history.title')"
+            :to="`${page}/history`"
+            class="ms-auto shrink-0 px-0"
+          />
         </div>
-      </section>
-
-      <section aria-labelledby="for-whom-heading">
-        <h2 id="for-whom-heading" class="mt-5 mb-1 text-xs font-semibold text-muted uppercase">
-          {{ $t('expense.forWhomEven') }}
-        </h2>
-        <ul>
-          <li
-            v-for="{ participant, share } in details.shares"
-            :key="participant.id"
-            class="flex items-center gap-2.5 py-1.5"
-          >
-            <ParticipantAvatar :participant="participant" />
-            <span
-              class="min-w-0 flex-1 truncate"
-              :class="{ 'font-semibold': participant.id === claim?.id }"
-            >
-              {{ participant.name }}
-            </span>
-            <span class="shrink-0 tabular-nums">{{ money(share) }}</span>
-          </li>
-        </ul>
-      </section>
+        <UButton
+          color="error"
+          variant="link"
+          :label="$t('expense.delete')"
+          class="mt-2 px-0"
+          @click="remove"
+        />
+        <UAlert
+          v-if="refusals.length > 0"
+          color="error"
+          icon="i-lucide-circle-alert"
+          :title="$t('expense.deleteRefused')"
+          :description="refusals.join(' ')"
+          class="mt-2"
+        />
+      </footer>
     </template>
     <UEmpty v-else icon="i-lucide-receipt-text" variant="naked" :title="$t('expense.notFound')" />
   </NuxtLayout>

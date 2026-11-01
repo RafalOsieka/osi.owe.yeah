@@ -4,6 +4,7 @@ import {
   type ChangeResult,
   type ExpenseChange,
   type Participant,
+  type StoredExpense,
   type SyncChange,
   type TripSnapshot,
 } from '@osi/owe-yeah-domain';
@@ -66,8 +67,41 @@ export class DeviceDb extends Dexie {
   constructor(name = 'owe-yeah') {
     super(name);
     this.version(1).stores({ trips: 'id', outbox: '++seq, tripId' });
+    this.version(2).upgrade(async (tx) => {
+      await tx
+        .table<DeviceTrip, string>('trips')
+        .toCollection()
+        .modify((trip) => {
+          if (!trip.snapshot) return;
+          // Version 0 is older than any the server has, so the next pull brings the whole Trip
+          // again, now with who made each Expense's version.
+          trip.snapshot = {
+            ...trip.snapshot,
+            version: 0,
+            expenses: trip.snapshot.expenses.map(beforeRevisions),
+          };
+        });
+      await tx
+        .table<OutboxEntry, number>('outbox')
+        .toCollection()
+        .modify((entry) => {
+          if (entry.change.kind !== 'expense') return;
+          entry.change = { ...entry.change, deleted: false };
+          if (entry.held?.status === 'conflict') {
+            entry.held = { ...entry.held, current: beforeRevisions(entry.held.current) };
+          }
+        });
+    });
     this.on('populate', (tx) => tx.table('trips').bulkAdd(tripsFromLocalStorage()));
   }
+}
+
+/**
+ * An Expense kept by version 1 of the store, from before deletes and Revisions: never deleted,
+ * and who made its version is not known.
+ */
+function beforeRevisions(expense: StoredExpense): StoredExpense {
+  return { ...expense, deleted: false, edited: null };
 }
 
 const LEGACY_KEY = 'owe-yeah:trips';

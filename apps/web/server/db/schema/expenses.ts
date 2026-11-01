@@ -1,13 +1,14 @@
 import type { Expense } from '@osi/owe-yeah-domain';
 import { sql } from 'drizzle-orm';
-import { index, integer, jsonb, pgTable, timestamp, uuid } from 'drizzle-orm/pg-core';
+import { boolean, index, integer, jsonb, pgTable, timestamp, uuid } from 'drizzle-orm/pg-core';
 import { trips } from './trips';
 
 /**
  * An Expense of a Trip. The whole Expense is the unit of change and of Conflict (ADR 0002),
- * so its state is kept as one JSON document and only read back whole. The id is a UUIDv7,
- * normally generated on the client so Expenses can be created offline; Postgres 18's
- * `uuidv7()` fills it in when an insert omits it.
+ * so its state is kept as one JSON document and only read back whole; every version it has had
+ * is kept as a Revision (`revisions`). The id is a UUIDv7, normally generated on the client
+ * so Expenses can be created offline; Postgres 18's `uuidv7()` fills it in when an insert
+ * omits it.
  */
 export const expenses = pgTable(
   'expenses',
@@ -22,6 +23,8 @@ export const expenses = pgTable(
     version: integer().notNull(),
     // The Expense's state as the domain package validated it, without its id.
     state: jsonb().$type<Omit<Expense, 'id'>>().notNull(),
+    // Deleted softly: it stays, with its state, so it can be restored from Recently deleted.
+    deleted: boolean().notNull().default(false),
     createdAt: timestamp({ withTimezone: true }).notNull().defaultNow(),
     // Bumped by Drizzle on every update made through the schema.
     updatedAt: timestamp({ withTimezone: true })

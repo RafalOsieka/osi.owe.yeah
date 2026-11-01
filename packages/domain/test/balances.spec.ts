@@ -3,7 +3,7 @@ import {
   balances,
   rational,
   roundMoney,
-  type Expense,
+  type StoredExpense,
   type TripSnapshot,
 } from '@osi/owe-yeah-domain';
 
@@ -20,7 +20,9 @@ function expense(id: string, mainPayerId: string, unitPrice: number, participant
     mainPayerId,
     lineItems: [{ unitPrice, split: { mode: 'even', participantIds } }],
     version: 1,
-  } satisfies Expense & { version: number };
+    deleted: false,
+    edited: null,
+  } satisfies StoredExpense;
 }
 
 const trip: TripSnapshot = {

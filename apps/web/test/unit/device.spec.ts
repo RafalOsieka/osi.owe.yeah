@@ -5,6 +5,8 @@ import type {
   PullResponse,
   PushRequest,
   PushResponse,
+  Revision,
+  StoredExpense,
   SyncChange,
   TripSnapshot,
   TripWithParticipants,
@@ -13,6 +15,7 @@ import { v7 as uuidv7 } from 'uuid';
 import { describe, expect, it } from 'vitest';
 import { DeviceDb } from '../../app/sync/db';
 import { createDevice, type Transport } from '../../app/sync/device';
+import { toExpense } from '../../app/sync/local-trip';
 
 const deviceId = '0b6e8f3a-2c1d-4e5f-8a9b-1c2d3e4f5a6b';
 const token = 'x'.repeat(43);
@@ -50,6 +53,10 @@ class FakeServer implements Transport {
     if (this.offline) throw new Error('offline');
     const { snapshot } = this;
     return { trip: snapshot && snapshot.version !== since ? snapshot : null };
+  }
+
+  async revisions(): Promise<Revision[]> {
+    return [];
   }
 
   /** The changes of every push, in the order they were sent. */
@@ -96,7 +103,7 @@ async function inConflict() {
   server.answer = (change) => ({
     changeId: change.id,
     status: 'conflict',
-    current: { ...lidl, title: 'Spar', version: 2 },
+    current: stored({ ...lidl, title: 'Spar' }, 2),
     currentClaimId: ania.id,
   });
   await device.saveExpense(trip.id, { ...lidl, title: 'Konzum' }, synced!.base);
@@ -110,6 +117,11 @@ const trip: TripWithParticipants = {
   currency: 'EUR',
   participants: [kasia, ania],
 };
+
+/** `expense` as the server has it at `version`, live. */
+function stored(expense: Expense, version: number): StoredExpense {
+  return { ...expense, version, deleted: false, edited: null };
+}
 
 function plainExpense(title: string, id = uuidv7()): Expense {
   return {
@@ -223,7 +235,7 @@ describe('the device', () => {
 
   it('keeps its own changes on top of every pulled Trip', async () => {
     const { server, device, lidl } = await inConflict();
-    server.snapshot = { ...trip, version: 9, expenses: [{ ...lidl, title: 'Spar', version: 2 }] };
+    server.snapshot = { ...trip, version: 9, expenses: [stored({ ...lidl, title: 'Spar' }, 2)] };
 
     await device.sync(trip.id);
 
@@ -287,7 +299,7 @@ describe('the device', () => {
 
   it('asks again about a Conflict once a pull brings a newer version of theirs', async () => {
     const { server, device, lidl } = await inConflict();
-    const newer = { ...lidl, title: 'Spar Poreč', version: 3 };
+    const newer = stored({ ...lidl, title: 'Spar Poreč' }, 3);
     server.snapshot = { ...trip, version: 9, expenses: [newer] };
     server.answer = (change) => ({
       changeId: change.id,
@@ -313,6 +325,34 @@ describe('the device', () => {
     expect(await device.read(trip.id)).toMatchObject({
       unsynced: 0,
       local: { expenses: [{ title: 'Spar', base: { version: 2 }, unsynced: null }] },
+    });
+  });
+
+  it('deletes an Expense to Recently deleted and restores it, each change on the version the last got', async () => {
+    const { server, device } = setUp();
+    await device.createTrip(trip, token);
+    const lidl = plainExpense('Lidl Rovinj');
+    await device.saveExpense(trip.id, lidl, { version: null });
+    await device.sync(trip.id);
+    const [saved] = (await device.read(trip.id))!.local!.expenses;
+
+    await device.deleteExpense(trip.id, lidl, saved!.base);
+    expect((await device.read(trip.id))?.local).toMatchObject({
+      expenses: [],
+      deletedExpenses: [{ title: 'Lidl Rovinj', deleted: true }],
+    });
+    const [deleted] = (await device.read(trip.id))!.local!.deletedExpenses;
+    await device.saveExpense(trip.id, toExpense(deleted!), deleted!.base);
+    await device.sync(trip.id);
+
+    expect(server.sent().filter((change) => change.kind === 'expense')).toEqual([
+      expect.objectContaining({ baseVersion: null, deleted: false }),
+      expect.objectContaining({ baseVersion: 1, deleted: true, expense: lidl }),
+      expect.objectContaining({ baseVersion: 2, deleted: false, expense: lidl }),
+    ]);
+    expect((await device.read(trip.id))?.local).toMatchObject({
+      expenses: [{ title: 'Lidl Rovinj', deleted: false, base: { version: 3 }, unsynced: null }],
+      deletedExpenses: [],
     });
   });
 

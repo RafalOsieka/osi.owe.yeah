@@ -68,6 +68,12 @@ async function saveExpense(expense: Expense, base: ExpenseBase) {
   return problems;
 }
 
+async function deleteExpense(expense: Expense, base: ExpenseBase) {
+  const problems = await device.deleteExpense(tripId, expense, base);
+  if (problems.length === 0) void device.sync(tripId);
+  return problems;
+}
+
 async function keepMine(expenseId: string): Promise<void> {
   await device.keepMine(tripId, expenseId);
   void device.sync(tripId);
@@ -81,6 +87,8 @@ provideOpenTrip({
   sync: () => device.sync(tripId),
   addParticipant,
   saveExpense,
+  deleteExpense,
+  revisions: (expenseId) => device.revisions(tripId, expenseId),
   keepMine,
   discardChanges: (expenseId) => device.discardChanges(tripId, expenseId),
   askWhoYouAre: () => (whoAreYouOpen.value = true),

@@ -22,6 +22,8 @@ function expense(id: string, title: string): Expense {
 const lidl = expense('019a2b3c-4d5e-7f00-8a1b-200000000001', 'Lidl Rovinj');
 const ferry = expense('019a2b3c-4d5e-7f00-8a1b-200000000002', 'Ferry');
 
+const edited = { by: kasia.id, at: '2026-07-15T08:00:00.000Z' };
+
 const pulled: TripSnapshot = {
   id: tripId,
   name: 'Croatia 2026',
@@ -29,8 +31,8 @@ const pulled: TripSnapshot = {
   participants: [kasia],
   version: 7,
   expenses: [
-    { ...lidl, version: 3 },
-    { ...ferry, version: 1 },
+    { ...lidl, version: 3, deleted: false, edited },
+    { ...ferry, version: 1, deleted: false, edited },
   ],
 };
 
@@ -48,6 +50,7 @@ describe('localTrip', () => {
       kind: 'expense',
       base: { version: 3 },
       expense: { ...lidl, title: 'Konzum' },
+      deleted: false,
     } as const;
     const added = {
       ...meta,
@@ -63,10 +66,37 @@ describe('localTrip', () => {
       {
         ...lidl,
         title: 'Konzum',
+        deleted: false,
+        // Made on this device: the server has no time for it yet.
+        edited: { by: null, at: null },
         base: { after: edit.id },
         unsynced: { status: 'pending', claimId: null },
       },
-      { ...ferry, base: { version: 1 }, unsynced: null },
+      { ...ferry, deleted: false, edited, base: { version: 1 }, unsynced: null },
+    ]);
+  });
+
+  it('keeps deleted Expenses apart for Recently deleted, also while a deletion is not synced', () => {
+    const snapshot: TripSnapshot = {
+      ...pulled,
+      expenses: [{ ...lidl, version: 4, deleted: true, edited }, pulled.expenses[1]!],
+    };
+    const deletion = {
+      ...meta,
+      claimId: kasia.id,
+      id: '019a2b3c-4d5e-7f00-8a1b-100000000006',
+      kind: 'expense',
+      base: { version: 1 },
+      expense: ferry,
+      deleted: true,
+    } as const;
+
+    const trip = localTrip(snapshot, [entry(deletion)]);
+
+    expect(trip?.expenses).toEqual([]);
+    expect(trip?.deletedExpenses).toMatchObject([
+      { title: 'Lidl Rovinj', edited, unsynced: null },
+      { title: 'Ferry', edited: { by: kasia.id, at: null }, unsynced: { status: 'pending' } },
     ]);
   });
 
@@ -77,6 +107,7 @@ describe('localTrip', () => {
       kind: 'expense',
       base: { version: null },
       expense: expense('019a2b3c-4d5e-7f00-8a1b-200000000003', 'Pizza'),
+      deleted: false,
     } as const;
     const held: Held = {
       changeId: refused.id,
@@ -109,6 +140,7 @@ describe('localTrip', () => {
       currency: 'PLN',
       participants: [kasia],
       expenses: [],
+      deletedExpenses: [],
     });
   });
 

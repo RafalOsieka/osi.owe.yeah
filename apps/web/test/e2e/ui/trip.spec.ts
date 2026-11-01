@@ -47,6 +47,7 @@ async function tripWithExpenses(
           },
         ],
       },
+      deleted: false,
     })),
   ];
   const pushed = await request.post(`/api/trips/${id}/push`, {
@@ -572,4 +573,56 @@ test('a change the server rejects says why, and can be discarded or fixed', asyn
   await expect(main).not.toContainText('Not synced');
   await page.getByRole('button', { name: 'Back' }).click();
   await expect(page.getByRole('button', { name: 'Everything is synced.' })).toBeVisible();
+});
+
+test('delete an Expense, bring it back from Recently deleted, and restore an older version from its History', async ({
+  page,
+  request,
+}) => {
+  await page.goto(
+    await tripWithExpenses(
+      request,
+      'Krk 2026',
+      ['Kasia', 'Ania'],
+      [{ title: 'Ferry', amount: 3000 }],
+    ),
+  );
+  await page.getByRole('dialog').getByRole('button', { name: 'Kasia' }).click();
+  const main = page.getByRole('main');
+  const row = page.getByRole('link', { name: /Ferry/ });
+
+  await row.click();
+  await page.getByRole('link', { name: 'Edit Expense' }).click();
+  await page.getByLabel('Amount').fill('45');
+  await page.getByRole('button', { name: 'Save Expense' }).click();
+  await expect(main).toContainText('Last edited by Kasia, now');
+
+  // Deleted, it leaves the Expenses tab for Recently deleted.
+  await page.getByRole('button', { name: 'Delete Expense' }).click();
+  await expect(page.getByRole('link', { name: 'Add the first Expense' })).toBeVisible();
+  await page.getByRole('link', { name: 'Trip', exact: true }).click();
+  await page.getByRole('link', { name: 'Recently deleted' }).click();
+  await expect(page.getByRole('heading', { name: 'Recently deleted' })).toBeVisible();
+  await expect(main.getByRole('listitem')).toContainText('€45.00 · Deleted by Kasia');
+  await page.getByRole('button', { name: 'Restore Ferry' }).click();
+  await expect(main).toContainText('Nothing deleted');
+
+  // Every change is a Revision; the first one opens in full and restores.
+  await page.getByRole('button', { name: 'Back' }).click();
+  await page.getByRole('link', { name: 'Expenses' }).click();
+  await expect(page.getByRole('button', { name: 'Everything is synced.' })).toBeVisible();
+  await row.click();
+  await page.getByRole('link', { name: 'History' }).click();
+  const revisions = main.getByRole('listitem');
+  await expect(revisions).toHaveCount(4);
+  await expect(revisions.nth(0)).toContainText('Restored');
+  await expect(revisions.nth(1)).toContainText('Deleted');
+  await expect(revisions.nth(2)).toContainText('€30.00 → €45.00');
+  await expect(revisions.nth(3)).toContainText('Added');
+  await revisions.nth(3).click();
+  await expect(main).toContainText('€30.00');
+  await page.getByRole('button', { name: 'Restore this version' }).click();
+
+  await expect(page.getByRole('heading', { name: 'Ferry' })).toBeVisible();
+  await expect(main).toContainText('€30.00');
 });

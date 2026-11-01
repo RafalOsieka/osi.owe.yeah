@@ -6,20 +6,23 @@ import {
   type PullResponse,
   type PushRequest,
   type PushResponse,
+  type Revision,
   type SyncChange,
   type TripWithParticipants,
 } from '@osi/owe-yeah-domain';
 import { v7 as uuidv7 } from 'uuid';
 import type { DeviceDb, DeviceTrip, ExpenseBase, Held, OutboxEntry, QueuedChange } from './db';
-import { localTrip, withAccepted, withExpense, type LocalTrip } from './local-trip';
+import { findExpense, localTrip, withAccepted, withExpense, type LocalTrip } from './local-trip';
 
 /**
- * How the device reaches the sync API. Both calls reject when no answer comes back (e.g. no
+ * How the device reaches the sync API. Every call rejects when no answer comes back (e.g. no
  * signal); `pull` answers `invalidLink` when the server refuses the token.
  */
 export type Transport = {
   push(tripId: string, token: string, request: PushRequest): Promise<PushResponse>;
   pull(tripId: string, token: string, since?: number): Promise<PullResponse | 'invalidLink'>;
+  /** An Expense's Revisions, newest first. */
+  revisions(tripId: string, token: string, expenseId: string): Promise<Revision[]>;
 };
 
 /** A Trip opened on this device, as it shows it. */
@@ -169,12 +172,33 @@ export function createDevice(db: DeviceDb, transport: Transport, deviceId: strin
    * Expense's `base` as `read` showed it). Resolves to the Trip rules it breaks, in which case
    * nothing is saved; it reaches the server on sync. An Expense in Conflict keeps the edit on
    * this device's version; one with a rejected change takes the edit as its fix, sent in
-   * place of the rejected changes.
+   * place of the rejected changes. Saving a deleted Expense restores it.
    */
-  async function saveExpense(
+  function saveExpense(
     tripId: string,
     expense: Expense,
     base: ExpenseBase,
+  ): Promise<ExpenseProblem[]> {
+    return queueExpense(tripId, expense, base, false);
+  }
+
+  /**
+   * Deletes an Expense on this device, softly: it moves to Recently deleted, keeping its
+   * state, and saving it again restores it. Otherwise like `saveExpense`.
+   */
+  function deleteExpense(
+    tripId: string,
+    expense: Expense,
+    base: ExpenseBase,
+  ): Promise<ExpenseProblem[]> {
+    return queueExpense(tripId, expense, base, true);
+  }
+
+  async function queueExpense(
+    tripId: string,
+    expense: Expense,
+    base: ExpenseBase,
+    deleted: boolean,
   ): Promise<ExpenseProblem[]> {
     return db.transaction('rw', db.trips, db.outbox, async () => {
       const view = await read(tripId);
@@ -189,6 +213,7 @@ export function createDevice(db: DeviceDb, transport: Transport, deviceId: strin
         kind: 'expense',
         base: rejected ? rejected.change.base : resolveBase(view.local, expense.id, base),
         expense,
+        deleted,
       });
       return [];
     });
@@ -200,7 +225,7 @@ export function createDevice(db: DeviceDb, transport: Transport, deviceId: strin
    * version it got (or, from another tab, the version the device has now).
    */
   function resolveBase(trip: LocalTrip, expenseId: string, base: ExpenseBase): ExpenseBase {
-    const current = trip.expenses.find(({ id }) => id === expenseId)?.base ?? { version: null };
+    const current = findExpense(trip, expenseId)?.base ?? { version: null };
     if ('after' in current) return current;
     if ('after' in base) return { version: acceptedVersions.get(base.after) ?? current.version };
     return base;
@@ -235,6 +260,13 @@ export function createDevice(db: DeviceDb, transport: Transport, deviceId: strin
       if (shown && shown.version >= held.current.version) return;
       await db.trips.update(tripId, { snapshot: withExpense(device.snapshot, held.current) });
     });
+  }
+
+  /** An Expense's Revisions from the server, newest first. Rejects without a connection. */
+  async function revisions(tripId: string, expenseId: string): Promise<Revision[]> {
+    const device = await db.trips.get(tripId);
+    if (!device) throw new Error(`Trip ${tripId} is not on this device`);
+    return transport.revisions(tripId, device.token, expenseId);
   }
 
   /**
@@ -345,8 +377,10 @@ export function createDevice(db: DeviceDb, transport: Transport, deviceId: strin
     claim,
     addParticipant,
     saveExpense,
+    deleteExpense,
     keepMine,
     discardChanges,
+    revisions,
     sync,
   };
 }

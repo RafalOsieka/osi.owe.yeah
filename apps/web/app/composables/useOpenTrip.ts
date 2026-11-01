@@ -1,4 +1,4 @@
-import type { Expense, ExpenseProblem, Participant } from '@osi/owe-yeah-domain';
+import type { Expense, ExpenseProblem, Participant, Revision } from '@osi/owe-yeah-domain';
 import type { InjectionKey } from 'vue';
 import type { ExpenseBase } from '~/sync/db';
 import type { LocalTrip } from '~/sync/local-trip';
@@ -22,9 +22,13 @@ export interface OpenTrip {
   /**
    * Saves an Expense's full new state on the device, based on the Expense the user edited
    * (its `base`; `{ version: null }` for a new one). Resolves to the Trip rules it breaks,
-   * empty when it was saved.
+   * empty when it was saved. Saving a deleted Expense, or an older Revision, restores it.
    */
   saveExpense(expense: Expense, base: ExpenseBase): Promise<ExpenseProblem[]>;
+  /** Deletes an Expense on the device, to Recently deleted; otherwise like `saveExpense`. */
+  deleteExpense(expense: Expense, base: ExpenseBase): Promise<ExpenseProblem[]>;
+  /** An Expense's Revisions from the server, newest first. Rejects without a connection. */
+  revisions(expenseId: string): Promise<Revision[]>;
   /** Resolves an Expense's Conflict with this device's version, sending it again. */
   keepMine(expenseId: string): Promise<void>;
   /**
