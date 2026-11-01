@@ -621,7 +621,7 @@ test('delete an Expense, bring it back from Recently deleted, and restore an old
   await expect(revisions.nth(3)).toContainText('Added');
   await revisions.nth(3).click();
   await expect(main).toContainText('€30.00');
-  await page.getByRole('button', { name: 'Restore this version' }).click();
+  await page.getByRole('button', { name: 'Restore this Revision' }).click();
 
   await expect(page.getByRole('heading', { name: 'Ferry' })).toBeVisible();
   await expect(main).toContainText('€30.00');
