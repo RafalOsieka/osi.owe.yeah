@@ -1,5 +1,4 @@
 <script setup lang="ts">
-import type { Participant } from '@osi/owe-yeah-domain';
 import { v7 as uuidv7 } from 'uuid';
 
 // The Trip tab: everything about the Trip that is not money. For now its Participants,
@@ -11,18 +10,9 @@ const { trip, claim, addParticipant, askWhoYouAre } = useOpenTrip();
 
 const adding = ref(false);
 useCloseOnBack(adding);
-const addFailed = ref(false);
-watch(adding, () => (addFailed.value = false));
-
-// The form keeps its id until an add succeeds, so a retry after a lost response is the
-// same addition (the server keeps the last name sent) rather than a second Participant.
-let pendingId = uuidv7();
 
 async function add(name: string): Promise<void> {
-  const participant: Participant = { id: pendingId, name };
-  addFailed.value = !(await addParticipant(participant));
-  if (addFailed.value) return;
-  pendingId = uuidv7();
+  await addParticipant({ id: uuidv7(), name });
   adding.value = false;
 }
 </script>
@@ -82,19 +72,11 @@ async function add(name: string): Promise<void> {
 
     <UDrawer v-model:open="adding" :title="$t('participants.addParticipant')">
       <template #body>
-        <div class="space-y-4">
-          <ParticipantNameForm
-            :label="$t('participants.name')"
-            :submit-label="$t('participants.add')"
-            @submit="add"
-          />
-          <UAlert
-            v-if="addFailed"
-            color="error"
-            icon="i-lucide-circle-alert"
-            :title="$t('participants.addFailed')"
-          />
-        </div>
+        <ParticipantNameForm
+          :label="$t('participants.name')"
+          :submit-label="$t('participants.add')"
+          @submit="add"
+        />
       </template>
     </UDrawer>
   </NuxtLayout>

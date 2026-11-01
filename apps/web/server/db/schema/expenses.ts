@@ -20,8 +20,6 @@ export const expenses = pgTable(
       .references(() => trips.id, { onDelete: 'cascade' }),
     // Starts at 1 and goes up by one with every accepted change; a change must be based on it.
     version: integer().notNull(),
-    // The id of the change that produced this version, so a retried push is recognised.
-    lastChangeId: uuid().notNull(),
     // The Expense's state as the domain package validated it, without its id.
     state: jsonb().$type<Omit<Expense, 'id'>>().notNull(),
     createdAt: timestamp({ withTimezone: true }).notNull().defaultNow(),

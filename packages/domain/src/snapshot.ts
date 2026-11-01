@@ -12,8 +12,15 @@ export const storedExpenseSchema = expenseSchema.extend({ version: expenseVersio
 
 export type StoredExpense = z.infer<typeof storedExpenseSchema>;
 
-/** The whole Trip as the pull returns it: details, Participants and Expenses. */
+/** A Trip's version: goes up with every change the server accepts into the Trip. */
+export const tripVersionSchema = z.number().int().nonnegative();
+
+/**
+ * The whole Trip as the pull returns it: details, Participants and Expenses, at the Trip
+ * version they were read at.
+ */
 export const tripSnapshotSchema = tripWithParticipantsSchema.extend({
+  version: tripVersionSchema,
   expenses: z.array(storedExpenseSchema),
 });
 

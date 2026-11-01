@@ -18,6 +18,7 @@ useHead({
 <template>
   <UApp :locale="uiLocale">
     <NuxtRouteAnnouncer />
+    <NuxtPwaManifest />
     <!-- A phone app first: wide screens get the same layout in a centered column. Each page
          wraps itself in its layout (`<NuxtLayout name>`), so layouts can take a title and a
          fixed action. -->

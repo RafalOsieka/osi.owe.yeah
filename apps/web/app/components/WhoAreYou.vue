@@ -7,8 +7,6 @@ import type { Participant } from '@osi/owe-yeah-domain';
 defineProps<{
   participants: readonly Participant[];
   current: Participant | null;
-  /** The last "Add me" could not be sent. */
-  addFailed: boolean;
 }>();
 const emit = defineEmits<{
   claim: [participant: Participant];
@@ -40,12 +38,6 @@ const open = defineModel<boolean>('open', { required: true });
           :label="$t('claim.notListed')"
           :submit-label="$t('claim.addMe')"
           @submit="emit('addMe', $event)"
-        />
-        <UAlert
-          v-if="addFailed"
-          color="error"
-          icon="i-lucide-circle-alert"
-          :title="$t('participants.addFailed')"
         />
       </div>
     </template>

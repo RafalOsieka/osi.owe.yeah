@@ -7,6 +7,7 @@ export {
   expenseVersionSchema,
   storedExpenseSchema,
   tripSnapshotSchema,
+  tripVersionSchema,
 } from './snapshot.ts';
 export type { ParticipantBalance, StoredExpense, TripSnapshot } from './snapshot.ts';
 export { claimView, expenseShares } from './shares.ts';
@@ -15,6 +16,7 @@ export type { RoundedMoney } from './money.ts';
 export {
   deviceTimeZone,
   expenseIdSchema,
+  expenseProblemSchema,
   expenseProblems,
   expenseSchema,
   expenseTimeFromLocal,
@@ -25,7 +27,7 @@ export {
   localDay,
 } from './expense.ts';
 export type { Expense, ExpenseProblem, ExpenseTime } from './expense.ts';
-export { participantNameSchema, participantSchema } from './participant.ts';
+export { participantIdSchema, participantNameSchema, participantSchema } from './participant.ts';
 export type { Participant } from './participant.ts';
 export {
   TRIP_CURRENCIES,
@@ -33,14 +35,29 @@ export {
   tripIdSchema,
   tripNameSchema,
   tripSchema,
+  tripTokenSchema,
   tripWithParticipantsSchema,
 } from './trip.ts';
 export type { Trip, TripCurrency, TripWithParticipants } from './trip.ts';
-export { expenseChangeSchema, pushRequestSchema } from './sync.ts';
+export {
+  changeResultSchema,
+  expenseChangeSchema,
+  participantChangeSchema,
+  pullResponseSchema,
+  pushProblemSchema,
+  pushRequestSchema,
+  pushResponseSchema,
+  syncChangeSchema,
+  tripChangeSchema,
+} from './sync.ts';
 export type {
   ChangeResult,
   ExpenseChange,
+  ParticipantChange,
+  PullResponse,
   PushProblem,
   PushRequest,
   PushResponse,
+  SyncChange,
+  TripChange,
 } from './sync.ts';

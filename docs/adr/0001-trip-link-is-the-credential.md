@@ -4,6 +4,6 @@ Owe Yeah has no accounts in the MVP: whoever holds a Trip's secret Trip link can
 
 ## Consequences
 
-- The link token is a random server-side secret, independent of the Trip id, so "regenerate link" (revocation) can be added later without a migration.
+- The link token is a random secret (256 bits), independent of the Trip id, so "regenerate link" (revocation) can be added later without a migration. The device creating the Trip generates it, so a Trip can be created offline and a retried creation keeps its token; the server keeps only its hash.
 - Claims grant no rights; there are no per-Participant permissions. Trust between Participants is assumed.
 - The list of a person's Trips lives on each device. Seeing your Trips across devices waits for accounts, which would hold Trip links and Claims rather than replace them.

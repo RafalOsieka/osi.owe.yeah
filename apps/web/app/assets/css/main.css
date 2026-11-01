@@ -32,3 +32,8 @@ html:active-view-transition-type(back)::view-transition-old(root) {
     translate: 100% 0;
   }
 }
+
+/* The Trip tabs have their own pull-to-refresh (sync), so the browser's would only reload. */
+html {
+  overscroll-behavior-y: contain;
+}

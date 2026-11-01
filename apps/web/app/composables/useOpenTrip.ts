@@ -1,36 +1,30 @@
-import type { Expense, Participant, PushProblem, TripSnapshot } from '@osi/owe-yeah-domain';
+import type { Expense, ExpenseProblem, Participant } from '@osi/owe-yeah-domain';
 import type { InjectionKey } from 'vue';
+import type { ExpenseBase } from '~/sync/db';
+import type { LocalTrip } from '~/sync/local-trip';
 
 /**
- * Why saving an Expense was refused: a rule the server enforces, a Conflict with someone
- * else's change, or `unsent` when no answer came back (e.g. no signal).
- */
-export type SaveRefusal = PushProblem | 'conflict' | 'unsent';
-
-/**
- * The Trip open on screen, as `pages/trips/[id].vue` loads it once for its pages and for
- * the Trip layout.
+ * The Trip open on screen, as `pages/trips/[id].vue` reads it from the device for its pages
+ * and for the Trip layout. Every change is saved on the device first and synced later
+ * (ADR 0002), so none of them waits for the network.
  */
 export interface OpenTrip {
-  /** The whole Trip as last pulled. */
-  trip: Readonly<Ref<TripSnapshot>>;
+  /** The Trip as this device shows it, its changes not synced yet included. */
+  trip: Readonly<Ref<LocalTrip>>;
   /** The Participant this device says it is in the Trip, if it has said. */
   claim: Readonly<Ref<Participant | null>>;
-  /** Lets a request into the Trip: the Trip link's token kept on this device (ADR 0001). */
-  headers: Readonly<Record<string, string>>;
-  /** Pulls the Trip again. */
-  refresh(): Promise<void>;
+  /** How many of this device's changes to the Trip the server has not accepted yet. */
+  unsynced: Readonly<Ref<number>>;
+  /** Syncs the Trip now, e.g. on pull-to-refresh. */
+  sync(): Promise<void>;
+  /** Adds a Participant on the device. */
+  addParticipant(participant: Participant): Promise<void>;
   /**
-   * Adds a Participant and pulls the Trip again; `false` when it could not be sent. Keep
-   * the same id for a retry, so a lost response doesn't add them twice.
+   * Saves an Expense's full new state on the device, based on the Expense the user edited
+   * (its `base`; `{ version: null }` for a new one). Resolves to the Trip rules it breaks,
+   * empty when it was saved.
    */
-  addParticipant(participant: Participant): Promise<boolean>;
-  /**
-   * Sends an Expense's full new state, based on the version the user edited (`null` for a
-   * new Expense), and pulls the Trip again. Resolves to why it was refused, empty when it
-   * was saved. A resend of the very same change keeps its id, so it is not applied twice.
-   */
-  saveExpense(expense: Expense, baseVersion: number | null): Promise<SaveRefusal[]>;
+  saveExpense(expense: Expense, base: ExpenseBase): Promise<ExpenseProblem[]>;
   /** Opens the "Who are you?" sheet. */
   askWhoYouAre(): void;
 }

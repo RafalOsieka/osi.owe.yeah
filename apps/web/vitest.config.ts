@@ -37,6 +37,8 @@ export default defineConfig({
           name: 'nuxt',
           include: ['test/nuxt/**/*.{test,spec}.ts'],
           environment: 'nuxt',
+          // The app's device store needs IndexedDB, which happy-dom lacks.
+          setupFiles: ['fake-indexeddb/auto'],
           hookTimeout: 30_000,
         },
       }),

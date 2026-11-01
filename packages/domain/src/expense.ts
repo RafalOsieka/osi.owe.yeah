@@ -79,7 +79,13 @@ export const expenseSchema = z.object({
 export type Expense = z.infer<typeof expenseSchema>;
 
 /** Why an Expense that is well-formed on its own does not fit its Trip. */
-export type ExpenseProblem = 'unknownMainPayer' | 'unknownParticipant' | 'currencyNotTripCurrency';
+export const expenseProblemSchema = z.enum([
+  'unknownMainPayer',
+  'unknownParticipant',
+  'currencyNotTripCurrency',
+]);
+
+export type ExpenseProblem = z.infer<typeof expenseProblemSchema>;
 
 /**
  * The rules an Expense must follow within its Trip; empty when it may be saved. The device

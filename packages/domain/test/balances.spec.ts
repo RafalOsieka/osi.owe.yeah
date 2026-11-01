@@ -28,6 +28,7 @@ const trip: TripSnapshot = {
   name: 'Croatia 2026',
   currency: 'EUR',
   participants: [kasia, ania, ola],
+  version: 1,
   expenses: [],
 };
 

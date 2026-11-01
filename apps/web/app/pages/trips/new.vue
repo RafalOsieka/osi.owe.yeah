@@ -14,7 +14,7 @@ import { v7 as uuidv7 } from 'uuid';
 definePageMeta({ viewTransition: { toTypes: ['forward'], fromTypes: ['back'] } });
 
 const { t, locale } = useI18n();
-const deviceTrips = useDeviceTrips();
+const device = useDevice();
 
 useHead({ title: () => t('trip.create.title') });
 
@@ -22,7 +22,6 @@ useHead({ title: () => t('trip.create.title') });
 type TripForm = Omit<Trip, 'id'> & { me: string; others: string[] };
 
 const state = reactive<TripForm>({ name: '', currency: 'EUR', me: '', others: [''] });
-const failed = ref(false);
 
 const currencyNames = computed(() => new Intl.DisplayNames([locale.value], { type: 'currency' }));
 const currencies = computed(() =>
@@ -49,30 +48,25 @@ function validate(trip: Partial<TripForm>): FormError[] {
   return errors;
 }
 
-// The ids are generated here, on the device. The server answers with the Trip link's
-// token, which is kept on the device with the Trip and never shown in the URL.
+// Created on the device, so it works offline; the Trip reaches the server on sync. The ids
+// and the Trip link's token are generated here; the token is kept on the device with the
+// Trip and never shown in the URL.
 async function create(): Promise<void> {
-  failed.value = false;
   const me = { id: uuidv7(), name: state.me };
   const others = state.others
     .filter((name) => name.trim() !== '')
     .map((name) => ({ id: uuidv7(), name }));
-  try {
-    // Trims the names, as the server stores them.
-    const trip = tripWithParticipantsSchema.parse({
-      id: uuidv7(),
-      name: state.name,
-      currency: state.currency,
-      participants: [me, ...others],
-    });
-    const { token } = await $fetch('/api/trips', { method: 'POST', body: trip });
-    deviceTrips.remember(trip, token);
-    deviceTrips.claim(trip.id, trip.participants[0]!);
-    // Replaced, so back from the Trip goes to My Trips rather than to this finished form.
-    await navigateTo(`/trips/${trip.id}`, { replace: true });
-  } catch {
-    failed.value = true;
-  }
+  // Trims the names, as the server stores them.
+  const trip = tripWithParticipantsSchema.parse({
+    id: uuidv7(),
+    name: state.name,
+    currency: state.currency,
+    participants: [me, ...others],
+  });
+  await device.createTrip(trip, newTripToken());
+  void device.sync(trip.id);
+  // Replaced, so back from the Trip goes to My Trips rather than to this finished form.
+  await navigateTo(`/trips/${trip.id}`, { replace: true });
 }
 </script>
 
@@ -134,12 +128,6 @@ async function create(): Promise<void> {
           @click="state.others.push('')"
         />
       </fieldset>
-      <UAlert
-        v-if="failed"
-        color="error"
-        icon="i-lucide-circle-alert"
-        :title="$t('trip.create.failed')"
-      />
     </UForm>
 
     <template #action>

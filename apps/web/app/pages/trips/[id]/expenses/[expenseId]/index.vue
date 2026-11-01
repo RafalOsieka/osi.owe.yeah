@@ -2,7 +2,8 @@
 import { expenseShares, type Rational } from '@osi/owe-yeah-domain';
 
 // An Expense's detail page: the full title, total, when it was paid in its own zone, the
-// Main payer, and each Participant's share. Edit opens the Expense form.
+// Main payer, and each Participant's share; on top, why it is not synced yet if it isn't.
+// Edit opens the Expense form.
 definePageMeta({ viewTransition: { toTypes: ['forward'], fromTypes: ['back'] } });
 
 const { trip, claim } = useOpenTrip();
@@ -39,6 +40,23 @@ const details = computed(() => {
   };
 });
 
+// Why the Expense as shown hasn't reached the others yet.
+const notSynced = computed(() => {
+  const unsynced = expense.value?.unsynced;
+  switch (unsynced?.status) {
+    case undefined:
+      return null;
+    case 'pending':
+      return { text: t('sync.pending'), color: 'neutral' } as const;
+    case 'conflict':
+      return { text: t('sync.conflict'), color: 'warning' } as const;
+    case 'rejected': {
+      const reason = unsynced.problems.map((problem) => t(`sync.reason.${problem}`)).join(' ');
+      return { text: t('sync.rejected', { reason }), color: 'error' } as const;
+    }
+  }
+});
+
 useHead({ title: () => expense.value?.title ?? t('expense.notFound') });
 </script>
 
@@ -54,6 +72,14 @@ useHead({ title: () => expense.value?.title ?? t('expense.notFound') });
     </template>
 
     <template v-if="expense && details">
+      <UAlert
+        v-if="notSynced"
+        :title="notSynced.text"
+        :color="notSynced.color"
+        variant="subtle"
+        icon="i-lucide-cloud-off"
+        class="mb-4"
+      />
       <p class="text-xl leading-tight font-bold wrap-anywhere">{{ expense.title }}</p>
       <p class="mt-0.5 text-3xl font-bold tabular-nums">{{ money(details.total) }}</p>
       <p class="text-sm text-muted">
