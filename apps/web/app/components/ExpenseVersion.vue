@@ -42,7 +42,7 @@ const shown = computed(() => {
     <p class="text-sm text-muted">
       {{ $t('expense.timeInZone', { time: shown.when, zone: expense.time.zone }) }}
     </p>
-    <p class="mt-2 text-sm">{{ $t('conflict.paidFor', { name: shown.payer }) }}</p>
+    <p class="mt-2 text-sm">{{ $t('conflict.paidBy', { name: shown.payer }) }}</p>
     <p class="text-sm wrap-anywhere">{{ $t('conflict.forWhom', { names: shown.forWhom }) }}</p>
   </section>
 </template>

@@ -285,6 +285,25 @@ describe('the device', () => {
     expect(await device.read(trip.id)).toMatchObject({ unsynced: 0, local: { expenses: [] } });
   });
 
+  it('asks again about a Conflict once a pull brings a newer version of theirs', async () => {
+    const { server, device, lidl } = await inConflict();
+    const newer = { ...lidl, title: 'Spar Poreč', version: 3 };
+    server.snapshot = { ...trip, version: 9, expenses: [newer] };
+    server.answer = (change) => ({
+      changeId: change.id,
+      status: 'conflict',
+      current: newer,
+      currentClaimId: kasia.id,
+    });
+
+    await device.sync(trip.id);
+    await device.sync(trip.id);
+
+    expect((await device.read(trip.id))?.local?.expenses).toMatchObject([
+      { title: 'Konzum', unsynced: { current: { title: 'Spar Poreč' }, currentClaimId: kasia.id } },
+    ]);
+  });
+
   it('keeps their version by dropping its own changes, showing theirs even offline', async () => {
     const { server, device, lidl } = await inConflict();
     server.offline = true;

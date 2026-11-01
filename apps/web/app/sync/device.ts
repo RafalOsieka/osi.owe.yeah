@@ -10,7 +10,7 @@ import {
   type TripWithParticipants,
 } from '@osi/owe-yeah-domain';
 import { v7 as uuidv7 } from 'uuid';
-import type { DeviceDb, DeviceTrip, ExpenseBase, OutboxEntry, QueuedChange } from './db';
+import type { DeviceDb, DeviceTrip, ExpenseBase, Held, OutboxEntry, QueuedChange } from './db';
 import { localTrip, withAccepted, withExpense, type LocalTrip } from './local-trip';
 
 /**
@@ -272,13 +272,18 @@ export function createDevice(db: DeviceDb, transport: Transport, deviceId: strin
 
   /**
    * Sends every change that can go now: not held, and for an Expense, on a known base. One
-   * Expense's changes go one per push, each on the version the last one got. Resolves to
-   * whether anything was accepted.
+   * Expense's changes go one per push, each on the version the last one got. A Conflict goes
+   * again once a pull brought a newer version than it showed, so the answer shows that one.
+   * Resolves to whether anything was accepted.
    */
-  async function pushRound({ id: tripId, token }: DeviceTrip): Promise<boolean> {
+  async function pushRound({ id: tripId, token, snapshot }: DeviceTrip): Promise<boolean> {
+    const pulled = new Map(snapshot?.expenses.map(({ id, version }) => [id, version]));
+    const outdated = (held: Held) =>
+      held.status === 'conflict' && (pulled.get(held.current.id) ?? 0) > held.current.version;
     const ready = (await entriesOf(tripId))
       .filter(
-        ({ change, held }) => !held && (change.kind !== 'expense' || 'version' in change.base),
+        ({ change, held }) =>
+          (!held || outdated(held)) && (change.kind !== 'expense' || 'version' in change.base),
       )
       .slice(0, PUSH_LIMIT);
     if (ready.length === 0) return false;

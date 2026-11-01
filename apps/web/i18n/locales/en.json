@@ -139,7 +139,7 @@
     "mine": "Your version",
     "theirs": "Their version",
     "by": "by {name}",
-    "paidFor": "Paid by {name}",
+    "paidBy": "Paid by {name}",
     "forWhom": "For {names}",
     "keepMine": "Keep mine",
     "keepTheirs": "Keep theirs",
