@@ -1,7 +1,12 @@
 import { z } from 'zod';
 import { expenseProblemSchema, expenseSchema } from './expense.ts';
 import { participantIdSchema, participantSchema } from './participant.ts';
-import { expenseVersionSchema, storedExpenseSchema, tripSnapshotSchema } from './snapshot.ts';
+import {
+  expenseVersionSchema,
+  revisionSchema,
+  storedExpenseSchema,
+  tripSnapshotSchema,
+} from './snapshot.ts';
 import { tripSchema } from './trip.ts';
 
 /**
@@ -34,14 +39,16 @@ export const participantChangeSchema = z.object({
 });
 
 /**
- * One change to an Expense (ADR 0002): its full new state plus the version it was based on
- * (`null` when creating it). Accepted only if that version is still current.
+ * One change to an Expense (ADR 0002): its full new state, whether it is deleted, and the
+ * version it was based on (`null` when creating it). Accepted only if that version is still
+ * current. Deleting and restoring are changes like any edit: the state stays, `deleted` flips.
  */
 export const expenseChangeSchema = z.object({
   ...changeMeta,
   kind: z.literal('expense'),
   baseVersion: expenseVersionSchema.nullable(),
   expense: expenseSchema,
+  deleted: z.boolean(),
 });
 
 /** One change from a device's outbox. */
@@ -114,3 +121,8 @@ export type PushResponse = z.infer<typeof pushResponseSchema>;
 export const pullResponseSchema = z.object({ trip: tripSnapshotSchema.nullable() });
 
 export type PullResponse = z.infer<typeof pullResponseSchema>;
+
+/** An Expense's Revisions, newest first, as History shows them. */
+export const revisionsResponseSchema = z.object({ revisions: z.array(revisionSchema) });
+
+export type RevisionsResponse = z.infer<typeof revisionsResponseSchema>;

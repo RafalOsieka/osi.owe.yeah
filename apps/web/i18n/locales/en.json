@@ -33,7 +33,8 @@
     "tabs": "Trip tabs",
     "tab": "Trip",
     "settings": {
-      "onThisDevice": "On this device"
+      "onThisDevice": "On this device",
+      "thisTrip": "This Trip"
     }
   },
   "participants": {
@@ -94,7 +95,11 @@
     "forWhomEven": "For whom · Even",
     "editShort": "Edit",
     "notFound": "This Expense doesn't exist.",
-    "timeInZone": "{time} · {zone}"
+    "timeInZone": "{time} · {zone}",
+    "delete": "Delete Expense",
+    "deleted": "Deleted “{title}”. It is kept in Recently deleted.",
+    "undo": "Undo",
+    "deleteRefused": "The Expense was not deleted"
   },
   "balances": {
     "title": "Balances",
@@ -143,7 +148,8 @@
     "forWhom": "For {names}",
     "keepMine": "Keep mine",
     "keepTheirs": "Keep theirs",
-    "none": "This Expense has no Conflict."
+    "none": "This Expense has no Conflict.",
+    "deleted": "Deleted"
   },
   "colorMode": {
     "title": "Color mode",
@@ -154,5 +160,36 @@
   "form": {
     "back": "Back",
     "close": "Close"
+  },
+  "history": {
+    "title": "History",
+    "lastEditedBy": "Last edited by {name}, {when}",
+    "lastEdited": "Last edited {when}",
+    "notSyncedYet": "not synced yet",
+    "someone": "Someone",
+    "offline": "History needs a connection. Try again when you are online.",
+    "empty": "No History yet. It starts once the Expense is synced.",
+    "notFound": "This Revision doesn't exist.",
+    "version": "Revision {version}",
+    "byline": "{name} · {when}",
+    "deletedHere": "This change deleted the Expense.",
+    "restore": "Restore this Revision",
+    "restoreRefused": "The Expense was not restored",
+    "kind": {
+      "added": "Added",
+      "edited": "Edited",
+      "deleted": "Deleted",
+      "restored": "Restored"
+    }
+  },
+  "deleted": {
+    "title": "Recently deleted",
+    "by": "Deleted by {name}, {when}",
+    "at": "Deleted {when}",
+    "restore": "Restore",
+    "restoreTitle": "Restore {title}",
+    "empty": "Nothing deleted",
+    "emptyHelp": "Deleted Expenses wait here, so you can bring them back.",
+    "row": "{total} · {deleted}"
   }
 }

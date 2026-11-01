@@ -42,6 +42,7 @@ describe('pushRequestSchema', () => {
           mainPayerId: kasia.id,
           lineItems: [{ unitPrice: 2450, split: { mode: 'even', participantIds: [kasia.id] } }],
         },
+        deleted: false,
       },
     ];
 

@@ -33,7 +33,8 @@
     "tabs": "Karty podróży",
     "tab": "Podróż",
     "settings": {
-      "onThisDevice": "Na tym urządzeniu"
+      "onThisDevice": "Na tym urządzeniu",
+      "thisTrip": "Ta podróż"
     }
   },
   "participants": {
@@ -94,7 +95,11 @@
     "forWhomEven": "Za kogo · Po równo",
     "editShort": "Edytuj",
     "notFound": "Ten wydatek nie istnieje.",
-    "timeInZone": "{time} · {zone}"
+    "timeInZone": "{time} · {zone}",
+    "delete": "Usuń wydatek",
+    "deleted": "Usunięto „{title}”. Znajdziesz go w ostatnio usuniętych.",
+    "undo": "Cofnij",
+    "deleteRefused": "Wydatek nie został usunięty"
   },
   "balances": {
     "title": "Salda",
@@ -143,7 +148,8 @@
     "forWhom": "Za kogo: {names}",
     "keepMine": "Zachowaj moją",
     "keepTheirs": "Zachowaj drugą",
-    "none": "Ten wydatek nie ma konfliktu."
+    "none": "Ten wydatek nie ma konfliktu.",
+    "deleted": "Usunięty"
   },
   "colorMode": {
     "title": "Motyw",
@@ -154,5 +160,36 @@
   "form": {
     "back": "Wstecz",
     "close": "Zamknij"
+  },
+  "history": {
+    "title": "Historia",
+    "lastEditedBy": "Ostatnia zmiana: {name}, {when}",
+    "lastEdited": "Ostatnia zmiana: {when}",
+    "notSyncedYet": "jeszcze niezsynchronizowana",
+    "someone": "Ktoś",
+    "offline": "Historia wymaga połączenia z internetem. Spróbuj ponownie, gdy będziesz online.",
+    "empty": "Nie ma jeszcze historii. Pojawi się, gdy wydatek się zsynchronizuje.",
+    "notFound": "Ta wersja nie istnieje.",
+    "version": "Wersja {version}",
+    "byline": "{name} · {when}",
+    "deletedHere": "Ta zmiana usunęła wydatek.",
+    "restore": "Przywróć tę wersję",
+    "restoreRefused": "Wydatek nie został przywrócony",
+    "kind": {
+      "added": "Dodano",
+      "edited": "Zmieniono",
+      "deleted": "Usunięto",
+      "restored": "Przywrócono"
+    }
+  },
+  "deleted": {
+    "title": "Ostatnio usunięte",
+    "by": "{name} · usunięto {when}",
+    "at": "Usunięto {when}",
+    "restore": "Przywróć",
+    "restoreTitle": "Przywróć: {title}",
+    "empty": "Nic nie usunięto",
+    "emptyHelp": "Tu czekają usunięte wydatki, aby można je było przywrócić.",
+    "row": "{total} · {deleted}"
   }
 }

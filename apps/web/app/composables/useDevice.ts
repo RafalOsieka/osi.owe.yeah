@@ -1,4 +1,9 @@
-import { pullResponseSchema, pushResponseSchema, TRIP_TOKEN_HEADER } from '@osi/owe-yeah-domain';
+import {
+  pullResponseSchema,
+  pushResponseSchema,
+  revisionsResponseSchema,
+  TRIP_TOKEN_HEADER,
+} from '@osi/owe-yeah-domain';
 import { DeviceDb } from '~/sync/db';
 import { createDevice, type Device, type Transport } from '~/sync/device';
 
@@ -21,6 +26,12 @@ const transport: Transport = {
     if (response.status === 401) return 'invalidLink';
     if (!response.ok) throw new Error(`Pull failed with ${response.status}`);
     return pullResponseSchema.parse(response._data);
+  },
+  async revisions(tripId, token, expenseId) {
+    const response = await $fetch(`/api/trips/${tripId}/expenses/${expenseId}/revisions`, {
+      headers: { [TRIP_TOKEN_HEADER]: token },
+    });
+    return revisionsResponseSchema.parse(response).revisions;
   },
 };
 

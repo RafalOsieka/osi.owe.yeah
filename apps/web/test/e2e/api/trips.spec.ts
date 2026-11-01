@@ -9,6 +9,8 @@ import {
   type ParticipantChange,
   type PullResponse,
   type PushResponse,
+  type RevisionsResponse,
+  type StoredExpense,
   type SyncChange,
   type TripChange,
   type TripSnapshot,
@@ -50,7 +52,21 @@ function change(
   baseVersion: number | null = null,
   claimId: string | null = null,
 ): ExpenseChange {
-  return { id: uuidv7(), claimId, deviceId, kind: 'expense', baseVersion, expense };
+  return { id: uuidv7(), claimId, deviceId, kind: 'expense', baseVersion, expense, deleted: false };
+}
+
+/** A change deleting `expense`, its state kept as it was. */
+function deletion(
+  expense: Expense,
+  baseVersion: number,
+  claimId: string | null = null,
+): ExpenseChange {
+  return { ...change(expense, baseVersion, claimId), deleted: true };
+}
+
+/** `expense` as the pull returns it at `version`, made by `by` at whatever time. */
+function stored(expense: Expense, version: number, by: string | null = null): StoredExpense {
+  return { ...expense, version, deleted: false, edited: { by, at: expect.any(String) } };
 }
 
 /** A push as a device sends it; its changes may be ones the server refuses as malformed. */
@@ -95,6 +111,20 @@ function pullTrip(id: string, token?: string, since?: number): Promise<Response>
 async function pulled(tripId: string, token: string): Promise<TripSnapshot> {
   // SAFETY: a 200 from the whole-Trip pull without `since` always carries the Trip.
   return ((await (await pullTrip(tripId, token)).json()) as PullResponse).trip!;
+}
+
+/** An Expense's Revisions, newest first, expecting the request to succeed. */
+async function revisions(tripId: string, token: string, expenseId: string) {
+  const response = await revisionsResponse(tripId, token, expenseId);
+  expect(response.status).toBe(200);
+  // SAFETY: a 200 from the Revisions endpoint is a RevisionsResponse, checked just above.
+  return ((await response.json()) as RevisionsResponse).revisions;
+}
+
+function revisionsResponse(tripId: string, token: string, expenseId: string): Promise<Response> {
+  return fetch(`/api/trips/${tripId}/expenses/${expenseId}/revisions`, {
+    headers: { [TRIP_TOKEN_HEADER]: token },
+  });
 }
 
 async function pulledParticipants(tripId: string, token: string): Promise<Participant[]> {
@@ -146,7 +176,7 @@ describeApi('Trip API', () => {
     expect(results.map(({ status }) => status)).toEqual(['accepted', 'accepted', 'accepted']);
     expect(await pulled(trip.id, token)).toMatchObject({
       ...trip,
-      expenses: [{ ...expense, version: 1 }],
+      expenses: [stored(expense, 1)],
     });
   });
 
@@ -177,7 +207,7 @@ describeApi('Trip API', () => {
     ]);
     const { participants, expenses } = await pulled(trip.id, token);
     expect(participants.map(({ name }) => name)).toEqual(['Kasia', 'Ania', 'Ola']);
-    expect(expenses).toEqual([{ ...expense, title: 'Spar', version: 3 }]);
+    expect(expenses).toEqual([stored({ ...expense, title: 'Spar' }, 3)]);
   });
 
   it('accepts a retried creation of a Trip, keeping its token', async () => {
@@ -275,7 +305,7 @@ describeApi('Trip API', () => {
     expect(await push(trip.id, token, created)).toEqual<ChangeResult[]>([
       { changeId: created.id, status: 'accepted', version: 1 },
     ]);
-    expect((await pulled(trip.id, token)).expenses).toEqual([{ ...created.expense, version: 1 }]);
+    expect((await pulled(trip.id, token)).expenses).toEqual([stored(created.expense, 1)]);
   });
 
   it('edits an Expense based on its current version, and bumps the version', async () => {
@@ -287,7 +317,7 @@ describeApi('Trip API', () => {
     expect(await push(trip.id, token, edited)).toEqual<ChangeResult[]>([
       { changeId: edited.id, status: 'accepted', version: 2 },
     ]);
-    expect((await pulled(trip.id, token)).expenses).toEqual([{ ...edited.expense, version: 2 }]);
+    expect((await pulled(trip.id, token)).expenses).toEqual([stored(edited.expense, 2)]);
   });
 
   it('reports a Conflict for a change based on an older version, with who made the current one', async () => {
@@ -297,7 +327,7 @@ describeApi('Trip API', () => {
     await push(trip.id, token, change({ ...expense, title: 'Konzum' }, 1, kasia.id));
     const stale = change({ ...expense, title: 'Spar' }, 1, ania.id);
 
-    const current = { ...expense, title: 'Konzum', version: 2 };
+    const current = stored({ ...expense, title: 'Konzum' }, 2, kasia.id);
     expect(await push(trip.id, token, stale)).toEqual<ChangeResult[]>([
       { changeId: stale.id, status: 'conflict', current, currentClaimId: kasia.id },
     ]);
@@ -317,7 +347,7 @@ describeApi('Trip API', () => {
         problems: ['unknownMainPayer', 'unknownParticipant'],
       },
     ]);
-    expect((await pulled(trip.id, token)).expenses).toEqual([{ ...expense, version: 1 }]);
+    expect((await pulled(trip.id, token)).expenses).toEqual([stored(expense, 1)]);
   });
 
   it('holds back only the Expenses it refuses, accepting the rest of the push', async () => {
@@ -333,7 +363,7 @@ describeApi('Trip API', () => {
       {
         changeId: stale.id,
         status: 'conflict',
-        current: { ...edited, title: 'Konzum', version: 2 },
+        current: stored({ ...edited, title: 'Konzum' }, 2),
         currentClaimId: null,
       },
       {
@@ -361,7 +391,64 @@ describeApi('Trip API', () => {
       { changeId: reused.id, status: 'rejected', problems: ['expenseIdTaken'] },
       { changeId: missing.id, status: 'rejected', problems: ['unknownExpense'] },
     ]);
-    expect((await pulled(other.trip.id, other.token)).expenses).toEqual([{ ...taken, version: 1 }]);
+    expect((await pulled(other.trip.id, other.token)).expenses).toEqual([stored(taken, 1)]);
+  });
+
+  it('deletes an Expense softly: the pull keeps it, marked deleted, with who deleted it', async () => {
+    const { trip, token, kasia, ania } = await tripWithKasiaAndAnia();
+    const expense = plainExpense(kasia);
+    await push(trip.id, token, change(expense));
+    const deleted = deletion(expense, 1, ania.id);
+
+    expect(await push(trip.id, token, deleted)).toEqual<ChangeResult[]>([
+      { changeId: deleted.id, status: 'accepted', version: 2 },
+    ]);
+    expect((await pulled(trip.id, token)).expenses).toEqual([
+      { ...stored(expense, 2, ania.id), deleted: true },
+    ]);
+  });
+
+  it('keeps every edit, delete and restore of an Expense as a Revision, newest first', async () => {
+    const { trip, token, kasia, ania } = await tripWithKasiaAndAnia();
+    const expense = plainExpense(kasia);
+    const edited = { ...expense, title: 'Konzum', mainPayerId: ania.id };
+    await push(trip.id, token, change(expense, null, kasia.id));
+    await push(trip.id, token, change(edited, 1, ania.id));
+    await push(trip.id, token, deletion(edited, 2, kasia.id));
+    // Restoring the first Revision on top of the deletion.
+    await push(trip.id, token, change(expense, 3));
+
+    const history = await revisions(trip.id, token, expense.id);
+
+    const at = expect.stringMatching(/^\d{4}-\d{2}-\d{2}T[\d:.]+Z$/);
+    expect(history).toEqual([
+      { version: 4, expense, deleted: false, edited: { by: null, at } },
+      { version: 3, expense: edited, deleted: true, edited: { by: kasia.id, at } },
+      { version: 2, expense: edited, deleted: false, edited: { by: ania.id, at } },
+      { version: 1, expense, deleted: false, edited: { by: kasia.id, at } },
+    ]);
+    expect((await pulled(trip.id, token)).expenses).toEqual([stored(expense, 4)]);
+    expect((await revisionsResponse(trip.id, newToken(), expense.id)).status).toBe(401);
+  });
+
+  it('reports a Conflict for a restore based on an older version, adding no Revision', async () => {
+    const { trip, token, kasia, ania } = await tripWithKasiaAndAnia();
+    const expense = plainExpense(kasia);
+    await push(trip.id, token, change(expense));
+    await push(trip.id, token, deletion(expense, 1));
+    // Kasia and Ania both restore the deleted Expense; Kasia syncs first.
+    await push(trip.id, token, change(expense, 2, kasia.id));
+    const restoredAgain = change(expense, 2, ania.id);
+
+    expect(await push(trip.id, token, restoredAgain)).toEqual<ChangeResult[]>([
+      {
+        changeId: restoredAgain.id,
+        status: 'conflict',
+        current: stored(expense, 3, kasia.id),
+        currentClaimId: kasia.id,
+      },
+    ]);
+    expect(await revisions(trip.id, token, expense.id)).toHaveLength(3);
   });
 
   it('refuses a push with a malformed Expense', async () => {

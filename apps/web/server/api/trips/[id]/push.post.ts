@@ -13,16 +13,21 @@ import { and, eq, sql } from 'drizzle-orm';
 import { defineEventHandler, readValidatedBody } from 'nuxt/server';
 import { getDb } from '../../../db';
 import type { Database } from '../../../db/client';
-import { changes, expenses, participants, trips } from '../../../db/schema';
+import { changes, expenses, participants, revisions, trips } from '../../../db/schema';
 import { createTripIfMissing, requireTrip, type StoredTrip } from '../../../utils/trip-access';
-import { loadParticipants, toStoredExpense } from '../../../utils/trip-snapshot';
+import {
+  loadParticipants,
+  selectStoredExpenses,
+  toStoredExpense,
+} from '../../../utils/trip-snapshot';
 
 /**
  * The sync push (ADR 0002): applies a device's outbox changes in order and answers with a
  * result per change. A push carrying a Trip change creates the Trip if the server doesn't
  * have it yet. Trip details and Participants are last-write-wins. An Expense change carries
  * the Expense's full new state and the version it was based on; it is accepted only if it
- * follows the Trip's rules and that version is still current. A change applied before is
+ * follows the Trip's rules and that version is still current, and then kept as a Revision.
+ * Deletes and restores are Expense changes like edits. A change applied before is
  * answered as the first time and not applied again. A malformed push is refused as a whole
  * with 400.
  */
@@ -142,8 +147,8 @@ async function applyParticipantChange(
 
 /**
  * Creates the Expense (base version `null`) or updates it if it is still at the base
- * version, in one conditional statement so concurrent pushes cannot both win. Returns
- * nothing when the change did not apply.
+ * version, in one conditional statement so concurrent pushes cannot both win, and adds the
+ * Revision it makes. Returns nothing when the change did not apply.
  */
 async function applyExpenseChange(
   change: ExpenseChange,
@@ -153,17 +158,18 @@ async function applyExpenseChange(
   if (problems.length > 0) return { changeId: change.id, status: 'rejected', problems };
 
   const { id, ...state } = change.expense;
+  const { deleted } = change;
   const applied = await getDb().transaction(async (tx) => {
     const [stored] =
       change.baseVersion === null
         ? await tx
             .insert(expenses)
-            .values({ id, tripId: trip.id, version: 1, state })
+            .values({ id, tripId: trip.id, version: 1, state, deleted })
             .onConflictDoNothing({ target: expenses.id })
             .returning({ version: expenses.version })
         : await tx
             .update(expenses)
-            .set({ version: sql`${expenses.version} + 1`, state })
+            .set({ version: sql`${expenses.version} + 1`, state, deleted })
             .where(
               and(
                 eq(expenses.id, id),
@@ -172,7 +178,17 @@ async function applyExpenseChange(
               ),
             )
             .returning({ version: expenses.version });
-    if (stored) await record(tx, change, trip.id, id, stored.version);
+    if (!stored) return undefined;
+    await tx.insert(revisions).values({
+      expenseId: id,
+      version: stored.version,
+      tripId: trip.id,
+      state,
+      deleted,
+      claimId: change.claimId,
+      deviceId: change.deviceId,
+    });
+    await record(tx, change, trip.id, id, stored.version);
     return stored;
   });
   return applied ? { changeId: change.id, status: 'accepted', version: applied.version } : null;
@@ -184,35 +200,12 @@ async function applyExpenseChange(
  */
 async function refusal(change: ExpenseChange, tripId: string): Promise<ChangeResult> {
   const changeId = change.id;
-  const [existing] = await getDb()
-    .select({
-      id: expenses.id,
-      tripId: expenses.tripId,
-      version: expenses.version,
-      state: expenses.state,
-    })
-    .from(expenses)
-    .where(eq(expenses.id, change.expense.id));
+  const [existing] = await selectStoredExpenses().where(eq(expenses.id, change.expense.id));
 
   if (!existing) return { changeId, status: 'rejected', problems: ['unknownExpense'] };
   if (existing.tripId !== tripId) {
     return { changeId, status: 'rejected', problems: ['expenseIdTaken'] };
   }
-
-  const [made] = await getDb()
-    .select({ claimId: changes.claimId })
-    .from(changes)
-    .where(
-      and(
-        eq(changes.tripId, tripId),
-        eq(changes.subjectId, existing.id),
-        eq(changes.version, existing.version),
-      ),
-    );
-  return {
-    changeId,
-    status: 'conflict',
-    current: toStoredExpense(existing),
-    currentClaimId: made?.claimId ?? null,
-  };
+  const current = toStoredExpense(existing);
+  return { changeId, status: 'conflict', current, currentClaimId: current.edited?.by ?? null };
 }

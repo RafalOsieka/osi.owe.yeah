@@ -36,6 +36,13 @@
       "when": 1793551855424,
       "tag": "0004_add_changes",
       "breakpoints": true
+    },
+    {
+      "idx": 5,
+      "version": "7",
+      "when": 1793561690972,
+      "tag": "0005_add_revisions",
+      "breakpoints": true
     }
   ]
 }

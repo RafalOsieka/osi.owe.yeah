@@ -2,11 +2,12 @@
 import { expenseShares, type Expense, type Participant } from '@osi/owe-yeah-domain';
 
 // One version of an Expense on the Conflict screen, as a card under `heading`: who made it
-// (`authorId`, the Claim sent with the change, when known), its title, total, when it was
-// paid, who paid and who it is for.
-const { expense, heading, authorId, participants } = defineProps<{
+// (`authorId`, the Claim sent with the change, when known), whether it deletes the Expense,
+// its title, total, when it was paid, who paid and who it is for.
+const { expense, heading, deleted, authorId, participants } = defineProps<{
   expense: Expense;
   heading: string;
+  deleted: boolean;
   authorId: string | null;
   participants: readonly Participant[];
 }>();
@@ -33,7 +34,16 @@ const shown = computed(() => {
 
 <template>
   <section :aria-labelledby="headingId" class="rounded-lg border border-default p-3">
-    <h2 :id="headingId" class="text-xs font-semibold text-muted uppercase">{{ heading }}</h2>
+    <div class="flex items-center justify-between gap-2">
+      <h2 :id="headingId" class="text-xs font-semibold text-muted uppercase">{{ heading }}</h2>
+      <UBadge
+        v-if="deleted"
+        :label="$t('conflict.deleted')"
+        color="error"
+        variant="subtle"
+        size="sm"
+      />
+    </div>
     <p v-if="shown.author" class="text-xs text-muted">
       {{ $t('conflict.by', { name: shown.author }) }}
     </p>

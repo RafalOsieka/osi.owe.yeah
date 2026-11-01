@@ -1,8 +1,8 @@
 <script setup lang="ts">
 import { v7 as uuidv7 } from 'uuid';
 
-// The Trip tab: everything about the Trip that is not money. For now its Participants,
-// and who this device says it is.
+// The Trip tab: everything about the Trip that is not money. For now its Participants, who
+// this device says it is, and Recently deleted.
 definePageMeta({ scrollToTop: false });
 useKeptScroll();
 
@@ -68,6 +68,19 @@ async function add(name: string): Promise<void> {
         </span>
         <UIcon name="i-lucide-chevron-right" class="size-5 text-dimmed" />
       </button>
+    </section>
+
+    <section aria-labelledby="this-trip-heading" class="mt-6">
+      <h2 id="this-trip-heading" class="text-xs font-semibold tracking-wide text-muted uppercase">
+        {{ $t('trip.settings.thisTrip') }}
+      </h2>
+      <NuxtLink
+        :to="`/trips/${trip.id}/deleted`"
+        class="flex w-full items-center gap-3 border-b border-default py-2.5"
+      >
+        <span class="min-w-0 flex-1">{{ $t('deleted.title') }}</span>
+        <UIcon name="i-lucide-chevron-right" class="size-5 text-dimmed" />
+      </NuxtLink>
     </section>
 
     <UDrawer v-model:open="adding" :title="$t('participants.addParticipant')">

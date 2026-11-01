@@ -1,6 +1,9 @@
 <script setup lang="ts">
+import { findExpense } from '~/sync/local-trip';
+
 // The Conflict screen, opened from the notice on an Expense's detail page: this device's
-// version of the Expense next to the one the server has, each with who made it where known.
+// version of the Expense next to the one the server has, each with who made it where known,
+// and marked when it deletes the Expense.
 // Keep mine sends this device's version again on top of theirs; keep theirs drops it. Either
 // returns to the detail page.
 definePageMeta({ viewTransition: { toTypes: ['forward'], fromTypes: ['back'] } });
@@ -14,7 +17,7 @@ const expenseId = String(route.params.expenseId);
 const detail = computed(() => `/trips/${trip.value.id}/expenses/${expenseId}`);
 
 const conflict = computed(() => {
-  const mine = trip.value.expenses.find(({ id }) => id === expenseId);
+  const mine = findExpense(trip.value, expenseId);
   return mine?.unsynced?.status === 'conflict' ? { mine, held: mine.unsynced } : null;
 });
 
@@ -41,12 +44,14 @@ useHead({ title: () => t('conflict.title') });
         <ExpenseVersion
           :heading="$t('conflict.mine')"
           :expense="conflict.mine"
+          :deleted="conflict.mine.deleted"
           :author-id="conflict.held.claimId"
           :participants="trip.participants"
         />
         <ExpenseVersion
           :heading="$t('conflict.theirs')"
           :expense="conflict.held.current"
+          :deleted="conflict.held.current.deleted"
           :author-id="conflict.held.currentClaimId"
           :participants="trip.participants"
         />

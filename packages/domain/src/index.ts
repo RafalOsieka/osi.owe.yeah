@@ -4,12 +4,20 @@ export { parseAmount } from './amount.ts';
 export { fromMinor, minorUnits, parseMoney, roundMoney } from './money.ts';
 export {
   balances,
+  editedSchema,
   expenseVersionSchema,
+  revisionSchema,
   storedExpenseSchema,
   tripSnapshotSchema,
   tripVersionSchema,
 } from './snapshot.ts';
-export type { ParticipantBalance, StoredExpense, TripSnapshot } from './snapshot.ts';
+export type {
+  Edited,
+  ParticipantBalance,
+  Revision,
+  StoredExpense,
+  TripSnapshot,
+} from './snapshot.ts';
 export { claimView, expenseShares } from './shares.ts';
 export type { ClaimView, ExpenseShares } from './shares.ts';
 export type { RoundedMoney } from './money.ts';
@@ -47,6 +55,7 @@ export {
   pushProblemSchema,
   pushRequestSchema,
   pushResponseSchema,
+  revisionsResponseSchema,
   syncChangeSchema,
   tripChangeSchema,
 } from './sync.ts';
@@ -58,6 +67,7 @@ export type {
   PushProblem,
   PushRequest,
   PushResponse,
+  RevisionsResponse,
   SyncChange,
   TripChange,
 } from './sync.ts';
