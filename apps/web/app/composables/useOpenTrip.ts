@@ -1,8 +1,14 @@
-import type { Participant, TripSnapshot } from '@osi/owe-yeah-domain';
+import type { Expense, Participant, PushProblem, TripSnapshot } from '@osi/owe-yeah-domain';
 import type { InjectionKey } from 'vue';
 
 /**
- * The Trip open on screen, as `pages/trips/[id].vue` loads it once for its tabs and for
+ * Why saving an Expense was refused: a rule the server enforces, a Conflict with someone
+ * else's change, or `unsent` when no answer came back (e.g. no signal).
+ */
+export type SaveRefusal = PushProblem | 'conflict' | 'unsent';
+
+/**
+ * The Trip open on screen, as `pages/trips/[id].vue` loads it once for its pages and for
  * the Trip layout.
  */
 export interface OpenTrip {
@@ -19,6 +25,12 @@ export interface OpenTrip {
    * the same id for a retry, so a lost response doesn't add them twice.
    */
   addParticipant(participant: Participant): Promise<boolean>;
+  /**
+   * Sends an Expense's full new state, based on the version the user edited (`null` for a
+   * new Expense), and pulls the Trip again. Resolves to why it was refused, empty when it
+   * was saved. A resend of the very same change keeps its id, so it is not applied twice.
+   */
+  saveExpense(expense: Expense, baseVersion: number | null): Promise<SaveRefusal[]>;
   /** Opens the "Who are you?" sheet. */
   askWhoYouAre(): void;
 }

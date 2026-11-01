@@ -1,10 +1,11 @@
 <script setup lang="ts">
 import type { RouteLocationRaw } from 'vue-router';
 
-// Full-screen forms and detail pages: back (or close) and a one-line title on top, the
-// page's `#action` fixed at the bottom, no tabs. Back returns to the previous screen, or
-// to `parent` when the page was opened from a link. Pages using it set the `forward` and
-// `back` view-transition types, so they slide in and out.
+// Full-screen forms and detail pages: back (or close), a one-line title and the page's
+// `#actions` (e.g. Edit) on top, the page's `#action` fixed at the bottom, no tabs. Back
+// returns to the previous screen, or to `parent` when the page was opened from a link.
+// Pages using it set the `forward` and `back` view-transition types, so they slide in and
+// out.
 const {
   title,
   parent,
@@ -32,6 +33,7 @@ const back = useBack();
         @click="back(parent)"
       />
       <h1 class="min-w-0 flex-1 truncate text-base font-semibold">{{ title }}</h1>
+      <slot name="actions" />
     </div>
   </header>
   <main class="px-4 pt-4 pb-[calc(6rem+env(safe-area-inset-bottom))]">

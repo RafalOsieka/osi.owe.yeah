@@ -8,28 +8,25 @@ import {
   minorUnits,
   parseMoney,
   roundMoney,
-  type Expense,
   type StoredExpense,
-  type TripWithParticipants,
 } from '@osi/owe-yeah-domain';
 import type { FormError } from '@nuxt/ui';
+import type { RouteLocationRaw } from 'vue-router';
 import { v7 as uuidv7 } from 'uuid';
 
-// Records a new plain Expense or edits one: title, amount, Main payer, who it is for, and
-// when. Emits the Expense's full new state; the parent sends it and reports refusals.
-const {
-  trip,
-  expense = null,
-  claimId = null,
-} = defineProps<{
-  trip: TripWithParticipants;
+// The full-screen Expense form, for a new plain Expense or to edit one: amount, title, Main
+// payer, who it is for, and when. Saving sends the Expense's full new state and returns to
+// `parent`'s screen, or wherever the form was opened from; refusals show above Save and
+// leave the Expense as it was.
+const { expense = null, parent } = defineProps<{
   expense?: StoredExpense | null;
-  /** The Claim's Participant id: the Main payer of a new Expense. */
-  claimId?: string | null;
+  /** The screen above the form, for back when it was opened from a link. */
+  parent: RouteLocationRaw;
 }>();
-const emit = defineEmits<{ submit: [expense: Expense] }>();
 
-const { t } = useI18n();
+const { trip, claim, saveExpense } = useOpenTrip();
+const { t, locale } = useI18n();
+const back = useBack();
 
 type ExpenseFormState = {
   title: string;
@@ -43,6 +40,7 @@ type ExpenseFormState = {
 
 // Read once: the form is mounted afresh each time it opens.
 function initialState(): ExpenseFormState {
+  const { participants } = trip.value;
   if (expense) {
     const [lineItem] = expense.lineItems;
     return {
@@ -56,12 +54,12 @@ function initialState(): ExpenseFormState {
     };
   }
   const zone = deviceTimeZone();
-  const claimed = trip.participants.some(({ id }) => id === claimId) ? claimId : null;
+  const claimed = participants.find(({ id }) => id === claim.value?.id);
   return {
     title: '',
     amount: '',
-    mainPayerId: claimed ?? trip.participants[0]?.id ?? '',
-    participantIds: trip.participants.map(({ id }) => id),
+    mainPayerId: claimed?.id ?? participants[0]?.id ?? '',
+    participantIds: participants.map(({ id }) => id),
     local: localDateTime({ instant: new Date().toISOString(), zone }),
     zone,
   };
@@ -71,19 +69,42 @@ const state = reactive(initialState());
 // A new Expense keeps its id across retries, so a resend is recognised as the same Expense.
 const id = expense?.id ?? uuidv7();
 
-const participants = computed(() =>
-  trip.participants.map(({ id: value, name: label }) => ({ value, label })),
-);
+const allTicked = computed(() => state.participantIds.length === trip.value.participants.length);
+
+function tick(participantId: string, ticked: boolean): void {
+  state.participantIds = ticked
+    ? [...state.participantIds, participantId]
+    : state.participantIds.filter((other) => other !== participantId);
+}
+
+// "All" ticks everyone, or clears the field when everyone is ticked already.
+function toggleAll(): void {
+  state.participantIds = allTicked.value ? [] : trip.value.participants.map(({ id }) => id);
+}
+
+// Time and zone are one quiet line until tapped.
+const timeOpen = ref(false);
 // The device's zone may be an alias missing from the list, so it is always offered.
 const zones = computed(() => [...new Set([state.zone, ...Intl.supportedValuesOf('timeZone')])]);
+// A local date and time is not an instant, so it is formatted in UTC to keep the device's
+// zone from shifting it.
+const time = computed(() =>
+  state.local
+    ? new Intl.DateTimeFormat(locale.value, {
+        dateStyle: 'medium',
+        timeStyle: 'short',
+        timeZone: 'UTC',
+      }).format(new Date(`${state.local}:00Z`))
+    : '',
+);
 
 function validate(form: Partial<ExpenseFormState>): FormError[] {
   const errors: FormError[] = [];
   if (!expenseTitleSchema.safeParse(form.title).success) {
     errors.push({ name: 'title', message: t('expense.titleInvalid') });
   }
-  if (parseMoney(form.amount ?? '', trip.currency) === null) {
-    const decimals = minorUnits(trip.currency);
+  if (parseMoney(form.amount ?? '', trip.value.currency) === null) {
+    const decimals = minorUnits(trip.value.currency);
     errors.push({ name: 'amount', message: t('expense.amountInvalid', { decimals }, decimals) });
   }
   if (!form.mainPayerId) errors.push({ name: 'mainPayerId', message: t('expense.payerMissing') });
@@ -94,67 +115,166 @@ function validate(form: Partial<ExpenseFormState>): FormError[] {
   return errors;
 }
 
-function submit(): void {
+// Why the last save was refused; the Expense itself stays as it was.
+const refusals = ref<string[]>([]);
+const saving = ref(false);
+
+async function submit(): Promise<void> {
   const ticked = new Set(state.participantIds);
-  emit('submit', {
-    id,
-    title: state.title.trim(),
-    // An Expense carries its own currency; for now it is always the Trip currency.
-    currency: trip.currency,
-    time: expenseTimeFromLocal(state.local, state.zone),
-    mainPayerId: state.mainPayerId,
-    lineItems: [
-      {
-        unitPrice: parseMoney(state.amount, trip.currency)!,
-        split: {
-          mode: 'even',
-          // Kept in the Trip's order, whatever order they were ticked in.
-          participantIds: trip.participants
-            .map(({ id: participantId }) => participantId)
-            .filter((participantId) => ticked.has(participantId)),
+  saving.value = true;
+  const refused = await saveExpense(
+    {
+      id,
+      title: state.title.trim(),
+      // An Expense carries its own currency; for now it is always the Trip currency.
+      currency: trip.value.currency,
+      time: expenseTimeFromLocal(state.local, state.zone),
+      mainPayerId: state.mainPayerId,
+      lineItems: [
+        {
+          unitPrice: parseMoney(state.amount, trip.value.currency)!,
+          split: {
+            mode: 'even',
+            // Kept in the Trip's order, whatever order they were ticked in.
+            participantIds: trip.value.participants
+              .map(({ id: participantId }) => participantId)
+              .filter((participantId) => ticked.has(participantId)),
+          },
         },
-      },
-    ],
-  });
+      ],
+    },
+    expense?.version ?? null,
+  ).finally(() => (saving.value = false));
+
+  refusals.value = refused.map((refusal) =>
+    refusal === 'unsent' ? t('expense.saveFailed') : t(`expense.refused.${refusal}`),
+  );
+  if (refused.length === 0) await back(parent);
 }
 </script>
 
 <template>
-  <UForm :state="state" :validate="validate" class="space-y-4" @submit="submit">
-    <UFormField name="title" :label="$t('expense.title')">
-      <UInput v-model="state.title" :placeholder="$t('expense.titlePlaceholder')" class="w-full" />
-    </UFormField>
-    <UFormField name="amount" :label="$t('expense.amount')">
-      <UInput v-model="state.amount" inputmode="decimal" class="w-full">
-        <template #trailing>
-          <span class="text-sm text-muted">{{ trip.currency }}</span>
-        </template>
-      </UInput>
-    </UFormField>
-    <UFormField name="mainPayerId" :label="$t('expense.paidBy')">
-      <USelect v-model="state.mainPayerId" :items="participants" class="w-full" />
-    </UFormField>
-    <UFormField name="participantIds">
-      <UCheckboxGroup
-        v-model="state.participantIds"
-        :items="participants"
-        :legend="$t('expense.forWhom')"
-      />
-    </UFormField>
-    <UFormField name="local" :label="$t('expense.when')">
-      <UInput v-model="state.local" type="datetime-local" class="w-full" />
-      <template #help>
-        <USelectMenu
-          v-model="state.zone"
-          :items="zones"
-          :aria-label="$t('expense.timeZone')"
-          variant="ghost"
-          size="xs"
-          icon="i-lucide-globe"
+  <NuxtLayout
+    name="form"
+    :title="expense ? $t('expense.edit') : $t('expense.new')"
+    :parent="parent"
+    :close="!expense"
+  >
+    <UForm id="expense-form" :state="state" :validate="validate" class="space-y-5" @submit="submit">
+      <UFormField name="amount" :label="$t('expense.amount')" :ui="{ label: 'sr-only' }">
+        <UInput
+          v-model="state.amount"
+          inputmode="decimal"
+          placeholder="0"
+          variant="none"
+          class="w-full"
+          :ui="{
+            base: 'h-16 text-center text-4xl font-bold tabular-nums',
+            trailing: 'pe-2',
+          }"
+        >
+          <template #trailing>
+            <span class="text-xl font-semibold text-muted">{{ trip.currency }}</span>
+          </template>
+        </UInput>
+      </UFormField>
+
+      <UFormField name="title" :label="$t('expense.title')">
+        <UInput
+          v-model="state.title"
+          :placeholder="$t('expense.titlePlaceholder')"
+          class="w-full"
         />
-      </template>
-    </UFormField>
-    <slot />
-    <UButton type="submit" :label="$t('expense.save')" />
-  </UForm>
+      </UFormField>
+
+      <UFormField name="mainPayerId">
+        <div role="group" aria-labelledby="paid-by-label">
+          <p id="paid-by-label" class="mb-1.5 text-sm font-medium">{{ $t('expense.paidBy') }}</p>
+          <div class="flex flex-wrap gap-1.5">
+            <ParticipantChip
+              v-for="participant in trip.participants"
+              :key="participant.id"
+              :participant="participant"
+              type="radio"
+              name="mainPayerId"
+              :checked="state.mainPayerId === participant.id"
+              @update:checked="state.mainPayerId = participant.id"
+            />
+          </div>
+        </div>
+      </UFormField>
+
+      <UFormField name="participantIds">
+        <div role="group" aria-labelledby="for-whom-label">
+          <div class="mb-1.5 flex items-center justify-between gap-2">
+            <p id="for-whom-label" class="text-sm font-medium">{{ $t('expense.forWhom') }}</p>
+            <UButton
+              variant="link"
+              size="sm"
+              :label="$t('expense.all')"
+              :aria-pressed="allTicked"
+              class="p-0"
+              @click="toggleAll"
+            />
+          </div>
+          <div class="flex flex-wrap gap-1.5">
+            <ParticipantChip
+              v-for="participant in trip.participants"
+              :key="participant.id"
+              :participant="participant"
+              type="checkbox"
+              name="participantIds"
+              :checked="state.participantIds.includes(participant.id)"
+              @update:checked="tick(participant.id, $event)"
+            />
+          </div>
+        </div>
+      </UFormField>
+
+      <UFormField v-if="timeOpen" name="local" :label="$t('expense.when')">
+        <UInput v-model="state.local" type="datetime-local" class="w-full" />
+        <template #help>
+          <USelectMenu
+            v-model="state.zone"
+            :items="zones"
+            :aria-label="$t('expense.timeZone')"
+            variant="ghost"
+            size="xs"
+            icon="i-lucide-globe"
+          />
+        </template>
+      </UFormField>
+      <button
+        v-else
+        type="button"
+        class="flex max-w-full cursor-pointer items-center gap-1.5 text-start text-sm text-muted hover:text-default"
+        @click="timeOpen = true"
+      >
+        <UIcon name="i-lucide-clock" class="size-4 shrink-0" />
+        <span class="sr-only">{{ $t('expense.when') }}:</span>
+        <span class="min-w-0 truncate underline decoration-dotted underline-offset-2">
+          {{ $t('expense.timeInZone', { time, zone: state.zone }) }}
+        </span>
+      </button>
+    </UForm>
+
+    <template #action>
+      <UAlert
+        v-if="refusals.length > 0"
+        color="error"
+        icon="i-lucide-circle-alert"
+        :title="$t('expense.refused.title')"
+        :description="refusals.join(' ')"
+        class="mb-3"
+      />
+      <UButton
+        type="submit"
+        form="expense-form"
+        block
+        size="xl"
+        :loading="saving"
+        :label="$t('expense.save')"
+      />
+    </template>
+  </NuxtLayout>
 </template>

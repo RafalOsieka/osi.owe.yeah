@@ -1,4 +1,4 @@
-export { rational } from './rational.ts';
+export { add, rational } from './rational.ts';
 export type { Rational } from './rational.ts';
 export { parseAmount } from './amount.ts';
 export { fromMinor, minorUnits, parseMoney, roundMoney } from './money.ts';
@@ -9,6 +9,8 @@ export {
   tripSnapshotSchema,
 } from './snapshot.ts';
 export type { ParticipantBalance, StoredExpense, TripSnapshot } from './snapshot.ts';
+export { claimView, expenseShares } from './shares.ts';
+export type { ClaimView, ExpenseShares } from './shares.ts';
 export type { RoundedMoney } from './money.ts';
 export {
   deviceTimeZone,

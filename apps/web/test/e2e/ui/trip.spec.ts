@@ -22,6 +22,51 @@ async function tripLinkFor(
   return `/trips/${id}#${token}`;
 }
 
+/**
+ * Creates a Trip as other devices would, with `expenses` Expenses of `amount` minor units
+ * paid by the first Participant for everyone, one per day back from 1 July 2026. Returns
+ * the Trip link.
+ */
+async function tripWithExpenses(
+  request: APIRequestContext,
+  name: string,
+  participants: readonly string[],
+  expenses: readonly { title: string; amount: number }[],
+): Promise<string> {
+  const id = uuidv7();
+  const people = participants.map((participant) => ({ id: uuidv7(), name: participant }));
+  const created = await request.post('/api/trips', {
+    data: { id, name, currency: 'EUR', participants: people },
+  });
+  // SAFETY: a 201 from POST /api/trips always carries `{ token }`, checked just below.
+  const { token } = (await created.json()) as { token: string };
+  expect(created.status()).toBe(201);
+  const pushed = await request.post(`/api/trips/${id}/push`, {
+    headers: { 'x-trip-token': token },
+    data: {
+      changes: expenses.map(({ title, amount }, index) => ({
+        id: uuidv7(),
+        baseVersion: null,
+        expense: {
+          id: uuidv7(),
+          title,
+          currency: 'EUR',
+          time: {
+            instant: new Date(Date.UTC(2026, 6, 1 - index, 10)).toISOString(),
+            zone: 'Europe/Zagreb',
+          },
+          mainPayerId: people[0]!.id,
+          lineItems: [
+            { unitPrice: amount, split: { mode: 'even', participantIds: people.map((p) => p.id) } },
+          ],
+        },
+      })),
+    },
+  });
+  expect(pushed.ok()).toBe(true);
+  return `/trips/${id}#${token}`;
+}
+
 /** Creates a Trip through New Trip, as `me`, and lands on it. */
 async function createTrip(
   page: Page,
@@ -55,8 +100,8 @@ test('a new Trip lands on its empty Expenses tab, already knowing who you are', 
   await expect(header).toContainText('You are Ania · EUR');
   // The token is on the device now, not in the address bar.
   await expect(page).toHaveURL(/\/trips\/[\w-]+$/);
-  await expect(page.getByRole('button', { name: 'Add the first Expense' })).toBeVisible();
-  await expect(page.getByRole('button', { name: 'Add Expense' })).toBeHidden();
+  await expect(page.getByRole('link', { name: 'Add the first Expense' })).toBeVisible();
+  await expect(page.getByRole('link', { name: 'Add Expense' })).toBeHidden();
   await expect(page.getByRole('link', { name: 'Expenses' })).toHaveAttribute(
     'aria-current',
     'page',
@@ -175,28 +220,48 @@ test('each Trip tab keeps its scroll position', async ({ page, request }) => {
   expect(scrolled).toBeGreaterThan(0);
 
   await page.getByRole('link', { name: 'Balances' }).click();
-  await expect(page.getByRole('table')).toBeVisible();
+  await expect(page.getByRole('region', { name: 'Everyone' })).toBeVisible();
   await page.getByRole('link', { name: 'Trip', exact: true }).click();
   await expect.poll(() => page.evaluate(() => window.scrollY)).toBe(scrolled);
 });
 
-test('the longest names never make a page scroll sideways at 360 px', async ({ page, request }) => {
+test('the longest texts never make a page scroll sideways at 360 px', async ({ page, request }) => {
   await page.setViewportSize({ width: 360, height: 640 });
   const tripName = 'Summer road trip through Croatia, Slovenia and Montenegro '
+    .repeat(2)
+    .slice(0, 100);
+  const title = 'Konzum supermarket Rovinj, weekly groceries, drinks, sunscreen, charcoal '
     .repeat(2)
     .slice(0, 100);
   const names = ['Aleksandra Wiśniewska-Brzęczyszczykiewicz-Kowalska', 'B'.repeat(50)];
   const scrollsSideways = () =>
     page.evaluate(() => document.documentElement.scrollWidth > window.innerWidth);
 
-  await page.goto(await tripLinkFor(request, tripName, names));
+  await page.goto(
+    await tripWithExpenses(request, tripName, names, [{ title, amount: 12_345_678 }]),
+  );
   const sheet = page.getByRole('dialog', { name: 'Who are you?' });
-  await sheet.getByRole('button', { name: names[0] }).click();
-  await expect(page.getByRole('banner')).toContainText('You are Aleksandra');
+  await sheet.getByRole('button', { name: names[1] }).click();
+  await expect(page.getByRole('banner')).toContainText(`You are ${names[1]}`);
+  await expect(page.getByRole('link', { name: /Konzum/ })).toContainText('€123,456.78');
+  expect(await scrollsSideways()).toBe(false);
+
+  await page.getByRole('link', { name: /Konzum/ }).click();
+  await expect(page.getByText(title, { exact: true })).toBeVisible();
+  expect(await scrollsSideways()).toBe(false);
+
+  await page.getByRole('link', { name: 'Edit Expense' }).click();
+  await expect(page.getByRole('radio', { name: names[0] })).toBeChecked();
+  expect(await scrollsSideways()).toBe(false);
+
+  await page.getByRole('button', { name: 'Back' }).click();
+  await page.getByRole('button', { name: 'Back' }).click();
+  await page.getByRole('link', { name: 'Balances' }).click();
+  await expect(page.getByRole('region', { name: 'Everyone' })).toContainText('+61,728.39');
   expect(await scrollsSideways()).toBe(false);
 
   await page.getByRole('link', { name: 'Trip', exact: true }).click();
-  await expect(page.getByText(names[1]!)).toBeVisible();
+  await expect(page.getByText(names[1]!, { exact: true })).toBeVisible();
   expect(await scrollsSideways()).toBe(false);
 
   await page.getByRole('banner').getByRole('button', { name: 'Back to My Trips' }).click();
@@ -236,50 +301,111 @@ test('a Trip link with a wrong token shows no Trip', async ({ page }) => {
   await expect(page.getByRole('heading', { name: "This Trip link doesn't work." })).toBeVisible();
 });
 
-test('record a plain Expense, edit it, and see the balances', async ({ page }) => {
+test('record a plain Expense, read it, edit it, and see the balances', async ({ page }) => {
   await createTrip(page, 'Istria 2026', 'Kasia', ['Ania', 'Ola']);
 
   // The Main payer defaults to the Claim, and everyone is ticked.
-  await page.getByRole('button', { name: 'Add the first Expense' }).click();
-  const form = page.getByRole('dialog');
-  await expect(form.getByLabel('Paid by')).toHaveText('Kasia');
+  await page.getByRole('link', { name: 'Add the first Expense' }).click();
+  await expect(page.getByRole('banner')).toContainText('New Expense');
+  const paidBy = page.getByRole('group', { name: 'Paid by' });
+  const forWhom = page.getByRole('group', { name: 'For whom' });
+  await expect(paidBy.getByRole('radio', { name: 'Kasia' })).toBeChecked();
   for (const name of ['Kasia', 'Ania', 'Ola']) {
-    await expect(form.getByRole('checkbox', { name })).toBeChecked();
+    await expect(forWhom.getByRole('checkbox', { name })).toBeChecked();
   }
-  await form.getByLabel('Title').fill('Lidl Rovinj');
+  // "All" clears everyone when everyone is ticked, and ticks everyone again.
+  await page.getByRole('button', { name: 'All' }).click();
+  await expect(forWhom.getByRole('checkbox', { checked: true })).toHaveCount(0);
+  await page.getByRole('button', { name: 'All' }).click();
+  await expect(forWhom.getByRole('checkbox', { checked: true })).toHaveCount(3);
+
+  await page.getByLabel('Title').fill('Lidl Rovinj');
+  // Time and zone are one line until tapped.
+  await page.getByRole('button', { name: /^When/ }).click();
+  await page.getByLabel('When').fill('2026-07-14T23:30');
   // Too many decimals for EUR is refused before anything is sent.
-  await form.getByLabel('Amount').fill('10,001');
-  await form.getByRole('button', { name: 'Save' }).click();
-  await expect(form.getByText('Enter an amount above zero')).toBeVisible();
-  await form.getByLabel('Amount').fill('10');
-  await form.getByLabel('When').fill('2026-07-14T23:30');
-  await form.getByRole('button', { name: 'Save' }).click();
-  await expect(form).toBeHidden();
+  await page.getByLabel('Amount').fill('10,001');
+  await page.getByRole('button', { name: 'Save Expense' }).click();
+  await expect(page.getByText('Enter an amount above zero')).toBeVisible();
+  await page.getByLabel('Amount').fill('10');
+  await page.getByRole('button', { name: 'Save Expense' }).click();
 
+  // Back on the Expenses tab, under the Expense's day with the day's total.
+  await expect(page.getByRole('link', { name: 'Expenses' })).toHaveAttribute(
+    'aria-current',
+    'page',
+  );
   await expect(page.getByRole('heading', { name: 'Tuesday, July 14, 2026' })).toBeVisible();
-  const expense = page.getByRole('button', { name: /Lidl Rovinj/ });
-  await expect(expense).toContainText('€10.00');
-
+  const row = page.getByRole('link', { name: /Lidl Rovinj/ });
+  await expect(row).toContainText('Kasia paid · for all 3');
+  await expect(row).toContainText('€10.00');
   // 10.00 for three doesn't split into whole cents.
-  await page.getByRole('link', { name: 'Balances' }).click();
-  await expect(page.getByRole('row', { name: /Kasia/ })).toContainText('≈ €6.67');
-  await expect(page.getByRole('row', { name: /Ola/ })).toContainText('≈ -€3.33');
+  await expect(row).toContainText('you lent ≈ 6.67');
+  await expect(page.getByRole('link', { name: 'Add Expense' })).toBeVisible();
 
-  // With an Expense listed, adding another is the floating button.
+  await page.getByRole('link', { name: 'Balances' }).click();
+  await expect(page.getByRole('heading', { name: "You're owed" })).toBeVisible();
+  const main = page.getByRole('main');
+  await expect(main).toContainText('≈ €6.67');
+  await expect(main).toContainText('You paid €10.00 · your share ≈ €3.33');
+  const bars = page.getByRole('region', { name: 'Everyone' }).getByRole('listitem');
+  await expect(bars.filter({ hasText: 'Kasia' })).toContainText('≈ +6.67');
+  await expect(bars.filter({ hasText: 'Ola' })).toContainText('≈ -3.33');
+  await expect(main).toContainText('Trip total €10.00');
+
+  // The detail page shows the Expense in full; edit from there.
   await page.getByRole('link', { name: 'Expenses' }).click();
-  await expect(page.getByRole('button', { name: 'Add Expense' })).toBeVisible();
-  await expense.click();
-  await expect(form.getByLabel('Amount')).toHaveValue('10.00');
-  await expect(form.getByLabel('When')).toHaveValue('2026-07-14T23:30');
-  await form.getByLabel('Amount').fill('4,50');
-  await form.getByRole('checkbox', { name: 'Ola' }).uncheck();
-  await form.getByRole('button', { name: 'Save' }).click();
-  await expect(form).toBeHidden();
-  await expect(expense).toContainText('€4.50');
+  await row.click();
+  await expect(page.getByRole('heading', { name: 'Lidl Rovinj' })).toBeVisible();
+  await expect(main).toContainText('11:30 PM');
+  const shares = page.getByRole('region', { name: 'For whom · Even' }).getByRole('listitem');
+  await expect(shares).toHaveCount(3);
+  await expect(shares.filter({ hasText: 'Ola' })).toContainText('≈ €3.33');
+
+  await page.getByRole('link', { name: 'Edit Expense' }).click();
+  await expect(page.getByLabel('Amount')).toHaveValue('10.00');
+  await page.getByRole('button', { name: /^When/ }).click();
+  await expect(page.getByLabel('When')).toHaveValue('2026-07-14T23:30');
+  await page.getByLabel('Amount').fill('4,50');
+  await forWhom.getByRole('checkbox', { name: 'Ola' }).uncheck();
+  await page.getByRole('button', { name: 'Save Expense' }).click();
+
+  // Saving returns to the detail page it was opened from.
+  await expect(page.getByRole('heading', { name: 'Lidl Rovinj' })).toBeVisible();
+  await expect(main).toContainText('€4.50');
+  await expect(shares).toHaveCount(2);
+  await page.getByRole('button', { name: 'Back' }).click();
+  await expect(row).toContainText('€4.50');
+  await expect(row).toContainText('you lent 2.25');
 
   await page.getByRole('link', { name: 'Balances' }).click();
-  await expect(page.getByRole('row', { name: /Kasia/ })).toContainText('€2.25');
-  await expect(page.getByRole('row', { name: /Ania/ })).toContainText('-€2.25');
-  await expect(page.getByRole('row', { name: /Ola/ })).toContainText('€0.00');
-  await expect(page.getByRole('table')).not.toContainText('≈');
+  await expect(bars.filter({ hasText: 'Kasia' })).toContainText('+2.25');
+  await expect(bars.filter({ hasText: 'Ania' })).toContainText('-2.25');
+  await expect(bars.filter({ hasText: 'Ola' })).toContainText('0.00');
+  await expect(main).not.toContainText('≈');
+});
+
+test('saving a new Expense returns to the Expenses tab where it was scrolled', async ({
+  page,
+  request,
+}) => {
+  await page.setViewportSize({ width: 360, height: 640 });
+  const expenses = Array.from({ length: 20 }, (_, index) => ({
+    title: `Expense ${index + 1}`,
+    amount: 1000,
+  }));
+  await page.goto(await tripWithExpenses(request, 'Sopot 2026', ['Ola', 'Ania'], expenses));
+  await page.getByRole('dialog').getByRole('button', { name: 'Ola' }).click();
+
+  await page.getByRole('link', { name: /Expense 18/ }).scrollIntoViewIfNeeded();
+  const scrolled = await page.evaluate(() => window.scrollY);
+  expect(scrolled).toBeGreaterThan(0);
+
+  await page.getByRole('link', { name: 'Add Expense' }).click();
+  await page.getByLabel('Amount').fill('5');
+  await page.getByLabel('Title').fill('Ice cream');
+  await page.getByRole('button', { name: 'Save Expense' }).click();
+
+  await expect(page.getByRole('link', { name: /Ice cream/ })).toBeAttached();
+  await expect.poll(() => page.evaluate(() => window.scrollY)).toBe(scrolled);
 });
