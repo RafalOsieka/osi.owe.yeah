@@ -20,7 +20,6 @@
       "addParticipant": "Add another",
       "removeParticipant": "Remove Participant",
       "submit": "Create Trip",
-      "failed": "The Trip could not be created. Check your connection and try again.",
       "me": "Your name",
       "meHelp": "You will be this Participant on this device.",
       "others": "Who else is coming?",
@@ -42,7 +41,6 @@
     "namePlaceholder": "Name",
     "nameInvalid": "Give the Participant a name of up to 50 characters.",
     "add": "Add",
-    "addFailed": "The Participant could not be added. Check your connection and try again.",
     "name": "Name",
     "addParticipant": "Add Participant",
     "you": "you"
@@ -77,15 +75,11 @@
     "timeMissing": "Enter when it was paid.",
     "timeZone": "Time zone",
     "save": "Save Expense",
-    "saveFailed": "The Expense could not be saved. Check your connection and try again.",
     "refused": {
       "title": "The Expense was not saved",
-      "conflict": "Someone else changed this Expense in the meantime. Close the form to see their version.",
       "unknownMainPayer": "Who paid is no longer in the Trip.",
       "unknownParticipant": "Someone ticked is no longer in the Trip.",
-      "currencyNotTripCurrency": "The Expense must be in the Trip currency.",
-      "expenseIdTaken": "This Expense belongs to another Trip.",
-      "unknownExpense": "This Expense no longer exists."
+      "currencyNotTripCurrency": "The Expense must be in the Trip currency."
     },
     "emptyHelp": "Whoever pays for something adds it here.",
     "addFirst": "Add the first Expense",
@@ -113,6 +107,26 @@
     "everyone": "Everyone",
     "owes": "owes",
     "isOwed": "is owed"
+  },
+  "sync": {
+    "status": "Sync status",
+    "unsynced": "Everything is synced. | 1 change not synced yet | {count} changes not synced yet",
+    "unsyncedHelp": "Your changes are saved on this device and sync on their own when you're online.",
+    "unsyncedShort": "· {count} not synced",
+    "notSynced": "not synced",
+    "pending": "Not synced yet. The others will see it after the next sync.",
+    "conflict": "Not synced: someone else changed this Expense in the meantime.",
+    "rejected": "Not synced: {reason}",
+    "reason": {
+      "unknownMainPayer": "who paid is no longer in the Trip.",
+      "unknownParticipant": "someone ticked is no longer in the Trip.",
+      "currencyNotTripCurrency": "the Expense must be in the Trip currency.",
+      "expenseIdTaken": "this Expense belongs to another Trip.",
+      "unknownExpense": "this Expense no longer exists.",
+      "participantIdTaken": "this Participant belongs to another Trip."
+    },
+    "pullToRefresh": "Pull to sync",
+    "releaseToRefresh": "Release to sync"
   },
   "colorMode": {
     "title": "Color mode",

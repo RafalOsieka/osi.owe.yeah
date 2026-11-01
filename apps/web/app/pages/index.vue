@@ -1,7 +1,32 @@
 <script setup lang="ts">
-// My Trips: every Trip opened on this device, most recent first, with its Claim.
-const { t } = useI18n();
-const { opened } = useDeviceTrips();
+import { balances } from '@osi/owe-yeah-domain';
+
+// My Trips: every Trip on this device, most recently opened first, with its Claim, your
+// balance there, and how many of your changes haven't synced yet.
+const { t, locale } = useI18n();
+const device = useDevice();
+const trips = useLiveQuery(() => device.readAll());
+
+const rows = computed(() =>
+  (trips.value ?? []).flatMap(({ deviceTrip: { id, claim }, local, unsynced }) => {
+    // A Trip moved over from before the device store shows once it has been pulled.
+    if (!local) return [];
+    const mine = claim && balances(local).find(({ participantId }) => participantId === claim.id);
+    const sign = mine ? shownSign(mine.balance, local.currency) : 0;
+    return [
+      {
+        id,
+        name: local.name,
+        claim,
+        unsynced,
+        balance: mine && {
+          text: formatMoney(mine.balance, local.currency, locale.value, 'signedCurrency'),
+          tone: sign > 0 ? 'text-primary' : sign < 0 ? 'text-error' : 'text-muted',
+        },
+      },
+    ];
+  }),
+);
 
 useHead({ title: () => t('myTrips.title') });
 </script>
@@ -9,8 +34,8 @@ useHead({ title: () => t('myTrips.title') });
 <template>
   <NuxtLayout name="default">
     <h1 class="sr-only">{{ $t('myTrips.title') }}</h1>
-    <ul v-if="opened.length > 0" class="space-y-2.5">
-      <li v-for="trip in opened" :key="trip.id">
+    <ul v-if="rows.length > 0" class="space-y-2.5">
+      <li v-for="trip in rows" :key="trip.id">
         <NuxtLink
           :to="`/trips/${trip.id}`"
           class="flex items-center gap-3 rounded-xl border border-default p-3 hover:bg-elevated/50"
@@ -24,13 +49,23 @@ useHead({ title: () => t('myTrips.title') });
             <span class="block truncate font-semibold">{{ trip.name }}</span>
             <span class="block truncate text-sm text-muted">
               {{ trip.claim ? $t('claim.youAre', { name: trip.claim.name }) : $t('claim.title') }}
+              <span v-if="trip.unsynced > 0" class="text-warning">
+                {{ $t('sync.unsyncedShort', { count: trip.unsynced }) }}
+              </span>
             </span>
+          </span>
+          <span
+            v-if="trip.balance"
+            class="shrink-0 font-semibold tabular-nums"
+            :class="trip.balance.tone"
+          >
+            {{ trip.balance.text }}
           </span>
         </NuxtLink>
       </li>
     </ul>
     <UEmpty
-      v-else
+      v-else-if="trips"
       icon="i-lucide-map"
       variant="naked"
       :title="$t('myTrips.empty')"
@@ -38,7 +73,7 @@ useHead({ title: () => t('myTrips.title') });
       class="pt-16"
     />
 
-    <template v-if="opened.length > 0" #action>
+    <template v-if="rows.length > 0" #action>
       <UButton
         icon="i-lucide-plus"
         :label="$t('myTrips.create')"

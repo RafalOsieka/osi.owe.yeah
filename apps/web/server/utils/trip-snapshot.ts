@@ -2,12 +2,12 @@ import {
   storedExpenseSchema,
   type Participant,
   type StoredExpense,
-  type Trip,
   type TripSnapshot,
 } from '@osi/owe-yeah-domain';
 import { asc, eq } from 'drizzle-orm';
 import { getDb } from '../db';
 import { expenses, participants } from '../db/schema';
+import type { StoredTrip } from './trip-access';
 
 /** A Trip's Participants, in the order they were added. */
 export function loadParticipants(tripId: string): Promise<Participant[]> {
@@ -39,8 +39,8 @@ async function loadExpenses(tripId: string): Promise<StoredExpense[]> {
   return rows.map(toStoredExpense);
 }
 
-/** The whole Trip as the pull returns it. */
-export async function loadTripSnapshot(trip: Trip): Promise<TripSnapshot> {
+/** The whole Trip as the pull returns it, at the version `trip` was read at. */
+export async function loadTripSnapshot(trip: StoredTrip): Promise<TripSnapshot> {
   const [tripParticipants, tripExpenses] = await Promise.all([
     loadParticipants(trip.id),
     loadExpenses(trip.id),

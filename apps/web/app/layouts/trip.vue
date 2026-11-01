@@ -1,10 +1,12 @@
 <script setup lang="ts">
-// The Trip's tabs (Expenses · Balances · Trip): the Trip header on top, the tab bar at the
-// bottom and an optional `#action` floating just above it. Only for pages under
-// `pages/trips/[id].vue`, which provides the open Trip.
-const { trip, claim, askWhoYouAre } = useOpenTrip();
+// The Trip's tabs (Expenses · Balances · Trip): the Trip header on top with the sync status,
+// the tab bar at the bottom and an optional `#action` floating just above it. Pulling a tab
+// down syncs the Trip. Only for pages under `pages/trips/[id].vue`, which provides the open
+// Trip.
+const { trip, claim, unsynced, sync, askWhoYouAre } = useOpenTrip();
 const { t } = useI18n();
 const back = useBack();
+const { pulled, ready, refreshing } = usePullToRefresh(sync);
 
 const tabs = computed(() => {
   const base = `/trips/${trip.value.id}`;
@@ -43,8 +45,42 @@ const tabs = computed(() => {
           }}
         </button>
       </div>
+      <UPopover :content="{ align: 'end' }">
+        <UButton
+          color="neutral"
+          variant="ghost"
+          :aria-label="$t('sync.unsynced', unsynced)"
+          class="relative"
+        >
+          <UIcon :name="unsynced > 0 ? 'i-lucide-cloud' : 'i-lucide-cloud-check'" class="size-5" />
+          <span
+            v-if="unsynced > 0"
+            class="absolute end-1.5 top-1.5 size-2 rounded-full bg-warning ring-2 ring-default"
+          />
+        </UButton>
+        <template #content>
+          <div class="max-w-64 p-3 text-sm">
+            <p class="font-semibold">{{ $t('sync.unsynced', unsynced) }}</p>
+            <p v-if="unsynced > 0" class="mt-1 text-muted">{{ $t('sync.unsyncedHelp') }}</p>
+          </div>
+        </template>
+      </UPopover>
     </div>
   </header>
+  <div
+    v-if="pulled > 0 || refreshing"
+    class="flex items-center justify-center gap-2 overflow-hidden text-xs text-muted"
+    :style="{ height: refreshing ? '2.5rem' : `${pulled}px` }"
+  >
+    <UIcon
+      name="i-lucide-refresh-cw"
+      class="size-4 shrink-0"
+      :class="{ 'animate-spin': refreshing }"
+    />
+    <span v-if="!refreshing">
+      {{ ready ? $t('sync.releaseToRefresh') : $t('sync.pullToRefresh') }}
+    </span>
+  </div>
   <main class="px-4 pt-3 pb-[calc(10rem+env(safe-area-inset-bottom))]">
     <slot />
   </main>

@@ -1,42 +1,111 @@
 import { z } from 'zod';
-import { expenseSchema, type ExpenseProblem } from './expense.ts';
-import { expenseVersionSchema, type StoredExpense } from './snapshot.ts';
+import { expenseProblemSchema, expenseSchema } from './expense.ts';
+import { participantIdSchema, participantSchema } from './participant.ts';
+import { expenseVersionSchema, storedExpenseSchema, tripSnapshotSchema } from './snapshot.ts';
+import { tripSchema } from './trip.ts';
 
 /**
- * One change to an Expense, as the device's outbox sends it (ADR 0002): the Expense's full
- * new state plus the version it was based on (`null` when creating it). The change's own id
- * makes a retry idempotent.
+ * Who made a change and where (stored for display only, they grant nothing): the Claim on
+ * the device at change time, or `null` without one, and the device's opaque id. The change's
+ * own id, a UUIDv7 from the device, makes a retry idempotent (ADR 0002).
+ */
+const changeMeta = {
+  id: z.uuid({ version: 'v7' }),
+  claimId: participantIdSchema.nullable(),
+  deviceId: z.uuid(),
+};
+
+/**
+ * A Trip's details, last-write-wins (ADR 0002). Pushed to a Trip the server doesn't have
+ * yet, it creates the Trip under the request's token: that is how a Trip created offline
+ * reaches the server.
+ */
+export const tripChangeSchema = z.object({
+  ...changeMeta,
+  kind: z.literal('trip'),
+  trip: tripSchema.omit({ id: true }),
+});
+
+/** A Participant added or renamed, last-write-wins (ADR 0002); never a Conflict. */
+export const participantChangeSchema = z.object({
+  ...changeMeta,
+  kind: z.literal('participant'),
+  participant: participantSchema,
+});
+
+/**
+ * One change to an Expense (ADR 0002): its full new state plus the version it was based on
+ * (`null` when creating it). Accepted only if that version is still current.
  */
 export const expenseChangeSchema = z.object({
-  id: z.uuid(),
+  ...changeMeta,
+  kind: z.literal('expense'),
   baseVersion: expenseVersionSchema.nullable(),
   expense: expenseSchema,
 });
 
+/** One change from a device's outbox. */
+export const syncChangeSchema = z.discriminatedUnion('kind', [
+  tripChangeSchema,
+  participantChangeSchema,
+  expenseChangeSchema,
+]);
+
+export type TripChange = z.infer<typeof tripChangeSchema>;
+export type ParticipantChange = z.infer<typeof participantChangeSchema>;
 export type ExpenseChange = z.infer<typeof expenseChangeSchema>;
+export type SyncChange = z.infer<typeof syncChangeSchema>;
 
 /** A push: changes to apply in order. Each is accepted or refused on its own. */
 export const pushRequestSchema = z.object({
-  changes: z.array(expenseChangeSchema).min(1).max(100),
+  changes: z.array(syncChangeSchema).min(1).max(100),
 });
 
 export type PushRequest = z.infer<typeof pushRequestSchema>;
 
 /**
  * Why the server refused a change outright: a Trip rule (`expenseProblems`), an id another
- * Trip's Expense uses, or an edit of an Expense the server does not have.
+ * Trip uses, or an edit of an Expense the server does not have.
  */
-export type PushProblem = ExpenseProblem | 'expenseIdTaken' | 'unknownExpense';
+export const pushProblemSchema = z.enum([
+  ...expenseProblemSchema.options,
+  'expenseIdTaken',
+  'unknownExpense',
+  'participantIdTaken',
+]);
+
+export type PushProblem = z.infer<typeof pushProblemSchema>;
 
 /**
- * The outcome of one change. `accepted` gives the Expense's new version. `conflict` means
- * the Expense changed since the base version and gives its current state. `rejected` says
- * why. Refused changes leave the stored Expense as it was.
+ * The outcome of one change. `accepted` gives an Expense's new version (`null` for Trip
+ * and Participant changes, which have none). `conflict` means the Expense changed since the
+ * base version and gives its current state. `rejected` says why. Refused changes leave the
+ * Trip as it was.
  */
-export type ChangeResult = { changeId: string } & (
-  | { status: 'accepted'; version: number }
-  | { status: 'conflict'; current: StoredExpense }
-  | { status: 'rejected'; problems: PushProblem[] }
-);
+export const changeResultSchema = z.discriminatedUnion('status', [
+  z.object({
+    changeId: z.uuid(),
+    status: z.literal('accepted'),
+    version: expenseVersionSchema.nullable(),
+  }),
+  z.object({ changeId: z.uuid(), status: z.literal('conflict'), current: storedExpenseSchema }),
+  z.object({
+    changeId: z.uuid(),
+    status: z.literal('rejected'),
+    problems: z.array(pushProblemSchema).min(1),
+  }),
+]);
 
-export type PushResponse = { results: ChangeResult[] };
+export type ChangeResult = z.infer<typeof changeResultSchema>;
+
+export const pushResponseSchema = z.object({ results: z.array(changeResultSchema) });
+
+export type PushResponse = z.infer<typeof pushResponseSchema>;
+
+/**
+ * The whole-Trip pull (ADR 0002). Asked with the Trip version the device has, it answers
+ * `trip: null` while the Trip is still at that version.
+ */
+export const pullResponseSchema = z.object({ trip: tripSnapshotSchema.nullable() });
+
+export type PullResponse = z.infer<typeof pullResponseSchema>;

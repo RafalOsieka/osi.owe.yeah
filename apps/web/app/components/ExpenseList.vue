@@ -6,15 +6,14 @@ import {
   groupByLocalDay,
   rational,
   type Rational,
-  type StoredExpense,
-  type TripSnapshot,
 } from '@osi/owe-yeah-domain';
+import type { LocalExpense, LocalTrip } from '~/sync/local-trip';
 
 // The Trip's Expenses, newest first, under a heading for each Expense's own local day with
 // that day's total. Each row opens the Expense's detail page and, with a Claim, says what
-// the Expense means for the claimed Participant.
+// the Expense means for the claimed Participant, and marks it while it is not synced.
 const { trip, claimId = null } = defineProps<{
-  trip: TripSnapshot;
+  trip: LocalTrip;
   claimId?: string | null;
 }>();
 
@@ -26,7 +25,7 @@ const money = (amount: Rational) => formatMoney(amount, trip.currency, locale.va
 const bare = (amount: Rational) => formatMoney(amount, trip.currency, locale.value, 'number');
 
 // What the claimed Participant sees on the right of a row, under the total.
-function forYou(expense: StoredExpense): { text: string; tone: string } | null {
+function forYou(expense: LocalExpense): { text: string; tone: string } | null {
   if (claimId === null) return null;
   const view = claimView(expense, claimId);
   switch (view.kind) {
@@ -92,6 +91,14 @@ function dayHeading(day: string): string {
             <span class="min-w-0 flex-1 leading-snug">
               <span class="block truncate font-semibold">{{ row.expense.title }}</span>
               <span class="block truncate text-xs text-muted">
+                <UBadge
+                  v-if="row.expense.unsynced"
+                  :label="$t('sync.notSynced')"
+                  color="neutral"
+                  variant="subtle"
+                  size="sm"
+                  class="me-1"
+                />
                 {{ $t('expense.paidFor', { name: row.payer?.name ?? '?', forWhom: row.forWhom }) }}
               </span>
             </span>

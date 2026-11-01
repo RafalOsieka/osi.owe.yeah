@@ -8,18 +8,18 @@ import {
   minorUnits,
   parseMoney,
   roundMoney,
-  type StoredExpense,
 } from '@osi/owe-yeah-domain';
 import type { FormError } from '@nuxt/ui';
 import type { RouteLocationRaw } from 'vue-router';
 import { v7 as uuidv7 } from 'uuid';
+import type { LocalExpense } from '~/sync/local-trip';
 
 // The full-screen Expense form, for a new plain Expense or to edit one: amount, title, Main
-// payer, who it is for, and when. Saving sends the Expense's full new state and returns to
-// `parent`'s screen, or wherever the form was opened from; refusals show above Save and
-// leave the Expense as it was.
+// payer, who it is for, and when. Saving keeps the Expense's full new state on the device,
+// to sync later, and returns to `parent`'s screen, or wherever the form was opened from. An
+// Expense that breaks a Trip rule is not saved; why shows above Save.
 const { expense = null, parent } = defineProps<{
-  expense?: StoredExpense | null;
+  expense?: LocalExpense | null;
   /** The screen above the form, for back when it was opened from a link. */
   parent: RouteLocationRaw;
 }>();
@@ -66,7 +66,6 @@ function initialState(): ExpenseFormState {
 }
 
 const state = reactive(initialState());
-// A new Expense keeps its id across retries, so a resend is recognised as the same Expense.
 const id = expense?.id ?? uuidv7();
 
 const allTicked = computed(() => state.participantIds.length === trip.value.participants.length);
@@ -115,7 +114,7 @@ function validate(form: Partial<ExpenseFormState>): FormError[] {
   return errors;
 }
 
-// Why the last save was refused; the Expense itself stays as it was.
+// Which Trip rules the last save broke; the Expense itself stays as it was.
 const refusals = ref<string[]>([]);
 const saving = ref(false);
 
@@ -143,12 +142,11 @@ async function submit(): Promise<void> {
         },
       ],
     },
-    expense?.version ?? null,
+    // Based on the Expense as the form read it when it opened.
+    expense?.base ?? { version: null },
   ).finally(() => (saving.value = false));
 
-  refusals.value = refused.map((refusal) =>
-    refusal === 'unsent' ? t('expense.saveFailed') : t(`expense.refused.${refusal}`),
-  );
+  refusals.value = refused.map((problem) => t(`expense.refused.${problem}`));
   if (refused.length === 0) await back(parent);
 }
 </script>

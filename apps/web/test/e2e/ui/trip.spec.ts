@@ -1,70 +1,90 @@
+import { randomBytes } from 'node:crypto';
+import type { SyncChange } from '@osi/owe-yeah-domain';
 import { expect, test, type APIRequestContext, type Page } from '@playwright/test';
 import { v7 as uuidv7 } from 'uuid';
 
-/** Creates a Trip as someone else's device would, and returns its Trip link. */
-async function tripLinkFor(
-  request: APIRequestContext,
-  name: string,
-  participants: readonly string[],
-): Promise<string> {
-  const id = uuidv7();
-  const response = await request.post('/api/trips', {
-    data: {
-      id,
-      name,
-      currency: 'EUR',
-      participants: participants.map((participant) => ({ id: uuidv7(), name: participant })),
-    },
-  });
-  expect(response.status()).toBe(201);
-  // SAFETY: a 201 from POST /api/trips always carries `{ token }`, checked just above.
-  const { token } = (await response.json()) as { token: string };
-  return `/trips/${id}#${token}`;
-}
-
 /**
- * Creates a Trip as other devices would, with `expenses` Expenses of `amount` minor units
- * paid by the first Participant for everyone, one per day back from 1 July 2026. Returns
- * the Trip link.
+ * Creates a Trip as someone else's device would, by its first push, with `expenses` Expenses
+ * of `amount` minor units paid by the first Participant for everyone, one per day back from
+ * 1 July 2026. Returns the Trip link.
  */
 async function tripWithExpenses(
   request: APIRequestContext,
   name: string,
   participants: readonly string[],
-  expenses: readonly { title: string; amount: number }[],
+  expenses: readonly { title: string; amount: number }[] = [],
 ): Promise<string> {
   const id = uuidv7();
+  const token = randomBytes(32).toString('base64url');
+  const meta = { claimId: null, deviceId: uuidv7() };
   const people = participants.map((participant) => ({ id: uuidv7(), name: participant }));
-  const created = await request.post('/api/trips', {
-    data: { id, name, currency: 'EUR', participants: people },
-  });
-  // SAFETY: a 201 from POST /api/trips always carries `{ token }`, checked just below.
-  const { token } = (await created.json()) as { token: string };
-  expect(created.status()).toBe(201);
+  const changes: SyncChange[] = [
+    { ...meta, id: uuidv7(), kind: 'trip', trip: { name, currency: 'EUR' } },
+    ...people.map((participant) => ({
+      ...meta,
+      id: uuidv7(),
+      kind: 'participant' as const,
+      participant,
+    })),
+    ...expenses.map(({ title, amount }, index) => ({
+      ...meta,
+      id: uuidv7(),
+      kind: 'expense' as const,
+      baseVersion: null,
+      expense: {
+        id: uuidv7(),
+        title,
+        currency: 'EUR' as const,
+        time: {
+          instant: new Date(Date.UTC(2026, 6, 1 - index, 10)).toISOString(),
+          zone: 'Europe/Zagreb',
+        },
+        mainPayerId: people[0]!.id,
+        lineItems: [
+          {
+            unitPrice: amount,
+            split: { mode: 'even' as const, participantIds: people.map((p) => p.id) },
+          },
+        ],
+      },
+    })),
+  ];
   const pushed = await request.post(`/api/trips/${id}/push`, {
     headers: { 'x-trip-token': token },
-    data: {
-      changes: expenses.map(({ title, amount }, index) => ({
-        id: uuidv7(),
-        baseVersion: null,
-        expense: {
-          id: uuidv7(),
-          title,
-          currency: 'EUR',
-          time: {
-            instant: new Date(Date.UTC(2026, 6, 1 - index, 10)).toISOString(),
-            zone: 'Europe/Zagreb',
-          },
-          mainPayerId: people[0]!.id,
-          lineItems: [
-            { unitPrice: amount, split: { mode: 'even', participantIds: people.map((p) => p.id) } },
-          ],
-        },
-      })),
-    },
+    data: { changes },
   });
   expect(pushed.ok()).toBe(true);
   return `/trips/${id}#${token}`;
+}
+
+/** Creates a Trip as someone else's device would, and returns its Trip link. */
+function tripLinkFor(
+  request: APIRequestContext,
+  name: string,
+  participants: readonly string[],
+): Promise<string> {
+  return tripWithExpenses(request, name, participants);
+}
+
+/**
+ * The Trip link of the only Trip on this device, read from its device store, as there is no
+ * Invite to show it yet (#39).
+ */
+function tripLinkOnDevice(page: Page): Promise<string> {
+  return page.evaluate(
+    () =>
+      new Promise<string>((resolve, reject) => {
+        const opened = indexedDB.open('owe-yeah');
+        opened.onerror = () => reject(opened.error);
+        opened.onsuccess = () => {
+          const read = opened.result.transaction('trips').objectStore('trips').getAll();
+          read.onsuccess = () => {
+            const [trip] = read.result;
+            resolve(`/trips/${trip.id}#${trip.token}`);
+          };
+        };
+      }),
+  );
 }
 
 /** Creates a Trip through New Trip, as `me`, and lands on it. */
@@ -269,30 +289,47 @@ test('the longest texts never make a page scroll sideways at 360 px', async ({ p
   expect(await scrollsSideways()).toBe(false);
 });
 
-test('retrying a Participant whose response was lost adds them once', async ({ page }) => {
-  await createTrip(page, 'Mazury 2026', 'Kasia', []);
-  await page.getByRole('link', { name: 'Trip', exact: true }).click();
+test('a Trip and an Expense made offline reach a second device once back online', async ({
+  page,
+  context,
+  browser,
+}) => {
+  // Opened once online, the app installs its service worker and then works offline.
+  await page.goto('/');
+  await page.waitForFunction(() => navigator.serviceWorker.controller !== null);
+  await context.setOffline(true);
 
-  // The first add reaches the server, but its response never comes back.
-  await page.route(
-    '**/participants',
-    async (route) => {
-      await route.fetch();
-      await route.abort();
-    },
-    { times: 1 },
+  await page.getByRole('link', { name: 'New Trip' }).click();
+  await page.getByLabel('Name', { exact: true }).fill('Mazury 2026');
+  await page.getByLabel('Your name').fill('Kasia');
+  await page.getByLabel('Participant 2').fill('Ania');
+  await page.getByRole('button', { name: 'Create Trip' }).click();
+  const header = page.getByRole('banner');
+  await expect(header).toContainText('You are Kasia');
+
+  await page.getByRole('link', { name: 'Add the first Expense' }).click();
+  await page.getByLabel('Amount').fill('59');
+  await page.getByLabel('Title').fill('Ferry tickets');
+  await page.getByRole('button', { name: 'Save Expense' }).click();
+  const row = page.getByRole('link', { name: /Ferry tickets/ });
+  await expect(row).toContainText('not synced');
+  // The Trip, Kasia, Ania and the Expense.
+  await header.getByRole('button', { name: '4 changes not synced yet' }).click();
+  await expect(page.getByRole('dialog')).toContainText('sync on their own');
+  await page.keyboard.press('Escape');
+
+  await context.setOffline(false);
+  await expect(header.getByRole('button', { name: 'Everything is synced.' })).toBeVisible();
+  await expect(row).not.toContainText('not synced');
+
+  const other = await browser.newContext();
+  const otherPage = await other.newPage();
+  await otherPage.goto(await tripLinkOnDevice(page));
+  await otherPage.getByRole('dialog').getByRole('button', { name: 'Ania' }).click();
+  await expect(otherPage.getByRole('link', { name: /Ferry tickets/ })).toContainText(
+    'Kasia paid · for all 2',
   );
-  await page.getByRole('button', { name: 'Add Participant' }).click();
-  const sheet = page.getByRole('dialog', { name: 'Add Participant' });
-  await sheet.getByLabel('Name').fill('Ola');
-  await sheet.getByRole('button', { name: 'Add', exact: true }).click();
-  await expect(sheet.getByText('The Participant could not be added.')).toBeVisible();
-
-  await sheet.getByLabel('Name').fill('Ola');
-  await sheet.getByRole('button', { name: 'Add', exact: true }).click();
-  await expect(sheet).toBeHidden();
-  const participants = page.getByRole('region', { name: 'Participants' });
-  await expect(participants.getByRole('listitem').filter({ hasText: 'Ola' })).toHaveCount(1);
+  await other.close();
 });
 
 test('a Trip link with a wrong token shows no Trip', async ({ page }) => {

@@ -1,5 +1,5 @@
 import { sql } from 'drizzle-orm';
-import { char, pgTable, text, timestamp, uuid } from 'drizzle-orm/pg-core';
+import { char, integer, pgTable, text, timestamp, uuid } from 'drizzle-orm/pg-core';
 
 /**
  * A Trip: the group's shared ledger. The id is a UUIDv7, normally generated on the
@@ -16,6 +16,8 @@ export const trips = pgTable('trips', {
   // SHA-256 (hex) of the Trip link's token. The token itself is never stored, and is
   // independent of the id so a "regenerate link" can replace it later (ADR 0001).
   tokenHash: text().notNull().unique(),
+  // Goes up with every change the push accepts, so a pull can tell the device has it all.
+  version: integer().notNull().default(1),
   createdAt: timestamp({ withTimezone: true }).notNull().defaultNow(),
   // Bumped by Drizzle on every update made through the schema.
   updatedAt: timestamp({ withTimezone: true })

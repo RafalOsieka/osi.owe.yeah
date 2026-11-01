@@ -1,9 +1,4 @@
-import { createHash, randomBytes } from 'node:crypto';
-
-/** A new Trip link token: 256 random bits, URL-safe so it fits in the link as is. */
-export function createTripToken(): string {
-  return randomBytes(32).toString('base64url');
-}
+import { createHash } from 'node:crypto';
 
 /**
  * The form a token is stored and looked up in. A plain hash is enough: the token is

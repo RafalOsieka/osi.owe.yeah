@@ -20,7 +20,6 @@
       "addParticipant": "Dodaj kolejnego",
       "removeParticipant": "Usuń uczestnika",
       "submit": "Utwórz podróż",
-      "failed": "Nie udało się utworzyć podróży. Sprawdź połączenie i spróbuj ponownie.",
       "me": "Twoje imię",
       "meHelp": "Na tym urządzeniu będziesz tym uczestnikiem.",
       "others": "Kto jeszcze jedzie?",
@@ -42,7 +41,6 @@
     "namePlaceholder": "Imię",
     "nameInvalid": "Nadaj uczestnikowi imię o długości do 50 znaków.",
     "add": "Dodaj",
-    "addFailed": "Nie udało się dodać uczestnika. Sprawdź połączenie i spróbuj ponownie.",
     "name": "Imię",
     "addParticipant": "Dodaj uczestnika",
     "you": "ty"
@@ -77,15 +75,11 @@
     "timeMissing": "Podaj, kiedy zapłacono.",
     "timeZone": "Strefa czasowa",
     "save": "Zapisz wydatek",
-    "saveFailed": "Nie udało się zapisać wydatku. Sprawdź połączenie i spróbuj ponownie.",
     "refused": {
       "title": "Wydatek nie został zapisany",
-      "conflict": "W międzyczasie ktoś inny zmienił ten wydatek. Zamknij formularz, aby zobaczyć jego wersję.",
       "unknownMainPayer": "Osoby, która zapłaciła, nie ma już w podróży.",
       "unknownParticipant": "Któregoś z zaznaczonych uczestników nie ma już w podróży.",
-      "currencyNotTripCurrency": "Wydatek musi być w walucie podróży.",
-      "expenseIdTaken": "Ten wydatek należy do innej podróży.",
-      "unknownExpense": "Ten wydatek już nie istnieje."
+      "currencyNotTripCurrency": "Wydatek musi być w walucie podróży."
     },
     "emptyHelp": "Kto za coś płaci, dodaje to tutaj.",
     "addFirst": "Dodaj pierwszy wydatek",
@@ -113,6 +107,26 @@
     "everyone": "Wszyscy",
     "owes": "do oddania",
     "isOwed": "do odebrania"
+  },
+  "sync": {
+    "status": "Stan synchronizacji",
+    "unsynced": "Wszystko zsynchronizowane. | Niezsynchronizowane zmiany: 1 | Niezsynchronizowane zmiany: {count}",
+    "unsyncedHelp": "Twoje zmiany są zapisane na tym urządzeniu i zsynchronizują się same, gdy będziesz online.",
+    "unsyncedShort": "· niezsynchronizowane: {count}",
+    "notSynced": "niezsynchronizowany",
+    "pending": "Jeszcze niezsynchronizowany. Pozostali zobaczą go po następnej synchronizacji.",
+    "conflict": "Niezsynchronizowany: w międzyczasie ktoś inny zmienił ten wydatek.",
+    "rejected": "Niezsynchronizowany: {reason}",
+    "reason": {
+      "unknownMainPayer": "osoby, która zapłaciła, nie ma już w podróży.",
+      "unknownParticipant": "któregoś z zaznaczonych uczestników nie ma już w podróży.",
+      "currencyNotTripCurrency": "wydatek musi być w walucie podróży.",
+      "expenseIdTaken": "ten wydatek należy do innej podróży.",
+      "unknownExpense": "ten wydatek już nie istnieje.",
+      "participantIdTaken": "ten uczestnik należy do innej podróży."
+    },
+    "pullToRefresh": "Pociągnij, aby zsynchronizować",
+    "releaseToRefresh": "Puść, aby zsynchronizować"
   },
   "colorMode": {
     "title": "Motyw",

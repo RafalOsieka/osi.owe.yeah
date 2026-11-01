@@ -45,6 +45,13 @@ export type TripCurrency = (typeof TRIP_CURRENCIES)[number];
  */
 export const TRIP_TOKEN_HEADER = 'x-trip-token';
 
+/**
+ * A Trip link's token: 256 random bits, base64url. The device that creates the Trip
+ * generates it, so a Trip can be created offline and a retried creation keeps its token;
+ * the server keeps only its hash.
+ */
+export const tripTokenSchema = z.string().regex(/^[\w-]{43}$/);
+
 /** A Trip id: a UUIDv7 generated on the device, so a retried creation keeps its id. */
 export const tripIdSchema = z.uuid({ version: 'v7' });
 
