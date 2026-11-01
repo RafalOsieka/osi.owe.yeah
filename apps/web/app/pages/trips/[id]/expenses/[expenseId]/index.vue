@@ -1,18 +1,27 @@
 <script setup lang="ts">
 import { expenseShares, type Rational } from '@osi/owe-yeah-domain';
+import type { AlertProps } from '@nuxt/ui';
 
 // An Expense's detail page: the full title, total, when it was paid in its own zone, the
 // Main payer, and each Participant's share; on top, why it is not synced yet if it isn't.
-// Edit opens the Expense form.
+// A Conflict opens the Conflict screen; a rejected change is fixed with Edit or discarded.
+// Edit opens the Expense form. Should the Expense go (e.g. a discarded new one), so does the
+// page.
 definePageMeta({ viewTransition: { toTypes: ['forward'], fromTypes: ['back'] } });
 
-const { trip, claim } = useOpenTrip();
+const { trip, claim, discardChanges } = useOpenTrip();
 const { t, locale } = useI18n();
 const route = useRoute();
+const back = useBack();
 
 const expenseId = String(route.params.expenseId);
 const expense = computed(() => trip.value.expenses.find(({ id }) => id === expenseId));
 const tripPage = computed(() => `/trips/${trip.value.id}`);
+const page = computed(() => `${tripPage.value}/expenses/${expenseId}`);
+
+watch(expense, (now, before) => {
+  if (before && !now) void back(tripPage.value);
+});
 
 const money = (amount: Rational) => formatMoney(amount, trip.value.currency, locale.value);
 
@@ -22,15 +31,7 @@ const details = computed(() => {
   const { total, shares } = expenseShares(expense.value);
   return {
     total,
-    when: new Intl.DateTimeFormat(locale.value, {
-      weekday: 'short',
-      day: 'numeric',
-      month: 'short',
-      year: 'numeric',
-      hour: '2-digit',
-      minute: '2-digit',
-      timeZone: time.zone,
-    }).format(new Date(time.instant)),
+    when: formatExpenseTime(time, locale.value),
     payer: trip.value.participants.find(({ id }) => id === mainPayerId),
     // In the Trip's order.
     shares: trip.value.participants.flatMap((participant) => {
@@ -40,19 +41,32 @@ const details = computed(() => {
   };
 });
 
-// Why the Expense as shown hasn't reached the others yet.
-const notSynced = computed(() => {
+// Why the Expense as shown hasn't reached the others yet, and what can be done about it.
+const notSynced = computed((): AlertProps | null => {
   const unsynced = expense.value?.unsynced;
   switch (unsynced?.status) {
     case undefined:
       return null;
     case 'pending':
-      return { text: t('sync.pending'), color: 'neutral' } as const;
-    case 'conflict':
-      return { text: t('sync.conflict'), color: 'warning' } as const;
+      return { title: t('sync.pending'), color: 'neutral', icon: 'i-lucide-cloud-off' };
+    case 'conflict': {
+      const author = trip.value.participants.find(({ id }) => id === unsynced.currentClaimId);
+      return {
+        title: author ? t('sync.conflictBy', { name: author.name }) : t('sync.conflictBySomeone'),
+        color: 'error',
+        icon: 'i-lucide-triangle-alert',
+        actions: [{ label: t('sync.choose'), to: `${page.value}/conflict` }],
+      };
+    }
     case 'rejected': {
       const reason = unsynced.problems.map((problem) => t(`sync.reason.${problem}`)).join(' ');
-      return { text: t('sync.rejected', { reason }), color: 'error' } as const;
+      return {
+        title: t('sync.rejected', { reason }),
+        description: t('sync.rejectedHelp'),
+        color: 'error',
+        icon: 'i-lucide-cloud-off',
+        actions: [{ label: t('sync.discard'), onClick: () => discardChanges(expenseId) }],
+      };
     }
   }
 });
@@ -72,14 +86,7 @@ useHead({ title: () => expense.value?.title ?? t('expense.notFound') });
     </template>
 
     <template v-if="expense && details">
-      <UAlert
-        v-if="notSynced"
-        :title="notSynced.text"
-        :color="notSynced.color"
-        variant="subtle"
-        icon="i-lucide-cloud-off"
-        class="mb-4"
-      />
+      <UAlert v-if="notSynced" v-bind="notSynced" variant="subtle" class="mb-4" />
       <p class="text-xl leading-tight font-bold wrap-anywhere">{{ expense.title }}</p>
       <p class="mt-0.5 text-3xl font-bold tabular-nums">{{ money(details.total) }}</p>
       <p class="text-sm text-muted">

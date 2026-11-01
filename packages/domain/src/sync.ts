@@ -79,8 +79,8 @@ export type PushProblem = z.infer<typeof pushProblemSchema>;
 /**
  * The outcome of one change. `accepted` gives an Expense's new version (`null` for Trip
  * and Participant changes, which have none). `conflict` means the Expense changed since the
- * base version and gives its current state. `rejected` says why. Refused changes leave the
- * Trip as it was.
+ * base version and gives its current state, with the Claim sent with the change that made it
+ * (`null` without one). `rejected` says why. Refused changes leave the Trip as it was.
  */
 export const changeResultSchema = z.discriminatedUnion('status', [
   z.object({
@@ -88,7 +88,12 @@ export const changeResultSchema = z.discriminatedUnion('status', [
     status: z.literal('accepted'),
     version: expenseVersionSchema.nullable(),
   }),
-  z.object({ changeId: z.uuid(), status: z.literal('conflict'), current: storedExpenseSchema }),
+  z.object({
+    changeId: z.uuid(),
+    status: z.literal('conflict'),
+    current: storedExpenseSchema,
+    currentClaimId: participantIdSchema.nullable(),
+  }),
   z.object({
     changeId: z.uuid(),
     status: z.literal('rejected'),

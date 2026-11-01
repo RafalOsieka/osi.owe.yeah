@@ -19,6 +19,13 @@ const token = 'x'.repeat(43);
 const kasia = { id: uuidv7(), name: 'Kasia' };
 const ania = { id: uuidv7(), name: 'Ania' };
 
+/** Accepts every change, an Expense at its base version + 1. */
+const acceptAll = (change: SyncChange): ChangeResult => ({
+  changeId: change.id,
+  status: 'accepted',
+  version: change.kind === 'expense' ? (change.baseVersion ?? 0) + 1 : null,
+});
+
 /**
  * A stand-in for the server: records every push, answers each change with `answer`
  * (accepting by default, an Expense at its base version + 1), and pulls `snapshot`. While
@@ -29,11 +36,7 @@ class FakeServer implements Transport {
   offline = false;
   loseResponses = 0;
   snapshot: TripSnapshot | null = null;
-  answer = (change: SyncChange): ChangeResult => ({
-    changeId: change.id,
-    status: 'accepted',
-    version: change.kind === 'expense' ? (change.baseVersion ?? 0) + 1 : null,
-  });
+  answer = acceptAll;
 
   async push(_tripId: string, _token: string, request: PushRequest): Promise<PushResponse> {
     if (this.offline) throw new Error('offline');
@@ -59,6 +62,46 @@ function setUp() {
   const server = new FakeServer();
   const device = createDevice(new DeviceDb(uuidv7()), server, deviceId);
   return { server, device };
+}
+
+/** A synced Trip with a new Expense "Pizza" the server rejected. */
+async function rejected() {
+  const { server, device } = setUp();
+  await device.createTrip(trip, token);
+  await device.sync(trip.id);
+  const pizza = plainExpense('Pizza');
+  server.answer = (change) => ({
+    changeId: change.id,
+    status: 'rejected',
+    problems: ['unknownMainPayer'],
+  });
+  await device.saveExpense(trip.id, pizza, { version: null });
+  await device.sync(trip.id);
+  return { server, device, pizza };
+}
+
+/**
+ * A synced Trip whose Expense "Lidl Rovinj" this device edited to "Konzum" while Ania made
+ * it "Spar" (version 2) first: the device's edit is a Conflict. The device hasn't pulled
+ * Ania's version.
+ */
+async function inConflict() {
+  const { server, device } = setUp();
+  await device.createTrip(trip, token);
+  await device.sync(trip.id);
+  const lidl = plainExpense('Lidl Rovinj');
+  await device.saveExpense(trip.id, lidl, { version: null });
+  await device.sync(trip.id);
+  const [synced] = (await device.read(trip.id))!.local!.expenses;
+  server.answer = (change) => ({
+    changeId: change.id,
+    status: 'conflict',
+    current: { ...lidl, title: 'Spar', version: 2 },
+    currentClaimId: ania.id,
+  });
+  await device.saveExpense(trip.id, { ...lidl, title: 'Konzum' }, synced!.base);
+  await device.sync(trip.id);
+  return { server, device, lidl };
 }
 
 const trip: TripWithParticipants = {
@@ -179,27 +222,79 @@ describe('the device', () => {
   });
 
   it('keeps its own changes on top of every pulled Trip', async () => {
-    const { server, device } = setUp();
-    await device.createTrip(trip, token);
-    await device.sync(trip.id);
-    const lidl = plainExpense('Lidl Rovinj');
-    await device.saveExpense(trip.id, lidl, { version: null });
-    await device.sync(trip.id);
-    const [synced] = (await device.read(trip.id))!.local!.expenses;
-    // Someone else edits it first; this device's edit is a Conflict.
+    const { server, device, lidl } = await inConflict();
     server.snapshot = { ...trip, version: 9, expenses: [{ ...lidl, title: 'Spar', version: 2 }] };
-    server.answer = (change) => ({
-      changeId: change.id,
-      status: 'conflict',
-      current: { ...lidl, title: 'Spar', version: 2 },
-    });
-    await device.saveExpense(trip.id, { ...lidl, title: 'Konzum' }, synced!.base);
 
     await device.sync(trip.id);
 
     expect((await device.read(trip.id))?.local?.expenses).toMatchObject([
-      { title: 'Konzum', unsynced: { status: 'conflict' } },
+      // Both versions say who made them: this device's by its Claim then.
+      {
+        title: 'Konzum',
+        unsynced: { status: 'conflict', claimId: kasia.id, currentClaimId: ania.id },
+      },
     ]);
+  });
+
+  it('keeps edits made during a Conflict on its own version, and keeping it sends them on the current one', async () => {
+    const { server, device, lidl } = await inConflict();
+    const [shown] = (await device.read(trip.id))!.local!.expenses;
+    await device.saveExpense(trip.id, { ...lidl, title: 'Konzum Poreč' }, shown!.base);
+    await device.sync(trip.id);
+    expect((await device.read(trip.id))?.local?.expenses).toMatchObject([
+      { title: 'Konzum Poreč', unsynced: { status: 'conflict' } },
+    ]);
+
+    server.answer = acceptAll;
+    await device.keepMine(trip.id, lidl.id);
+    await device.sync(trip.id);
+
+    expect(server.sent().slice(-2)).toMatchObject([
+      { baseVersion: 2, expense: { title: 'Konzum' } },
+      { baseVersion: 3, expense: { title: 'Konzum Poreč' } },
+    ]);
+    expect(await device.read(trip.id)).toMatchObject({
+      unsynced: 0,
+      local: { expenses: [{ title: 'Konzum Poreč', unsynced: null }] },
+    });
+  });
+
+  it('sends a fix of a rejected change in its place', async () => {
+    const { server, device, pizza } = await rejected();
+    const [shown] = (await device.read(trip.id))!.local!.expenses;
+    server.answer = acceptAll;
+
+    await device.saveExpense(trip.id, { ...pizza, title: 'Pizza Napoli' }, shown!.base);
+    await device.sync(trip.id);
+
+    expect(server.sent().at(-1)).toMatchObject({
+      baseVersion: null,
+      expense: { title: 'Pizza Napoli' },
+    });
+    expect(await device.read(trip.id)).toMatchObject({
+      unsynced: 0,
+      local: { expenses: [{ title: 'Pizza Napoli', unsynced: null }] },
+    });
+  });
+
+  it('drops a rejected new Expense when its change is discarded', async () => {
+    const { device, pizza } = await rejected();
+
+    await device.discardChanges(trip.id, pizza.id);
+
+    expect(await device.read(trip.id)).toMatchObject({ unsynced: 0, local: { expenses: [] } });
+  });
+
+  it('keeps their version by dropping its own changes, showing theirs even offline', async () => {
+    const { server, device, lidl } = await inConflict();
+    server.offline = true;
+
+    await device.discardChanges(trip.id, lidl.id);
+
+    expect(await device.read(trip.id)).toMatchObject({
+      unsynced: 0,
+      local: { expenses: [{ title: 'Spar', base: { version: 2 }, unsynced: null }] },
+    });
   });
 
   it('refuses an Expense that breaks a Trip rule before queueing it', async () => {

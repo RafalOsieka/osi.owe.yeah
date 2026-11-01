@@ -115,8 +115,13 @@
     "unsyncedShort": "· niezsynchronizowane: {count}",
     "notSynced": "niezsynchronizowany",
     "pending": "Jeszcze niezsynchronizowany. Pozostali zobaczą go po następnej synchronizacji.",
-    "conflict": "Niezsynchronizowany: w międzyczasie ktoś inny zmienił ten wydatek.",
     "rejected": "Niezsynchronizowany: {reason}",
+    "conflictBadge": "Konflikt",
+    "conflictBy": "W międzyczasie ten wydatek zmienił też ktoś inny ({name}). Wybierz, którą wersję zachować.",
+    "conflictBySomeone": "W międzyczasie ten wydatek zmienił też ktoś inny. Wybierz, którą wersję zachować.",
+    "choose": "Wybierz wersję",
+    "rejectedHelp": "Popraw go albo odrzuć swoją zmianę.",
+    "discard": "Odrzuć zmianę",
     "reason": {
       "unknownMainPayer": "osoby, która zapłaciła, nie ma już w podróży.",
       "unknownParticipant": "któregoś z zaznaczonych uczestników nie ma już w podróży.",
@@ -127,6 +132,18 @@
     },
     "pullToRefresh": "Pociągnij, aby zsynchronizować",
     "releaseToRefresh": "Puść, aby zsynchronizować"
+  },
+  "conflict": {
+    "title": "Konflikt",
+    "help": "Ty i ktoś inny zmieniliście ten wydatek w tym samym czasie. Wybierz, którą wersję zachować; druga przepadnie.",
+    "mine": "Twoja wersja",
+    "theirs": "Druga wersja",
+    "by": "autor: {name}",
+    "paidFor": "Kto zapłacił: {name}",
+    "forWhom": "Za kogo: {names}",
+    "keepMine": "Zachowaj moją",
+    "keepTheirs": "Zachowaj drugą",
+    "none": "Ten wydatek nie ma konfliktu."
   },
   "colorMode": {
     "title": "Motyw",
