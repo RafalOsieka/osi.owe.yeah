@@ -92,7 +92,9 @@
       "repaymentToSelf": "A Repayment needs two different Participants.",
       "negativeLineItem": "Only a plain Expense can be money received; a Receipt has no negative Line items.",
       "unitsExceedQuantity": "A Line item has more units assigned than it has.",
-      "amountsExceedLineTotal": "A Line item has Amounts that add up to more than its total."
+      "amountsExceedLineTotal": "A Line item has Amounts that add up to more than its total.",
+      "lineDiscountExceedsLineTotal": "A Line item has a discount larger than its total.",
+      "receiptDiscountExceedsLineItems": "The Receipt discount is larger than the Line items after their own discounts."
     },
     "emptyHelp": "Whoever pays for something adds it here.",
     "addFirst": "Add the first Expense",
@@ -135,6 +137,14 @@
     "unitPrice": "Unit price",
     "quantity": "Quantity",
     "weighedHelp": "Weighed goods are one unit at the line price.",
+    "lineDiscount": "Line discount",
+    "receiptDiscount": "Receipt discount",
+    "discountKind": "{label}: amount or percent",
+    "discountUnreadable": "Check the discount.",
+    "perUnitDiscountHelp": "A discount per unit goes in for the whole line: 2 × 0.20 off is 0.40.",
+    "lineDiscountFact": "Discount {discount}",
+    "receiptDiscountFact": "Receipt discount {discount}",
+    "receiptDiscountExceeds": "The discount is larger than the Line items after their own discounts.",
     "splitMode": "Split mode",
     "mode": {
       "even": "Even",
@@ -146,7 +156,8 @@
     "unitsAssigned": "{assigned} of {quantity} units assigned",
     "problem": {
       "unitsExceedQuantity": "More units assigned than bought.",
-      "amountsExceedLineTotal": "The Amounts add up to more than the Line total."
+      "amountsExceedLineTotal": "The Amounts add up to more than the Line total.",
+      "lineDiscountExceedsLineTotal": "The discount is larger than the Line total."
     },
     "moveUp": "Move up",
     "moveDown": "Move down",
@@ -217,7 +228,9 @@
       "participantIdTaken": "this Participant belongs to another Trip.",
       "negativeLineItem": "a Receipt has no negative Line items.",
       "unitsExceedQuantity": "a Line item has more units assigned than it has.",
-      "amountsExceedLineTotal": "a Line item's Amounts add up to more than its total."
+      "amountsExceedLineTotal": "a Line item's Amounts add up to more than its total.",
+      "lineDiscountExceedsLineTotal": "a Line item's discount is larger than its total.",
+      "receiptDiscountExceedsLineItems": "the Receipt discount is larger than the Line items after their own discounts."
     },
     "pullToRefresh": "Pull to sync",
     "releaseToRefresh": "Release to sync"

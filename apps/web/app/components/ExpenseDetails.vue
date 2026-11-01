@@ -4,6 +4,7 @@ import {
   fromMinor,
   isReceipt,
   isRepayment,
+  type Discount,
   type Expense,
   type Rational,
 } from '@osi/owe-yeah-domain';
@@ -11,7 +12,8 @@ import {
 // An Expense in full, as its detail page and an old Revision show it: the full title, total,
 // when it was paid in its own zone, the Main payer (who received it, for Income), and each
 // Participant's share, the claimed Participant's in bold. A Repayment shows who paid whom. A
-// Receipt also lists its Line items, with how each is split and what is not assigned yet.
+// Receipt also lists its Line items, with how each is split, its Line discount, and what is
+// not assigned yet, and then its Receipt discount.
 const { expense } = defineProps<{ expense: Expense }>();
 
 const { trip, claim } = useOpenTrip();
@@ -21,13 +23,17 @@ const splitText = useSplitText();
 const money = (amount: Rational) => formatMoney(amount, expense.currency, locale.value);
 
 const details = computed(() => {
-  const { total, shares, unassigned, lineItems } = expenseShares(expense);
+  const { total, discountOff, shares, unassigned, lineItems } = expenseShares(expense);
   const receipt = isReceipt(expense) && !isRepayment(expense);
+  const discountText = (entered: Discount | undefined, off: Rational) =>
+    entered && formatDiscount(entered, off, expense.currency, locale.value);
   return {
     total,
     unassigned: unassigned.numerator === 0n ? null : unassigned,
+    discount: receipt ? discountText(expense.discount, discountOff) : undefined,
     lineItems: receipt
       ? expense.lineItems.map((item, index) => ({
+          discountText: discountText(item.discount, lineItems[index]!.discountOff),
           name: item.name || t('receipt.unnamed', { position: index + 1 }),
           quantity: item.quantity,
           unitPrice: formatMoney(
@@ -95,13 +101,23 @@ const details = computed(() => {
                   : line.split
               }}
             </span>
+            <span v-if="line.discountText" class="block text-xs text-muted">
+              {{ $t('receipt.lineDiscountFact', { discount: line.discountText }) }}
+            </span>
             <span v-if="line.unassigned.numerator !== 0n" class="block text-xs text-warning">
               {{ $t('receipt.notAssigned', { amount: money(line.unassigned) }) }}
             </span>
           </span>
-          <span class="shrink-0 tabular-nums">{{ money(line.total) }}</span>
+          <span class="shrink-0 tabular-nums">{{ money(line.net) }}</span>
         </li>
       </ol>
+      <p
+        v-if="details.discount"
+        class="flex items-start gap-2 border-t border-default py-1.5 text-sm"
+      >
+        <span class="min-w-0 flex-1">{{ $t('receipt.receiptDiscount') }}</span>
+        <span class="shrink-0 tabular-nums">{{ details.discount }}</span>
+      </p>
     </section>
 
     <section aria-labelledby="for-whom-heading">

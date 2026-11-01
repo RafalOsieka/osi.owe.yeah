@@ -1,4 +1,4 @@
-export { add, rational } from './rational.ts';
+export { add, negate, rational } from './rational.ts';
 export type { Rational } from './rational.ts';
 export { parseAmount } from './amount.ts';
 export { fromMinor, minorUnits, parseMoney, roundMoney } from './money.ts';
@@ -11,10 +11,12 @@ export {
   tripVersionSchema,
 } from './snapshot.ts';
 export type { Edited, Revision, StoredExpense, TripSnapshot } from './snapshot.ts';
-export { claimView, expenseShares, lineItemShares } from './shares.ts';
+export { claimView, expenseShares, lineItemShares, receiptShares } from './shares.ts';
+export { discountSchema, parsePercent } from './discount.ts';
+export type { Discount } from './discount.ts';
 export {
   MAX_UNITS,
-  lineItemProblem,
+  lineItemProblems,
   lineItemSchema,
   newLineItemSplit,
   splitFromScratch,
@@ -24,7 +26,7 @@ export {
 export type { LineItem, LineItemProblem, Split, SplitMode } from './line-item.ts';
 export { balances, isSettled, spendingTotal, suggestedRepayments } from './settle-up.ts';
 export type { ParticipantBalance, SuggestedRepayment } from './settle-up.ts';
-export type { ClaimView, ExpenseShares, LineItemShares } from './shares.ts';
+export type { ClaimView, ExpenseShares, LineItemShares, ReceiptShares } from './shares.ts';
 export type { RoundedMoney } from './money.ts';
 export {
   deviceTimeZone,
@@ -40,6 +42,7 @@ export {
   expenseTitleSchema,
   localDateTime,
   localDay,
+  receiptDiscountExceeds,
 } from './expense.ts';
 export type {
   Expense,

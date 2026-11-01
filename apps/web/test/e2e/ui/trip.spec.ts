@@ -412,6 +412,64 @@ test('a Receipt entered offline at the till, Line item by Line item, reaches a s
   await other.close();
 });
 
+test('a Line discount follows the Units and a Receipt discount is shared by what is left', async ({
+  page,
+  browser,
+}) => {
+  await page.goto('/');
+  await createTrip(page, 'Istria 2026', 'Kasia', ['Ania', 'Ola']);
+
+  await page.getByRole('link', { name: 'Add the first Expense' }).click();
+  await page.getByLabel('Title').fill('Konoba');
+  await page.getByRole('button', { name: 'Itemise as a Receipt' }).click();
+  const adding = page.getByRole('group', { name: 'Add a Line item' });
+  await adding.getByLabel('New Line item unit price').fill('2,00');
+  await adding.getByLabel('New Line item quantity').fill('5');
+  await adding.getByLabel('New Line item name').fill('Beer');
+  await adding.getByRole('button', { name: 'Add' }).click();
+
+  const beer = page.getByRole('region', { name: 'Line items' }).getByRole('listitem').first();
+  await beer.getByRole('button', { name: /Beer/ }).click();
+  await beer.getByRole('button', { name: 'Units' }).click();
+  await beer.getByLabel('Units for Kasia').fill('2');
+  await beer.getByLabel('Units for Ania').fill('2');
+  await beer.getByLabel('Units for Ola').fill('1');
+  await beer.getByRole('textbox', { name: 'Line discount' }).fill('1');
+  await expect(beer).toContainText('Discount -€1.00');
+  const total = page.getByRole('status', { name: 'Receipt total' });
+  await expect(total).toHaveText('€9.00');
+
+  // 10.00 off is more than the 9.00 left after the Line discount; 10 % is not.
+  const receiptDiscount = page.getByRole('textbox', { name: 'Receipt discount' });
+  await receiptDiscount.fill('10');
+  await expect(page.getByRole('main')).toContainText(
+    'The discount is larger than the Line items after their own discounts.',
+  );
+  await page
+    .getByRole('group', { name: 'Receipt discount: amount or percent' })
+    .getByRole('button', { name: '%' })
+    .click();
+  await expect(total).toHaveText('€8.10');
+  await expect(page.getByRole('main')).toContainText('Receipt discount -10% · -€0.90');
+  await page.getByRole('button', { name: 'Save Expense' }).click();
+  const row = page.getByRole('link', { name: /Konoba/ });
+  await expect(row).not.toContainText('not synced');
+
+  const other = await browser.newContext();
+  const otherPage = await other.newPage();
+  await otherPage.goto(await tripLinkOnDevice(page));
+  await otherPage.getByRole('dialog').getByRole('button', { name: 'Ania' }).click();
+  const otherRow = otherPage.getByRole('link', { name: /Konoba/ });
+  // Two beers at 1.80 after the Line discount, less 10 %.
+  await expect(otherRow).toContainText('your share 3.24');
+  await otherRow.click();
+  const main = otherPage.getByRole('main');
+  await expect(main).toContainText('Discount -€1.00');
+  await expect(main).toContainText('Receipt discount');
+  await expect(main).toContainText('-10% · -€0.90');
+  await other.close();
+});
+
 test('a Trip link with a wrong token shows no Trip', async ({ page }) => {
   await page.goto('/trips/019a2b3c-4d5e-7f00-8a1b-2c3d4e5f6a7b#not-the-token');
 

@@ -1,4 +1,5 @@
 import { describe, expect, it } from 'vitest';
+import { expenseProblemSchema } from '@osi/owe-yeah-domain';
 import en from '../../i18n/locales/en.json';
 import pl from '../../i18n/locales/pl.json';
 
@@ -20,5 +21,13 @@ function messagePaths(catalog: Catalog, prefix = ''): string[] {
 describe('locale catalogs', () => {
   it('pl has exactly the messages en has', () => {
     expect(messagePaths(pl).toSorted()).toEqual(messagePaths(en).toSorted());
+  });
+
+  it('says why for every Trip rule an Expense can break, when saved and when synced', () => {
+    const paths = new Set(messagePaths(en));
+    const missing = expenseProblemSchema.options.flatMap((problem) =>
+      [`expense.refused.${problem}`, `sync.reason.${problem}`].filter((path) => !paths.has(path)),
+    );
+    expect(missing).toEqual([]);
   });
 });

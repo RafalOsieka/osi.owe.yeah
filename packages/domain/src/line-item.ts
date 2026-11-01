@@ -1,5 +1,7 @@
 import { z } from 'zod';
+import { discountExceeds, discountSchema, takenOff } from './discount.ts';
 import { participantIdSchema } from './participant.ts';
+import { add, rational, subtract, type Rational } from './rational.ts';
 
 /** An amount in whole minor units of its currency (cents for EUR), so it stays exact in JSON. */
 export const minorAmountSchema = z.number().int().positive().max(Number.MAX_SAFE_INTEGER);
@@ -53,9 +55,10 @@ type EvenSplit = Extract<Split, { mode: 'even' }>;
 
 /**
  * One position of an Expense: a name (empty on a plain Expense), a unit price and a whole
- * quantity, so "6 × water" is one line and weighed goods are one unit at the line price. A
- * negative unit price is money received, which makes a plain Expense Income; it is never
- * zero. Name and quantity default for Expenses saved before Receipts existed.
+ * quantity, so "6 × water" is one line and weighed goods are one unit at the line price, and
+ * an optional Line discount, which a per-unit discount is entered as in full (2 × 0.20 off is
+ * 0.40 off). A negative unit price is money received, which makes a plain Expense Income; it
+ * is never zero. Name and quantity default for Expenses saved before Receipts existed.
  */
 export const lineItemSchema = z.object({
   name: z.string().trim().max(100).default(''),
@@ -66,6 +69,7 @@ export const lineItemSchema = z.object({
     .max(Number.MAX_SAFE_INTEGER)
     .refine((price) => price !== 0, { message: 'A Line item is never zero' }),
   quantity: unitsSchema.default(1),
+  discount: discountSchema.optional(),
   split: splitSchema,
 });
 
@@ -81,6 +85,23 @@ export function splitParticipantIds(split: Split): string[] {
 /** A Line item's full-price total in minor units: unit price × quantity. */
 export function lineTotalMinor({ unitPrice, quantity }: LineItem): bigint {
   return BigInt(unitPrice) * BigInt(quantity);
+}
+
+/**
+ * A Line item's total after its Line discount, in minor units: what its split shares, and
+ * what the Receipt discount applies to.
+ */
+export function lineNetMinor(item: LineItem): Rational {
+  const total = rational(lineTotalMinor(item));
+  return subtract(total, takenOff(item.discount, total));
+}
+
+/**
+ * What a Receipt's Line items come to after their Line discounts, in minor units: what the
+ * Receipt discount applies to.
+ */
+export function goodsMinor(lineItems: readonly LineItem[]): Rational {
+  return lineItems.reduce((sum, item) => add(sum, lineNetMinor(item)), rational(0n));
 }
 
 /**
@@ -122,27 +143,36 @@ export function splitWeights(item: LineItem): SplitWeights {
 
 const abs = (value: bigint) => (value < 0n ? -value : value);
 
-/** Why a Line item's split does not fit the line. */
-export const LINE_ITEM_PROBLEMS = ['unitsExceedQuantity', 'amountsExceedLineTotal'] as const;
+/** Why a Line item does not fit together: its split, or its Line discount. */
+export const LINE_ITEM_PROBLEMS = [
+  'unitsExceedQuantity',
+  'amountsExceedLineTotal',
+  'lineDiscountExceedsLineTotal',
+] as const;
 
 export type LineItemProblem = (typeof LINE_ITEM_PROBLEMS)[number];
 
 /**
- * Whether a Line item's split fits it: Units may not add up to more than the quantity, and
- * Amounts not to more than the full-price Line total. Adding up to less is allowed: the rest
- * is unassigned.
+ * Why a Line item does not fit together; empty when it does. Units may not add up to more
+ * than the quantity, and Amounts not to more than the full-price Line total; adding up to
+ * less is allowed, the rest is unassigned. The Line discount may not take off more than the
+ * full-price Line total.
  */
-export function lineItemProblem(item: LineItem): LineItemProblem | null {
+export function lineItemProblems(item: LineItem): LineItemProblem[] {
   const { split } = item;
+  const problems: LineItemProblem[] = [];
   if (split.mode === 'units') {
     const units = split.parts.reduce((sum, part) => sum + part.units, 0);
-    return units > item.quantity ? 'unitsExceedQuantity' : null;
+    if (units > item.quantity) problems.push('unitsExceedQuantity');
   }
   if (split.mode === 'amounts') {
     const amounts = split.parts.reduce((sum, part) => sum + BigInt(part.amount), 0n);
-    return amounts > abs(lineTotalMinor(item)) ? 'amountsExceedLineTotal' : null;
+    if (amounts > abs(lineTotalMinor(item))) problems.push('amountsExceedLineTotal');
   }
-  return null;
+  if (discountExceeds(item.discount, rational(lineTotalMinor(item)))) {
+    problems.push('lineDiscountExceedsLineTotal');
+  }
+  return problems;
 }
 
 /**
