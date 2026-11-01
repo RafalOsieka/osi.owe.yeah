@@ -13,6 +13,7 @@ export {
 export type { Edited, Revision, StoredExpense, TripSnapshot } from './snapshot.ts';
 export { claimView, expenseShares, lineItemShares } from './shares.ts';
 export {
+  MAX_UNITS,
   lineItemProblem,
   lineItemSchema,
   newLineItemSplit,

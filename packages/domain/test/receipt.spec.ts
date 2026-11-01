@@ -241,6 +241,22 @@ describe('Receipt walkthroughs', () => {
     ]);
   });
 
+  it('a tip is an ordinary Line item, split like the dinner', () => {
+    // The Contribution half of this walkthrough (Kuba's cash) comes with Contributions.
+    const dinner = { name: 'Dinner', unitPrice: 6400, quantity: 1, split: even(everyone) };
+    const tip = {
+      name: 'Tip',
+      unitPrice: 800,
+      quantity: 1,
+      split: newLineItemSplit([dinner], everyone),
+    };
+
+    const { total, shares } = expenseShares(receipt(dinner, tip));
+
+    expect(total).toEqual(rational(72n));
+    expect([...shares.values()]).toEqual(Array.from({ length: 4 }, () => rational(18n)));
+  });
+
   it('things that should be refused: more units than bought, and a negative line', () => {
     const eggs = {
       name: 'Eggs',

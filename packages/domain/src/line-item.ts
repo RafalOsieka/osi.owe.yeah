@@ -4,8 +4,11 @@ import { participantIdSchema } from './participant.ts';
 /** An amount in whole minor units of its currency (cents for EUR), so it stays exact in JSON. */
 export const minorAmountSchema = z.number().int().positive().max(Number.MAX_SAFE_INTEGER);
 
+/** The most units a Line item may have, or a Participant may take of it. */
+export const MAX_UNITS = 10_000;
+
 /** How many units a Line item has, or a Participant takes of it: a whole number, at least 1. */
-const unitsSchema = z.number().int().min(1).max(10_000);
+const unitsSchema = z.number().int().min(1).max(MAX_UNITS);
 
 const distinct = (ids: readonly string[]) => new Set(ids).size === ids.length;
 const onlyOnce = { message: 'A Participant can be in a split only once' };

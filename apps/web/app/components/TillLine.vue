@@ -1,5 +1,6 @@
 <script setup lang="ts">
 import {
+  MAX_UNITS,
   fromMinor,
   lineItemProblem,
   lineItemShares,
@@ -8,7 +9,7 @@ import {
   type Rational,
   type SplitMode,
 } from '@osi/owe-yeah-domain';
-import { lineItemFromDraft, type DraftLineItem, type DraftSplit } from '~/utils/receipt-draft';
+import { lineItemFromDraft, type DraftLineItem } from '~/utils/receipt-draft';
 
 // One Line item of the Till list. Collapsed, it reads as on the paper Receipt: name, quantity
 // × unit price, how it is split, its total, and what is not assigned yet. Open, it is edited
@@ -48,18 +49,14 @@ function update(change: Partial<DraftLineItem>): void {
   line.value = { ...line.value, ...change };
 }
 
-function setSplit(split: DraftSplit): void {
-  update({ split });
-}
-
 function chooseMode(mode: SplitMode): void {
   if (mode === line.value.split.mode) return;
-  setSplit(
-    splitFromScratch(
+  update({
+    split: splitFromScratch(
       mode,
       participants.map(({ id }) => id),
     ),
-  );
+  });
 }
 
 // The Participants in the Trip's order, each with what the split gives them.
@@ -85,13 +82,15 @@ function tick(participantId: string, ticked: boolean): void {
   const ids = rows.value
     .filter(({ participant, ticked: was }) => (participant.id === participantId ? ticked : was))
     .map(({ participant }) => participant.id);
-  setSplit({ mode: 'even', participantIds: ids });
+  update({ split: { mode: 'even', participantIds: ids } });
 }
 
 function toggleAll(): void {
-  setSplit({
-    mode: 'even',
-    participantIds: allTicked.value ? [] : participants.map(({ id }) => id),
+  update({
+    split: {
+      mode: 'even',
+      participantIds: allTicked.value ? [] : participants.map(({ id }) => id),
+    },
   });
 }
 
@@ -100,7 +99,7 @@ function setUnits(participantId: string, units: number | null): void {
     const now = participant.id === participantId ? (units ?? 0) : had;
     return now > 0 ? [{ participantId: participant.id, units: now }] : [];
   });
-  setSplit({ mode: 'units', parts });
+  update({ split: { mode: 'units', parts } });
 }
 
 function setAmount(participantId: string, amount: string): void {
@@ -108,7 +107,7 @@ function setAmount(participantId: string, amount: string): void {
     const now = participant.id === participantId ? amount : had;
     return now.trim() === '' ? [] : [{ participantId: participant.id, amount: now }];
   });
-  setSplit({ mode: 'amounts', parts });
+  update({ split: { mode: 'amounts', parts } });
 }
 
 const assignedUnits = computed(() => rows.value.reduce((sum, { units }) => sum + units, 0));
@@ -181,7 +180,7 @@ const modes: readonly SplitMode[] = ['even', 'units', 'amounts'];
           <UInputNumber
             :model-value="line.quantity"
             :min="1"
-            :max="10000"
+            :max="MAX_UNITS"
             @update:model-value="update({ quantity: Math.max(1, $event ?? 1) })"
           />
         </UFormField>

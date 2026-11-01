@@ -1,5 +1,11 @@
 <script setup lang="ts">
-import { minorUnits, newLineItemSplit, parseMoney, type Participant } from '@osi/owe-yeah-domain';
+import {
+  MAX_UNITS,
+  minorUnits,
+  newLineItemSplit,
+  parseMoney,
+  type Participant,
+} from '@osi/owe-yeah-domain';
 import { draftLineItem, type DraftLineItem } from '~/utils/receipt-draft';
 
 // A Receipt's Line items as the Till list enters them, at the till: one line after the
@@ -103,7 +109,7 @@ function remove(index: number): void {
         <UInputNumber
           v-model="adding.quantity"
           :min="1"
-          :max="10000"
+          :max="MAX_UNITS"
           :aria-label="$t('receipt.newQuantity')"
           class="w-32"
         />
