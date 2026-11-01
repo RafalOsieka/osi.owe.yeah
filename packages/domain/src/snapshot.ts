@@ -1,7 +1,7 @@
 import { z } from 'zod';
 import { expenseSchema, type Expense } from './expense.ts';
-import { fromMinor } from './money.ts';
 import { add, rational, subtract, type Rational } from './rational.ts';
+import { expenseShares } from './shares.ts';
 import { tripWithParticipantsSchema } from './trip.ts';
 
 /** The server's version of an Expense: starts at 1 and goes up with every accepted change. */
@@ -46,15 +46,9 @@ export function balances(
     if (expense.currency !== trip.currency) {
       throw new RangeError(`Expense ${expense.id} is not in the Trip currency`);
     }
-    for (const { unitPrice, split } of expense.lineItems) {
-      const price = fromMinor(unitPrice, expense.currency);
-      credit(paid, expense.mainPayerId, price);
-      const part = rational(
-        price.numerator,
-        price.denominator * BigInt(split.participantIds.length),
-      );
-      for (const id of split.participantIds) credit(share, id, part);
-    }
+    const { total, shares } = expenseShares(expense);
+    credit(paid, expense.mainPayerId, total);
+    for (const [id, part] of shares) credit(share, id, part);
   }
 
   return trip.participants.map(({ id }) => {

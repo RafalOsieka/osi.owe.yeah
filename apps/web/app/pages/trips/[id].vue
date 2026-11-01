@@ -1,8 +1,15 @@
 <script setup lang="ts">
-import { TRIP_TOKEN_HEADER, type Participant, type TripSnapshot } from '@osi/owe-yeah-domain';
+import {
+  TRIP_TOKEN_HEADER,
+  type Expense,
+  type ExpenseChange,
+  type Participant,
+  type TripSnapshot,
+} from '@osi/owe-yeah-domain';
 import { v7 as uuidv7 } from 'uuid';
 
-// Opens a Trip for its tabs: loads it once, and asks "Who are you?" when needed.
+// Opens a Trip for its tabs and Expense pages: loads it once, saves Expenses, and asks
+// "Who are you?" when needed.
 const route = useRoute();
 const router = useRouter();
 const { t } = useI18n();
@@ -82,13 +89,46 @@ async function addMe(name: string): Promise<void> {
   claimParticipant(participant);
 }
 
+// The last change sent, kept until it is accepted: a resend of the very same change keeps
+// its id, so a lost response is not applied twice.
+let pendingChange: { key: string; id: string } | undefined;
+
+function changeFor(expense: Expense, baseVersion: number | null): ExpenseChange {
+  const key = JSON.stringify({ expense, baseVersion });
+  if (pendingChange?.key !== key) pendingChange = { key, id: uuidv7() };
+  return { id: pendingChange.id, baseVersion, expense };
+}
+
+// Sends the change through the sync push. Until the offline outbox arrives, this needs a
+// connection.
+async function saveExpense(expense: Expense, baseVersion: number | null): Promise<SaveRefusal[]> {
+  const result = await $fetch(`/api/trips/${tripId}/push`, {
+    method: 'POST',
+    headers,
+    body: { changes: [changeFor(expense, baseVersion)] },
+  }).then(
+    ({ results }) => results[0],
+    () => null,
+  );
+  if (!result) return ['unsent'];
+
+  await refresh();
+  if (result.status === 'accepted') pendingChange = undefined;
+  return result.status === 'accepted'
+    ? []
+    : result.status === 'conflict'
+      ? ['conflict']
+      : result.problems;
+}
+
 provideOpenTrip({
-  // Only read by the tabs, which render once a Trip has been pulled.
+  // Only read by the pages under it, which render once a Trip has been pulled.
   trip: computed(() => snapshot.value!),
   claim,
   headers,
   refresh,
   addParticipant,
+  saveExpense,
   askWhoYouAre: () => (whoAreYouOpen.value = true),
 });
 

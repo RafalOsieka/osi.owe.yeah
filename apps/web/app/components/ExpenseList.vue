@@ -1,24 +1,64 @@
 <script setup lang="ts">
 import {
-  fromMinor,
+  add,
+  claimView,
+  expenseShares,
   groupByLocalDay,
-  localDateTime,
-  type Participant,
+  rational,
+  type Rational,
   type StoredExpense,
+  type TripSnapshot,
 } from '@osi/owe-yeah-domain';
 
-// The Trip's Expenses, newest first, under a heading for each Expense's own local day.
-// Emits the Expense a Participant opens to edit.
-const { expenses, participants } = defineProps<{
-  expenses: readonly StoredExpense[];
-  participants: readonly Participant[];
+// The Trip's Expenses, newest first, under a heading for each Expense's own local day with
+// that day's total. Each row opens the Expense's detail page and, with a Claim, says what
+// the Expense means for the claimed Participant.
+const { trip, claimId = null } = defineProps<{
+  trip: TripSnapshot;
+  claimId?: string | null;
 }>();
-const emit = defineEmits<{ open: [expense: StoredExpense] }>();
 
-const { locale } = useI18n();
+const { t, locale } = useI18n();
 
-const days = computed(() => groupByLocalDay(expenses));
-const names = computed(() => new Map(participants.map(({ id, name }) => [id, name])));
+const participants = computed(() => new Map(trip.participants.map((p) => [p.id, p])));
+
+const money = (amount: Rational) => formatMoney(amount, trip.currency, locale.value);
+const bare = (amount: Rational) => formatMoney(amount, trip.currency, locale.value, 'number');
+
+// What the claimed Participant sees on the right of a row, under the total.
+function forYou(expense: StoredExpense): { text: string; tone: string } | null {
+  if (claimId === null) return null;
+  const view = claimView(expense, claimId);
+  switch (view.kind) {
+    case 'lent':
+      return { text: t('expense.youLent', { amount: bare(view.amount) }), tone: 'text-primary' };
+    case 'share':
+      return { text: t('expense.yourShare', { amount: bare(view.amount) }), tone: 'text-error' };
+    case 'notForYou':
+      return { text: t('expense.notForYou'), tone: 'text-muted' };
+  }
+}
+
+const days = computed(() =>
+  groupByLocalDay(trip.expenses).map(({ day, expenses }) => {
+    const rows = expenses.map((expense) => {
+      const { total, shares } = expenseShares(expense);
+      const count = shares.size;
+      return {
+        expense,
+        total,
+        payer: participants.value.get(expense.mainPayerId),
+        forWhom:
+          count === trip.participants.length
+            ? t('expense.forAll', { count })
+            : t('expense.forSome', { count }),
+        forYou: forYou(expense),
+      };
+    });
+    const total = rows.reduce((sum, row) => add(sum, row.total), rational(0n));
+    return { day, total, rows };
+  }),
+);
 
 // A local day (`YYYY-MM-DD`) in words. It is a calendar date, not an instant, so it is
 // formatted in UTC to keep the device's zone from shifting it.
@@ -27,41 +67,43 @@ function dayHeading(day: string): string {
     new Date(`${day}T00:00:00Z`),
   );
 }
-
-function total(expense: StoredExpense): string {
-  const minor = expense.lineItems.reduce((sum, { unitPrice }) => sum + unitPrice, 0);
-  return formatMoney(fromMinor(minor, expense.currency), expense.currency, locale.value);
-}
 </script>
 
 <template>
-  <div class="space-y-4">
-    <div v-for="{ day, expenses: onDay } in days" :key="day" class="space-y-2">
-      <h3 class="text-sm font-medium text-muted">{{ dayHeading(day) }}</h3>
-      <ul class="space-y-2">
-        <li v-for="expense in onDay" :key="expense.id">
-          <UButton
-            color="neutral"
-            variant="outline"
-            block
-            class="justify-between text-left"
-            @click="emit('open', expense)"
+  <div>
+    <section v-for="{ day, total, rows } in days" :key="day" class="mb-2">
+      <div
+        class="mt-3 mb-1 flex justify-between gap-2 text-xs font-semibold tracking-wide text-muted"
+      >
+        <h3 class="min-w-0 truncate uppercase">{{ dayHeading(day) }}</h3>
+        <span class="shrink-0 font-medium tabular-nums">{{ money(total) }}</span>
+      </div>
+      <ul>
+        <li
+          v-for="row in rows"
+          :key="row.expense.id"
+          class="border-b border-default last:border-b-0"
+        >
+          <NuxtLink
+            :to="`/trips/${trip.id}/expenses/${row.expense.id}`"
+            class="flex items-center gap-2.5 py-2.5"
           >
-            <span class="flex flex-col">
-              <span class="font-medium">{{ expense.title }}</span>
-              <span class="text-xs text-muted">
-                {{
-                  $t('expense.summary', {
-                    name: names.get(expense.mainPayerId) ?? '?',
-                    time: localDateTime(expense.time).slice(11),
-                  })
-                }}
+            <ParticipantAvatar v-if="row.payer" :participant="row.payer" size="md" />
+            <span class="min-w-0 flex-1 leading-snug">
+              <span class="block truncate font-semibold">{{ row.expense.title }}</span>
+              <span class="block truncate text-xs text-muted">
+                {{ $t('expense.paidFor', { name: row.payer?.name ?? '?', forWhom: row.forWhom }) }}
               </span>
             </span>
-            <span class="font-medium tabular-nums">{{ total(expense) }}</span>
-          </UButton>
+            <span class="shrink-0 text-right leading-snug tabular-nums">
+              <span class="block font-semibold">{{ money(row.total) }}</span>
+              <span v-if="row.forYou" class="block text-xs" :class="row.forYou.tone">
+                {{ row.forYou.text }}
+              </span>
+            </span>
+          </NuxtLink>
         </li>
       </ul>
-    </div>
+    </section>
   </div>
 </template>
