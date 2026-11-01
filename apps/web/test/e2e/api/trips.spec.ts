@@ -45,8 +45,12 @@ function participantChange(added: Participant): ParticipantChange {
   return { id: uuidv7(), claimId: null, deviceId, kind: 'participant', participant: added };
 }
 
-function change(expense: Expense, baseVersion: number | null = null): ExpenseChange {
-  return { id: uuidv7(), claimId: null, deviceId, kind: 'expense', baseVersion, expense };
+function change(
+  expense: Expense,
+  baseVersion: number | null = null,
+  claimId: string | null = null,
+): ExpenseChange {
+  return { id: uuidv7(), claimId, deviceId, kind: 'expense', baseVersion, expense };
 }
 
 /** A push as a device sends it; its changes may be ones the server refuses as malformed. */
@@ -286,16 +290,16 @@ describeApi('Trip API', () => {
     expect((await pulled(trip.id, token)).expenses).toEqual([{ ...edited.expense, version: 2 }]);
   });
 
-  it('reports a Conflict for a change based on an older version, keeping the Expense', async () => {
-    const { trip, token, kasia } = await tripWithKasiaAndAnia();
+  it('reports a Conflict for a change based on an older version, with who made the current one', async () => {
+    const { trip, token, kasia, ania } = await tripWithKasiaAndAnia();
     const expense = plainExpense(kasia);
     await push(trip.id, token, change(expense));
-    await push(trip.id, token, change({ ...expense, title: 'Konzum' }, 1));
-    const stale = change({ ...expense, title: 'Spar' }, 1);
+    await push(trip.id, token, change({ ...expense, title: 'Konzum' }, 1, kasia.id));
+    const stale = change({ ...expense, title: 'Spar' }, 1, ania.id);
 
     const current = { ...expense, title: 'Konzum', version: 2 };
     expect(await push(trip.id, token, stale)).toEqual<ChangeResult[]>([
-      { changeId: stale.id, status: 'conflict', current },
+      { changeId: stale.id, status: 'conflict', current, currentClaimId: kasia.id },
     ]);
     expect((await pulled(trip.id, token)).expenses).toEqual([current]);
   });
@@ -314,6 +318,35 @@ describeApi('Trip API', () => {
       },
     ]);
     expect((await pulled(trip.id, token)).expenses).toEqual([{ ...expense, version: 1 }]);
+  });
+
+  it('holds back only the Expenses it refuses, accepting the rest of the push', async () => {
+    const { trip, token, kasia } = await tripWithKasiaAndAnia();
+    const edited = plainExpense(kasia);
+    await push(trip.id, token, change(edited));
+    await push(trip.id, token, change({ ...edited, title: 'Konzum' }, 1));
+    const stale = change({ ...edited, title: 'Spar' }, 1);
+    const refused = change(plainExpense(participant('Stranger')));
+    const accepted = change({ ...plainExpense(kasia), title: 'Ferry' });
+
+    expect(await push(trip.id, token, stale, refused, accepted)).toEqual<ChangeResult[]>([
+      {
+        changeId: stale.id,
+        status: 'conflict',
+        current: { ...edited, title: 'Konzum', version: 2 },
+        currentClaimId: null,
+      },
+      {
+        changeId: refused.id,
+        status: 'rejected',
+        problems: ['unknownMainPayer', 'unknownParticipant'],
+      },
+      { changeId: accepted.id, status: 'accepted', version: 1 },
+    ]);
+    expect((await pulled(trip.id, token)).expenses.map(({ title }) => title)).toEqual([
+      'Konzum',
+      'Ferry',
+    ]);
   });
 
   it("refuses an Expense id another Trip uses, and an edit of an Expense it doesn't have", async () => {

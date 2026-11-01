@@ -68,6 +68,11 @@ async function saveExpense(expense: Expense, base: ExpenseBase) {
   return problems;
 }
 
+async function keepMine(expenseId: string): Promise<void> {
+  await device.keepMine(tripId, expenseId);
+  void device.sync(tripId);
+}
+
 provideOpenTrip({
   // Only read by the pages under it, which render once there is a Trip to show.
   trip: computed(() => trip.value!),
@@ -76,6 +81,8 @@ provideOpenTrip({
   sync: () => device.sync(tripId),
   addParticipant,
   saveExpense,
+  keepMine,
+  discardChanges: (expenseId) => device.discardChanges(tripId, expenseId),
   askWhoYouAre: () => (whoAreYouOpen.value = true),
 });
 

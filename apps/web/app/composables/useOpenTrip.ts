@@ -25,6 +25,13 @@ export interface OpenTrip {
    * empty when it was saved.
    */
   saveExpense(expense: Expense, base: ExpenseBase): Promise<ExpenseProblem[]>;
+  /** Resolves an Expense's Conflict with this device's version, sending it again. */
+  keepMine(expenseId: string): Promise<void>;
+  /**
+   * Drops this device's changes of an Expense not synced yet: keeps theirs in a Conflict, or
+   * discards a rejected change.
+   */
+  discardChanges(expenseId: string): Promise<void>;
   /** Opens the "Who are you?" sheet. */
   askWhoYouAre(): void;
 }

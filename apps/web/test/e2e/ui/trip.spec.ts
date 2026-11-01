@@ -1,5 +1,5 @@
 import { randomBytes } from 'node:crypto';
-import type { SyncChange } from '@osi/owe-yeah-domain';
+import type { PushRequest, SyncChange } from '@osi/owe-yeah-domain';
 import { expect, test, type APIRequestContext, type Page } from '@playwright/test';
 import { v7 as uuidv7 } from 'uuid';
 
@@ -445,4 +445,131 @@ test('saving a new Expense returns to the Expenses tab where it was scrolled', a
 
   await expect(page.getByRole('link', { name: /Ice cream/ })).toBeAttached();
   await expect.poll(() => page.evaluate(() => window.scrollY)).toBe(scrolled);
+});
+
+/** Renames an Expense from its row on the Expenses tab, and comes back to the tab. */
+async function retitle(page: Page, from: string, to: string): Promise<void> {
+  await page.getByRole('link').filter({ hasText: from }).click();
+  await page.getByRole('link', { name: 'Edit Expense' }).click();
+  await page.getByLabel('Title').fill(to);
+  await page.getByRole('button', { name: 'Save Expense' }).click();
+  await expect(page.getByRole('heading', { name: to })).toBeVisible();
+  await page.getByRole('button', { name: 'Back' }).click();
+}
+
+test('two devices change the same Expenses; the one that syncs second keeps its own or theirs', async ({
+  page,
+  request,
+  browser,
+}) => {
+  const link = await tripWithExpenses(
+    request,
+    'Hel 2026',
+    ['Kasia', 'Ania'],
+    [
+      { title: 'Pizza', amount: 3000 },
+      { title: 'Ferry', amount: 2000 },
+    ],
+  );
+  await page.goto(link);
+  await page.getByRole('dialog').getByRole('button', { name: 'Kasia' }).click();
+  const ania = await browser.newContext();
+  const other = await ania.newPage();
+  await other.goto(link);
+  await other.getByRole('dialog').getByRole('button', { name: 'Ania' }).click();
+  await other.waitForFunction(() => navigator.serviceWorker.controller !== null);
+
+  // Ania edits both offline while Kasia's edits of them reach the server first.
+  await ania.setOffline(true);
+  await retitle(other, 'Pizza', 'Pizza Napoli');
+  await retitle(other, 'Ferry', 'Ferry Ania');
+  await retitle(page, 'Pizza', 'Pizza Margherita');
+  await retitle(page, 'Ferry', 'Ferry Kasia');
+  await expect(page.getByRole('button', { name: 'Everything is synced.' })).toBeVisible();
+  await ania.setOffline(false);
+
+  const pizza = other.getByRole('link').filter({ hasText: 'Pizza Napoli' });
+  await expect(pizza).toContainText('Conflict');
+  await expect(other.getByRole('link').filter({ hasText: 'Ferry Ania' })).toContainText('Conflict');
+
+  // An edit during the Conflict stays on Ania's version, which she then keeps.
+  await pizza.click();
+  const main = other.getByRole('main');
+  await expect(main).toContainText('Kasia changed this Expense too.');
+  await other.getByRole('link', { name: 'Edit Expense' }).click();
+  await other.getByLabel('Title').fill('Pizza Napoli XL');
+  await other.getByRole('button', { name: 'Save Expense' }).click();
+  await other.getByRole('link', { name: 'Choose version' }).click();
+  const mine = other.getByRole('region', { name: 'Your version' });
+  const theirs = other.getByRole('region', { name: 'Their version' });
+  await expect(mine).toContainText('Pizza Napoli XL');
+  await expect(mine).toContainText('by Ania');
+  await expect(theirs).toContainText('Pizza Margherita');
+  await expect(theirs).toContainText('by Kasia');
+  await other.getByRole('button', { name: 'Keep mine' }).click();
+  await expect(other.getByRole('heading', { name: 'Pizza Napoli XL' })).toBeVisible();
+  await expect(main).not.toContainText('Not synced');
+  await other.getByRole('button', { name: 'Back' }).click();
+
+  // For the Ferry she keeps Kasia's.
+  await other.getByRole('link').filter({ hasText: 'Ferry Ania' }).click();
+  await other.getByRole('link', { name: 'Choose version' }).click();
+  await other.getByRole('button', { name: 'Keep theirs' }).click();
+  await expect(other.getByRole('heading', { name: 'Ferry Kasia' })).toBeVisible();
+  await expect(main).not.toContainText('Not synced');
+  await other.getByRole('button', { name: 'Back' }).click();
+  await expect(other.getByRole('button', { name: 'Everything is synced.' })).toBeVisible();
+  await expect(other.getByRole('link').filter({ hasText: 'Conflict' })).toHaveCount(0);
+  await ania.close();
+
+  await page.reload();
+  await expect(page.getByRole('link').filter({ hasText: 'Pizza Napoli XL' })).toBeVisible();
+  await expect(page.getByRole('link').filter({ hasText: 'Ferry Kasia' })).toBeVisible();
+});
+
+test('a change the server rejects says why, and can be discarded or fixed', async ({
+  page,
+  request,
+}) => {
+  await page.goto(await tripLinkFor(request, 'Rab 2026', ['Kasia', 'Ania']));
+  await page.getByRole('dialog').getByRole('button', { name: 'Kasia' }).click();
+  // Stands in for the Main payer leaving the Trip on another device before this one syncs:
+  // the server gets a Main payer the Trip doesn't have.
+  const push = '**/api/trips/*/push';
+  await page.route(push, async (route) => {
+    // SAFETY: the app only pushes requests `pushRequestSchema` accepts.
+    const { changes } = route.request().postDataJSON() as PushRequest;
+    const unknownPayer = changes.map((change) =>
+      change.kind === 'expense'
+        ? { ...change, expense: { ...change.expense, mainPayerId: uuidv7() } }
+        : change,
+    );
+    await route.continue({ postData: JSON.stringify({ changes: unknownPayer }) });
+  });
+  const main = page.getByRole('main');
+  const add = async (title: string) => {
+    await page.getByRole('link', { name: /Add (the first )?Expense/ }).click();
+    await page.getByLabel('Amount').fill('12');
+    await page.getByLabel('Title').fill(title);
+    await page.getByRole('button', { name: 'Save Expense' }).click();
+    await page.getByRole('link').filter({ hasText: title }).click();
+    await expect(main).toContainText('Not synced: who paid is no longer in the Trip.');
+    await expect(main).toContainText('Edit it to fix it, or discard your change.');
+  };
+
+  // Discarded, a new Expense is gone.
+  await add('Taxi');
+  await page.getByRole('button', { name: 'Discard change' }).click();
+  await expect(page.getByRole('link', { name: 'Add the first Expense' })).toBeVisible();
+
+  // Fixed, it syncs.
+  await add('Ferry');
+  await page.unroute(push);
+  await page.getByRole('link', { name: 'Edit Expense' }).click();
+  await page.getByLabel('Title').fill('Ferry Rab');
+  await page.getByRole('button', { name: 'Save Expense' }).click();
+  await expect(page.getByRole('heading', { name: 'Ferry Rab' })).toBeVisible();
+  await expect(main).not.toContainText('Not synced');
+  await page.getByRole('button', { name: 'Back' }).click();
+  await expect(page.getByRole('button', { name: 'Everything is synced.' })).toBeVisible();
 });

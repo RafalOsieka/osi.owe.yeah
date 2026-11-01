@@ -1,8 +1,16 @@
-import type { Expense, TripSnapshot, TripWithParticipants } from '@osi/owe-yeah-domain';
+import type {
+  Expense,
+  StoredExpense,
+  TripSnapshot,
+  TripWithParticipants,
+} from '@osi/owe-yeah-domain';
 import type { ExpenseBase, Held, OutboxEntry, QueuedChange } from './db';
 
-/** Why an Expense shown on this device has not reached the others yet. */
-export type Unsynced = { status: 'pending' } | Held;
+/**
+ * Why an Expense shown on this device has not reached the others yet, with the Claim sent
+ * with the device's latest change of it (`null` without one): who made this version.
+ */
+export type Unsynced = ({ status: 'pending' } | Held) & { claimId: string | null };
 
 /** An Expense as this device shows it, which may include changes not synced yet. */
 export type LocalExpense = Expense & {
@@ -52,7 +60,7 @@ export function localTrip(
         expenses: upsert(trip.expenses, {
           ...change.expense,
           base: { after: change.id },
-          unsynced: heldBefore ?? held ?? { status: 'pending' },
+          unsynced: { ...(heldBefore ?? held ?? { status: 'pending' }), claimId: change.claimId },
         }),
       };
     }
@@ -85,13 +93,13 @@ export function withAccepted(
         }
       );
     case 'expense':
-      return (
-        snapshot && {
-          ...snapshot,
-          expenses: upsert(snapshot.expenses, { ...change.expense, version: version ?? 1 }),
-        }
-      );
+      return snapshot && withExpense(snapshot, { ...change.expense, version: version ?? 1 });
   }
+}
+
+/** The snapshot with `expense` as the server has it, e.g. the current one from a Conflict. */
+export function withExpense(snapshot: TripSnapshot, expense: StoredExpense): TripSnapshot {
+  return { ...snapshot, expenses: upsert(snapshot.expenses, expense) };
 }
 
 /** `items` with `item` in place of the one with its id, or added at the end. */

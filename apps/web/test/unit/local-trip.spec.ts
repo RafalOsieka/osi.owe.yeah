@@ -60,7 +60,12 @@ describe('localTrip', () => {
 
     expect(trip?.participants).toEqual([kasia, ania]);
     expect(trip?.expenses).toEqual([
-      { ...lidl, title: 'Konzum', base: { after: edit.id }, unsynced: { status: 'pending' } },
+      {
+        ...lidl,
+        title: 'Konzum',
+        base: { after: edit.id },
+        unsynced: { status: 'pending', claimId: null },
+      },
       { ...ferry, base: { version: 1 }, unsynced: null },
     ]);
   });

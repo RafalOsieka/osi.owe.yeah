@@ -115,8 +115,13 @@
     "unsyncedShort": "· {count} not synced",
     "notSynced": "not synced",
     "pending": "Not synced yet. The others will see it after the next sync.",
-    "conflict": "Not synced: someone else changed this Expense in the meantime.",
     "rejected": "Not synced: {reason}",
+    "conflictBadge": "Conflict",
+    "conflictBy": "{name} changed this Expense too. Choose which version to keep.",
+    "conflictBySomeone": "Someone else changed this Expense too. Choose which version to keep.",
+    "choose": "Choose version",
+    "rejectedHelp": "Edit it to fix it, or discard your change.",
+    "discard": "Discard change",
     "reason": {
       "unknownMainPayer": "who paid is no longer in the Trip.",
       "unknownParticipant": "someone ticked is no longer in the Trip.",
@@ -127,6 +132,18 @@
     },
     "pullToRefresh": "Pull to sync",
     "releaseToRefresh": "Release to sync"
+  },
+  "conflict": {
+    "title": "Conflict",
+    "help": "You and someone else changed this Expense at the same time. Choose which version to keep; the other one is dropped.",
+    "mine": "Your version",
+    "theirs": "Their version",
+    "by": "by {name}",
+    "paidBy": "Paid by {name}",
+    "forWhom": "For {names}",
+    "keepMine": "Keep mine",
+    "keepTheirs": "Keep theirs",
+    "none": "This Expense has no Conflict."
   },
   "colorMode": {
     "title": "Color mode",

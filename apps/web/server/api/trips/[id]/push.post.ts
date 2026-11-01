@@ -178,7 +178,10 @@ async function applyExpenseChange(
   return applied ? { changeId: change.id, status: 'accepted', version: applied.version } : null;
 }
 
-/** Why an Expense change did not apply: the Expense is not where or at the version expected. */
+/**
+ * Why an Expense change did not apply: the Expense is not where or at the version expected.
+ * A Conflict says who made the current version, by the Claim sent with that change.
+ */
 async function refusal(change: ExpenseChange, tripId: string): Promise<ChangeResult> {
   const changeId = change.id;
   const [existing] = await getDb()
@@ -195,5 +198,21 @@ async function refusal(change: ExpenseChange, tripId: string): Promise<ChangeRes
   if (existing.tripId !== tripId) {
     return { changeId, status: 'rejected', problems: ['expenseIdTaken'] };
   }
-  return { changeId, status: 'conflict', current: toStoredExpense(existing) };
+
+  const [made] = await getDb()
+    .select({ claimId: changes.claimId })
+    .from(changes)
+    .where(
+      and(
+        eq(changes.tripId, tripId),
+        eq(changes.subjectId, existing.id),
+        eq(changes.version, existing.version),
+      ),
+    );
+  return {
+    changeId,
+    status: 'conflict',
+    current: toStoredExpense(existing),
+    currentClaimId: made?.claimId ?? null,
+  };
 }

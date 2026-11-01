@@ -11,7 +11,8 @@ import type { LocalExpense, LocalTrip } from '~/sync/local-trip';
 
 // The Trip's Expenses, newest first, under a heading for each Expense's own local day with
 // that day's total. Each row opens the Expense's detail page and, with a Claim, says what
-// the Expense means for the claimed Participant, and marks it while it is not synced.
+// the Expense means for the claimed Participant, and marks it while it is not synced, or in
+// Conflict.
 const { trip, claimId = null } = defineProps<{
   trip: LocalTrip;
   claimId?: string | null;
@@ -92,7 +93,15 @@ function dayHeading(day: string): string {
               <span class="block truncate font-semibold">{{ row.expense.title }}</span>
               <span class="block truncate text-xs text-muted">
                 <UBadge
-                  v-if="row.expense.unsynced"
+                  v-if="row.expense.unsynced?.status === 'conflict'"
+                  :label="$t('sync.conflictBadge')"
+                  color="error"
+                  variant="subtle"
+                  size="sm"
+                  class="me-1"
+                />
+                <UBadge
+                  v-else-if="row.expense.unsynced"
                   :label="$t('sync.notSynced')"
                   color="neutral"
                   variant="subtle"

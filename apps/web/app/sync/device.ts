@@ -10,8 +10,8 @@ import {
   type TripWithParticipants,
 } from '@osi/owe-yeah-domain';
 import { v7 as uuidv7 } from 'uuid';
-import type { DeviceDb, DeviceTrip, ExpenseBase, OutboxEntry, QueuedChange } from './db';
-import { localTrip, withAccepted, type LocalTrip } from './local-trip';
+import type { DeviceDb, DeviceTrip, ExpenseBase, Held, OutboxEntry, QueuedChange } from './db';
+import { localTrip, withAccepted, withExpense, type LocalTrip } from './local-trip';
 
 /**
  * How the device reaches the sync API. Both calls reject when no answer comes back (e.g. no
@@ -39,6 +39,9 @@ type NewChange = {
   >;
 }[QueuedChange['kind']];
 
+/** An outbox entry holding an Expense change. */
+type ExpenseEntry = OutboxEntry & { change: Extract<QueuedChange, { kind: 'expense' }> };
+
 // One push holds at most this many changes (`pushRequestSchema`).
 const PUSH_LIMIT = 100;
 
@@ -57,6 +60,14 @@ export function createDevice(db: DeviceDb, transport: Transport, deviceId: strin
 
   async function entriesOf(tripId: string): Promise<OutboxEntry[]> {
     return db.outbox.where('tripId').equals(tripId).sortBy('seq');
+  }
+
+  /** One Expense's changes in the outbox, in order. Only the first can be held. */
+  async function expenseEntries(tripId: string, expenseId: string): Promise<ExpenseEntry[]> {
+    return (await entriesOf(tripId)).filter(
+      (entry): entry is ExpenseEntry =>
+        entry.change.kind === 'expense' && entry.change.expense.id === expenseId,
+    );
   }
 
   async function read(tripId: string): Promise<DeviceTripView | undefined> {
@@ -156,7 +167,9 @@ export function createDevice(db: DeviceDb, transport: Transport, deviceId: strin
   /**
    * Saves an Expense's full new state on this device, based on what the user edited (the
    * Expense's `base` as `read` showed it). Resolves to the Trip rules it breaks, in which case
-   * nothing is saved; it reaches the server on sync.
+   * nothing is saved; it reaches the server on sync. An Expense in Conflict keeps the edit on
+   * this device's version; one with a rejected change takes the edit as its fix, sent in
+   * place of the rejected changes.
    */
   async function saveExpense(
     tripId: string,
@@ -169,9 +182,12 @@ export function createDevice(db: DeviceDb, transport: Transport, deviceId: strin
       const problems = expenseProblems(expense, view.local);
       if (problems.length > 0) return problems;
 
+      const entries = await expenseEntries(tripId, expense.id);
+      const rejected = entries[0]?.held?.status === 'rejected' ? entries[0] : null;
+      if (rejected) await db.outbox.bulkDelete(entries.map(({ seq }) => seq));
       await enqueue(tripId, {
         kind: 'expense',
-        base: resolveBase(view.local, expense.id, base),
+        base: rejected ? rejected.change.base : resolveBase(view.local, expense.id, base),
         expense,
       });
       return [];
@@ -188,6 +204,37 @@ export function createDevice(db: DeviceDb, transport: Transport, deviceId: strin
     if ('after' in current) return current;
     if ('after' in base) return { version: acceptedVersions.get(base.after) ?? current.version };
     return base;
+  }
+
+  /**
+   * Resolves an Expense's Conflict with this device's version: its changes go again on top
+   * of the version the Conflict showed, on the next sync.
+   */
+  async function keepMine(tripId: string, expenseId: string): Promise<void> {
+    await db.transaction('rw', db.outbox, async () => {
+      const [first] = await expenseEntries(tripId, expenseId);
+      if (first?.held?.status !== 'conflict') return;
+      const base = { version: first.held.current.version };
+      await db.outbox.update(first.seq, { change: { ...first.change, base }, held: null });
+    });
+  }
+
+  /**
+   * Drops every change of an Expense this device has not synced: "keep theirs" for a
+   * Conflict, whose version shows at once, or "discard" for a rejected change.
+   */
+  async function discardChanges(tripId: string, expenseId: string): Promise<void> {
+    await db.transaction('rw', db.trips, db.outbox, async () => {
+      const entries = await expenseEntries(tripId, expenseId);
+      await db.outbox.bulkDelete(entries.map(({ seq }) => seq));
+      const held = entries[0]?.held;
+      const device = await db.trips.get(tripId);
+      if (held?.status !== 'conflict' || !device?.snapshot) return;
+      const shown = device.snapshot.expenses.find(({ id }) => id === expenseId);
+      // A pull may have brought a newer version already.
+      if (shown && shown.version >= held.current.version) return;
+      await db.trips.update(tripId, { snapshot: withExpense(device.snapshot, held.current) });
+    });
   }
 
   /**
@@ -225,13 +272,18 @@ export function createDevice(db: DeviceDb, transport: Transport, deviceId: strin
 
   /**
    * Sends every change that can go now: not held, and for an Expense, on a known base. One
-   * Expense's changes go one per push, each on the version the last one got. Resolves to
-   * whether anything was accepted.
+   * Expense's changes go one per push, each on the version the last one got. A Conflict goes
+   * again once a pull brought a newer version than it showed, so the answer shows that one.
+   * Resolves to whether anything was accepted.
    */
-  async function pushRound({ id: tripId, token }: DeviceTrip): Promise<boolean> {
+  async function pushRound({ id: tripId, token, snapshot }: DeviceTrip): Promise<boolean> {
+    const pulled = new Map(snapshot?.expenses.map(({ id, version }) => [id, version]));
+    const outdated = (held: Held) =>
+      held.status === 'conflict' && (pulled.get(held.current.id) ?? 0) > held.current.version;
     const ready = (await entriesOf(tripId))
       .filter(
-        ({ change, held }) => !held && (change.kind !== 'expense' || 'version' in change.base),
+        ({ change, held }) =>
+          (!held || outdated(held)) && (change.kind !== 'expense' || 'version' in change.base),
       )
       .slice(0, PUSH_LIMIT);
     if (ready.length === 0) return false;
@@ -293,6 +345,8 @@ export function createDevice(db: DeviceDb, transport: Transport, deviceId: strin
     claim,
     addParticipant,
     saveExpense,
+    keepMine,
+    discardChanges,
     sync,
   };
 }
