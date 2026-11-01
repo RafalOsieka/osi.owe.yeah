@@ -384,11 +384,14 @@ test('record a plain Expense, read it, edit it, and see the balances', async ({ 
   await page.getByRole('link', { name: 'Balances' }).click();
   await expect(page.getByRole('heading', { name: "You're owed" })).toBeVisible();
   const main = page.getByRole('main');
-  await expect(main).toContainText('≈ €6.67');
+  // Balances are rounded so they add up to zero: the cent left over goes to Ola, the
+  // Participant added last, on the tie.
+  await expect(main).toContainText('€6.67');
   await expect(main).toContainText('You paid €10.00 · your share ≈ €3.33');
   const bars = page.getByRole('region', { name: 'Everyone' }).getByRole('listitem');
-  await expect(bars.filter({ hasText: 'Kasia' })).toContainText('≈ +6.67');
-  await expect(bars.filter({ hasText: 'Ola' })).toContainText('≈ -3.33');
+  await expect(bars.filter({ hasText: 'Kasia' })).toContainText('+6.67');
+  await expect(bars.filter({ hasText: 'Ania' })).toContainText('-3.33');
+  await expect(bars.filter({ hasText: 'Ola' })).toContainText('-3.34');
   await expect(main).toContainText('Trip total €10.00');
 
   // The detail page shows the Expense in full; edit from there.
@@ -421,6 +424,86 @@ test('record a plain Expense, read it, edit it, and see the balances', async ({ 
   await expect(bars.filter({ hasText: 'Ania' })).toContainText('-2.25');
   await expect(bars.filter({ hasText: 'Ola' })).toContainText('0.00');
   await expect(main).not.toContainText('≈');
+});
+
+test('settle up: Income, then the suggested Repayments, until the Trip is Settled', async ({
+  page,
+}) => {
+  await createTrip(page, 'Alps 2026', 'Kasia', ['Ania', 'Ola']);
+
+  await page.getByRole('link', { name: 'Add the first Expense' }).click();
+  await page.getByLabel('Amount').fill('30');
+  await page.getByLabel('Title').fill('Hut');
+  await page.getByRole('button', { name: 'Save Expense' }).click();
+
+  // Ola got a 6.00 Deposit refund back for everyone: Income, typed without a minus.
+  await page.getByRole('link', { name: 'Add Expense' }).click();
+  await page.getByLabel('Amount').fill('6');
+  await page.getByRole('switch', { name: 'Money received' }).click();
+  await expect(page.getByRole('banner')).toContainText('New Income');
+  await page
+    .getByRole('group', { name: 'Received by' })
+    .getByRole('radio', { name: 'Ola' })
+    .check();
+  await page.getByLabel('Title').fill('Bottles');
+  await page.getByRole('button', { name: 'Save Income' }).click();
+  const income = page.getByRole('link', { name: /Bottles/ });
+  await expect(income).toContainText('Ola received · for all 3');
+  await expect(income).toContainText('-€6.00');
+  await expect(income).toContainText('you get back 2.00');
+
+  // Kasia is owed 22.00: Ola owes 14.00 and Ania 8.00. The total is net of the Income.
+  await page.getByRole('link', { name: 'Balances' }).click();
+  const main = page.getByRole('main');
+  await expect(page.getByRole('heading', { name: "You're owed" })).toBeVisible();
+  await expect(main).toContainText('€22.00');
+  await expect(main).toContainText('Trip total €24.00');
+  const toSettle = page.getByRole('region', { name: 'To settle' }).getByRole('listitem');
+  await expect(toSettle).toHaveCount(2);
+  await expect(toSettle.nth(0)).toContainText(/Ola pays yous*€14.00/);
+  await expect(toSettle.nth(1)).toContainText(/Ania pays yous*€8.00/);
+
+  // Recording from a suggestion fills it in; the amount can be lowered for a partial one.
+  await toSettle.nth(0).getByRole('link', { name: 'Record Repayment' }).click();
+  await expect(page.getByRole('banner')).toContainText('New Repayment');
+  await expect(page.getByLabel('Amount')).toHaveValue('14.00');
+  await expect(
+    page.getByRole('group', { name: 'Paid by' }).getByRole('radio', { name: 'Ola' }),
+  ).toBeChecked();
+  await expect(
+    page.getByRole('group', { name: 'Paid to' }).getByRole('radio', { name: 'Kasia' }),
+  ).toBeChecked();
+  await page.getByLabel('Amount').fill('10');
+  await page.getByRole('button', { name: 'Save Repayment' }).click();
+
+  // Back on Balances: Ola still owes 4.00, and Repayments are not spending.
+  await expect(toSettle).toHaveCount(2);
+  await expect(toSettle.nth(0)).toContainText(/Ania pays yous*€8.00/);
+  await expect(toSettle.nth(1)).toContainText(/Ola pays yous*€4.00/);
+  await expect(main).toContainText('Trip total €24.00');
+
+  await toSettle.first().getByRole('link', { name: 'Record Repayment' }).click();
+  await page.getByRole('button', { name: 'Save Repayment' }).click();
+  await expect(toSettle).toHaveCount(1);
+  await toSettle.first().getByRole('link', { name: 'Record Repayment' }).click();
+  await page.getByRole('button', { name: 'Save Repayment' }).click();
+  await expect(page.getByRole('heading', { name: 'All settled' })).toBeVisible();
+  await expect(page.getByRole('region', { name: 'To settle' })).toHaveCount(0);
+
+  await page.getByRole('link', { name: 'Expenses' }).click();
+  const repayment = page.getByRole('link', { name: /Repayment/ }).filter({ hasText: '€10.00' });
+  await expect(repayment).toContainText('Ola → Kasia');
+  await expect(repayment).toContainText('you received 10.00');
+
+  // My Trips marks it Settled, below a Trip that isn't, though it was opened last.
+  await createTrip(page, 'Lakes 2026', 'Kasia', ['Ania']);
+  await page.getByRole('button', { name: 'Back to My Trips' }).click();
+  await page.getByRole('link', { name: /Alps 2026/ }).click();
+  await page.getByRole('button', { name: 'Back to My Trips' }).click();
+  const trips = page.getByRole('main').getByRole('listitem');
+  await expect(trips.nth(0)).toContainText('Lakes 2026');
+  await expect(trips.nth(1)).toContainText('Alps 2026');
+  await expect(trips.nth(1)).toContainText('Settled');
 });
 
 test('saving a new Expense returns to the Expenses tab where it was scrolled', async ({

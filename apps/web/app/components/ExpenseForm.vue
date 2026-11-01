@@ -8,29 +8,35 @@ import {
   minorUnits,
   parseMoney,
   roundMoney,
+  type SplitExpense,
 } from '@osi/owe-yeah-domain';
 import type { FormError } from '@nuxt/ui';
 import type { RouteLocationRaw } from 'vue-router';
 import { v7 as uuidv7 } from 'uuid';
 import type { LocalExpense } from '~/sync/local-trip';
 
-// The full-screen Expense form, for a new plain Expense or to edit one: amount, title, Main
-// payer, who it is for, and when. Saving keeps the Expense's full new state on the device,
-// to sync later, and returns to `parent`'s screen, or wherever the form was opened from. An
-// Expense that breaks a Trip rule is not saved; why shows above Save.
+// The full-screen Expense form, for a new plain Expense or Income or to edit one: amount,
+// whether it is money received (Income, saved with a negative amount so nobody types a minus),
+// title, Main payer (who received it, for Income), who it is for, and when. Saving keeps the
+// Expense's full new state on the device, to sync later, and returns to `parent`'s screen, or
+// wherever the form was opened from. An Expense that breaks a Trip rule is not saved; why
+// shows above Save.
 const { expense = null, parent } = defineProps<{
-  expense?: LocalExpense | null;
+  expense?: Extract<LocalExpense, SplitExpense> | null;
   /** The screen above the form, for back when it was opened from a link. */
   parent: RouteLocationRaw;
 }>();
 
 const { trip, claim, saveExpense } = useOpenTrip();
-const { t, locale } = useI18n();
+const { t } = useI18n();
 const back = useBack();
 
 type ExpenseFormState = {
   title: string;
+  /** The amount as typed, never negative. */
   amount: string;
+  /** Income: money received rather than paid. */
+  received: boolean;
   mainPayerId: string;
   participantIds: string[];
   /** Local date and time (`YYYY-MM-DDTHH:mm`) in `zone`. */
@@ -43,10 +49,11 @@ function initialState(): ExpenseFormState {
   const { participants } = trip.value;
   if (expense) {
     const [lineItem] = expense.lineItems;
+    const price = lineItem!.unitPrice;
     return {
       title: expense.title,
-      amount: roundMoney(fromMinor(lineItem!.unitPrice, expense.currency), expense.currency)
-        .decimal,
+      amount: roundMoney(fromMinor(Math.abs(price), expense.currency), expense.currency).decimal,
+      received: price < 0,
       mainPayerId: expense.mainPayerId,
       participantIds: [...lineItem!.split.participantIds],
       local: localDateTime(expense.time),
@@ -58,6 +65,7 @@ function initialState(): ExpenseFormState {
   return {
     title: '',
     amount: '',
+    received: false,
     mainPayerId: claimed?.id ?? participants[0]?.id ?? '',
     participantIds: participants.map(({ id }) => id),
     local: localDateTime({ instant: new Date().toISOString(), zone }),
@@ -81,21 +89,16 @@ function toggleAll(): void {
   state.participantIds = allTicked.value ? [] : trip.value.participants.map(({ id }) => id);
 }
 
-// Time and zone are one quiet line until tapped.
-const timeOpen = ref(false);
-// The device's zone may be an alias missing from the list, so it is always offered.
-const zones = computed(() => [...new Set([state.zone, ...Intl.supportedValuesOf('timeZone')])]);
-// A local date and time is not an instant, so it is formatted in UTC to keep the device's
-// zone from shifting it.
-const time = computed(() =>
-  state.local
-    ? new Intl.DateTimeFormat(locale.value, {
-        dateStyle: 'medium',
-        timeStyle: 'short',
-        timeZone: 'UTC',
-      }).format(new Date(`${state.local}:00Z`))
-    : '',
-);
+// The texts that change when the money was received rather than paid.
+const texts = computed(() => {
+  if (state.received) {
+    return {
+      heading: expense ? t('expense.editIncome') : t('expense.newIncome'),
+      save: t('expense.saveIncome'),
+    };
+  }
+  return { heading: expense ? t('expense.edit') : t('expense.new'), save: t('expense.save') };
+});
 
 function validate(form: Partial<ExpenseFormState>): FormError[] {
   const errors: FormError[] = [];
@@ -106,7 +109,10 @@ function validate(form: Partial<ExpenseFormState>): FormError[] {
     const decimals = minorUnits(trip.value.currency);
     errors.push({ name: 'amount', message: t('expense.amountInvalid', { decimals }, decimals) });
   }
-  if (!form.mainPayerId) errors.push({ name: 'mainPayerId', message: t('expense.payerMissing') });
+  if (!form.mainPayerId) {
+    const message = form.received ? t('expense.receiverMissing') : t('expense.payerMissing');
+    errors.push({ name: 'mainPayerId', message });
+  }
   if (!form.participantIds?.length) {
     errors.push({ name: 'participantIds', message: t('expense.participantsMissing') });
   }
@@ -131,7 +137,7 @@ async function submit(): Promise<void> {
       mainPayerId: state.mainPayerId,
       lineItems: [
         {
-          unitPrice: parseMoney(state.amount, trip.value.currency)!,
+          unitPrice: (state.received ? -1 : 1) * parseMoney(state.amount, trip.value.currency)!,
           split: {
             mode: 'even',
             // Kept in the Trip's order, whatever order they were ticked in.
@@ -152,30 +158,17 @@ async function submit(): Promise<void> {
 </script>
 
 <template>
-  <NuxtLayout
-    name="form"
-    :title="expense ? $t('expense.edit') : $t('expense.new')"
-    :parent="parent"
-    :close="!expense"
-  >
+  <NuxtLayout name="form" :title="texts.heading" :parent="parent" :close="!expense">
     <UForm id="expense-form" :state="state" :validate="validate" class="space-y-5" @submit="submit">
       <UFormField name="amount" :label="$t('expense.amount')" :ui="{ label: 'sr-only' }">
-        <UInput
-          v-model="state.amount"
-          inputmode="decimal"
-          placeholder="0"
-          variant="none"
-          class="w-full"
-          :ui="{
-            base: 'h-16 text-center text-4xl font-bold tabular-nums',
-            trailing: 'pe-2',
-          }"
-        >
-          <template #trailing>
-            <span class="text-xl font-semibold text-muted">{{ trip.currency }}</span>
-          </template>
-        </UInput>
+        <AmountInput v-model="state.amount" :currency="trip.currency" />
       </UFormField>
+
+      <USwitch
+        v-model="state.received"
+        :label="$t('expense.moneyReceived')"
+        :description="$t('expense.moneyReceivedHelp')"
+      />
 
       <UFormField name="title" :label="$t('expense.title')">
         <UInput
@@ -186,20 +179,12 @@ async function submit(): Promise<void> {
       </UFormField>
 
       <UFormField name="mainPayerId">
-        <div role="group" aria-labelledby="paid-by-label">
-          <p id="paid-by-label" class="mb-1.5 text-sm font-medium">{{ $t('expense.paidBy') }}</p>
-          <div class="flex flex-wrap gap-1.5">
-            <ParticipantChip
-              v-for="participant in trip.participants"
-              :key="participant.id"
-              :participant="participant"
-              type="radio"
-              name="mainPayerId"
-              :checked="state.mainPayerId === participant.id"
-              @update:checked="state.mainPayerId = participant.id"
-            />
-          </div>
-        </div>
+        <ParticipantPicker
+          v-model="state.mainPayerId"
+          :participants="trip.participants"
+          :label="state.received ? $t('expense.receivedBy') : $t('expense.paidBy')"
+          name="mainPayerId"
+        />
       </UFormField>
 
       <UFormField name="participantIds">
@@ -229,31 +214,7 @@ async function submit(): Promise<void> {
         </div>
       </UFormField>
 
-      <UFormField v-if="timeOpen" name="local" :label="$t('expense.when')">
-        <UInput v-model="state.local" type="datetime-local" class="w-full" />
-        <template #help>
-          <USelectMenu
-            v-model="state.zone"
-            :items="zones"
-            :aria-label="$t('expense.timeZone')"
-            variant="ghost"
-            size="xs"
-            icon="i-lucide-globe"
-          />
-        </template>
-      </UFormField>
-      <button
-        v-else
-        type="button"
-        class="flex max-w-full cursor-pointer items-center gap-1.5 text-start text-sm text-muted hover:text-default"
-        @click="timeOpen = true"
-      >
-        <UIcon name="i-lucide-clock" class="size-4 shrink-0" />
-        <span class="sr-only">{{ $t('expense.when') }}:</span>
-        <span class="min-w-0 truncate underline decoration-dotted underline-offset-2">
-          {{ $t('expense.timeInZone', { time, zone: state.zone }) }}
-        </span>
-      </button>
+      <ExpenseTimeField v-model:local="state.local" v-model:zone="state.zone" />
     </UForm>
 
     <template #action>
@@ -271,7 +232,7 @@ async function submit(): Promise<void> {
         block
         size="xl"
         :loading="saving"
-        :label="$t('expense.save')"
+        :label="texts.save"
       />
     </template>
   </NuxtLayout>

@@ -3,7 +3,7 @@ import type { Participant, ParticipantBalance } from '@osi/owe-yeah-domain';
 
 // Everyone's balance as diverging bars, one per Participant in the Trip's order: owing to
 // the left in red, owed to the right in green, scaled to the largest balance, with the
-// amount at the end of the bar. Hand-built: `UChart` only draws vertical bars.
+// amount at the end of the bar. Shows the rounded balances settling up uses. Hand-built: `UChart` only draws vertical bars.
 const {
   balances,
   participants,
@@ -21,22 +21,21 @@ const { locale } = useI18n();
 
 const rows = computed(() => {
   const names = new Map(participants.map(({ id, name }) => [id, name]));
-  const widths = barWidths(balances.map(({ balance }) => balance));
-  const amounts = balances.map(({ balance }) =>
-    formatMoney(balance, currency, locale.value, 'signed'),
+  const widths = barWidths(balances.map(({ rounded }) => rounded));
+  const amounts = balances.map(({ rounded }) =>
+    formatMoney(rounded, currency, locale.value, 'signed'),
   );
   // A bar shares its half with its amount, so every bar leaves room for the longest amount
   // (in `ch`: the digits are tabular) plus its padding, and all keep the same scale.
   const longest = Math.max(0, ...amounts.map((amount) => amount.length));
-  return balances.map(({ participantId, balance }, index) => {
-    // Side and length follow the shown amount, so a fraction of a cent draws no bar.
-    const sign = shownSign(balance, currency);
+  return balances.map(({ participantId, rounded }, index) => {
+    const sign = shownSign(rounded, currency);
     return {
       participantId,
       name: names.get(participantId) ?? '?',
       owes: sign < 0,
       amount: amounts[index]!,
-      width: `calc((100% - ${longest}ch - 0.5rem) * ${sign === 0 ? 0 : widths[index]! / 100})`,
+      width: `calc((100% - ${longest}ch - 0.5rem) * ${widths[index]! / 100})`,
     };
   });
 });

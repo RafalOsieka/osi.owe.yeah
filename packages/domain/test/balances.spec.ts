@@ -43,6 +43,7 @@ describe('balances', () => {
         paid: zero,
         share: zero,
         balance: zero,
+        rounded: zero,
       })),
     );
   });
@@ -68,20 +69,60 @@ describe('balances', () => {
         paid: rational(10n),
         share: rational(10n, 3n),
         balance: rational(20n, 3n),
+        rounded: rational(667n, 100n),
       },
       {
         participantId: ania.id,
         paid: rational(9n, 2n),
         share: rational(67n, 12n),
         balance: rational(-13n, 12n),
+        rounded: rational(-108n, 100n),
       },
       {
         participantId: ola.id,
         paid: rational(0n),
         share: rational(67n, 12n),
         balance: rational(-67n, 12n),
+        rounded: rational(-559n, 100n),
       },
     ]);
+  });
+});
+
+describe('rounded balances', () => {
+  const rounded = (snapshot: TripSnapshot) =>
+    balances(snapshot).map(({ rounded }) => roundMoney(rounded, 'EUR').decimal);
+
+  it('add up to zero, the cent left over going to the lowest Participant id on a tie', () => {
+    // 10.00 EUR for three: +6.666…, −3.333…, −3.333…, all with the same remainder. Ola,
+    // with the highest id, comes first in the Trip but last on the tie.
+    const snapshot = {
+      ...trip,
+      participants: [ola, kasia, ania],
+      expenses: [
+        expense('019a2b3c-4d5e-7f00-8a1b-0000000000e1', kasia.id, 1000, [
+          kasia.id,
+          ania.id,
+          ola.id,
+        ]),
+      ],
+    };
+
+    expect(rounded(snapshot)).toEqual(['-3.34', '6.67', '-3.33']);
+  });
+
+  it('give the cent left over to the largest remainder before the lowest id', () => {
+    // Ola pays 0.01 EUR for all three and 0.01 EUR for Kasia and Ania. In cents: Kasia and
+    // Ania −5/6 each (remainder 1/6), Ola +5/3 (remainder 2/3); one cent is left over.
+    const snapshot = {
+      ...trip,
+      expenses: [
+        expense('019a2b3c-4d5e-7f00-8a1b-0000000000e1', ola.id, 1, [kasia.id, ania.id, ola.id]),
+        expense('019a2b3c-4d5e-7f00-8a1b-0000000000e2', ola.id, 1, [kasia.id, ania.id]),
+      ],
+    };
+
+    expect(rounded(snapshot)).toEqual(['-0.01', '-0.01', '0.02']);
   });
 });
 

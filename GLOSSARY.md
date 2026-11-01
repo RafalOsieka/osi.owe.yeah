@@ -115,7 +115,7 @@ _Avoid_: Nudge, ping, dunning
 _Polish avoid_: Ponaglenie, monit
 
 **Settled**:
-A Trip in which every Participant's balance, rounded to whole cents, is zero.
+A Trip with at least one Expense in which every Participant's balance, rounded to whole cents, is zero.
 _Polish_: Rozliczona (of a Podróż)
 _Avoid_: Closed, done, paid off
 _Polish avoid_: Zamknięta, zakończona, spłacona

@@ -1,9 +1,9 @@
 <script setup lang="ts">
-import { expenseShares, type Expense, type Rational } from '@osi/owe-yeah-domain';
+import { expenseShares, isRepayment, type Expense, type Rational } from '@osi/owe-yeah-domain';
 
 // An Expense in full, as its detail page and an old Revision show it: the full title, total,
-// when it was paid in its own zone, the Main payer, and each Participant's share, the claimed
-// Participant's in bold.
+// when it was paid in its own zone, the Main payer (who received it, for Income), and each
+// Participant's share, the claimed Participant's in bold. A Repayment shows who paid whom.
 const { expense } = defineProps<{ expense: Expense }>();
 
 const { trip, claim } = useOpenTrip();
@@ -15,6 +15,8 @@ const details = computed(() => {
   const { total, shares } = expenseShares(expense);
   return {
     total,
+    repayment: isRepayment(expense),
+    income: total.numerator < 0n,
     when: formatExpenseTime(expense.time, locale.value),
     payer: trip.value.participants.find(({ id }) => id === expense.mainPayerId),
     // In the Trip's order.
@@ -36,7 +38,7 @@ const details = computed(() => {
 
     <section aria-labelledby="paid-by-heading">
       <h2 id="paid-by-heading" class="mt-5 mb-1 text-xs font-semibold text-muted uppercase">
-        {{ $t('expense.paidBy') }}
+        {{ details.income ? $t('expense.receivedBy') : $t('expense.paidBy') }}
       </h2>
       <div v-if="details.payer" class="flex items-center gap-2.5 py-1.5">
         <ParticipantAvatar :participant="details.payer" />
@@ -47,7 +49,7 @@ const details = computed(() => {
 
     <section aria-labelledby="for-whom-heading">
       <h2 id="for-whom-heading" class="mt-5 mb-1 text-xs font-semibold text-muted uppercase">
-        {{ $t('expense.forWhomEven') }}
+        {{ details.repayment ? $t('repayment.paidTo') : $t('expense.forWhomEven') }}
       </h2>
       <ul>
         <li

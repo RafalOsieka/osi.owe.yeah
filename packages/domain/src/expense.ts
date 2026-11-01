@@ -53,52 +53,101 @@ const evenSplitSchema = z.object({
     }),
 });
 
+/** An amount in whole minor units of its currency (cents for EUR), so it stays exact in JSON. */
+const minorAmountSchema = z.number().int().positive().max(Number.MAX_SAFE_INTEGER);
+
 /**
- * One position of an Expense. Amounts are whole numbers of the Expense currency's minor
- * units (cents for EUR), so they stay exact in JSON.
+ * One position of an Expense. A negative unit price is money received, which makes a plain
+ * Expense Income; it is never zero.
  */
 const lineItemSchema = z.object({
-  unitPrice: z.number().int().positive().max(Number.MAX_SAFE_INTEGER),
+  unitPrice: z
+    .number()
+    .int()
+    .min(-Number.MAX_SAFE_INTEGER)
+    .max(Number.MAX_SAFE_INTEGER)
+    .refine((price) => price !== 0, { message: 'A Line item is never zero' }),
   split: evenSplitSchema,
 });
 
 /**
- * An Expense's full state, as the client pushes it and the whole-Trip pull returns it. A
- * plain Expense has exactly one Line item. It carries its own currency, which for now must
- * be the Trip currency.
+ * What every Expense has. It carries its own currency, which for now must be the Trip
+ * currency. `mainPayerId` is who paid, or who received the money of an Income.
  */
-export const expenseSchema = z.object({
+const expenseBase = {
   id: expenseIdSchema,
   title: expenseTitleSchema,
   currency: z.enum(TRIP_CURRENCIES),
   time: expenseTimeSchema,
   mainPayerId: participantIdSchema,
+};
+
+/**
+ * An Expense split by its Line items. A plain Expense has exactly one; with a negative total
+ * it is Income.
+ */
+const splitExpenseSchema = z.object({
+  ...expenseBase,
   lineItems: z.array(lineItemSchema).length(1),
 });
 
+/**
+ * A Repayment: money the Main payer handed to `recipientId`, with no Line-item split. Told
+ * apart from other Expenses by having a recipient.
+ */
+const repaymentSchema = z.object({
+  ...expenseBase,
+  recipientId: participantIdSchema,
+  amount: minorAmountSchema,
+});
+
+/** An Expense's full state, as the client pushes it and the whole-Trip pull returns it. */
+export const expenseSchema = z.union([splitExpenseSchema, repaymentSchema]);
+
 export type Expense = z.infer<typeof expenseSchema>;
+export type SplitExpense = z.infer<typeof splitExpenseSchema>;
+export type Repayment = z.infer<typeof repaymentSchema>;
+
+/** Whether an Expense is a Repayment, told apart by having a recipient; narrows any Expense type. */
+export function isRepayment<E extends Expense>(expense: E): expense is Extract<E, Repayment> {
+  return 'recipientId' in expense;
+}
+
+/** An Expense without its id, as the server keeps its state; one type per kind of Expense. */
+export type ExpenseState = Expense extends infer E
+  ? E extends unknown
+    ? Omit<E, 'id'>
+    : never
+  : never;
 
 /** Why an Expense that is well-formed on its own does not fit its Trip. */
 export const expenseProblemSchema = z.enum([
   'unknownMainPayer',
   'unknownParticipant',
   'currencyNotTripCurrency',
+  'repaymentToSelf',
 ]);
 
 export type ExpenseProblem = z.infer<typeof expenseProblemSchema>;
 
 /**
  * The rules an Expense must follow within its Trip; empty when it may be saved. The device
- * checks them before pushing and the server again before accepting.
+ * checks them before pushing and the server again before accepting. A Repayment's recipient
+ * counts as its ticked Participant.
  */
 export function expenseProblems(expense: Expense, trip: TripWithParticipants): ExpenseProblem[] {
   const known = new Set(trip.participants.map(({ id }) => id));
-  const ticked = expense.lineItems.flatMap(({ split }) => split.participantIds);
+  const ticked = isRepayment(expense)
+    ? [expense.recipientId]
+    : expense.lineItems.flatMap(({ split }) => split.participantIds);
   const problems: ExpenseProblem[] = [];
 
   if (!known.has(expense.mainPayerId)) problems.push('unknownMainPayer');
   if (ticked.some((id) => !known.has(id))) problems.push('unknownParticipant');
   if (expense.currency !== trip.currency) problems.push('currencyNotTripCurrency');
+  if (isRepayment(expense) && expense.recipientId === expense.mainPayerId) {
+    problems.push('repaymentToSelf');
+  }
   return problems;
 }
 

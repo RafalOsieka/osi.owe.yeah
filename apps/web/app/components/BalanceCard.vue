@@ -3,8 +3,8 @@ import { rational, type ParticipantBalance, type Rational } from '@osi/owe-yeah-
 
 // Your balance, first on the Balances tab: "You're owed X" (green), "You owe X" (red) or
 // "You're even" (neutral), with what you paid and your share. Without a Claim it shows the
-// Trip total instead. Even is read from the rounded balance, so a fraction of a cent left
-// over by an Even split doesn't read as owing.
+// Trip total instead. The balance shown is the rounded one settling up uses, so a fraction of
+// a cent left over by an Even split doesn't read as owing.
 const { balance, total, currency } = defineProps<{
   /** The claimed Participant's balance, or `null` without a Claim. */
   balance: ParticipantBalance | null;
@@ -20,8 +20,8 @@ const card = computed(() => {
   if (!balance) {
     return { tone: 'bg-elevated', label: t('balances.tripTotal'), amount: money(total), sub: '' };
   }
-  const { numerator, denominator } = balance.balance;
-  const sign = shownSign(balance.balance, currency);
+  const { numerator, denominator } = balance.rounded;
+  const sign = shownSign(balance.rounded, currency);
   const amount = money(rational(numerator < 0n ? -numerator : numerator, denominator));
   const sub = t('balances.paidAndShare', {
     paid: money(balance.paid),

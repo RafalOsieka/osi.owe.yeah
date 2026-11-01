@@ -6,7 +6,8 @@
   "myTrips": {
     "title": "Moje podróże",
     "empty": "Nie masz jeszcze żadnych podróży.",
-    "create": "Nowa podróż"
+    "create": "Nowa podróż",
+    "settled": "Rozliczona"
   },
   "trip": {
     "create": {
@@ -63,33 +64,45 @@
     "add": "Dodaj wydatek",
     "new": "Nowy wydatek",
     "edit": "Edytuj wydatek",
+    "newIncome": "Nowy wpływ",
+    "editIncome": "Edytuj wpływ",
     "title": "Tytuł",
     "titlePlaceholder": "Lidl Rovinj",
     "titleInvalid": "Nadaj wydatkowi tytuł o długości do 100 znaków.",
     "amount": "Kwota",
     "amountInvalid": "Podaj kwotę większą od zera, bez części ułamkowej. | Podaj kwotę większą od zera, z najwyżej 1 miejscem po przecinku. | Podaj kwotę większą od zera, z najwyżej {decimals} miejscami po przecinku.",
+    "moneyReceived": "Otrzymane pieniądze",
+    "moneyReceivedHelp": "Na zwrot kaucji albo inne pieniądze odzyskane dla grupy.",
     "paidBy": "Kto zapłacił",
     "payerMissing": "Wskaż, kto zapłacił.",
+    "receivedBy": "Kto otrzymał",
+    "receiverMissing": "Wybierz, kto otrzymał pieniądze.",
     "forWhom": "Za kogo",
     "participantsMissing": "Zaznacz co najmniej jednego uczestnika.",
     "when": "Kiedy",
     "timeMissing": "Podaj, kiedy zapłacono.",
     "timeZone": "Strefa czasowa",
     "save": "Zapisz wydatek",
+    "saveIncome": "Zapisz wpływ",
     "refused": {
       "title": "Wydatek nie został zapisany",
       "unknownMainPayer": "Osoby, która zapłaciła, nie ma już w podróży.",
       "unknownParticipant": "Któregoś z zaznaczonych uczestników nie ma już w podróży.",
-      "currencyNotTripCurrency": "Wydatek musi być w walucie podróży."
+      "currencyNotTripCurrency": "Wydatek musi być w walucie podróży.",
+      "repaymentToSelf": "Spłata wymaga dwóch różnych uczestników."
     },
     "emptyHelp": "Kto za coś płaci, dodaje to tutaj.",
     "addFirst": "Dodaj pierwszy wydatek",
     "addShort": "Wydatek",
     "paidFor": "{name} płaci · {forWhom}",
+    "receivedFor": "{name} otrzymuje · {forWhom}",
     "forAll": "za wszystkich ({count})",
     "forSome": "za {count} os.",
     "youLent": "należy ci się {amount}",
     "yourShare": "twój udział {amount}",
+    "youReceived": "otrzymujesz {amount}",
+    "youGetBack": "odzyskujesz {amount}",
+    "youRepaid": "oddajesz {amount}",
     "notForYou": "nie dla ciebie",
     "all": "Wszyscy",
     "forWhomEven": "Za kogo · Po równo",
@@ -101,6 +114,17 @@
     "undo": "Cofnij",
     "deleteRefused": "Wydatek nie został usunięty"
   },
+  "repayment": {
+    "title": "Spłata",
+    "new": "Nowa spłata",
+    "edit": "Edytuj spłatę",
+    "save": "Zapisz spłatę",
+    "refused": "Spłata nie została zapisana",
+    "paidTo": "Komu",
+    "recipientMissing": "Wybierz, komu oddano pieniądze.",
+    "sameParticipant": "Wybierz kogoś innego niż osoba, która zapłaciła.",
+    "fromTo": "{payer} → {recipient}"
+  },
   "balances": {
     "title": "Salda",
     "owed": "Należy ci się",
@@ -111,7 +135,18 @@
     "tripTotalIs": "Suma wydatków {amount}",
     "everyone": "Wszyscy",
     "owes": "do oddania",
-    "isOwed": "do odebrania"
+    "isOwed": "do odebrania",
+    "toSettle": "Do spłaty",
+    "paysYou": "{name} oddaje ci",
+    "youPay": "Oddajesz: {name}",
+    "pays": "{payer} → {recipient}",
+    "otherSuggestions": "Pozostałe sugerowane spłaty",
+    "suggestions": "Sugerowane spłaty",
+    "record": "Zapisz",
+    "recordLabel": "Zapisz spłatę: {what} {amount}",
+    "recordAnother": "Zapisz inną spłatę",
+    "allSettled": "Podróż rozliczona",
+    "allSettledHelp": "Każdy wychodzi na zero."
   },
   "sync": {
     "status": "Stan synchronizacji",
@@ -131,6 +166,7 @@
       "unknownMainPayer": "osoby, która zapłaciła, nie ma już w podróży.",
       "unknownParticipant": "któregoś z zaznaczonych uczestników nie ma już w podróży.",
       "currencyNotTripCurrency": "wydatek musi być w walucie podróży.",
+      "repaymentToSelf": "spłata wymaga dwóch różnych uczestników.",
       "expenseIdTaken": "ten wydatek należy do innej podróży.",
       "unknownExpense": "ten wydatek już nie istnieje.",
       "participantIdTaken": "ten uczestnik należy do innej podróży."
@@ -145,6 +181,7 @@
     "theirs": "Zmiana innej osoby",
     "by": "autor: {name}",
     "paidBy": "Kto zapłacił: {name}",
+    "receivedBy": "Kto otrzymał: {name}",
     "forWhom": "Za kogo: {names}",
     "keepMine": "Zachowaj moją",
     "keepTheirs": "Zachowaj drugą",
