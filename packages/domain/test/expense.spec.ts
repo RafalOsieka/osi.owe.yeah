@@ -28,10 +28,32 @@ const lidl: Expense = {
   lineItems: [{ unitPrice: 2450, split: { mode: 'even', participantIds: [kasia.id, ania.id] } }],
 };
 
+const repayment: Expense = {
+  id: '019a2b3c-4d5e-7f00-8a1b-0000000000e5',
+  title: 'Repayment',
+  currency: 'EUR',
+  time: { instant: '2026-07-15T08:00:00Z', zone: 'Europe/Zagreb' },
+  mainPayerId: ania.id,
+  recipientId: kasia.id,
+  amount: 1225,
+};
+
 describe('expenseSchema', () => {
   it('accepts a plain Expense and keeps its instant in UTC', () => {
     const sent = { ...lidl, time: { instant: '2026-07-14T23:30:00+02:00', zone: 'Europe/Zagreb' } };
     expect(expenseSchema.parse(sent)).toEqual(lidl);
+  });
+
+  it('accepts Income: a plain Expense whose amount is negative', () => {
+    const refund: Expense = {
+      ...lidl,
+      lineItems: [{ ...lidl.lineItems[0]!, unitPrice: -480 }],
+    };
+    expect(expenseSchema.parse(refund)).toEqual(refund);
+  });
+
+  it('accepts a Repayment: one payer, one recipient and an amount, with no Line items', () => {
+    expect(expenseSchema.parse(repayment)).toEqual(repayment);
   });
 
   it.each([
@@ -41,6 +63,7 @@ describe('expenseSchema', () => {
     ['no Line item', { ...lidl, lineItems: [] }],
     ['two Line items', { ...lidl, lineItems: [...lidl.lineItems, ...lidl.lineItems] }],
     ['a fractional amount', { ...lidl, lineItems: [{ ...lidl.lineItems[0], unitPrice: 24.5 }] }],
+    ['a zero amount', { ...lidl, lineItems: [{ ...lidl.lineItems[0], unitPrice: 0 }] }],
     [
       'nobody ticked',
       { ...lidl, lineItems: [{ unitPrice: 2450, split: { mode: 'even', participantIds: [] } }] },
@@ -54,6 +77,8 @@ describe('expenseSchema', () => {
         ],
       },
     ],
+    ['a Repayment of nothing', { ...repayment, amount: 0 }],
+    ['a Repayment without a recipient', { ...repayment, recipientId: undefined }],
   ])('rejects %s', (_, sent) => {
     expect(expenseSchema.safeParse(sent).success).toBe(false);
   });
@@ -72,6 +97,17 @@ describe('expenseProblems', () => {
       lineItems: [{ unitPrice: 2450, split: { mode: 'even', participantIds: [stranger] } }],
     };
     expect(expenseProblems(expense, trip)).toEqual(['unknownMainPayer', 'unknownParticipant']);
+  });
+
+  it('refuses a Repayment to someone not in the Trip, or to its own payer', () => {
+    const stranger = '019a2b3c-4d5e-7f00-8a1b-000000000099';
+    expect(expenseProblems(repayment, trip)).toEqual([]);
+    expect(expenseProblems({ ...repayment, recipientId: stranger }, trip)).toEqual([
+      'unknownParticipant',
+    ]);
+    expect(expenseProblems({ ...repayment, recipientId: ania.id }, trip)).toEqual([
+      'repaymentToSelf',
+    ]);
   });
 
   it('refuses a currency other than the Trip currency', () => {

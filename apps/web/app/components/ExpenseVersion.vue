@@ -24,6 +24,7 @@ const shown = computed(() => {
     total: formatMoney(total, expense.currency, locale.value),
     when: formatExpenseTime(expense.time, locale.value),
     payer: nameOf(expense.mainPayerId) ?? '?',
+    income: total.numerator < 0n,
     // In the Trip's order.
     forWhom: new Intl.ListFormat(locale.value).format(
       participants.filter(({ id }) => shares.has(id)).map(({ name }) => name),
@@ -52,7 +53,13 @@ const shown = computed(() => {
     <p class="text-sm text-muted">
       {{ $t('expense.timeInZone', { time: shown.when, zone: expense.time.zone }) }}
     </p>
-    <p class="mt-2 text-sm">{{ $t('conflict.paidBy', { name: shown.payer }) }}</p>
+    <p class="mt-2 text-sm">
+      {{
+        shown.income
+          ? $t('conflict.receivedBy', { name: shown.payer })
+          : $t('conflict.paidBy', { name: shown.payer })
+      }}
+    </p>
     <p class="text-sm wrap-anywhere">{{ $t('conflict.forWhom', { names: shown.forWhom }) }}</p>
   </section>
 </template>

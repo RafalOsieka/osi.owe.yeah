@@ -6,7 +6,8 @@
   "myTrips": {
     "title": "My Trips",
     "empty": "No Trips yet.",
-    "create": "New Trip"
+    "create": "New Trip",
+    "settled": "Settled"
   },
   "trip": {
     "create": {
@@ -63,33 +64,45 @@
     "add": "Add Expense",
     "new": "New Expense",
     "edit": "Edit Expense",
+    "newIncome": "New Income",
+    "editIncome": "Edit Income",
     "title": "Title",
     "titlePlaceholder": "Lidl Rovinj",
     "titleInvalid": "Give the Expense a title of up to 100 characters.",
     "amount": "Amount",
     "amountInvalid": "Enter a whole amount above zero. | Enter an amount above zero with at most 1 decimal place. | Enter an amount above zero with at most {decimals} decimal places.",
+    "moneyReceived": "Money received",
+    "moneyReceivedHelp": "For a Deposit refund or other money someone got back for the group.",
     "paidBy": "Paid by",
     "payerMissing": "Pick who paid.",
+    "receivedBy": "Received by",
+    "receiverMissing": "Pick who received it.",
     "forWhom": "For whom",
     "participantsMissing": "Tick at least one Participant.",
     "when": "When",
     "timeMissing": "Enter when it was paid.",
     "timeZone": "Time zone",
     "save": "Save Expense",
+    "saveIncome": "Save Income",
     "refused": {
       "title": "The Expense was not saved",
       "unknownMainPayer": "Who paid is no longer in the Trip.",
       "unknownParticipant": "Someone ticked is no longer in the Trip.",
-      "currencyNotTripCurrency": "The Expense must be in the Trip currency."
+      "currencyNotTripCurrency": "The Expense must be in the Trip currency.",
+      "repaymentToSelf": "A Repayment needs two different Participants."
     },
     "emptyHelp": "Whoever pays for something adds it here.",
     "addFirst": "Add the first Expense",
     "addShort": "Expense",
     "paidFor": "{name} paid · {forWhom}",
+    "receivedFor": "{name} received · {forWhom}",
     "forAll": "for all {count}",
     "forSome": "for {count}",
     "youLent": "you lent {amount}",
     "yourShare": "your share {amount}",
+    "youReceived": "you received {amount}",
+    "youGetBack": "you get back {amount}",
+    "youRepaid": "you paid {amount}",
     "notForYou": "not for you",
     "all": "All",
     "forWhomEven": "For whom · Even",
@@ -101,6 +114,17 @@
     "undo": "Undo",
     "deleteRefused": "The Expense was not deleted"
   },
+  "repayment": {
+    "title": "Repayment",
+    "new": "New Repayment",
+    "edit": "Edit Repayment",
+    "save": "Save Repayment",
+    "refused": "The Repayment was not saved",
+    "paidTo": "Paid to",
+    "recipientMissing": "Pick who got the money.",
+    "sameParticipant": "Pick someone other than who paid.",
+    "fromTo": "{payer} → {recipient}"
+  },
   "balances": {
     "title": "Balances",
     "owed": "You're owed",
@@ -111,7 +135,18 @@
     "tripTotalIs": "Trip total {amount}",
     "everyone": "Everyone",
     "owes": "owes",
-    "isOwed": "is owed"
+    "isOwed": "is owed",
+    "toSettle": "To settle",
+    "paysYou": "{name} pays you",
+    "youPay": "You pay {name}",
+    "pays": "{payer} pays {recipient}",
+    "otherSuggestions": "Other suggested Repayments",
+    "suggestions": "Suggested Repayments",
+    "record": "Record",
+    "recordLabel": "Record Repayment: {what} {amount}",
+    "recordAnother": "Record another Repayment",
+    "allSettled": "All settled",
+    "allSettledHelp": "Everyone's balance is zero."
   },
   "sync": {
     "status": "Sync status",
@@ -131,6 +166,7 @@
       "unknownMainPayer": "who paid is no longer in the Trip.",
       "unknownParticipant": "someone ticked is no longer in the Trip.",
       "currencyNotTripCurrency": "the Expense must be in the Trip currency.",
+      "repaymentToSelf": "a Repayment needs two different Participants.",
       "expenseIdTaken": "this Expense belongs to another Trip.",
       "unknownExpense": "this Expense no longer exists.",
       "participantIdTaken": "this Participant belongs to another Trip."
@@ -145,6 +181,7 @@
     "theirs": "Their version",
     "by": "by {name}",
     "paidBy": "Paid by {name}",
+    "receivedBy": "Received by {name}",
     "forWhom": "For {names}",
     "keepMine": "Keep mine",
     "keepTheirs": "Keep theirs",

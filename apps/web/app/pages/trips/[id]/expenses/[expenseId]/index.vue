@@ -1,5 +1,6 @@
 <script setup lang="ts">
 import type { AlertProps } from '@nuxt/ui';
+import { isRepayment } from '@osi/owe-yeah-domain';
 import { toExpense } from '~/sync/local-trip';
 
 // An Expense's detail page: the Expense in full; on top, why it is not synced yet if it
@@ -95,7 +96,7 @@ useHead({ title: () => expense.value?.title ?? t('expense.notFound') });
       <UButton
         variant="ghost"
         :label="$t('expense.editShort')"
-        :aria-label="$t('expense.edit')"
+        :aria-label="isRepayment(expense) ? $t('repayment.edit') : $t('expense.edit')"
         :to="`/trips/${trip.id}/expenses/${expense.id}/edit`"
       />
     </template>

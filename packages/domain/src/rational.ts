@@ -37,7 +37,7 @@ export function add(a: Rational, b: Rational): Rational {
 
 /** The exact difference `a - b`. */
 export function subtract(a: Rational, b: Rational): Rational {
-  return add(a, rational(-b.numerator, b.denominator));
+  return add(a, negate(b));
 }
 
 /** `value` rounded to the nearest whole number, halves away from zero. */
@@ -45,4 +45,21 @@ export function roundHalfAwayFromZero(value: Rational): bigint {
   const magnitude = abs(value.numerator);
   const rounded = (2n * magnitude + value.denominator) / (2n * value.denominator);
   return value.numerator < 0n ? -rounded : rounded;
+}
+
+/** `-value`. */
+export function negate(value: Rational): Rational {
+  return rational(-value.numerator, value.denominator);
+}
+
+/** The largest whole number not above `value`. */
+export function floor(value: Rational): bigint {
+  const quotient = value.numerator / value.denominator;
+  return value.numerator % value.denominator < 0n ? quotient - 1n : quotient;
+}
+
+/** Negative when `a < b`, zero when equal, positive when `a > b`. */
+export function compare(a: Rational, b: Rational): number {
+  const difference = a.numerator * b.denominator - b.numerator * a.denominator;
+  return difference < 0n ? -1 : difference > 0n ? 1 : 0;
 }

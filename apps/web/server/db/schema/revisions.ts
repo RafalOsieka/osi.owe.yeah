@@ -1,4 +1,4 @@
-import type { Expense } from '@osi/owe-yeah-domain';
+import type { ExpenseState } from '@osi/owe-yeah-domain';
 import {
   boolean,
   index,
@@ -30,7 +30,7 @@ export const revisions = pgTable(
       .notNull()
       .references(() => trips.id, { onDelete: 'cascade' }),
     // The whole Expense as the change left it, without its id.
-    state: jsonb().$type<Omit<Expense, 'id'>>().notNull(),
+    state: jsonb().$type<ExpenseState>().notNull(),
     deleted: boolean().notNull(),
     // The Participant the device claimed when making the change, if any. Not a reference:
     // it is what the device said, kept as it was.

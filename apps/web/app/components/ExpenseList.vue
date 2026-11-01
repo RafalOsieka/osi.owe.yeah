@@ -1,16 +1,16 @@
 <script setup lang="ts">
 import {
-  add,
   claimView,
   expenseShares,
   groupByLocalDay,
-  rational,
+  isRepayment,
+  spendingTotal,
   type Rational,
 } from '@osi/owe-yeah-domain';
 import type { LocalExpense, LocalTrip } from '~/sync/local-trip';
 
 // The Trip's Expenses, newest first, under a heading for each Expense's own local day with
-// that day's total. Each row opens the Expense's detail page and, with a Claim, says what
+// what was spent that day (net of Income, without Repayments). Each row opens the Expense's detail page and, with a Claim, says what
 // the Expense means for the claimed Participant, and marks it while it is not synced, or in
 // Conflict.
 const { trip, claimId = null } = defineProps<{
@@ -25,7 +25,9 @@ const participants = computed(() => new Map(trip.participants.map((p) => [p.id, 
 const money = (amount: Rational) => formatMoney(amount, trip.currency, locale.value);
 const bare = (amount: Rational) => formatMoney(amount, trip.currency, locale.value, 'number');
 
-// What the claimed Participant sees on the right of a row, under the total.
+// What the claimed Participant sees on the right of a row, under the total: what they lent
+// or get back in green, their share in red, and money that only changed hands (a Repayment,
+// an Income they received) in neutral, as it is not spending.
 function forYou(expense: LocalExpense): { text: string; tone: string } | null {
   if (claimId === null) return null;
   const view = claimView(expense, claimId);
@@ -34,6 +36,12 @@ function forYou(expense: LocalExpense): { text: string; tone: string } | null {
       return { text: t('expense.youLent', { amount: bare(view.amount) }), tone: 'text-primary' };
     case 'share':
       return { text: t('expense.yourShare', { amount: bare(view.amount) }), tone: 'text-error' };
+    case 'received':
+      return { text: t('expense.youReceived', { amount: bare(view.amount) }), tone: 'text-muted' };
+    case 'getBack':
+      return { text: t('expense.youGetBack', { amount: bare(view.amount) }), tone: 'text-primary' };
+    case 'repaid':
+      return { text: t('expense.youRepaid', { amount: bare(view.amount) }), tone: 'text-muted' };
     case 'notForYou':
       return { text: t('expense.notForYou'), tone: 'text-muted' };
   }
@@ -44,19 +52,29 @@ const days = computed(() =>
     const rows = expenses.map((expense) => {
       const { total, shares } = expenseShares(expense);
       const count = shares.size;
+      const payer = participants.value.get(expense.mainPayerId)?.name ?? '?';
+      const forWhom =
+        count === trip.participants.length
+          ? t('expense.forAll', { count })
+          : t('expense.forSome', { count });
+      let summary: string;
+      if (isRepayment(expense)) {
+        const recipient = participants.value.get(expense.recipientId)?.name ?? '?';
+        summary = t('repayment.fromTo', { payer, recipient });
+      } else if (total.numerator < 0n) {
+        summary = t('expense.receivedFor', { name: payer, forWhom });
+      } else {
+        summary = t('expense.paidFor', { name: payer, forWhom });
+      }
       return {
         expense,
         total,
         payer: participants.value.get(expense.mainPayerId),
-        forWhom:
-          count === trip.participants.length
-            ? t('expense.forAll', { count })
-            : t('expense.forSome', { count }),
+        summary,
         forYou: forYou(expense),
       };
     });
-    const total = rows.reduce((sum, row) => add(sum, row.total), rational(0n));
-    return { day, total, rows };
+    return { day, total: spendingTotal(expenses), rows };
   }),
 );
 
@@ -108,7 +126,7 @@ function dayHeading(day: string): string {
                   size="sm"
                   class="me-1"
                 />
-                {{ $t('expense.paidFor', { name: row.payer?.name ?? '?', forWhom: row.forWhom }) }}
+                {{ row.summary }}
               </span>
             </span>
             <span class="shrink-0 text-right leading-snug tabular-nums">

@@ -3,7 +3,6 @@ export type { Rational } from './rational.ts';
 export { parseAmount } from './amount.ts';
 export { fromMinor, minorUnits, parseMoney, roundMoney } from './money.ts';
 export {
-  balances,
   editedSchema,
   expenseVersionSchema,
   revisionSchema,
@@ -11,14 +10,10 @@ export {
   tripSnapshotSchema,
   tripVersionSchema,
 } from './snapshot.ts';
-export type {
-  Edited,
-  ParticipantBalance,
-  Revision,
-  StoredExpense,
-  TripSnapshot,
-} from './snapshot.ts';
+export type { Edited, Revision, StoredExpense, TripSnapshot } from './snapshot.ts';
 export { claimView, expenseShares } from './shares.ts';
+export { balances, isSettled, spendingTotal, suggestedRepayments } from './settle-up.ts';
+export type { ParticipantBalance, SuggestedRepayment } from './settle-up.ts';
 export type { ClaimView, ExpenseShares } from './shares.ts';
 export type { RoundedMoney } from './money.ts';
 export {
@@ -30,11 +25,19 @@ export {
   expenseTimeFromLocal,
   expenseTimeSchema,
   groupByLocalDay,
+  isRepayment,
   expenseTitleSchema,
   localDateTime,
   localDay,
 } from './expense.ts';
-export type { Expense, ExpenseProblem, ExpenseTime } from './expense.ts';
+export type {
+  Expense,
+  ExpenseProblem,
+  ExpenseState,
+  ExpenseTime,
+  Repayment,
+  SplitExpense,
+} from './expense.ts';
 export { participantIdSchema, participantNameSchema, participantSchema } from './participant.ts';
 export type { Participant } from './participant.ts';
 export {
