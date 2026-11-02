@@ -7,8 +7,10 @@ import {
   lineItemProblems,
   lineItemSchema,
   minorAmountSchema,
+  receiptTotalMinor,
   splitParticipantIds,
 } from './line-item.ts';
+import { compare, rational } from './rational.ts';
 import { participantIdSchema } from './participant.ts';
 import { TRIP_CURRENCIES, type TripWithParticipants } from './trip.ts';
 
@@ -63,14 +65,35 @@ const expenseBase = {
 };
 
 /**
+ * A Contribution: a fixed amount in minor units that a Participant other than the Main payer
+ * paid towards an Expense, e.g. a cash tip.
+ */
+const contributionSchema = z.object({
+  participantId: participantIdSchema,
+  amount: minorAmountSchema,
+});
+
+export type Contribution = z.infer<typeof contributionSchema>;
+
+const onePerParticipant = (contributions: readonly Contribution[]) =>
+  new Set(contributions.map(({ participantId }) => participantId)).size === contributions.length;
+
+/**
  * An Expense split by its Line items, in the order of the Receipt, with an optional Receipt
- * discount on all of them. A plain Expense has exactly one Line item; with a negative total
- * it is Income.
+ * discount on all of them, and optional Contributions, one per Participant in the order they
+ * were added; the Main payer covers the rest. Without Contributions the field is left out. A
+ * plain Expense has exactly one Line item; with a negative total it is Income.
  */
 const splitExpenseSchema = z.object({
   ...expenseBase,
   lineItems: z.array(lineItemSchema).min(1).max(500),
   discount: discountSchema.optional(),
+  contributions: z
+    .array(contributionSchema)
+    .min(1)
+    .max(100)
+    .refine(onePerParticipant, { message: 'A Participant can contribute only once' })
+    .optional(),
 });
 
 /**
@@ -129,6 +152,8 @@ export const expenseProblemSchema = z.enum([
   'repaymentToSelf',
   ...LINE_ITEM_PROBLEMS,
   'receiptDiscountExceedsLineItems',
+  'contributionFromMainPayer',
+  'contributionsExceedTotal',
 ]);
 
 export type ExpenseProblem = z.infer<typeof expenseProblemSchema>;
@@ -136,15 +161,20 @@ export type ExpenseProblem = z.infer<typeof expenseProblemSchema>;
 /**
  * The rules an Expense must follow within its Trip; empty when it may be saved. The device
  * checks them before pushing and the server again before accepting. A Repayment's recipient
- * counts as its ticked Participant. Every Line item must fit together (`lineItemProblems`),
- * and the Receipt discount may not take off more than the goods come to after their Line
- * discounts. The total may be negative.
+ * counts as its ticked Participant, and so does everyone with a Contribution. Every Line item
+ * must fit together (`lineItemProblems`), and the Receipt discount may not take off more than
+ * the goods come to after their Line discounts. The total may be negative. The Main payer
+ * makes no Contribution, and Contributions may cover the whole total but not more, so the
+ * Main payer's part is never negative and Income has none.
  */
 export function expenseProblems(expense: Expense, trip: TripWithParticipants): ExpenseProblem[] {
   const known = new Set(trip.participants.map(({ id }) => id));
   const ticked = isRepayment(expense)
     ? [expense.recipientId]
-    : expense.lineItems.flatMap(({ split }) => splitParticipantIds(split));
+    : [
+        ...expense.lineItems.flatMap(({ split }) => splitParticipantIds(split)),
+        ...(expense.contributions ?? []).map(({ participantId }) => participantId),
+      ];
   const problems: ExpenseProblem[] = [];
 
   if (!known.has(expense.mainPayerId)) problems.push('unknownMainPayer');
@@ -158,6 +188,11 @@ export function expenseProblems(expense: Expense, trip: TripWithParticipants): E
     const lineProblems = new Set(lineItems.flatMap(lineItemProblems));
     problems.push(...LINE_ITEM_PROBLEMS.filter((problem) => lineProblems.has(problem)));
     if (receiptDiscountExceeds(expense)) problems.push('receiptDiscountExceedsLineItems');
+    const contributions = expense.contributions ?? [];
+    if (contributions.some(({ participantId }) => participantId === expense.mainPayerId)) {
+      problems.push('contributionFromMainPayer');
+    }
+    if (contributionsExceed(expense)) problems.push('contributionsExceedTotal');
   }
   return problems;
 }
@@ -171,6 +206,20 @@ export function receiptDiscountExceeds({
   discount,
 }: Pick<SplitExpense, 'lineItems' | 'discount'>): boolean {
   return discountExceeds(discount, goodsMinor(lineItems));
+}
+
+/**
+ * Whether Contributions add up to more than the Expense comes to (`receiptTotalMinor`), which
+ * would leave the Main payer a negative part.
+ */
+function contributionsExceed({
+  lineItems,
+  discount,
+  contributions = [],
+}: Pick<SplitExpense, 'lineItems' | 'discount' | 'contributions'>): boolean {
+  if (contributions.length === 0) return false;
+  const contributed = contributions.reduce((sum, { amount }) => sum + BigInt(amount), 0n);
+  return compare(rational(contributed), receiptTotalMinor(lineItems, discount)) > 0;
 }
 
 function zoned(time: ExpenseTime): Temporal.ZonedDateTime {

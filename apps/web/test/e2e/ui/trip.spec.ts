@@ -526,6 +526,68 @@ test('a Deposit is never discounted, and a Deposit refund comes off the Receipt 
   await other.close();
 });
 
+test('Contributions from others: added, edited and removed, the Main payer covering the rest', async ({
+  page,
+}) => {
+  await createTrip(page, 'Istria 2026', 'Kasia', ['Ania', 'Ola']);
+
+  // Dinner on Kasia's card, and Ania leaves a cash tip.
+  await page.getByRole('link', { name: 'Add the first Expense' }).click();
+  await page.getByLabel('Amount').fill('60');
+  await page.getByLabel('Title').fill('Konoba Batelina');
+  await page.getByRole('button', { name: 'Add a Contribution' }).click();
+  await page.getByRole('menuitem', { name: 'Ania' }).click();
+  const aniasContribution = page.getByRole('textbox', { name: 'Contribution from Ania' });
+  await expect(aniasContribution).toBeFocused();
+  await aniasContribution.fill('6');
+  const form = page.getByRole('main');
+  await expect(form).toContainText('Kasia pays the rest: €54.00');
+  // Income has no Contributions.
+  await expect(page.getByRole('switch', { name: 'Money received' })).toBeHidden();
+
+  // Whoever made a Contribution can't become the Main payer.
+  const paidBy = page.getByRole('group', { name: 'Paid by' });
+  await paidBy.getByRole('radio', { name: 'Ania' }).click();
+  await expect(form).toContainText('Ania made a Contribution');
+  await expect(paidBy.getByRole('radio', { name: 'Kasia' })).toBeChecked();
+  await expect(paidBy.getByRole('radio', { name: 'Ania' })).not.toBeChecked();
+  await page.getByRole('button', { name: 'Save Expense' }).click();
+
+  // Kasia paid 54.00 of her 20.00 share.
+  const row = page.getByRole('link', { name: /Konoba Batelina/ });
+  await expect(row).toContainText('you lent 34.00');
+  await row.click();
+  const payers = page.getByRole('region', { name: 'Paid by' }).getByRole('listitem');
+  await expect(payers).toHaveCount(2);
+  await expect(payers.filter({ hasText: 'Kasia' })).toContainText('€54.00');
+  await expect(payers.filter({ hasText: 'Ania' })).toContainText('Contribution');
+  await expect(payers.filter({ hasText: 'Ania' })).toContainText('€6.00');
+
+  // The bill was 75.00 after all: only Kasia's part changes.
+  await page.getByRole('link', { name: 'Edit Expense' }).click();
+  await expect(aniasContribution).toHaveValue('6.00');
+  await page.getByLabel('Amount').fill('75');
+  await page.getByRole('button', { name: 'Save Expense' }).click();
+  await expect(payers.filter({ hasText: 'Kasia' })).toContainText('€69.00');
+  await expect(payers.filter({ hasText: 'Ania' })).toContainText('€6.00');
+
+  await page.getByRole('link', { name: 'Edit Expense' }).click();
+  await aniasContribution.fill('10');
+  await page.getByRole('button', { name: 'Save Expense' }).click();
+  await expect(payers.filter({ hasText: 'Kasia' })).toContainText('€65.00');
+  await expect(payers.filter({ hasText: 'Ania' })).toContainText('€10.00');
+
+  // Without her Contribution, Ania can be the Main payer.
+  await page.getByRole('link', { name: 'Edit Expense' }).click();
+  await page.getByRole('button', { name: 'Remove the Contribution from Ania' }).click();
+  await paidBy.getByRole('radio', { name: 'Ania' }).click();
+  await expect(paidBy.getByRole('radio', { name: 'Ania' })).toBeChecked();
+  await page.getByRole('button', { name: 'Save Expense' }).click();
+  await expect(payers).toHaveCount(1);
+  await expect(payers).toContainText('Ania');
+  await expect(payers).toContainText('€75.00');
+});
+
 test('a Trip link with a wrong token shows no Trip', async ({ page }) => {
   await page.goto('/trips/019a2b3c-4d5e-7f00-8a1b-2c3d4e5f6a7b#not-the-token');
 

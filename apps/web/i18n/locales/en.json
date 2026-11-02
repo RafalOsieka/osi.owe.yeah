@@ -94,7 +94,9 @@
       "unitsExceedQuantity": "A Line item has more units assigned than it has.",
       "amountsExceedLineTotal": "A Line item has Amounts that add up to more than its total.",
       "lineDiscountExceedsLineTotal": "A Line item has a discount larger than its total.",
-      "receiptDiscountExceedsLineItems": "The Receipt discount is larger than the Line items after their own discounts."
+      "receiptDiscountExceedsLineItems": "The Receipt discount is larger than the Line items after their own discounts.",
+      "contributionFromMainPayer": "The Main payer can't also make a Contribution.",
+      "contributionsExceedTotal": "The Contributions add up to more than the Expense."
     },
     "emptyHelp": "Whoever pays for something adds it here.",
     "addFirst": "Add the first Expense",
@@ -186,6 +188,17 @@
     "refundHelp": "Money back for returned packaging, often a voucher used at the till. It comes off the total, is split on its own and is never discounted.",
     "checkAmount": "Check the amount."
   },
+  "contribution": {
+    "title": "Contributions",
+    "label": "Contribution",
+    "add": "Add a Contribution",
+    "amountFrom": "Contribution from {name}",
+    "remove": "Remove the Contribution from {name}",
+    "rest": "{name} pays the rest: {amount}",
+    "exceeds": "The Contributions add up to more than the Expense.",
+    "unreadable": "Check the Contribution amounts.",
+    "payerRefused": "{name} made a Contribution. Remove it to make {name} the Main payer."
+  },
   "repayment": {
     "title": "Repayment",
     "new": "New Repayment",
@@ -246,7 +259,9 @@
       "unitsExceedQuantity": "a Line item has more units assigned than it has.",
       "amountsExceedLineTotal": "a Line item's Amounts add up to more than its total.",
       "lineDiscountExceedsLineTotal": "a Line item's discount is larger than its total.",
-      "receiptDiscountExceedsLineItems": "the Receipt discount is larger than the Line items after their own discounts."
+      "receiptDiscountExceedsLineItems": "the Receipt discount is larger than the Line items after their own discounts.",
+      "contributionFromMainPayer": "the Main payer can't also make a Contribution.",
+      "contributionsExceedTotal": "the Contributions add up to more than the Expense."
     },
     "pullToRefresh": "Pull to sync",
     "releaseToRefresh": "Release to sync"

@@ -6,6 +6,7 @@ import {
   isDepositRefund,
   lineNetMinor,
   lineTotalMinor,
+  receiptTotalMinor,
   splitWeights,
   type LineItem,
 } from './line-item.ts';
@@ -57,8 +58,16 @@ export type ReceiptShares = {
   lineItems: readonly LineItemShares[];
 };
 
-/** What an Expense cost in total, and who bears how much of it, exact and unrounded. */
+/**
+ * What an Expense cost in total, who paid it, and who bears how much of it, exact and
+ * unrounded.
+ */
 export type ExpenseShares = Omit<ReceiptShares, 'assigned'> & {
+  /**
+   * What each payer paid by id: the Main payer first, covering whatever the Contributions
+   * don't, then each Contribution in the order it was added. Adds up to the total.
+   */
+  paid: ReadonlyMap<string, Rational>;
   /**
    * Each Participant's share by id, in the order the splits name them. The Main payer's
    * includes the value not assigned yet, which is theirs until it is. A Repayment's
@@ -125,7 +134,6 @@ export function receiptShares({
   const assigned = new Map<string, Rational>();
   let unassigned = zero;
   let deposits = zero;
-  let total = zero;
   lineItems.forEach((item, index) => {
     const { net, deposit } = lines[index]!;
     // A Deposit refund is not goods, so the Receipt discount leaves it whole.
@@ -134,10 +142,9 @@ export function receiptShares({
     for (const [id, part] of parts.shares) assigned.set(id, add(assigned.get(id) ?? zero, part));
     unassigned = add(unassigned, parts.unassigned);
     deposits = add(deposits, deposit);
-    total = add(total, left);
   });
   return {
-    total,
+    total: multiply(receiptTotalMinor(lineItems, discount), unit),
     discountOff: multiply(off, unit),
     deposits,
     assigned,
@@ -147,18 +154,21 @@ export function receiptShares({
 }
 
 /**
- * An Expense's total and each Participant's share of it: a Receipt (or plain Expense) is
- * shared as `receiptShares` works out, with the value not assigned yet counted as the Main
- * payer's own, and a Repayment is borne wholly by its recipient, which evens out what the
- * payer handed over. Used for balances and to show an Expense.
+ * An Expense's total, who paid it, and each Participant's share of it: a Receipt (or plain
+ * Expense) is shared as `receiptShares` works out, with the value not assigned yet counted as
+ * the Main payer's own, and paid by its Contributions with the Main payer covering the rest;
+ * a Repayment is paid by its Main payer and borne wholly by its recipient, which evens out
+ * what the payer handed over. Used for balances and to show an Expense.
  */
 export function expenseShares(expense: Expense): ExpenseShares {
+  const { mainPayerId, currency } = expense;
   if (isRepayment(expense)) {
-    const amount = fromMinor(expense.amount, expense.currency);
+    const amount = fromMinor(expense.amount, currency);
     return {
       total: amount,
       discountOff: zero,
       deposits: zero,
+      paid: new Map([[mainPayerId, amount]]),
       shares: new Map([[expense.recipientId, amount]]),
       unassigned: zero,
       lineItems: [],
@@ -168,17 +178,22 @@ export function expenseShares(expense: Expense): ExpenseShares {
   const { assigned, ...receipt } = receiptShares(expense);
   const shares = new Map(assigned);
   if (receipt.unassigned.numerator !== 0n) {
-    const { mainPayerId } = expense;
     shares.set(mainPayerId, add(shares.get(mainPayerId) ?? zero, receipt.unassigned));
   }
-  return { ...receipt, shares };
+  const contributions = (expense.contributions ?? []).map(
+    ({ participantId, amount }) => [participantId, fromMinor(amount, currency)] as const,
+  );
+  const rest = contributions.reduce((left, [, amount]) => subtract(left, amount), receipt.total);
+  return { ...receipt, paid: new Map([[mainPayerId, rest], ...contributions]), shares };
 }
 
 /**
  * What an Expense means for the Participant this device has claimed:
- * - `lent`: they paid, for others: the total less their own share;
+ * - `lent`: they paid, as Main payer or with a Contribution, for others: what they paid less
+ *   their own share;
  * - `share`: someone else paid, and this is their share; or they paid, and their share is
- *   more than the total (a Deposit refund shared with others): what it costs them on top;
+ *   more than what they paid (a Contribution below their share, or a Deposit refund shared
+ *   with others): what it costs them on top;
  * - `received`: the whole of an Income they received, or of a Repayment handed to them;
  * - `getBack`: their part of money someone else received: an Income, or a Deposit refund;
  * - `repaid`: a Repayment they handed over;
@@ -191,7 +206,7 @@ export type ClaimView =
 
 /** The Claim's view of an Expense (see `ClaimView`); `claimId` is the claimed Participant. */
 export function claimView(expense: Expense, claimId: string): ClaimView {
-  const { total, shares } = expenseShares(expense);
+  const { total, paid, shares } = expenseShares(expense);
   const own = shares.get(claimId);
   const payer = expense.mainPayerId === claimId;
 
@@ -199,9 +214,11 @@ export function claimView(expense: Expense, claimId: string): ClaimView {
     if (payer) return { kind: 'repaid', amount: total };
     return own ? { kind: 'received', amount: total } : { kind: 'notForYou' };
   }
-  if (payer) {
-    if (total.numerator < 0n) return { kind: 'received', amount: negate(total) };
-    const lent = subtract(total, own ?? zero);
+  if (payer && total.numerator < 0n) return { kind: 'received', amount: negate(total) };
+  // The Main payer's part, or a Contribution.
+  const part = paid.get(claimId);
+  if (part) {
+    const lent = subtract(part, own ?? zero);
     return lent.numerator < 0n
       ? { kind: 'share', amount: negate(lent) }
       : { kind: 'lent', amount: lent };
