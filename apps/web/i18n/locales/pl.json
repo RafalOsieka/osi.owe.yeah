@@ -171,7 +171,7 @@
     "lineItemsMissing": "Dodaj co najmniej jedną pozycję.",
     "lineItemsUnreadable": "Sprawdź ceny, kaucje i kwoty oznaczonych pozycji.",
     "depositPerUnit": "Kaucja za sztukę",
-    "depositHelp": "Kaucja za butelkę lub puszkę. Dzielona tak jak pozycja, nigdy nie rabatowana.",
+    "depositHelp": "Doliczana za sztukę opakowania zwrotnego. Dzielona tak jak pozycja, nigdy nie rabatowana.",
     "depositUnreadable": "Sprawdź kaucję.",
     "depositFact": "Kaucja {deposit}",
     "deposits": "Kaucje",
@@ -183,7 +183,7 @@
     "newRefundAmount": "Kwota zwrotu kaucji",
     "refundPlaceholder": "Kwota z bonu",
     "refundAmount": "Kwota",
-    "refundHelp": "Pieniądze za oddane butelki, często bon wykorzystany przy kasie. Odejmowany od sumy, dzielony osobno i nigdy nie rabatowany.",
+    "refundHelp": "Pieniądze za oddane opakowania zwrotne, często bon wykorzystany przy kasie. Odejmowany od sumy, dzielony osobno i nigdy nie rabatowany.",
     "checkAmount": "Sprawdź kwotę."
   },
   "repayment": {

@@ -35,12 +35,11 @@ import {
 // Receipt" grows the one Line item into the Till list on the same page: the amount becomes the
 // computed Receipt total, each Line item has its own split, Line discount and Deposit, Deposit
 // refunds come off it, and a Receipt discount below "Paid by" comes off the goods. The
-// Deposits total shows under the Receipt total, to check against the printed Pfand, and the
-// total may go negative. A Receipt may be saved with value not assigned yet, which counts as
-// the Main payer's until it is. Saving keeps the
-// Expense's full new state on the device, to sync later, and returns to `parent`'s screen, or
-// wherever the form was opened from. An Expense that breaks a Trip rule is not saved; why
-// shows above Save.
+// Deposits total shows under the Receipt total, to check against the Deposits printed on the
+// paper Receipt, and the total may go negative. A Receipt may be saved with value not
+// assigned yet, which counts as the Main payer's until it is. Saving keeps the Expense's full
+// new state on the device, to sync later, and returns to `parent`'s screen, or wherever the
+// form was opened from. An Expense that breaks a Trip rule is not saved; why shows above Save.
 const { expense = null, parent } = defineProps<{
   expense?: Extract<LocalExpense, SplitExpense> | null;
   /** The screen above the form, for back when it was opened from a link. */

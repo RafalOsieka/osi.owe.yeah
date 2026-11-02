@@ -171,7 +171,7 @@
     "lineItemsMissing": "Add at least one Line item.",
     "lineItemsUnreadable": "Check the prices, Deposits and Amounts of the Line items marked.",
     "depositPerUnit": "Deposit per unit",
-    "depositHelp": "Pfand per bottle or can. It follows the split and is never discounted.",
+    "depositHelp": "Charged per unit for returnable packaging. It follows the split and is never discounted.",
     "depositUnreadable": "Check the Deposit.",
     "depositFact": "Deposit {deposit}",
     "deposits": "Deposits",
@@ -183,7 +183,7 @@
     "newRefundAmount": "Deposit refund amount",
     "refundPlaceholder": "Voucher amount",
     "refundAmount": "Amount",
-    "refundHelp": "Money back for returned bottles, often a voucher used at the till. It comes off the total, is split on its own and is never discounted.",
+    "refundHelp": "Money back for returned packaging, often a voucher used at the till. It comes off the total, is split on its own and is never discounted.",
     "checkAmount": "Check the amount."
   },
   "repayment": {

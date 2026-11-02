@@ -47,7 +47,7 @@ export type ReceiptShares = {
   total: Rational;
   /** What the Receipt discount takes off; zero without one. */
   discountOff: Rational;
-  /** The Line items' Deposits together, to check against the printed Pfand. */
+  /** The Line items' Deposits together, to check against those printed on the Receipt. */
   deposits: Rational;
   /** Each assigned Participant's part by id, in the order the splits name them. */
   assigned: ReadonlyMap<string, Rational>;
@@ -106,8 +106,8 @@ export function lineItemShares(item: LineItem, currency: string): LineItemShares
 /**
  * A Receipt's Line items shared by their splits (`lineItemShares`), with the Receipt discount
  * spread in proportion to what each Participant, and the value not assigned yet, has of the
- * goods after their Line discounts. Deposits and Deposit refunds are never discounted. Shows the Receipt
- * total while it is entered; `expenseShares` builds on it.
+ * goods after their Line discounts. Deposits and Deposit refunds are never discounted. Shows
+ * the Receipt total while it is entered; `expenseShares` builds on it.
  */
 export function receiptShares({
   lineItems,

@@ -324,7 +324,7 @@ describe('Receipt walkthroughs', () => {
     ]);
   });
 
-  it('−10 % coupon on a Pfand receipt: neither the Deposit nor a voucher is discounted', () => {
+  it('−10 % coupon on a Receipt with Deposits: neither the Deposit nor a voucher is discounted', () => {
     const water = {
       name: 'Mineral water',
       unitPrice: 53,
@@ -386,7 +386,7 @@ describe('Receipt walkthroughs', () => {
 
     const done = receipt(bread, splitWater, chocolate);
     const { total, deposits, unassigned } = expenseShares(done);
-    // The Deposits total matches the 1.50 Pfand printed at the bottom of the receipt.
+    // The Deposits total matches the 1.50 of Deposits printed at the bottom of the Receipt.
     expect(deposits).toEqual(rational(3n, 2n));
     expect(total).toEqual(rational(662n, 100n));
     expect(unassigned).toEqual(rational(0n));

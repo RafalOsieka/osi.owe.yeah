@@ -80,6 +80,14 @@ export function discountFromDraft(
   return basisPoints === null ? null : { kind: 'percent', basisPoints };
 }
 
+/**
+ * The Deposit per unit a draft makes, in minor units: `undefined` when none is typed, `null`
+ * while it cannot be read (`parseMoney`).
+ */
+export function depositFromDraft(deposit: string, currency: string): number | undefined | null {
+  return deposit.trim() === '' ? undefined : parseMoney(deposit, currency);
+}
+
 /** A saved Line item as the Till list edits it. */
 export function draftFromLineItem(item: LineItem, currency: string): DraftLineItem {
   const { split } = item;
@@ -114,8 +122,7 @@ function pricedFromDraft(draft: DraftLineItem, currency: string): Omit<LineItem,
   if (draft.refund) return { name, unitPrice: -price, quantity: 1 };
 
   const discount = discountFromDraft(draft.discount, currency);
-  const depositPerUnit =
-    draft.deposit.trim() === '' ? undefined : parseMoney(draft.deposit, currency);
+  const depositPerUnit = depositFromDraft(draft.deposit, currency);
   if (discount === null || depositPerUnit === null) return null;
   return {
     name,

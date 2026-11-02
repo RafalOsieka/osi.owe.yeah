@@ -10,7 +10,12 @@ import {
   type Rational,
   type SplitMode,
 } from '@osi/owe-yeah-domain';
-import { discountFromDraft, lineItemFromDraft, type DraftLineItem } from '~/utils/receipt-draft';
+import {
+  depositFromDraft,
+  discountFromDraft,
+  lineItemFromDraft,
+  type DraftLineItem,
+} from '~/utils/receipt-draft';
 
 // One Line item of the Till list. Collapsed, it reads as on the paper Receipt: name, quantity
 // × unit price, how it is split, its Line discount, its Deposit, its total after that
@@ -42,9 +47,7 @@ const shares = computed(() => item.value && lineItemShares(item.value, currency)
 const problems = computed(() => (item.value ? lineItemProblems(item.value) : []));
 const priceReadable = computed(() => parseMoney(line.value.price, currency) !== null);
 const discountReadable = computed(() => discountFromDraft(line.value.discount, currency) !== null);
-const depositReadable = computed(
-  () => line.value.deposit.trim() === '' || parseMoney(line.value.deposit, currency) !== null,
-);
+const depositReadable = computed(() => depositFromDraft(line.value.deposit, currency) !== null);
 // Why the line can't be read yet, while it can't.
 const unreadable = computed(() => {
   if (item.value) return null;

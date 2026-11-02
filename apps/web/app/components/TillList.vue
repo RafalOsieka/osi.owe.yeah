@@ -6,7 +6,7 @@ import {
   parseMoney,
   type Participant,
 } from '@osi/owe-yeah-domain';
-import { draftLineItem, type DraftLineItem } from '~/utils/receipt-draft';
+import { depositFromDraft, draftLineItem, type DraftLineItem } from '~/utils/receipt-draft';
 
 // A Receipt's Line items as the Till list enters them, at the till: one line after the
 // other, each opened in place to edit it (one at a time), with the add forms at the end: one
@@ -38,7 +38,7 @@ function add(): void {
     addError.value = amountInvalid();
     return;
   }
-  if (adding.deposit.trim() !== '' && parseMoney(adding.deposit, currency) === null) {
+  if (depositFromDraft(adding.deposit, currency) === null) {
     addError.value = t('receipt.depositUnreadable');
     return;
   }

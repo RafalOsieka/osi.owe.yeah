@@ -489,7 +489,7 @@ test('a Deposit is never discounted, and a Deposit refund comes off the Receipt 
 
   const total = page.getByRole('status', { name: 'Receipt total' });
   await expect(total).toHaveText('€7.80');
-  // The Deposits total, to check against the Pfand printed on the receipt.
+  // The Deposits total, to check against the Deposits printed on the paper Receipt.
   await expect(page.getByRole('main')).toContainText('Deposits €2.50');
 
   // A −10 % coupon takes 10 % of the 5.30 of water, not of its Deposit.
