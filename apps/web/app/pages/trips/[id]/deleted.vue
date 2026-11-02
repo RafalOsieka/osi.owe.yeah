@@ -8,7 +8,7 @@ import { toExpense, type LocalExpense } from '~/sync/local-trip';
 // Conflict; one in Conflict opens the Conflict screen, and one not synced yet is marked.
 definePageMeta({ viewTransition: { toTypes: ['forward'], fromTypes: ['back'] } });
 
-const { trip, saveExpense } = useOpenTrip();
+const { trip, everyone, saveExpense } = useOpenTrip();
 const { t, locale } = useI18n();
 const toast = useToast();
 
@@ -25,7 +25,7 @@ const rows = computed(() => {
   };
   return trip.value.deletedExpenses.toSorted(newestFirst).map((expense) => {
     const { edited, unsynced } = expense;
-    const name = trip.value.participants.find(({ id }) => id === edited?.by)?.name;
+    const name = everyone.value.find(({ id }) => id === edited?.by)?.name;
     const when = edited?.at
       ? formatTimeAgo(edited.at, now, locale.value)
       : t('history.notSyncedYet');

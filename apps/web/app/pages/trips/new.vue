@@ -1,6 +1,5 @@
 <script setup lang="ts">
 import {
-  TRIP_CURRENCIES,
   participantNameSchema,
   tripNameSchema,
   tripWithParticipantsSchema,
@@ -13,7 +12,7 @@ import { v7 as uuidv7 } from 'uuid';
 // creator is never asked "Who are you?".
 definePageMeta({ viewTransition: { toTypes: ['forward'], fromTypes: ['back'] } });
 
-const { t, locale } = useI18n();
+const { t } = useI18n();
 const device = useDevice();
 
 useHead({ title: () => t('trip.create.title') });
@@ -23,13 +22,7 @@ type TripForm = Omit<Trip, 'id'> & { me: string; others: string[] };
 
 const state = reactive<TripForm>({ name: '', currency: 'EUR', me: '', others: [''] });
 
-const currencyNames = computed(() => new Intl.DisplayNames([locale.value], { type: 'currency' }));
-const currencies = computed(() =>
-  TRIP_CURRENCIES.map((code) => ({
-    value: code,
-    label: `${code} · ${currencyNames.value.of(code)}`,
-  })),
-);
+const currencies = useTripCurrencies();
 
 // The domain rules for names, worded for the form; the currency picker only offers valid ones.
 function validate(trip: Partial<TripForm>): FormError[] {

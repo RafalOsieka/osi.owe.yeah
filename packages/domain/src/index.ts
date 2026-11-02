@@ -39,6 +39,7 @@ export {
   expenseSchema,
   expenseTimeFromLocal,
   expenseTimeSchema,
+  expensesReferencing,
   groupByLocalDay,
   isReceipt,
   isRepayment,
@@ -46,6 +47,7 @@ export {
   localDateTime,
   localDay,
   receiptDiscountExceeds,
+  referencedParticipantIds,
 } from './expense.ts';
 export type {
   Contribution,
@@ -61,6 +63,7 @@ export type { Participant } from './participant.ts';
 export {
   TRIP_CURRENCIES,
   TRIP_TOKEN_HEADER,
+  currencyChangeBlocked,
   tripIdSchema,
   tripNameSchema,
   tripSchema,

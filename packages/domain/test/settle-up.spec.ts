@@ -58,6 +58,8 @@ const trip: TripSnapshot = {
     { id: bartek, name: 'Bartek' },
   ],
   version: 1,
+  edited: null,
+  removedParticipants: [],
   expenses: [],
 };
 

@@ -1,5 +1,8 @@
 import {
+  currencyChangeBlocked,
   expenseProblems,
+  expensesReferencing,
+  type ChangeResult,
   type Expense,
   type ExpenseProblem,
   type Participant,
@@ -8,10 +11,19 @@ import {
   type PushResponse,
   type Revision,
   type SyncChange,
+  type Trip,
   type TripWithParticipants,
 } from '@osi/owe-yeah-domain';
 import { v7 as uuidv7 } from 'uuid';
-import type { DeviceDb, DeviceTrip, ExpenseBase, Held, OutboxEntry, QueuedChange } from './db';
+import type {
+  DeviceDb,
+  DeviceTrip,
+  ExpenseBase,
+  Held,
+  Notice,
+  OutboxEntry,
+  QueuedChange,
+} from './db';
 import { findExpense, localTrip, withAccepted, withExpense, type LocalTrip } from './local-trip';
 
 /**
@@ -41,6 +53,9 @@ type NewChange = {
     'id' | 'claimId' | 'deviceId'
   >;
 }[QueuedChange['kind']];
+
+/** A Notice about to be kept, before it gets its id. */
+type NewNotice = Notice extends infer N ? (N extends Notice ? Omit<N, 'id'> : never) : never;
 
 /** An outbox entry holding an Expense change. */
 type ExpenseEntry = OutboxEntry & { change: Extract<QueuedChange, { kind: 'expense' }> };
@@ -120,10 +135,11 @@ export function createDevice(db: DeviceDb, transport: Transport, deviceId: strin
         claim: participants[0] ?? null,
         openedAt: new Date().toISOString(),
         snapshot: null,
+        notices: [],
       });
       await enqueue(id, { kind: 'trip', trip: { name, currency } });
       for (const participant of participants)
-        await enqueue(id, { kind: 'participant', participant });
+        await enqueue(id, { kind: 'participant', participant, removed: false });
     });
   }
 
@@ -147,9 +163,21 @@ export function createDevice(db: DeviceDb, transport: Transport, deviceId: strin
         claim: known?.claim ?? null,
         openedAt: new Date().toISOString(),
         snapshot,
+        notices: known?.notices ?? [],
       });
     });
     return 'joined';
+  }
+
+  /**
+   * Forgets a Trip on this device, with its Claim and every change not synced yet: those are
+   * lost. The Trip and its Participants stay on the server; the Trip link opens it again.
+   */
+  async function forgetTrip(tripId: string): Promise<void> {
+    await db.transaction('rw', db.trips, db.outbox, async () => {
+      await db.outbox.where('tripId').equals(tripId).delete();
+      await db.trips.delete(tripId);
+    });
   }
 
   /** Records that a Trip on this device was opened now, for My Trips' order. */
@@ -164,7 +192,56 @@ export function createDevice(db: DeviceDb, transport: Transport, deviceId: strin
 
   /** Adds or renames a Participant on this device; it reaches the server on sync. */
   async function addParticipant(tripId: string, participant: Participant): Promise<void> {
-    await enqueue(tripId, { kind: 'participant', participant });
+    await enqueue(tripId, { kind: 'participant', participant, removed: false });
+  }
+
+  /**
+   * Removes a Participant softly on this device, unless an Expense (deleted ones aside)
+   * references them. Resolves to how many do: 0 when the removal was queued.
+   */
+  async function removeParticipant(tripId: string, participant: Participant): Promise<number> {
+    return db.transaction('rw', db.trips, db.outbox, async () => {
+      const local = await readLocal(tripId);
+      const referencing = expensesReferencing(local.expenses, participant.id);
+      if (referencing === 0) {
+        await enqueue(tripId, { kind: 'participant', participant, removed: true });
+      }
+      return referencing;
+    });
+  }
+
+  /**
+   * Saves the Trip's name and Trip currency on this device, last write wins. Resolves to
+   * `false`, saving nothing, for a new Trip currency while an Expense is in another one.
+   */
+  async function saveTripDetails(tripId: string, details: Omit<Trip, 'id'>): Promise<boolean> {
+    return db.transaction('rw', db.trips, db.outbox, async () => {
+      const local = await readLocal(tripId);
+      const expenses = [...local.expenses, ...local.deletedExpenses];
+      const blocked =
+        details.currency !== local.currency && currencyChangeBlocked(expenses, details.currency);
+      if (!blocked) await enqueue(tripId, { kind: 'trip', trip: details });
+      return !blocked;
+    });
+  }
+
+  /** Keeps Notices for the Trip until they are dismissed. */
+  async function notify(tripId: string, ...notices: NewNotice[]): Promise<void> {
+    if (notices.length === 0) return;
+    const device = await db.trips.get(tripId);
+    if (!device) return;
+    const added = notices.map((notice) => ({ ...notice, id: uuidv7() }));
+    await db.trips.update(tripId, { notices: [...device.notices, ...added] });
+  }
+
+  /** Dismisses one of the Trip's Notices. */
+  async function dismissNotice(tripId: string, noticeId: string): Promise<void> {
+    await db.transaction('rw', db.trips, async () => {
+      const device = await db.trips.get(tripId);
+      if (!device) return;
+      const notices = device.notices.filter(({ id }) => id !== noticeId);
+      await db.trips.update(tripId, { notices });
+    });
   }
 
   /**
@@ -201,9 +278,10 @@ export function createDevice(db: DeviceDb, transport: Transport, deviceId: strin
     deleted: boolean,
   ): Promise<ExpenseProblem[]> {
     return db.transaction('rw', db.trips, db.outbox, async () => {
-      const view = await read(tripId);
-      if (!view?.local) throw new Error(`Trip ${tripId} is not on this device`);
-      const problems = expenseProblems(expense, view.local);
+      const local = await readLocal(tripId);
+      // A removed Participant still counts: the Expense brings them back.
+      const participants = [...local.participants, ...local.removedParticipants];
+      const problems = expenseProblems(expense, { ...local, participants });
       if (problems.length > 0) return problems;
 
       const entries = await expenseEntries(tripId, expense.id);
@@ -211,7 +289,7 @@ export function createDevice(db: DeviceDb, transport: Transport, deviceId: strin
       if (rejected) await db.outbox.bulkDelete(entries.map(({ seq }) => seq));
       await enqueue(tripId, {
         kind: 'expense',
-        base: rejected ? rejected.change.base : resolveBase(view.local, expense.id, base),
+        base: rejected ? rejected.change.base : resolveBase(local, expense.id, base),
         expense,
         deleted,
       });
@@ -289,6 +367,13 @@ export function createDevice(db: DeviceDb, transport: Transport, deviceId: strin
     return run;
   }
 
+  /** The Trip as this device shows it, for a change made on it. */
+  async function readLocal(tripId: string): Promise<LocalTrip> {
+    const local = (await read(tripId))?.local;
+    if (!local) throw new Error(`Trip ${tripId} is not on this device`);
+    return local;
+  }
+
   async function syncOnce(tripId: string): Promise<void> {
     const device = await db.trips.get(tripId);
     if (!device) return;
@@ -299,7 +384,22 @@ export function createDevice(db: DeviceDb, transport: Transport, deviceId: strin
     const pulled = await transport.pull(tripId, device.token, device.snapshot?.version);
     if (pulled === 'invalidLink' || !pulled.trip) return;
     const snapshot = pulled.trip;
-    await db.trips.update(tripId, { snapshot });
+    await db.transaction('rw', db.trips, db.outbox, async () => {
+      await db.trips.update(tripId, { snapshot });
+      await dropRemovedClaim(tripId);
+    });
+  }
+
+  /**
+   * Drops the Claim of a Participant someone else removed, unless a change still on this
+   * device brings them back, and notes it so the device is asked "Who are you?" again.
+   */
+  async function dropRemovedClaim(tripId: string): Promise<void> {
+    const view = await read(tripId);
+    const claim = view?.deviceTrip.claim;
+    if (!claim || !view.local?.removedParticipants.some(({ id }) => id === claim.id)) return;
+    await db.trips.update(tripId, { claim: null });
+    await notify(tripId, { kind: 'claimRemoved', participant: claim });
   }
 
   /**
@@ -308,7 +408,9 @@ export function createDevice(db: DeviceDb, transport: Transport, deviceId: strin
    * again once a pull brought a newer version than it showed, so the answer shows that one.
    * Resolves to whether anything was accepted.
    */
-  async function pushRound({ id: tripId, token, snapshot }: DeviceTrip): Promise<boolean> {
+  async function pushRound({ id: tripId, token }: DeviceTrip): Promise<boolean> {
+    // Read again: a push round before this one may have taken its changes in.
+    const snapshot = (await db.trips.get(tripId))?.snapshot;
     const pulled = new Map(snapshot?.expenses.map(({ id, version }) => [id, version]));
     const outdated = (held: Held) =>
       held.status === 'conflict' && (pulled.get(held.current.id) ?? 0) > held.current.version;
@@ -324,18 +426,20 @@ export function createDevice(db: DeviceDb, transport: Transport, deviceId: strin
       changes: ready.map(({ change }) => toSyncChange(change)),
     });
 
+    const known = [...(snapshot?.participants ?? []), ...(snapshot?.removedParticipants ?? [])];
     let accepted = false;
     await db.transaction('rw', db.trips, db.outbox, async () => {
       for (const result of results) {
         const entry = ready.find(({ change }) => change.id === result.changeId);
         if (!entry) continue;
+        await notify(tripId, ...noticesFor(entry.change, result, known));
         if (result.status === 'accepted') {
           accepted = true;
           await accept(entry, result.version);
         } else if (entry.change.kind === 'expense') {
           await db.outbox.update(entry.seq, { held: result });
         } else {
-          // A Participant id another Trip took: nothing anyone could fix.
+          // Refused Trip details and Participants are dropped: the pull shows what stands.
           await db.outbox.delete(entry.seq);
         }
       }
@@ -373,9 +477,13 @@ export function createDevice(db: DeviceDb, transport: Transport, deviceId: strin
     readAll,
     createTrip,
     joinTrip,
+    forgetTrip,
     open,
     claim,
     addParticipant,
+    removeParticipant,
+    saveTripDetails,
+    dismissNotice,
     saveExpense,
     deleteExpense,
     keepMine,
@@ -393,4 +501,31 @@ function toSyncChange(change: QueuedChange): SyncChange {
   const { base, ...rest } = change;
   if (!('version' in base)) throw new Error(`Change ${change.id} is not ready to send`);
   return { ...rest, baseVersion: base.version };
+}
+
+/**
+ * What the user should hear about a change's result: removed Participants an accepted
+ * Expense brought back (named as `known` has them), or a removal or a Trip currency the
+ * server refused.
+ */
+function noticesFor(
+  change: QueuedChange,
+  result: ChangeResult,
+  known: readonly Participant[],
+): NewNotice[] {
+  if (result.status === 'accepted') {
+    if (change.kind !== 'expense') return [];
+    const expenseTitle = change.expense.title;
+    return known
+      .filter(({ id }) => result.restored?.includes(id))
+      .map((participant) => ({ kind: 'participantRestored', participant, expenseTitle }));
+  }
+  if (result.status !== 'rejected') return [];
+  if (change.kind === 'participant' && result.problems.includes('participantReferenced')) {
+    return [{ kind: 'removalRefused', participant: change.participant }];
+  }
+  if (change.kind === 'trip' && result.problems.includes('currencyChangeBlocked')) {
+    return [{ kind: 'currencyRefused', currency: change.trip.currency }];
+  }
+  return [];
 }

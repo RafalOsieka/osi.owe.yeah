@@ -1,8 +1,8 @@
 <script setup lang="ts">
 // The Trip's tabs (Expenses · Balances · Trip): the Trip header on top with the sync status,
-// the tab bar at the bottom and an optional `#action` floating just above it. Pulling a tab
-// down syncs the Trip. Only for pages under `pages/trips/[id].vue`, which provides the open
-// Trip.
+// what sync has to tell (`TripNotices`) above the tab, the tab bar at the bottom and an
+// optional `#action` floating just above it. Pulling a tab down syncs the Trip. Only for
+// pages under `pages/trips/[id].vue`, which provides the open Trip.
 const { trip, claim, unsynced, sync, askWhoYouAre } = useOpenTrip();
 const { t } = useI18n();
 const back = useBack();
@@ -82,6 +82,7 @@ const tabs = computed(() => {
     </span>
   </div>
   <main class="px-4 pt-3 pb-[calc(10rem+env(safe-area-inset-bottom))]">
+    <TripNotices />
     <slot />
   </main>
   <div

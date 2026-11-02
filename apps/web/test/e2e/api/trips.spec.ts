@@ -39,12 +39,22 @@ function newTrip(name = 'Croatia 2026', participants: Participant[] = []): TripW
   return { id: uuidv7(), name, currency: 'EUR', participants };
 }
 
-function tripChange({ name, currency }: TripWithParticipants): TripChange {
-  return { id: uuidv7(), claimId: null, deviceId, kind: 'trip', trip: { name, currency } };
+function tripChange(
+  { name, currency }: Pick<TripWithParticipants, 'name' | 'currency'>,
+  claimId: string | null = null,
+): TripChange {
+  return { id: uuidv7(), claimId, deviceId, kind: 'trip', trip: { name, currency } };
 }
 
-function participantChange(added: Participant): ParticipantChange {
-  return { id: uuidv7(), claimId: null, deviceId, kind: 'participant', participant: added };
+function participantChange(changed: Participant, removed = false): ParticipantChange {
+  return {
+    id: uuidv7(),
+    claimId: null,
+    deviceId,
+    kind: 'participant',
+    participant: changed,
+    removed,
+  };
 }
 
 function change(
@@ -91,7 +101,7 @@ async function push(tripId: string, token: string, ...changes: SyncChange[]) {
 
 /** The Trip's creation and its first Participants, as a device's outbox holds them. */
 function creation(trip: TripWithParticipants): SyncChange[] {
-  return [tripChange(trip), ...trip.participants.map(participantChange)];
+  return [tripChange(trip), ...trip.participants.map((added) => participantChange(added))];
 }
 
 /** Creates a Trip by its first push, as a device does, and returns its Trip link's token. */
@@ -454,6 +464,63 @@ describeApi('Trip API', () => {
       },
     ]);
     expect(await revisions(trip.id, token, expense.id)).toHaveLength(3);
+  });
+
+  it('keeps the last write of the Trip details, with who changed them and when', async () => {
+    const { trip, token, kasia, ania } = await tripWithKasiaAndAnia();
+
+    await push(trip.id, token, tripChange({ name: 'Chorwacja', currency: 'PLN' }, ania.id));
+    await push(trip.id, token, tripChange({ name: 'Croatia', currency: 'PLN' }, kasia.id));
+
+    expect(await pulled(trip.id, token)).toMatchObject({
+      name: 'Croatia',
+      currency: 'PLN',
+      edited: { by: kasia.id, at: expect.stringMatching(/^\d{4}-\d{2}-\d{2}T[\d:.]+Z$/) },
+    });
+  });
+
+  it('refuses a new Trip currency while an Expense is in another one', async () => {
+    const { trip, token, kasia } = await tripWithKasiaAndAnia();
+    // Deleted, it still blocks: it can be restored.
+    const expense = plainExpense(kasia);
+    await push(trip.id, token, change(expense), deletion(expense, 1));
+    const toPln = tripChange({ name: 'Croatia', currency: 'PLN' });
+
+    expect(await push(trip.id, token, toPln)).toEqual<ChangeResult[]>([
+      { changeId: toPln.id, status: 'rejected', problems: ['currencyChangeBlocked'] },
+    ]);
+    expect(await pulled(trip.id, token)).toMatchObject({ name: trip.name, currency: 'EUR' });
+  });
+
+  it('removes a Participant softly, but refuses while an Expense references them', async () => {
+    const { trip, token, kasia, ania } = await tripWithKasiaAndAnia();
+    await push(trip.id, token, change(plainExpense(kasia)));
+    const removeAnia = participantChange(ania, true);
+    const removeKasia = participantChange(kasia, true);
+
+    expect(await push(trip.id, token, removeAnia, removeKasia)).toEqual<ChangeResult[]>([
+      { changeId: removeAnia.id, status: 'accepted', version: null },
+      { changeId: removeKasia.id, status: 'rejected', problems: ['participantReferenced'] },
+    ]);
+    expect(await pulled(trip.id, token)).toMatchObject({
+      participants: [kasia],
+      removedParticipants: [ania],
+    });
+  });
+
+  it('brings back a removed Participant when an accepted Expense references them, saying so', async () => {
+    const { trip, token, kasia, ania } = await tripWithKasiaAndAnia();
+    await push(trip.id, token, participantChange(ania, true));
+    // Made offline before Ania was removed.
+    const offline = change(plainExpense(kasia, [kasia, ania]));
+
+    expect(await push(trip.id, token, offline)).toEqual<ChangeResult[]>([
+      { changeId: offline.id, status: 'accepted', version: 1, restored: [ania.id] },
+    ]);
+    expect(await pulled(trip.id, token)).toMatchObject({
+      participants: [kasia, ania],
+      removedParticipants: [],
+    });
   });
 
   it('refuses a push with a malformed Expense', async () => {

@@ -25,6 +25,7 @@ async function tripWithExpenses(
       id: uuidv7(),
       kind: 'participant' as const,
       participant,
+      removed: false,
     })),
     ...expenses.map(({ title, amount }, index) => ({
       ...meta,
@@ -353,7 +354,7 @@ test('a Receipt entered offline at the till, Line item by Line item, reaches a s
     await adding.getByLabel('New Line item unit price').fill(price);
     await adding.getByLabel('New Line item quantity').fill(quantity);
     await adding.getByLabel('New Line item name').fill(name);
-    await adding.getByRole('button', { name: 'Add' }).click();
+    await adding.getByRole('button', { name: 'Add', exact: true }).click();
   };
   const lines = page.getByRole('region', { name: 'Line items' }).getByRole('listitem');
   const line = (name: string) => lines.filter({ hasText: name }).first();
@@ -1013,4 +1014,82 @@ test('delete an Expense, bring it back from Recently deleted, and restore an old
 
   await expect(page.getByRole('heading', { name: 'Ferry' })).toBeVisible();
   await expect(main).toContainText('€30.00');
+});
+
+test('forgetting a Trip is blocked while its changes have not synced, unless you lose them', async ({
+  page,
+  context,
+}) => {
+  // Opened once online, the app installs its service worker and then works offline.
+  await page.goto('/');
+  await page.waitForFunction(() => navigator.serviceWorker.controller !== null);
+  await context.setOffline(true);
+  await createTrip(page, 'Hel 2026', 'Kasia', ['Ania']);
+  await page.getByRole('link', { name: 'Trip', exact: true }).click();
+
+  // The Trip, Kasia and Ania have not reached the server yet.
+  await page.getByRole('button', { name: 'Forget this Trip' }).click();
+  const dialog = page.getByRole('dialog', { name: 'Forget this Trip' });
+  await expect(dialog).toContainText("3 changes on this device haven't synced yet.");
+  await expect(dialog).toContainText("you'll need its Trip link");
+  await expect(dialog.getByRole('button', { name: 'Forget', exact: true })).toHaveCount(0);
+  await expect(
+    dialog.getByRole('button', { name: 'Forget anyway (lose 3 changes)' }),
+  ).toBeVisible();
+  await dialog.getByRole('button', { name: 'Cancel' }).click();
+
+  // Once synced, it can be forgotten; the Trip stays on the server for the others.
+  await context.setOffline(false);
+  await expect(page.getByRole('button', { name: 'Everything is synced.' })).toBeVisible();
+  await page.getByRole('button', { name: 'Forget this Trip' }).click();
+  await dialog.getByRole('button', { name: 'Forget', exact: true }).click();
+
+  await expect(page).toHaveURL('/');
+  await expect(page.getByRole('link', { name: /Hel 2026/ })).toHaveCount(0);
+});
+
+test('a Participant on an Expense is not removed, one on none is; and the Trip is renamed', async ({
+  page,
+  request,
+}) => {
+  await page.goto(
+    await tripWithExpenses(
+      request,
+      'Rügen 2026',
+      ['Kasia', 'Ania'],
+      [{ title: 'Ferry', amount: 3000 }],
+    ),
+  );
+  await page.getByRole('dialog').getByRole('button', { name: 'Kasia' }).click();
+  await page.getByRole('link', { name: 'Trip', exact: true }).click();
+  const participants = page.getByRole('region', { name: 'Participants' });
+
+  await participants.getByRole('button', { name: 'Ania' }).click();
+  const ania = page.getByRole('dialog', { name: 'Ania' });
+  await expect(ania).toContainText("Ania is on 1 Expense, so they can't be removed.");
+  await expect(ania.getByRole('button', { name: 'Remove from Trip' })).toHaveCount(0);
+  await ania.getByRole('button', { name: 'Cancel' }).click();
+
+  await page.getByRole('button', { name: 'Add Participant' }).click();
+  await page.getByRole('dialog').getByLabel('Name').fill('Ola');
+  await page.getByRole('dialog').getByRole('button', { name: 'Add' }).click();
+  await participants.getByRole('button', { name: 'Ola' }).click();
+  await page
+    .getByRole('dialog', { name: 'Ola' })
+    .getByRole('button', { name: 'Remove from Trip' })
+    .click();
+  await expect(participants.getByRole('listitem')).toHaveCount(2);
+  await expect(participants.getByRole('button', { name: 'Ola' })).toHaveCount(0);
+
+  // The Trip currency waits for the Ferry to be convertible; the name changes, last write wins.
+  await page.getByRole('link', { name: /Name and Trip currency/ }).click();
+  await expect(page.getByRole('main')).toContainText("The Trip currency can't change");
+  await page.getByLabel('Name').fill('Rügen 2027');
+  await page.getByRole('button', { name: 'Save' }).click();
+  await expect(page.getByRole('link', { name: /Name and Trip currency/ })).toContainText(
+    'Rügen 2027 · EUR',
+  );
+  await expect(page.getByRole('banner')).toContainText('Rügen 2027');
+  await page.getByRole('link', { name: /Name and Trip currency/ }).click();
+  await expect(page.getByRole('main')).toContainText('Last changed by Kasia');
 });

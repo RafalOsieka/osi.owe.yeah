@@ -158,6 +158,29 @@ export const expenseProblemSchema = z.enum([
 
 export type ExpenseProblem = z.infer<typeof expenseProblemSchema>;
 
+/** Who an Expense is for besides its Main payer: its split, its Contributions or its recipient. */
+function tickedParticipantIds(expense: Expense): string[] {
+  return isRepayment(expense)
+    ? [expense.recipientId]
+    : [
+        ...expense.lineItems.flatMap(({ split }) => splitParticipantIds(split)),
+        ...(expense.contributions ?? []).map(({ participantId }) => participantId),
+      ];
+}
+
+/** Every Participant an Expense references: its Main payer and whoever it is for. */
+export function referencedParticipantIds(expense: Expense): Set<string> {
+  return new Set([expense.mainPayerId, ...tickedParticipantIds(expense)]);
+}
+
+/**
+ * How many of `expenses` reference a Participant, e.g. "Ania is on 4 Expenses": while any
+ * does, the Participant cannot be removed, so money never loses its owner.
+ */
+export function expensesReferencing(expenses: readonly Expense[], participantId: string): number {
+  return expenses.filter((expense) => referencedParticipantIds(expense).has(participantId)).length;
+}
+
 /**
  * The rules an Expense must follow within its Trip; empty when it may be saved. The device
  * checks them before pushing and the server again before accepting. A Repayment's recipient
@@ -169,12 +192,7 @@ export type ExpenseProblem = z.infer<typeof expenseProblemSchema>;
  */
 export function expenseProblems(expense: Expense, trip: TripWithParticipants): ExpenseProblem[] {
   const known = new Set(trip.participants.map(({ id }) => id));
-  const ticked = isRepayment(expense)
-    ? [expense.recipientId]
-    : [
-        ...expense.lineItems.flatMap(({ split }) => splitParticipantIds(split)),
-        ...(expense.contributions ?? []).map(({ participantId }) => participantId),
-      ];
+  const ticked = tickedParticipantIds(expense);
   const problems: ExpenseProblem[] = [];
 
   if (!known.has(expense.mainPayerId)) problems.push('unknownMainPayer');

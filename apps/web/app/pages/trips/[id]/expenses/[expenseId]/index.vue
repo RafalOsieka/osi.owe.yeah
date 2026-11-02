@@ -10,7 +10,7 @@ import { toExpense } from '~/sync/local-trip';
 // Expense go (deleted, or a discarded new one), so does the page.
 definePageMeta({ viewTransition: { toTypes: ['forward'], fromTypes: ['back'] } });
 
-const { trip, discardChanges, deleteExpense, saveExpense } = useOpenTrip();
+const { trip, everyone, discardChanges, deleteExpense, saveExpense } = useOpenTrip();
 const { t, locale } = useI18n();
 const toast = useToast();
 const route = useRoute();
@@ -29,7 +29,7 @@ watch(expense, (now, before) => {
 const lastEdited = computed(() => {
   const edited = expense.value?.edited;
   if (!edited) return null;
-  const name = trip.value.participants.find(({ id }) => id === edited.by)?.name;
+  const name = everyone.value.find(({ id }) => id === edited.by)?.name;
   const when = edited.at
     ? formatTimeAgo(edited.at, new Date(), locale.value)
     : t('history.notSyncedYet');

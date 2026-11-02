@@ -3,10 +3,12 @@ import type { Participant } from '@osi/owe-yeah-domain';
 
 // The "Who are you?" sheet: the device picks one of the Trip's Participants as its Claim,
 // or uses "Add me" to create a new Participant and Claim it in one step. Closing it ("Just
-// looking", or "Cancel" with a Claim) changes nothing.
+// looking", or "Cancel" with a Claim) changes nothing. Asked again because someone removed
+// the Participant this device was, it says so.
 defineProps<{
   participants: readonly Participant[];
   current: Participant | null;
+  removed?: Participant | null;
 }>();
 const emit = defineEmits<{
   claim: [participant: Participant];
@@ -16,7 +18,11 @@ const open = defineModel<boolean>('open', { required: true });
 </script>
 
 <template>
-  <UDrawer v-model:open="open" :title="$t('claim.title')" :description="$t('claim.help')">
+  <UDrawer
+    v-model:open="open"
+    :title="$t('claim.title')"
+    :description="removed ? $t('claim.removed', { name: removed.name }) : $t('claim.help')"
+  >
     <template #body>
       <div class="space-y-4">
         <ul v-if="participants.length > 0" class="grid grid-cols-2 gap-2">

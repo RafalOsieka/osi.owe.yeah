@@ -1,5 +1,5 @@
 import { sql } from 'drizzle-orm';
-import { index, pgTable, text, timestamp, uuid } from 'drizzle-orm/pg-core';
+import { boolean, index, pgTable, text, timestamp, uuid } from 'drizzle-orm/pg-core';
 import { trips } from './trips';
 
 /**
@@ -17,6 +17,9 @@ export const participants = pgTable(
       .notNull()
       .references(() => trips.id, { onDelete: 'cascade' }),
     name: text().notNull(),
+    // Removed softly: kept, so older versions and deleted Expenses still name them, and
+    // brought back when an accepted Expense references them again.
+    removed: boolean().notNull().default(false),
     createdAt: timestamp({ withTimezone: true }).notNull().defaultNow(),
     // Bumped by Drizzle on every update made through the schema.
     updatedAt: timestamp({ withTimezone: true })

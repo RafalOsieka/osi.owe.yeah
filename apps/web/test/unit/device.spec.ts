@@ -21,6 +21,7 @@ const deviceId = '0b6e8f3a-2c1d-4e5f-8a9b-1c2d3e4f5a6b';
 const token = 'x'.repeat(43);
 const kasia = { id: uuidv7(), name: 'Kasia' };
 const ania = { id: uuidv7(), name: 'Ania' };
+const ola = { id: uuidv7(), name: 'Ola' };
 
 /** Accepts every change, an Expense at its base version + 1. */
 const acceptAll = (change: SyncChange): ChangeResult => ({
@@ -117,6 +118,9 @@ const trip: TripWithParticipants = {
   currency: 'EUR',
   participants: [kasia, ania],
 };
+
+/** The Trip as the server pulls it, without its version and Expenses. */
+const pulledTrip = { ...trip, edited: null, removedParticipants: [] };
 
 /** `expense` as the server has it at `version`, live. */
 function stored(expense: Expense, version: number): StoredExpense {
@@ -242,7 +246,11 @@ describe('the device', () => {
 
   it('keeps its own changes on top of every pulled Trip', async () => {
     const { server, device, lidl } = await inConflict();
-    server.snapshot = { ...trip, version: 9, expenses: [stored({ ...lidl, title: 'Spar' }, 2)] };
+    server.snapshot = {
+      ...pulledTrip,
+      version: 9,
+      expenses: [stored({ ...lidl, title: 'Spar' }, 2)],
+    };
 
     await device.sync(trip.id);
 
@@ -307,7 +315,7 @@ describe('the device', () => {
   it('asks again about a Conflict once a pull brings a newer version of theirs', async () => {
     const { server, device, lidl } = await inConflict();
     const newer = stored({ ...lidl, title: 'Spar Poreč' }, 3);
-    server.snapshot = { ...trip, version: 9, expenses: [newer] };
+    server.snapshot = { ...pulledTrip, version: 9, expenses: [newer] };
     server.answer = (change) => ({
       changeId: change.id,
       status: 'conflict',
@@ -375,5 +383,114 @@ describe('the device', () => {
 
     expect(problems).toEqual(['unknownMainPayer']);
     expect((await device.read(trip.id))?.local?.expenses).toEqual([]);
+  });
+
+  it('forgets a Trip with the changes it has not synced', async () => {
+    const { server, device } = setUp();
+    server.offline = true;
+    await device.createTrip(trip, token);
+
+    await device.forgetTrip(trip.id);
+    server.offline = false;
+    await device.sync(trip.id);
+
+    expect(await device.readAll()).toEqual([]);
+    expect(server.pushes).toEqual([]);
+  });
+
+  it('removes a Participant softly, refusing while an Expense references them', async () => {
+    const { server, device } = setUp();
+    await device.createTrip({ ...trip, participants: [kasia, ania, ola] }, token);
+    await device.saveExpense(trip.id, plainExpense('Lidl Rovinj'), { version: null });
+
+    expect(await device.removeParticipant(trip.id, ania)).toBe(1);
+    expect(await device.removeParticipant(trip.id, ola)).toBe(0);
+    await device.sync(trip.id);
+
+    expect(server.sent().at(-1)).toMatchObject({ participant: ola, removed: true });
+    expect((await device.read(trip.id))?.local).toMatchObject({
+      participants: [kasia, ania],
+      removedParticipants: [ola],
+    });
+  });
+
+  it('saves Trip details, refusing a new Trip currency while an Expense is in another', async () => {
+    const { device } = setUp();
+    await device.createTrip(trip, token);
+
+    expect(await device.saveTripDetails(trip.id, { name: 'Mazury', currency: 'PLN' })).toBe(true);
+    const ferry: Expense = { ...plainExpense('Ferry'), currency: 'PLN' };
+    await device.saveExpense(trip.id, ferry, { version: null });
+
+    expect(await device.saveTripDetails(trip.id, { name: 'Mazury', currency: 'EUR' })).toBe(false);
+    expect((await device.read(trip.id))?.local).toMatchObject({ name: 'Mazury', currency: 'PLN' });
+  });
+
+  it('notes the removed Participants the server brought back for its Expense', async () => {
+    const { server, device } = setUp();
+    await device.createTrip(trip, token);
+    await device.sync(trip.id);
+    server.answer = (change) =>
+      change.kind === 'expense'
+        ? { changeId: change.id, status: 'accepted', version: 1, restored: [ania.id] }
+        : acceptAll(change);
+
+    await device.saveExpense(trip.id, plainExpense('Lidl Rovinj'), { version: null });
+    await device.sync(trip.id);
+
+    expect((await device.read(trip.id))?.deviceTrip.notices).toEqual([
+      {
+        id: expect.any(String),
+        kind: 'participantRestored',
+        participant: ania,
+        expenseTitle: 'Lidl Rovinj',
+      },
+    ]);
+  });
+
+  it('notes a removal or a Trip currency the server refused, and dismisses a note', async () => {
+    const { server, device } = setUp();
+    await device.createTrip(trip, token);
+    await device.sync(trip.id);
+    server.answer = (change) => ({
+      changeId: change.id,
+      status: 'rejected',
+      problems: [change.kind === 'trip' ? 'currencyChangeBlocked' : 'participantReferenced'],
+    });
+
+    await device.removeParticipant(trip.id, ania);
+    await device.saveTripDetails(trip.id, { name: trip.name, currency: 'PLN' });
+    await device.sync(trip.id);
+
+    const view = await device.read(trip.id);
+    expect(view?.unsynced).toBe(0);
+    expect(view?.deviceTrip.notices).toMatchObject([
+      { kind: 'removalRefused', participant: ania },
+      { kind: 'currencyRefused', currency: 'PLN' },
+    ]);
+
+    await device.dismissNotice(trip.id, view!.deviceTrip.notices[0]!.id);
+    expect((await device.read(trip.id))?.deviceTrip.notices).toMatchObject([
+      { kind: 'currencyRefused' },
+    ]);
+  });
+
+  it('drops its Claim once a pull shows that Participant removed, noting it', async () => {
+    const { server, device } = setUp();
+    await device.createTrip(trip, token);
+    server.snapshot = {
+      ...pulledTrip,
+      version: 9,
+      participants: [ania],
+      removedParticipants: [kasia],
+      expenses: [],
+    };
+
+    await device.sync(trip.id);
+
+    expect((await device.read(trip.id))?.deviceTrip).toMatchObject({
+      claim: null,
+      notices: [{ kind: 'claimRemoved', participant: kasia }],
+    });
   });
 });

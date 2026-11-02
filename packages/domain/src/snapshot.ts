@@ -1,6 +1,6 @@
 import { z } from 'zod';
 import { expenseSchema } from './expense.ts';
-import { participantIdSchema } from './participant.ts';
+import { participantIdSchema, participantSchema } from './participant.ts';
 import { tripWithParticipantsSchema } from './trip.ts';
 
 /** The server's version of an Expense: starts at 1 and goes up with every accepted change. */
@@ -49,11 +49,15 @@ export type Revision = z.infer<typeof revisionSchema>;
 export const tripVersionSchema = z.number().int().nonnegative();
 
 /**
- * The whole Trip as the pull returns it: details, Participants and Expenses, at the Trip
- * version they were read at.
+ * The whole Trip as the pull returns it: details, who last changed them and when (`null`
+ * where not known), Participants and Expenses, at the Trip version they were read at.
+ * Removed Participants are kept apart: no new Expense picks them, but older versions and
+ * deleted Expenses still name them.
  */
 export const tripSnapshotSchema = tripWithParticipantsSchema.extend({
   version: tripVersionSchema,
+  edited: editedSchema.nullable(),
+  removedParticipants: z.array(participantSchema),
   expenses: z.array(storedExpenseSchema),
 });
 
