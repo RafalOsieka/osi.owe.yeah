@@ -1,5 +1,6 @@
 import {
   fromMinor,
+  isDepositRefund,
   parseMoney,
   parsePercent,
   roundMoney,
@@ -20,7 +21,10 @@ export type DraftSplit =
  */
 export type DraftDiscount = { kind: Discount['kind']; value: string };
 
-/** A Line item as the Till list edits it, with its price as typed. */
+/**
+ * A Line item as the Till list edits it, with its price as typed. A Deposit refund keeps its
+ * amount in `price`, typed without a minus, and has no quantity, discount or Deposit.
+ */
 export type DraftLineItem = {
   /** Keeps the line's place in the list while it is edited and moved; never saved. */
   key: string;
@@ -28,18 +32,24 @@ export type DraftLineItem = {
   price: string;
   quantity: number;
   discount: DraftDiscount;
+  /** The Deposit per unit as typed; empty for none. */
+  deposit: string;
+  /** A Deposit refund: money received back, saved as a negative Line item. */
+  refund: boolean;
   split: DraftSplit;
 };
 
 /** No discount typed yet; it starts as an amount. */
 export const noDiscount = (): DraftDiscount => ({ kind: 'amount', value: '' });
 
-/** A new draft Line item; without a Line discount unless one is given. */
+/**
+ * A new draft Line item; goods without a Line discount or a Deposit unless they are given.
+ */
 export function draftLineItem(
   fields: Pick<DraftLineItem, 'name' | 'price' | 'quantity' | 'split'> &
-    Partial<Pick<DraftLineItem, 'discount'>>,
+    Partial<Pick<DraftLineItem, 'discount' | 'deposit' | 'refund'>>,
 ): DraftLineItem {
-  return { key: uuidv7(), discount: noDiscount(), ...fields };
+  return { key: uuidv7(), discount: noDiscount(), deposit: '', refund: false, ...fields };
 }
 
 const typed = (minor: number, currency: string) =>
@@ -70,6 +80,14 @@ export function discountFromDraft(
   return basisPoints === null ? null : { kind: 'percent', basisPoints };
 }
 
+/**
+ * The Deposit per unit a draft makes, in minor units: `undefined` when none is typed, `null`
+ * while it cannot be read (`parseMoney`).
+ */
+export function depositFromDraft(deposit: string, currency: string): number | undefined | null {
+  return deposit.trim() === '' ? undefined : parseMoney(deposit, currency);
+}
+
 /** A saved Line item as the Till list edits it. */
 export function draftFromLineItem(item: LineItem, currency: string): DraftLineItem {
   const { split } = item;
@@ -77,6 +95,8 @@ export function draftFromLineItem(item: LineItem, currency: string): DraftLineIt
     name: item.name,
     price: typed(Math.abs(item.unitPrice), currency),
     quantity: item.quantity,
+    refund: isDepositRefund(item),
+    deposit: item.depositPerUnit ? typed(item.depositPerUnit, currency) : '',
     split:
       split.mode === 'amounts'
         ? {
@@ -92,22 +112,38 @@ export function draftFromLineItem(item: LineItem, currency: string): DraftLineIt
 }
 
 /**
- * The Line item a draft makes, or `null` while its price, its Line discount or one of its
- * Amounts cannot be read. Amounts left empty are nobody's yet. Built afresh, so it holds none
- * of the form's reactive proxies, which the device store cannot keep.
+ * A draft's Line item without its split, or `null` while its price, its Line discount or its
+ * Deposit cannot be read. A Deposit refund is one negative unit, whatever else the draft holds.
+ */
+function pricedFromDraft(draft: DraftLineItem, currency: string): Omit<LineItem, 'split'> | null {
+  const price = parseMoney(draft.price, currency);
+  if (price === null) return null;
+  const name = draft.name.trim();
+  if (draft.refund) return { name, unitPrice: -price, quantity: 1 };
+
+  const discount = discountFromDraft(draft.discount, currency);
+  const depositPerUnit = depositFromDraft(draft.deposit, currency);
+  if (discount === null || depositPerUnit === null) return null;
+  return {
+    name,
+    unitPrice: price,
+    quantity: draft.quantity,
+    // Left out when there is none, as the device store and the server keep them.
+    ...(discount && { discount }),
+    ...(depositPerUnit && { depositPerUnit }),
+  };
+}
+
+/**
+ * The Line item a draft makes, or `null` while its price, its Line discount, its Deposit or
+ * one of its Amounts cannot be read (`pricedFromDraft`). Amounts left empty are nobody's yet.
+ * Built afresh, so it holds none of the form's reactive proxies, which the device store
+ * cannot keep.
  */
 export function lineItemFromDraft(draft: DraftLineItem, currency: string): LineItem | null {
-  const unitPrice = parseMoney(draft.price, currency);
-  const discount = discountFromDraft(draft.discount, currency);
-  if (unitPrice === null || discount === null) return null;
+  const line = pricedFromDraft(draft, currency);
+  if (!line) return null;
   const { split } = draft;
-  const line = {
-    name: draft.name.trim(),
-    unitPrice,
-    quantity: draft.quantity,
-    // Left out when there is none, as the device store and the server keep it.
-    ...(discount && { discount }),
-  };
   if (split.mode === 'even') {
     return { ...line, split: { mode: 'even', participantIds: [...split.participantIds] } };
   }

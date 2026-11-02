@@ -33,12 +33,13 @@ import {
 // whether it is money received (Income, saved with a negative amount so nobody types a minus),
 // title, Main payer (who received it, for Income), who it is for, and when. "Itemise as a
 // Receipt" grows the one Line item into the Till list on the same page: the amount becomes the
-// computed Receipt total, each Line item has its own split and Line discount, and a Receipt
-// discount below "Paid by" comes off them all. A Receipt may be saved with
-// value not assigned yet, which counts as the Main payer's until it is. Saving keeps the
-// Expense's full new state on the device, to sync later, and returns to `parent`'s screen, or
-// wherever the form was opened from. An Expense that breaks a Trip rule is not saved; why
-// shows above Save.
+// computed Receipt total, each Line item has its own split, Line discount and Deposit, Deposit
+// refunds come off it, and a Receipt discount below "Paid by" comes off the goods. The
+// Deposits total shows under the Receipt total, to check against the Deposits printed on the
+// paper Receipt, and the total may go negative. A Receipt may be saved with value not
+// assigned yet, which counts as the Main payer's until it is. Saving keeps the Expense's full
+// new state on the device, to sync later, and returns to `parent`'s screen, or wherever the
+// form was opened from. An Expense that breaks a Trip rule is not saved; why shows above Save.
 const { expense = null, parent } = defineProps<{
   expense?: Extract<LocalExpense, SplitExpense> | null;
   /** The screen above the form, for back when it was opened from a link. */
@@ -148,7 +149,8 @@ function itemise(): void {
 
 // The Receipt as typed so far: its Line items (`null` where one can't be read yet), its
 // Receipt discount (`null` while it can't be read), and what the readable ones come to: the
-// computed total, what the discount takes off, and the value not assigned to anyone yet.
+// computed total, what the discount takes off, the Deposits, and the value not assigned to
+// anyone yet.
 const receipt = computed(() => {
   if (!state.lineItems) return null;
   const { currency } = trip.value;
@@ -166,6 +168,7 @@ const receipt = computed(() => {
     discount,
     total: shares.total,
     off: shares.discountOff,
+    deposits: shares.deposits,
     unassigned: shares.unassigned,
     discountExceeds: receiptDiscountExceeds(readable),
   };
@@ -274,6 +277,13 @@ async function submit(): Promise<void> {
           {{
             $t('receipt.receiptDiscountFact', {
               discount: formatDiscount(receipt.discount, receipt.off, trip.currency, locale),
+            })
+          }}
+        </p>
+        <p v-if="receipt.deposits.numerator !== 0n" class="mt-1 text-sm text-muted">
+          {{
+            $t('receipt.depositsFact', {
+              amount: formatMoney(receipt.deposits, trip.currency, locale),
             })
           }}
         </p>

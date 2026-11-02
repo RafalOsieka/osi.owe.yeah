@@ -2,6 +2,7 @@
 import {
   expenseShares,
   fromMinor,
+  isDepositRefund,
   isReceipt,
   isRepayment,
   type Discount,
@@ -12,8 +13,9 @@ import {
 // An Expense in full, as its detail page and an old Revision show it: the full title, total,
 // when it was paid in its own zone, the Main payer (who received it, for Income), and each
 // Participant's share, the claimed Participant's in bold. A Repayment shows who paid whom. A
-// Receipt also lists its Line items, with how each is split, its Line discount, and what is
-// not assigned yet, and then its Receipt discount.
+// Receipt also lists its Line items, with how each is split, its Line discount, its Deposit,
+// and what is not assigned yet, Deposit refunds as negative lines, and then its Receipt
+// discount and its Deposits total.
 const { expense } = defineProps<{ expense: Expense }>();
 
 const { trip, claim } = useOpenTrip();
@@ -23,7 +25,7 @@ const splitText = useSplitText();
 const money = (amount: Rational) => formatMoney(amount, expense.currency, locale.value);
 
 const details = computed(() => {
-  const { total, discountOff, shares, unassigned, lineItems } = expenseShares(expense);
+  const { total, discountOff, deposits, shares, unassigned, lineItems } = expenseShares(expense);
   const receipt = isReceipt(expense) && !isRepayment(expense);
   const discountText = (entered: Discount | undefined, off: Rational) =>
     entered && formatDiscount(entered, off, expense.currency, locale.value);
@@ -31,10 +33,15 @@ const details = computed(() => {
     total,
     unassigned: unassigned.numerator === 0n ? null : unassigned,
     discount: receipt ? discountText(expense.discount, discountOff) : undefined,
+    deposits: deposits.numerator === 0n ? null : deposits,
     lineItems: receipt
       ? expense.lineItems.map((item, index) => ({
           discountText: discountText(item.discount, lineItems[index]!.discountOff),
-          name: item.name || t('receipt.unnamed', { position: index + 1 }),
+          name:
+            item.name ||
+            (isDepositRefund(item)
+              ? t('receipt.depositRefund')
+              : t('receipt.unnamed', { position: index + 1 })),
           quantity: item.quantity,
           unitPrice: formatMoney(
             fromMinor(item.unitPrice, expense.currency),
@@ -104,6 +111,9 @@ const details = computed(() => {
             <span v-if="line.discountText" class="block text-xs text-muted">
               {{ $t('receipt.lineDiscountFact', { discount: line.discountText }) }}
             </span>
+            <span v-if="line.deposit.numerator !== 0n" class="block text-xs text-muted">
+              {{ $t('receipt.depositFact', { deposit: money(line.deposit) }) }}
+            </span>
             <span v-if="line.unassigned.numerator !== 0n" class="block text-xs text-warning">
               {{ $t('receipt.notAssigned', { amount: money(line.unassigned) }) }}
             </span>
@@ -117,6 +127,13 @@ const details = computed(() => {
       >
         <span class="min-w-0 flex-1">{{ $t('receipt.receiptDiscount') }}</span>
         <span class="shrink-0 tabular-nums">{{ details.discount }}</span>
+      </p>
+      <p
+        v-if="details.deposits"
+        class="flex items-start gap-2 border-t border-default py-1.5 text-sm"
+      >
+        <span class="min-w-0 flex-1">{{ $t('receipt.deposits') }}</span>
+        <span class="shrink-0 tabular-nums">{{ money(details.deposits) }}</span>
       </p>
     </section>
 
