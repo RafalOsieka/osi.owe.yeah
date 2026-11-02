@@ -5,6 +5,7 @@ import type {
   PullResponse,
   PushRequest,
   PushResponse,
+  RateEntry,
   Revision,
   StoredExpense,
   SyncChange,
@@ -40,6 +41,7 @@ class FakeServer implements Transport {
   offline = false;
   loseResponses = 0;
   snapshot: TripSnapshot | null = null;
+  rates: RateEntry[] = [];
   answer = acceptAll;
 
   async push(_tripId: string, _token: string, request: PushRequest): Promise<PushResponse> {
@@ -53,7 +55,7 @@ class FakeServer implements Transport {
   async pull(_tripId: string, _token: string, since?: number): Promise<PullResponse> {
     if (this.offline) throw new Error('offline');
     const { snapshot } = this;
-    return { trip: snapshot && snapshot.version !== since ? snapshot : null };
+    return { trip: snapshot && snapshot.version !== since ? snapshot : null, rates: this.rates };
   }
 
   async revisions(): Promise<Revision[]> {
@@ -414,16 +416,68 @@ describe('the device', () => {
     });
   });
 
-  it('saves Trip details, refusing a new Trip currency while an Expense is in another', async () => {
+  it('saves a new Trip currency while Expenses are in another, rewriting none', async () => {
+    const { server, device } = setUp();
+    await device.createTrip(trip, token);
+    await device.saveExpense(trip.id, plainExpense('Ferry'), { version: null });
+
+    await device.saveTripDetails(trip.id, { name: 'Mazury', currency: 'PLN' });
+    await device.sync(trip.id);
+
+    expect(server.sent().filter(({ kind }) => kind === 'expense')).toHaveLength(1);
+    expect((await device.read(trip.id))?.local).toMatchObject({
+      name: 'Mazury',
+      currency: 'PLN',
+      expenses: [{ title: 'Ferry', currency: 'EUR' }],
+    });
+  });
+
+  it('caches the rate entries every pull brings, the newest of each, also while the Trip is unchanged', async () => {
+    const { server, device } = setUp();
+    server.snapshot = { ...pulledTrip, version: 1, expenses: [] };
+    await device.joinTrip(trip.id, token);
+    const provisional: RateEntry = {
+      date: '2026-07-14',
+      from: 'HUF',
+      to: 'EUR',
+      rate: '0.0025',
+      fixed: false,
+    };
+    server.rates = [provisional];
+    await device.sync(trip.id);
+    expect((await device.read(trip.id))?.local?.rates).toEqual([provisional]);
+
+    const fixed: RateEntry = { ...provisional, rate: '0.00251', fixed: true };
+    server.rates = [fixed];
+    await device.sync(trip.id);
+    expect((await device.read(trip.id))?.local?.rates).toEqual([fixed]);
+
+    // One no Expense needs any more stays as the latest cached rate, e.g. for a new Expense.
+    const later: RateEntry = { ...provisional, date: '2026-07-15', from: 'CZK', rate: '0.04' };
+    server.rates = [later];
+    await device.sync(trip.id);
+    expect((await device.read(trip.id))?.local?.rates).toEqual([fixed, later]);
+
+    // Offline, the rates it has stay.
+    server.offline = true;
+    await device.sync(trip.id);
+    expect((await device.read(trip.id))?.local?.rates).toEqual([fixed, later]);
+  });
+
+  it('remembers the currency of the Expense it saved last in the Trip', async () => {
     const { device } = setUp();
     await device.createTrip(trip, token);
+    expect((await device.read(trip.id))?.deviceTrip.lastCurrency).toBe(null);
 
-    expect(await device.saveTripDetails(trip.id, { name: 'Mazury', currency: 'PLN' })).toBe(true);
-    const ferry: Expense = { ...plainExpense('Ferry'), currency: 'PLN' };
-    await device.saveExpense(trip.id, ferry, { version: null });
+    await device.saveExpense(
+      trip.id,
+      { ...plainExpense('Langos'), currency: 'HUF' },
+      {
+        version: null,
+      },
+    );
 
-    expect(await device.saveTripDetails(trip.id, { name: 'Mazury', currency: 'EUR' })).toBe(false);
-    expect((await device.read(trip.id))?.local).toMatchObject({ name: 'Mazury', currency: 'PLN' });
+    expect((await device.read(trip.id))?.deviceTrip.lastCurrency).toBe('HUF');
   });
 
   it('notes the removed Participants the server brought back for its Expense', async () => {
@@ -448,31 +502,25 @@ describe('the device', () => {
     ]);
   });
 
-  it('notes a removal or a Trip currency the server refused, and dismisses a note', async () => {
+  it('notes a removal the server refused, and dismisses the note', async () => {
     const { server, device } = setUp();
     await device.createTrip(trip, token);
     await device.sync(trip.id);
     server.answer = (change) => ({
       changeId: change.id,
       status: 'rejected',
-      problems: [change.kind === 'trip' ? 'currencyChangeBlocked' : 'participantReferenced'],
+      problems: ['participantReferenced'],
     });
 
     await device.removeParticipant(trip.id, ania);
-    await device.saveTripDetails(trip.id, { name: trip.name, currency: 'PLN' });
     await device.sync(trip.id);
 
     const view = await device.read(trip.id);
     expect(view?.unsynced).toBe(0);
-    expect(view?.deviceTrip.notices).toMatchObject([
-      { kind: 'removalRefused', participant: ania },
-      { kind: 'currencyRefused', currency: 'PLN' },
-    ]);
+    expect(view?.deviceTrip.notices).toMatchObject([{ kind: 'removalRefused', participant: ania }]);
 
     await device.dismissNotice(trip.id, view!.deviceTrip.notices[0]!.id);
-    expect((await device.read(trip.id))?.deviceTrip.notices).toMatchObject([
-      { kind: 'currencyRefused' },
-    ]);
+    expect((await device.read(trip.id))?.deviceTrip.notices).toEqual([]);
   });
 
   it('drops its Claim once a pull shows that Participant removed, noting it', async () => {

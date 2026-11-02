@@ -1,6 +1,7 @@
 import { z } from 'zod';
 import { expenseProblemSchema, expenseSchema } from './expense.ts';
 import { participantIdSchema, participantSchema } from './participant.ts';
+import { rateEntrySchema } from './rates.ts';
 import {
   expenseVersionSchema,
   revisionSchema,
@@ -23,8 +24,8 @@ const changeMeta = {
 /**
  * A Trip's details, last-write-wins (ADR 0002). Pushed to a Trip the server doesn't have
  * yet, it creates the Trip under the request's token: that is how a Trip created offline
- * reaches the server. A new Trip currency is refused while an Expense is in another one
- * (`currencyChangeBlocked`).
+ * reaches the server. A new Trip currency rewrites no Expense: each is converted at the rate
+ * for the new pair (ADR 0003).
  */
 export const tripChangeSchema = z.object({
   ...changeMeta,
@@ -77,8 +78,8 @@ export type PushRequest = z.infer<typeof pushRequestSchema>;
 
 /**
  * Why the server refused a change outright: a Trip rule (`expenseProblems`), an id another
- * Trip uses, an edit of an Expense the server does not have, removing a Participant an
- * Expense references, or a Trip currency some Expense is not in.
+ * Trip uses, an edit of an Expense the server does not have, or removing a Participant an
+ * Expense references.
  */
 export const pushProblemSchema = z.enum([
   ...expenseProblemSchema.options,
@@ -86,7 +87,6 @@ export const pushProblemSchema = z.enum([
   'unknownExpense',
   'participantIdTaken',
   'participantReferenced',
-  'currencyChangeBlocked',
 ]);
 
 export type PushProblem = z.infer<typeof pushProblemSchema>;
@@ -126,9 +126,14 @@ export type PushResponse = z.infer<typeof pushResponseSchema>;
 
 /**
  * The whole-Trip pull (ADR 0002). Asked with the Trip version the device has, it answers
- * `trip: null` while the Trip is still at that version.
+ * `trip: null` while the Trip is still at that version. It always brings the rate entries the
+ * Trip's Expenses need (ADR 0003), as they change without the Trip changing: a Provisional
+ * rate becomes fixed once its date is over.
  */
-export const pullResponseSchema = z.object({ trip: tripSnapshotSchema.nullable() });
+export const pullResponseSchema = z.object({
+  trip: tripSnapshotSchema.nullable(),
+  rates: z.array(rateEntrySchema),
+});
 
 export type PullResponse = z.infer<typeof pullResponseSchema>;
 

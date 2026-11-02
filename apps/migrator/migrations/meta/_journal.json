@@ -50,6 +50,13 @@
       "when": 1793643115059,
       "tag": "0006_add_participant_removed",
       "breakpoints": true
+    },
+    {
+      "idx": 7,
+      "version": "7",
+      "when": 1793646270575,
+      "tag": "0007_add_rates",
+      "breakpoints": true
     }
   ]
 }

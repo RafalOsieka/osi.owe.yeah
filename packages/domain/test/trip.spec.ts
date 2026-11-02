@@ -1,9 +1,5 @@
 import { describe, expect, it } from 'vite-plus/test';
-import {
-  currencyChangeBlocked,
-  tripSchema,
-  tripWithParticipantsSchema,
-} from '@osi/owe-yeah-domain';
+import { tripSchema, tripWithParticipantsSchema } from '@osi/owe-yeah-domain';
 
 const valid = { id: '019a2b3c-4d5e-7f00-8a1b-2c3d4e5f6a7b', name: 'Croatia 2026', currency: 'EUR' };
 
@@ -43,15 +39,5 @@ describe('tripWithParticipantsSchema', () => {
   it('rejects a Participant with a blank name', () => {
     const trip = { ...valid, participants: [{ ...kasia, name: ' ' }] };
     expect(tripWithParticipantsSchema.safeParse(trip).success).toBe(false);
-  });
-});
-
-describe('currencyChangeBlocked', () => {
-  it('blocks a new Trip currency only while an Expense, deleted ones too, is in another one', () => {
-    const inEur = [{ currency: 'EUR' }, { currency: 'EUR' }] as const;
-
-    expect(currencyChangeBlocked([], 'PLN')).toBe(false);
-    expect(currencyChangeBlocked(inEur, 'EUR')).toBe(false);
-    expect(currencyChangeBlocked(inEur, 'PLN')).toBe(true);
   });
 });

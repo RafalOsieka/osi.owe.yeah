@@ -1,5 +1,4 @@
 import {
-  currencyChangeBlocked,
   expenseProblems,
   expensesReferencing,
   pushRequestSchema,
@@ -30,10 +29,10 @@ import {
  * The sync push (ADR 0002): applies a device's outbox changes in order and answers with a
  * result per change. A push carrying a Trip change creates the Trip if the server doesn't
  * have it yet. Trip details and Participants are last-write-wins, except that a Participant
- * an Expense references is never removed, and the Trip currency changes only while every
- * Expense is in it already. An Expense change carries the Expense's full new state and the
- * version it was based on; it is accepted only if it follows the Trip's rules and that
- * version is still current, and then kept as a Revision. It brings back any removed
+ * an Expense references is never removed. A new Trip currency rewrites no Expense (ADR 0003).
+ * An Expense change carries the Expense's full new state and the version it was based on; it
+ * is accepted only if it follows the Trip's rules and that version is still current, and
+ * then kept as a Revision. It brings back any removed
  * Participant it references. Deletes and restores are Expense changes like edits. A change
  * applied before is answered as the first time and not applied again. A malformed push is
  * refused as a whole with 400.
@@ -84,7 +83,7 @@ async function appliedBefore(change: SyncChange, tripId: string): Promise<Change
 /**
  * Locks the Trip until the transaction ends and reads its details. Changes to one Trip are
  * then applied one at a time, so no check races another change: e.g. an Expense referencing
- * a Participant that is being removed, or one in a Trip currency that is being changed.
+ * a Participant that is being removed.
  */
 async function lockTrip(tx: Transaction, tripId: string): Promise<Trip> {
   const [trip] = await tx
@@ -96,17 +95,12 @@ async function lockTrip(tx: Transaction, tripId: string): Promise<Trip> {
   return tripSchema.parse(trip);
 }
 
-/** A Trip's Expenses as they are now, deleted ones only `withDeleted`. */
-async function tripExpenses(
-  tx: Transaction,
-  tripId: string,
-  withDeleted: boolean,
-): Promise<Expense[]> {
-  const ofTrip = eq(expenses.tripId, tripId);
+/** A Trip's Expenses as they are now, deleted ones aside. */
+async function tripExpenses(tx: Transaction, tripId: string): Promise<Expense[]> {
   const rows = await tx
     .select({ id: expenses.id, state: expenses.state })
     .from(expenses)
-    .where(withDeleted ? ofTrip : and(ofTrip, not(expenses.deleted)));
+    .where(and(eq(expenses.tripId, tripId), not(expenses.deleted)));
   return rows.map(({ id, state }) => ({ ...state, id }));
 }
 
@@ -134,20 +128,14 @@ async function record(
 
 /**
  * A Trip's details, last write wins; who sent the change is who last changed them. A new
- * Trip currency is refused while an Expense, even a deleted one, is in another: Expenses
- * are not converted yet (`currencyChangeBlocked`).
+ * Trip currency causes no Conflict, as no Expense changes with it.
  */
 async function applyTripChange(change: TripChange, tripId: string): Promise<ChangeResult> {
   const changeId = change.id;
   return getDb().transaction(async (tx): Promise<ChangeResult> => {
-    const { currency } = await lockTrip(tx, tripId);
-    const blocked =
-      change.trip.currency !== currency &&
-      currencyChangeBlocked(await tripExpenses(tx, tripId, true), change.trip.currency);
-    if (blocked) return { changeId, status: 'rejected', problems: ['currencyChangeBlocked'] };
-
-    const { name, currency: newCurrency } = change.trip;
-    await tx.update(trips).set({ name, currency: newCurrency }).where(eq(trips.id, tripId));
+    await lockTrip(tx, tripId);
+    const { name, currency } = change.trip;
+    await tx.update(trips).set({ name, currency }).where(eq(trips.id, tripId));
     await record(tx, change, tripId, tripId, null);
     return { changeId, status: 'accepted', version: null };
   });
@@ -165,7 +153,7 @@ async function applyParticipantChange(
   return getDb().transaction(async (tx): Promise<ChangeResult> => {
     await lockTrip(tx, tripId);
     const referenced =
-      removed && expensesReferencing(await tripExpenses(tx, tripId, false), participant.id) > 0;
+      removed && expensesReferencing(await tripExpenses(tx, tripId), participant.id) > 0;
     if (referenced) return { changeId, status: 'rejected', problems: ['participantReferenced'] };
 
     // An id another Trip uses is left alone: the update is limited to this Trip's row.

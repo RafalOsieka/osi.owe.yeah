@@ -1,9 +1,11 @@
 <script setup lang="ts">
 import {
   deviceTimeZone,
+  expenseRate,
   expenseTimeFromLocal,
   expenseTitleSchema,
   fromMinor,
+  multiply,
   isReceipt,
   localDateTime,
   minorUnits,
@@ -11,6 +13,7 @@ import {
   receiptDiscountExceeds,
   receiptShares,
   roundMoney,
+  type Currency,
   type LineItem,
   type SplitExpense,
 } from '@osi/owe-yeah-domain';
@@ -45,7 +48,11 @@ import {
 // assigned yet, which counts as the Main payer's until it is. Under "Paid by", any Expense
 // but Income takes Contributions from others (so the Income switch hides while there are
 // any); the Main payer covers the rest, so a price edit changes only their part, and someone
-// with a Contribution can't be picked as Main payer. Saving
+// with a Contribution can't be picked as Main payer. The Expense has its own currency, any in
+// circulation, picked from the pill under the amount: a new one starts in the currency of the
+// Expense saved last on this device, or else the Trip currency. Every amount is entered in it,
+// and the pill says what the total comes to in the Trip currency ("≈" at a Provisional rate).
+// Saving
 // keeps the Expense's full new state on the device, to sync later, and returns to `parent`'s
 // screen, or wherever the form was opened from. An Expense that breaks a Trip rule is not
 // saved; why shows above Save.
@@ -55,12 +62,14 @@ const { expense = null, parent } = defineProps<{
   parent: RouteLocationRaw;
 }>();
 
-const { trip, claim, saveExpense } = useOpenTrip();
+const { trip, claim, lastCurrency, saveExpense } = useOpenTrip();
 const { t, locale } = useI18n();
 const back = useBack();
 
 type ExpenseFormState = {
   title: string;
+  /** The currency every amount is entered in. */
+  currency: Currency;
   /** The amount as typed, never negative. */
   amount: string;
   /** Income: money received rather than paid. */
@@ -88,6 +97,7 @@ function initialState(): ExpenseFormState {
     const time = { local: localDateTime(expense.time), zone: expense.time.zone };
     const shared = {
       title: expense.title,
+      currency: expense.currency,
       mainPayerId: expense.mainPayerId,
       contributions: draftFromContributions(expense.contributions, expense.currency),
       ...time,
@@ -115,6 +125,7 @@ function initialState(): ExpenseFormState {
   const claimed = participants.find(({ id }) => id === claim.value?.id);
   return {
     title: '',
+    currency: lastCurrency.value ?? trip.value.currency,
     amount: '',
     received: false,
     mainPayerId: claimed?.id ?? participants[0]?.id ?? '',
@@ -152,7 +163,7 @@ function tickedInTripOrder(): string[] {
 // The amount typed so far becomes the Receipt's first Line item, split as ticked.
 function itemise(): void {
   state.lineItems =
-    parseMoney(state.amount, trip.value.currency) === null
+    parseMoney(state.amount, state.currency) === null
       ? []
       : [
           draftLineItem({
@@ -170,7 +181,7 @@ function itemise(): void {
 // anyone yet.
 const receipt = computed(() => {
   if (!state.lineItems) return null;
-  const { currency } = trip.value;
+  const { currency } = state;
   const items = state.lineItems.map((draft) => lineItemFromDraft(draft, currency));
   const discount = discountFromDraft(state.discount, currency);
   // What can be read so far, as the domain sees a Receipt.
@@ -217,9 +228,29 @@ function pickMainPayer(participantId: string): void {
 // What the Expense comes to so far, which the Contributions come off; `null` while unreadable.
 const total = computed(() => {
   if (receipt.value) return receipt.value.total;
-  const { currency } = trip.value;
+  const { currency } = state;
   const amount = parseMoney(state.amount, currency);
   return amount === null ? null : fromMinor(state.received ? -amount : amount, currency);
+});
+
+// What the Expense comes to in the Trip currency at the rate for its local date, while it is in
+// another one; `null` in the Trip currency or while the amount can't be read.
+const converted = computed(() => {
+  const { currency } = trip.value;
+  if (state.currency === currency || !state.local) return null;
+  const found = expenseRate(
+    { currency: state.currency, time: expenseTimeFromLocal(state.local, state.zone) },
+    trip.value,
+  );
+  if (!found) return t('rate.noRate');
+  if (total.value === null) return null;
+  return formatMoney(
+    multiply(total.value, found.rate),
+    currency,
+    locale.value,
+    'currency',
+    found.provisional,
+  );
 });
 
 const payerName = computed(
@@ -252,15 +283,15 @@ function validate(form: Partial<ExpenseFormState>): FormError[] {
       errors.push({ name: 'discount', message: t('receipt.discountUnreadable') });
     }
   } else {
-    if (parseMoney(form.amount ?? '', trip.value.currency) === null) {
-      const decimals = minorUnits(trip.value.currency);
+    if (parseMoney(form.amount ?? '', state.currency) === null) {
+      const decimals = minorUnits(state.currency);
       errors.push({ name: 'amount', message: t('expense.amountInvalid', { decimals }, decimals) });
     }
     if (!form.participantIds?.length) {
       errors.push({ name: 'participantIds', message: t('expense.participantsMissing') });
     }
   }
-  if (contributionsFromDraft(state.contributions, trip.value.currency) === null) {
+  if (contributionsFromDraft(state.contributions, state.currency) === null) {
     errors.push({ name: 'contributions', message: t('contribution.unreadable') });
   }
   if (!form.mainPayerId) {
@@ -277,7 +308,7 @@ function lineItems(): LineItem[] {
   return [
     {
       name: '',
-      unitPrice: (state.received ? -1 : 1) * parseMoney(state.amount, trip.value.currency)!,
+      unitPrice: (state.received ? -1 : 1) * parseMoney(state.amount, state.currency)!,
       quantity: 1,
       split: { mode: 'even', participantIds: tickedInTripOrder() },
     },
@@ -291,13 +322,12 @@ const saving = ref(false);
 async function submit(): Promise<void> {
   saving.value = true;
   // Readable by now: `validate` passed.
-  const contributions = contributionsFromDraft(state.contributions, trip.value.currency)!;
+  const contributions = contributionsFromDraft(state.contributions, state.currency)!;
   const refused = await saveExpense(
     {
       id,
       title: state.title.trim(),
-      // An Expense carries its own currency; for now it is always the Trip currency.
-      currency: trip.value.currency,
+      currency: state.currency,
       time: expenseTimeFromLocal(state.local, state.zone),
       mainPayerId: state.mainPayerId,
       lineItems: lineItems(),
@@ -320,26 +350,30 @@ async function submit(): Promise<void> {
       <div v-if="receipt" class="text-center">
         <p id="receipt-total-label" class="text-sm text-muted">{{ $t('receipt.total') }}</p>
         <output aria-labelledby="receipt-total-label" class="block text-4xl font-bold tabular-nums">
-          {{ formatMoney(receipt.total, trip.currency, locale) }}
+          {{ formatMoney(receipt.total, state.currency, locale) }}
         </output>
+        <div class="mt-2 flex items-center justify-center gap-2">
+          <CurrencyPill v-model="state.currency" />
+          <span v-if="converted" class="text-sm text-muted tabular-nums">{{ converted }}</span>
+        </div>
         <p v-if="receipt.discount" class="mt-1 text-sm text-muted">
           {{
             $t('receipt.receiptDiscountFact', {
-              discount: formatDiscount(receipt.discount, receipt.off, trip.currency, locale),
+              discount: formatDiscount(receipt.discount, receipt.off, state.currency, locale),
             })
           }}
         </p>
         <p v-if="receipt.deposits.numerator !== 0n" class="mt-1 text-sm text-muted">
           {{
             $t('receipt.depositsFact', {
-              amount: formatMoney(receipt.deposits, trip.currency, locale),
+              amount: formatMoney(receipt.deposits, state.currency, locale),
             })
           }}
         </p>
         <p v-if="receipt.unassigned.numerator !== 0n" class="mt-1 text-sm text-warning">
           {{
             $t('receipt.unassignedTotal', {
-              amount: formatMoney(receipt.unassigned, trip.currency, locale),
+              amount: formatMoney(receipt.unassigned, state.currency, locale),
               name: payerName,
             })
           }}
@@ -348,8 +382,12 @@ async function submit(): Promise<void> {
 
       <template v-else>
         <UFormField name="amount" :label="$t('expense.amount')" :ui="{ label: 'sr-only' }">
-          <AmountInput v-model="state.amount" :currency="trip.currency" />
+          <AmountInput v-model="state.amount" :currency="state.currency" />
         </UFormField>
+        <div class="-mt-3 flex items-center justify-center gap-2">
+          <CurrencyPill v-model="state.currency" />
+          <span v-if="converted" class="text-sm text-muted tabular-nums">{{ converted }}</span>
+        </div>
 
         <USwitch
           v-if="state.contributions.length === 0"
@@ -371,7 +409,7 @@ async function submit(): Promise<void> {
         <TillList
           v-model="state.lineItems"
           :participants="trip.participants"
-          :currency="trip.currency"
+          :currency="state.currency"
         />
       </UFormField>
 
@@ -390,7 +428,7 @@ async function submit(): Promise<void> {
           v-model="state.contributions"
           :participants="trip.participants"
           :main-payer-id="state.mainPayerId"
-          :currency="trip.currency"
+          :currency="state.currency"
           :total="total"
         />
       </UFormField>
@@ -399,7 +437,7 @@ async function submit(): Promise<void> {
         v-if="state.lineItems"
         v-model="state.discount"
         :label="$t('receipt.receiptDiscount')"
-        :currency="trip.currency"
+        :currency="state.currency"
         :error="discountError"
       />
 

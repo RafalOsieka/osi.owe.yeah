@@ -63,7 +63,7 @@ describe('Contributions', () => {
 
   it('count as paid by whoever made them, the Main payer paying the rest', () => {
     const paid = (expense: SplitExpense) =>
-      balances({ ...trip, expenses: [expense] }).map(({ paid }) => paid);
+      balances({ ...trip, expenses: [expense], rates: [] }).map(({ paid }) => paid);
     expect(paid(dinner)).toEqual([rational(54n), rational(6n), rational(0n)]);
 
     // The bill turns out to be 75.00: the tip stays, Kasia's part grows.

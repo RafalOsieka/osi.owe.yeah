@@ -42,8 +42,7 @@
       "row": "{name} · {currency}",
       "save": "Zapisz",
       "lastChangedBy": "Ostatnia zmiana: {name}, {when}",
-      "lastChanged": "Ostatnia zmiana: {when}",
-      "currencyLocked": "Waluty podróży nie da się zmienić, dopóki podróż ma wydatki, także te ostatnio usunięte: nie są jeszcze przeliczane."
+      "lastChanged": "Ostatnia zmiana: {when}"
     },
     "forget": {
       "title": "Zapomnij tę podróż",
@@ -108,7 +107,6 @@
       "title": "Wydatek nie został zapisany",
       "unknownMainPayer": "Osoby, która zapłaciła, nie ma już w podróży.",
       "unknownParticipant": "Któregoś z zaznaczonych uczestników nie ma już w podróży.",
-      "currencyNotTripCurrency": "Wydatek musi być w walucie podróży.",
       "repaymentToSelf": "Spłata wymaga dwóch różnych uczestników.",
       "negativeLineItem": "Ujemna pozycja może być tylko zwrotem kaucji: jedną kwotą, bez rabatu i kaucji.",
       "unitsExceedQuantity": "Pozycja ma przypisanych więcej sztuk, niż liczy.",
@@ -271,6 +269,17 @@
       "repayments": "Otrzymane spłaty"
     }
   },
+  "rate": {
+    "currency": "Waluta",
+    "noRate": "Brak kursu wymiany",
+    "converted": "{amount} · 1 {from} = {rate} {to}",
+    "provisionalHelp": "Kurs wstępny: ostateczny kurs z tego dnia nie jest jeszcze znany. Kwoty w {currency} zaktualizują się same, gdy się pojawi.",
+    "missingHelp": "Brak kursu wymiany dla {from}, więc ten wydatek nie jest wliczany do sald, dopóki kurs się nie pojawi.",
+    "provisionalBadge": "kurs wstępny",
+    "missingBadge": "brak kursu",
+    "provisionalCount": "Kursy wstępne: {count}",
+    "missingCount": "Wydatki bez kursu, pominięte w saldach: {count}"
+  },
   "sync": {
     "status": "Stan synchronizacji",
     "unsynced": "Wszystko zsynchronizowane. | Niezsynchronizowane zmiany: 1 | Niezsynchronizowane zmiany: {count}",
@@ -288,7 +297,6 @@
     "reason": {
       "unknownMainPayer": "osoby, która zapłaciła, nie ma już w podróży.",
       "unknownParticipant": "któregoś z zaznaczonych uczestników nie ma już w podróży.",
-      "currencyNotTripCurrency": "wydatek musi być w walucie podróży.",
       "repaymentToSelf": "spłata wymaga dwóch różnych uczestników.",
       "expenseIdTaken": "ten wydatek należy do innej podróży.",
       "unknownExpense": "ten wydatek już nie istnieje.",
@@ -361,7 +369,6 @@
   },
   "notices": {
     "participantRestored": "Uczestnika {name} usunięto, zanim zsynchronizował się twój wydatek „{title}”. Wydatek go przywrócił.",
-    "removalRefused": "Uczestnik {name} nie został usunięty: jest teraz w wydatku.",
-    "currencyRefused": "Waluta podróży nie zmieniła się na {currency}: podróż ma teraz wydatki w innej walucie."
+    "removalRefused": "Uczestnik {name} nie został usunięty: jest teraz w wydatku."
   }
 }

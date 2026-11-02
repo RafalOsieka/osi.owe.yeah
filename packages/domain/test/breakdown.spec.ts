@@ -139,6 +139,7 @@ describe('shareBreakdowns of a Trip', () => {
   const trip = {
     currency: 'EUR' as const,
     participants: [rafal, ania, kuba, ola].map((id) => ({ id, name: id })),
+    rates: [],
     expenses: [
       plain('019a2b3c-4d5e-7f00-8a1b-0000000000e2', rafal, 6000),
       // Income Ania received for everyone.

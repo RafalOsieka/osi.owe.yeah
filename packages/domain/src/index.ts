@@ -1,4 +1,4 @@
-export { add, negate, rational } from './rational.ts';
+export { add, multiply, negate, rational } from './rational.ts';
 export type { Rational } from './rational.ts';
 export { parseAmount } from './amount.ts';
 export { fromMinor, minorUnits, parseMoney, roundMoney } from './money.ts';
@@ -28,7 +28,7 @@ export {
 } from './line-item.ts';
 export type { LineItem, LineItemProblem, Split, SplitMode } from './line-item.ts';
 export { balances, isSettled, spendingTotal, suggestedRepayments } from './settle-up.ts';
-export type { ParticipantBalance, SuggestedRepayment } from './settle-up.ts';
+export type { ParticipantBalance, SuggestedRepayment, TripExpenses } from './settle-up.ts';
 export type { ClaimView, ExpenseShares, LineItemShares, ReceiptShares } from './shares.ts';
 export type { RoundedMoney } from './money.ts';
 export {
@@ -63,7 +63,6 @@ export type { Participant } from './participant.ts';
 export {
   TRIP_CURRENCIES,
   TRIP_TOKEN_HEADER,
-  currencyChangeBlocked,
   tripIdSchema,
   tripNameSchema,
   tripSchema,
@@ -95,3 +94,7 @@ export type {
   SyncChange,
   TripChange,
 } from './sync.ts';
+export { CURRENCIES, currencySchema } from './currency.ts';
+export type { Currency } from './currency.ts';
+export { expenseRate, isRateDateOver, neededRates, rateEntrySchema, rateSummary } from './rates.ts';
+export type { ExpenseRate, RateEntry, TripRates } from './rates.ts';

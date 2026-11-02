@@ -1,20 +1,24 @@
 <script setup lang="ts">
 import {
   claimView,
+  expenseRate,
   expenseShares,
   groupByLocalDay,
   isReceipt,
   isRepayment,
+  rateSummary,
   spendingTotal,
   type Rational,
 } from '@osi/owe-yeah-domain';
 import type { LocalExpense, LocalTrip } from '~/sync/local-trip';
 
 // The Trip's Expenses, newest first, under a heading for each Expense's own local day with
-// what was spent that day (net of Income, without Repayments). Each row opens the Expense's
-// detail page and, with a Claim, says what the Expense means for the claimed Participant, and
-// marks it while it is not synced, or in Conflict. A Receipt reads "Receipt · N items", marked
-// with how many Line items are not fully assigned yet.
+// what was spent that day in the Trip currency (net of Income, without Repayments; "≈" when an
+// Expense of the day uses a Provisional rate). Each row shows the Expense in its own currency,
+// opens its detail page and, with a Claim, says what the Expense means for the claimed
+// Participant. A row is marked while it is not synced, or in Conflict, and when its rate is a
+// Provisional rate or it has none yet. A Receipt reads "Receipt · N items", marked with how
+// many Line items are not fully assigned yet.
 const { trip, claimId = null } = defineProps<{
   trip: LocalTrip;
   claimId?: string | null;
@@ -24,8 +28,9 @@ const { t, locale } = useI18n();
 
 const participants = computed(() => new Map(trip.participants.map((p) => [p.id, p])));
 
-const money = (amount: Rational) => formatMoney(amount, trip.currency, locale.value);
-const bare = (amount: Rational) => formatMoney(amount, trip.currency, locale.value, 'number');
+const money = (amount: Rational, currency: string) => formatMoney(amount, currency, locale.value);
+const bare = (amount: Rational, currency: string) =>
+  formatMoney(amount, currency, locale.value, 'number');
 
 // What the claimed Participant sees on the right of a row, under the total: what they lent
 // or get back in green, their share in red, and money that only changed hands (a Repayment,
@@ -33,17 +38,18 @@ const bare = (amount: Rational) => formatMoney(amount, trip.currency, locale.val
 function forYou(expense: LocalExpense): { text: string; tone: string } | null {
   if (claimId === null) return null;
   const view = claimView(expense, claimId);
+  const amount = view.kind === 'notForYou' ? '' : bare(view.amount, expense.currency);
   switch (view.kind) {
     case 'lent':
-      return { text: t('expense.youLent', { amount: bare(view.amount) }), tone: 'text-primary' };
+      return { text: t('expense.youLent', { amount }), tone: 'text-primary' };
     case 'share':
-      return { text: t('expense.yourShare', { amount: bare(view.amount) }), tone: 'text-error' };
+      return { text: t('expense.yourShare', { amount }), tone: 'text-error' };
     case 'received':
-      return { text: t('expense.youReceived', { amount: bare(view.amount) }), tone: 'text-muted' };
+      return { text: t('expense.youReceived', { amount }), tone: 'text-muted' };
     case 'getBack':
-      return { text: t('expense.youGetBack', { amount: bare(view.amount) }), tone: 'text-primary' };
+      return { text: t('expense.youGetBack', { amount }), tone: 'text-primary' };
     case 'repaid':
-      return { text: t('expense.youRepaid', { amount: bare(view.amount) }), tone: 'text-muted' };
+      return { text: t('expense.youRepaid', { amount }), tone: 'text-muted' };
     case 'notForYou':
       return { text: t('expense.notForYou'), tone: 'text-muted' };
   }
@@ -76,10 +82,18 @@ const days = computed(() =>
         payer: participants.value.get(expense.mainPayerId),
         summary,
         unassigned: lineItems.filter(({ unassigned }) => unassigned.numerator !== 0n).length,
+        rate: expenseRate(expense, trip),
         forYou: forYou(expense),
       };
     });
-    return { day, total: spendingTotal(expenses), rows };
+    const ofDay = { ...trip, expenses };
+    const total = spendingTotal(ofDay);
+    const approximate = rateSummary(ofDay).provisional > 0;
+    return {
+      day,
+      total: formatMoney(total, trip.currency, locale.value, 'currency', approximate),
+      rows,
+    };
   }),
 );
 
@@ -99,7 +113,7 @@ function dayHeading(day: string): string {
         class="mt-3 mb-1 flex justify-between gap-2 text-xs font-semibold tracking-wide text-muted"
       >
         <h3 class="min-w-0 truncate uppercase">{{ dayHeading(day) }}</h3>
-        <span class="shrink-0 font-medium tabular-nums">{{ money(total) }}</span>
+        <span class="shrink-0 font-medium tabular-nums">{{ total }}</span>
       </div>
       <ul>
         <li
@@ -132,6 +146,22 @@ function dayHeading(day: string): string {
                   class="me-1"
                 />
                 <UBadge
+                  v-if="row.rate === null"
+                  :label="$t('rate.missingBadge')"
+                  color="warning"
+                  variant="subtle"
+                  size="sm"
+                  class="me-1"
+                />
+                <UBadge
+                  v-else-if="row.rate.provisional"
+                  :label="$t('rate.provisionalBadge')"
+                  color="warning"
+                  variant="subtle"
+                  size="sm"
+                  class="me-1"
+                />
+                <UBadge
                   v-if="row.unassigned > 0"
                   :label="$t('receipt.unassignedBadge', row.unassigned)"
                   color="warning"
@@ -143,7 +173,7 @@ function dayHeading(day: string): string {
               </span>
             </span>
             <span class="shrink-0 text-right leading-snug tabular-nums">
-              <span class="block font-semibold">{{ money(row.total) }}</span>
+              <span class="block font-semibold">{{ money(row.total, row.expense.currency) }}</span>
               <span v-if="row.forYou" class="block text-xs" :class="row.forYou.tone">
                 {{ row.forYou.text }}
               </span>

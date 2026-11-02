@@ -1,10 +1,12 @@
 <script setup lang="ts">
 import {
+  expenseRate,
   expenseShares,
   fromMinor,
   isDepositRefund,
   isReceipt,
   isRepayment,
+  multiply,
   roundMoney,
   shareBreakdown,
   type Discount,
@@ -19,8 +21,15 @@ import {
 // with how each is split, its Line discount, its Deposit, and what is not assigned yet,
 // Deposit refunds as negative lines, and then its Receipt discount and its Deposits total.
 // On a Receipt, tapping a share opens where it comes from (`ShareBreakdownSheet`). Shares are
-// rounded only to show them, so a note explains "≈" when they don't add up to the total.
-const { expense } = defineProps<{ expense: Expense }>();
+// rounded only to show them, so a note explains "≈" when they don't add up to the total. All
+// amounts are in the Expense's own currency; `converted` adds its total in the Trip currency
+// under it, at the rate for its local date, "≈" and explained at a Provisional rate, or says
+// it is left out of balances while there is no rate yet.
+const { expense, converted = false } = defineProps<{
+  expense: Expense;
+  /** Show the total converted into the Trip currency, as the Expense is now. */
+  converted?: boolean;
+}>();
 
 const { trip, claim, everyone } = useOpenTrip();
 const { t, locale } = useI18n();
@@ -76,6 +85,26 @@ const details = computed(() => {
   };
 });
 
+// The total in the Trip currency, when the Expense is in another one.
+const conversion = computed(() => {
+  const { currency } = trip.value;
+  if (!converted || expense.currency === currency) return null;
+  const found = expenseRate(expense, trip.value);
+  if (!found) {
+    return { text: t('rate.noRate'), help: t('rate.missingHelp', { from: expense.currency }) };
+  }
+  const total = multiply(details.value.total, found.rate);
+  return {
+    text: t('rate.converted', {
+      amount: formatMoney(total, currency, locale.value, 'currency', found.provisional),
+      from: expense.currency,
+      rate: formatRate(found.rate, locale.value),
+      to: currency,
+    }),
+    help: found.provisional ? t('rate.provisionalHelp', { currency }) : null,
+  };
+});
+
 // Every share's breakdown, on a Receipt; the open sheet shows the one tapped.
 const breakdowns = computed(() =>
   isReceipt(expense) && !isRepayment(expense) ? shareBreakdown(expense) : null,
@@ -99,6 +128,10 @@ function openBreakdown(participantId: string): void {
   <div>
     <p class="text-xl leading-tight font-bold wrap-anywhere">{{ expense.title }}</p>
     <p class="mt-0.5 text-3xl font-bold tabular-nums">{{ money(details.total) }}</p>
+    <template v-if="conversion">
+      <p class="font-medium tabular-nums">{{ conversion.text }}</p>
+      <p v-if="conversion.help" class="text-xs text-warning">{{ conversion.help }}</p>
+    </template>
     <p class="text-sm text-muted">
       {{ $t('expense.timeInZone', { time: details.when, zone: expense.time.zone }) }}
     </p>

@@ -2,8 +2,8 @@
 import type { Notice } from '~/sync/db';
 
 // What sync has to tell about this device's changes, on top of every Trip tab until
-// dismissed: a removed Participant one of its Expenses brought back, or a removal or a Trip
-// currency the server refused. A removed Claim is told in "Who are you?" instead.
+// dismissed: a removed Participant one of its Expenses brought back, or a removal the server
+// refused. A removed Claim is told in "Who are you?" instead.
 const { notices, dismissNotice } = useOpenTrip();
 const { t } = useI18n();
 
@@ -23,8 +23,6 @@ function text(notice: Notice): string | null {
       });
     case 'removalRefused':
       return t('notices.removalRefused', { name: notice.participant.name });
-    case 'currencyRefused':
-      return t('notices.currencyRefused', { currency: notice.currency });
     case 'claimRemoved':
       return null;
   }

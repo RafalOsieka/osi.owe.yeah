@@ -1,6 +1,6 @@
 import {
-  currencyChangeBlocked,
   expenseProblems,
+  isRepayment,
   expensesReferencing,
   type ChangeResult,
   type Expense,
@@ -9,6 +9,7 @@ import {
   type PullResponse,
   type PushRequest,
   type PushResponse,
+  type RateEntry,
   type Revision,
   type SyncChange,
   type Trip,
@@ -95,7 +96,7 @@ export function createDevice(db: DeviceDb, transport: Transport, deviceId: strin
       const entries = await entriesOf(tripId);
       return {
         deviceTrip,
-        local: localTrip(deviceTrip.snapshot, entries),
+        local: localTrip(deviceTrip.snapshot, entries, deviceTrip.rates),
         unsynced: entries.length,
       };
     });
@@ -135,6 +136,8 @@ export function createDevice(db: DeviceDb, transport: Transport, deviceId: strin
         claim: participants[0] ?? null,
         openedAt: new Date().toISOString(),
         snapshot: null,
+        rates: [],
+        lastCurrency: null,
         notices: [],
       });
       await enqueue(id, { kind: 'trip', trip: { name, currency } });
@@ -154,7 +157,7 @@ export function createDevice(db: DeviceDb, transport: Transport, deviceId: strin
     const pulled = await transport.pull(tripId, token).catch(() => null);
     if (pulled === null) return 'unreachable';
     if (pulled === 'invalidLink' || !pulled.trip) return 'invalidLink';
-    const snapshot = pulled.trip;
+    const { trip: snapshot, rates } = pulled;
     await db.transaction('rw', db.trips, async () => {
       const known = await db.trips.get(tripId);
       await db.trips.put({
@@ -163,6 +166,8 @@ export function createDevice(db: DeviceDb, transport: Transport, deviceId: strin
         claim: known?.claim ?? null,
         openedAt: new Date().toISOString(),
         snapshot,
+        rates: cachedRates(known?.rates ?? [], rates),
+        lastCurrency: known?.lastCurrency ?? null,
         notices: known?.notices ?? [],
       });
     });
@@ -211,18 +216,11 @@ export function createDevice(db: DeviceDb, transport: Transport, deviceId: strin
   }
 
   /**
-   * Saves the Trip's name and Trip currency on this device, last write wins. Resolves to
-   * `false`, saving nothing, for a new Trip currency while an Expense is in another one.
+   * Saves the Trip's name and Trip currency on this device, last write wins. A new Trip
+   * currency rewrites no Expense: each is converted at the rate for the new pair (ADR 0003).
    */
-  async function saveTripDetails(tripId: string, details: Omit<Trip, 'id'>): Promise<boolean> {
-    return db.transaction('rw', db.trips, db.outbox, async () => {
-      const local = await readLocal(tripId);
-      const expenses = [...local.expenses, ...local.deletedExpenses];
-      const blocked =
-        details.currency !== local.currency && currencyChangeBlocked(expenses, details.currency);
-      if (!blocked) await enqueue(tripId, { kind: 'trip', trip: details });
-      return !blocked;
-    });
+  async function saveTripDetails(tripId: string, details: Omit<Trip, 'id'>): Promise<void> {
+    await enqueue(tripId, { kind: 'trip', trip: details });
   }
 
   /** Keeps Notices for the Trip until they are dismissed. */
@@ -249,14 +247,19 @@ export function createDevice(db: DeviceDb, transport: Transport, deviceId: strin
    * Expense's `base` as `read` showed it). Resolves to the Trip rules it breaks, in which case
    * nothing is saved; it reaches the server on sync. An Expense in Conflict keeps the edit on
    * this device's version; one with a rejected change takes the edit as its fix, sent in
-   * place of the rejected changes. Saving a deleted Expense restores it.
+   * place of the rejected changes. Saving a deleted Expense restores it. A new Expense on this
+   * device starts in the currency of the one saved last (`lastCurrency`), Repayments aside.
    */
-  function saveExpense(
+  async function saveExpense(
     tripId: string,
     expense: Expense,
     base: ExpenseBase,
   ): Promise<ExpenseProblem[]> {
-    return queueExpense(tripId, expense, base, false);
+    const problems = await queueExpense(tripId, expense, base, false);
+    if (problems.length === 0 && !isRepayment(expense)) {
+      await db.trips.update(tripId, { lastCurrency: expense.currency });
+    }
+    return problems;
   }
 
   /**
@@ -382,10 +385,15 @@ export function createDevice(db: DeviceDb, transport: Transport, deviceId: strin
       /* keep pushing */
     }
     const pulled = await transport.pull(tripId, device.token, device.snapshot?.version);
-    if (pulled === 'invalidLink' || !pulled.trip) return;
-    const snapshot = pulled.trip;
+    if (pulled === 'invalidLink') return;
+    const { trip: snapshot } = pulled;
+    const rates = cachedRates(device.rates, pulled.rates);
+    if (!snapshot) {
+      await db.trips.update(tripId, { rates });
+      return;
+    }
     await db.transaction('rw', db.trips, db.outbox, async () => {
-      await db.trips.update(tripId, { snapshot });
+      await db.trips.update(tripId, { snapshot, rates });
       await dropRemovedClaim(tripId);
     });
   }
@@ -495,6 +503,17 @@ export function createDevice(db: DeviceDb, transport: Transport, deviceId: strin
 
 export type Device = ReturnType<typeof createDevice>;
 
+/**
+ * The device's cached rate entries with those a pull brought: each of those replaces the one
+ * for its date and pair, and the rest stay, so a pair the Trip no longer needs keeps its latest
+ * cached rate for a Provisional rate later, e.g. offline.
+ */
+function cachedRates(cached: readonly RateEntry[], pulled: readonly RateEntry[]): RateEntry[] {
+  const key = ({ date, from, to }: RateEntry) => `${date} ${from} ${to}`;
+  const brought = new Set(pulled.map(key));
+  return [...cached.filter((entry) => !brought.has(key(entry))), ...pulled];
+}
+
 /** A queued change as the push sends it: an Expense change's base is known by now. */
 function toSyncChange(change: QueuedChange): SyncChange {
   if (change.kind !== 'expense') return change;
@@ -505,8 +524,7 @@ function toSyncChange(change: QueuedChange): SyncChange {
 
 /**
  * What the user should hear about a change's result: removed Participants an accepted
- * Expense brought back (named as `known` has them), or a removal or a Trip currency the
- * server refused.
+ * Expense brought back (named as `known` has them), or a removal the server refused.
  */
 function noticesFor(
   change: QueuedChange,
@@ -523,9 +541,6 @@ function noticesFor(
   if (result.status !== 'rejected') return [];
   if (change.kind === 'participant' && result.problems.includes('participantReferenced')) {
     return [{ kind: 'removalRefused', participant: change.participant }];
-  }
-  if (change.kind === 'trip' && result.problems.includes('currencyChangeBlocked')) {
-    return [{ kind: 'currencyRefused', currency: change.trip.currency }];
   }
   return [];
 }

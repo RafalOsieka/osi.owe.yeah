@@ -72,12 +72,15 @@ function initialState(): RepaymentFormState {
 }
 
 const state = reactive(initialState());
+// A Repayment stays in the currency it was recorded in, even after the Trip currency changed;
+// a new one is in the Trip currency (Manual rates for others come with #37).
+const currency = repayment?.currency ?? trip.value.currency;
 const id = repayment?.id ?? uuidv7();
 
 function validate(form: Partial<RepaymentFormState>): FormError[] {
   const errors: FormError[] = [];
-  if (parseMoney(form.amount ?? '', trip.value.currency) === null) {
-    const decimals = minorUnits(trip.value.currency);
+  if (parseMoney(form.amount ?? '', currency) === null) {
+    const decimals = minorUnits(currency);
     errors.push({ name: 'amount', message: t('expense.amountInvalid', { decimals }, decimals) });
   }
   if (!form.mainPayerId) errors.push({ name: 'mainPayerId', message: t('expense.payerMissing') });
@@ -103,12 +106,11 @@ async function submit(): Promise<void> {
     {
       id,
       title: state.title.trim(),
-      // A Repayment carries its own currency; for now it is always the Trip currency.
-      currency: trip.value.currency,
+      currency,
       time: expenseTimeFromLocal(state.local, state.zone),
       mainPayerId: state.mainPayerId,
       recipientId: state.recipientId,
-      amount: parseMoney(state.amount, trip.value.currency)!,
+      amount: parseMoney(state.amount, currency)!,
     },
     // Based on the Repayment as the form read it when it opened.
     repayment?.base ?? { version: null },
@@ -134,7 +136,7 @@ async function submit(): Promise<void> {
       @submit="submit"
     >
       <UFormField name="amount" :label="$t('expense.amount')" :ui="{ label: 'sr-only' }">
-        <AmountInput v-model="state.amount" :currency="trip.currency" />
+        <AmountInput v-model="state.amount" :currency="currency" />
       </UFormField>
 
       <UFormField name="mainPayerId">

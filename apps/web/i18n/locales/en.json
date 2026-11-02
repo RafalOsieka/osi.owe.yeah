@@ -42,8 +42,7 @@
       "row": "{name} · {currency}",
       "save": "Save",
       "lastChangedBy": "Last changed by {name}, {when}",
-      "lastChanged": "Last changed {when}",
-      "currencyLocked": "The Trip currency can't change while the Trip has Expenses, Recently deleted ones too: they aren't converted yet."
+      "lastChanged": "Last changed {when}"
     },
     "forget": {
       "title": "Forget this Trip",
@@ -108,7 +107,6 @@
       "title": "The Expense was not saved",
       "unknownMainPayer": "Who paid is no longer in the Trip.",
       "unknownParticipant": "Someone ticked is no longer in the Trip.",
-      "currencyNotTripCurrency": "The Expense must be in the Trip currency.",
       "repaymentToSelf": "A Repayment needs two different Participants.",
       "negativeLineItem": "A negative Line item must be a Deposit refund: one amount, with no discount or Deposit.",
       "unitsExceedQuantity": "A Line item has more units assigned than it has.",
@@ -271,6 +269,17 @@
       "repayments": "Repayments received"
     }
   },
+  "rate": {
+    "currency": "Currency",
+    "noRate": "No exchange rate yet",
+    "converted": "{amount} · 1 {from} = {rate} {to}",
+    "provisionalHelp": "Provisional rate: the final rate for this day isn't known yet. Amounts in {currency} update by themselves once it is.",
+    "missingHelp": "No exchange rate for {from} yet, so this Expense is left out of balances until one arrives.",
+    "provisionalBadge": "Provisional rate",
+    "missingBadge": "no rate yet",
+    "provisionalCount": "No Provisional rates | 1 Provisional rate | {count} Provisional rates",
+    "missingCount": "No Expenses left out | 1 Expense left out: no rate yet | {count} Expenses left out: no rate yet"
+  },
   "sync": {
     "status": "Sync status",
     "unsynced": "Everything is synced. | 1 change not synced yet | {count} changes not synced yet",
@@ -288,7 +297,6 @@
     "reason": {
       "unknownMainPayer": "who paid is no longer in the Trip.",
       "unknownParticipant": "someone ticked is no longer in the Trip.",
-      "currencyNotTripCurrency": "the Expense must be in the Trip currency.",
       "repaymentToSelf": "a Repayment needs two different Participants.",
       "expenseIdTaken": "this Expense belongs to another Trip.",
       "unknownExpense": "this Expense no longer exists.",
@@ -361,7 +369,6 @@
   },
   "notices": {
     "participantRestored": "{name} was removed while you were offline. Your Expense \"{title}\" brought them back.",
-    "removalRefused": "{name} wasn't removed: they're on an Expense now.",
-    "currencyRefused": "The Trip currency wasn't changed to {currency}: the Trip has Expenses in another one now."
+    "removalRefused": "{name} wasn't removed: they're on an Expense now."
   }
 }

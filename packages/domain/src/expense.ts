@@ -10,9 +10,10 @@ import {
   receiptTotalMinor,
   splitParticipantIds,
 } from './line-item.ts';
+import { currencySchema } from './currency.ts';
 import { compare, rational } from './rational.ts';
 import { participantIdSchema } from './participant.ts';
-import { TRIP_CURRENCIES, type TripWithParticipants } from './trip.ts';
+import type { TripWithParticipants } from './trip.ts';
 
 /** An Expense id: a UUIDv7 generated on the device, so it can be created offline (ADR 0002). */
 export const expenseIdSchema = z.uuid({ version: 'v7' });
@@ -53,13 +54,15 @@ export const expenseTimeSchema = z.object({
 export type ExpenseTime = z.infer<typeof expenseTimeSchema>;
 
 /**
- * What every Expense has. It carries its own currency, which for now must be the Trip
- * currency. `mainPayerId` is who paid, or who received the money of an Income.
+ * What every Expense has. It carries its own currency, any in circulation, which all its
+ * amounts are in; it is converted into the Trip currency at the rate for its local date
+ * (`expenseRate`), never stored on it (ADR 0003). `mainPayerId` is who paid, or who received
+ * the money of an Income.
  */
 const expenseBase = {
   id: expenseIdSchema,
   title: expenseTitleSchema,
-  currency: z.enum(TRIP_CURRENCIES),
+  currency: currencySchema,
   time: expenseTimeSchema,
   mainPayerId: participantIdSchema,
 };
@@ -148,7 +151,6 @@ export type ExpenseState = Expense extends infer E
 export const expenseProblemSchema = z.enum([
   'unknownMainPayer',
   'unknownParticipant',
-  'currencyNotTripCurrency',
   'repaymentToSelf',
   ...LINE_ITEM_PROBLEMS,
   'receiptDiscountExceedsLineItems',
@@ -197,7 +199,6 @@ export function expenseProblems(expense: Expense, trip: TripWithParticipants): E
 
   if (!known.has(expense.mainPayerId)) problems.push('unknownMainPayer');
   if (ticked.some((id) => !known.has(id))) problems.push('unknownParticipant');
-  if (expense.currency !== trip.currency) problems.push('currencyNotTripCurrency');
   if (isRepayment(expense) && expense.recipientId === expense.mainPayerId) {
     problems.push('repaymentToSelf');
   }

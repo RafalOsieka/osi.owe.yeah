@@ -1081,9 +1081,8 @@ test('a Participant on an Expense is not removed, one on none is; and the Trip i
   await expect(participants.getByRole('listitem')).toHaveCount(2);
   await expect(participants.getByRole('button', { name: 'Ola' })).toHaveCount(0);
 
-  // The Trip currency waits for the Ferry to be convertible; the name changes, last write wins.
+  // The name changes, last write wins.
   await page.getByRole('link', { name: /Name and Trip currency/ }).click();
-  await expect(page.getByRole('main')).toContainText("The Trip currency can't change");
   await page.getByLabel('Name').fill('Rügen 2027');
   await page.getByRole('button', { name: 'Save' }).click();
   await expect(page.getByRole('link', { name: /Name and Trip currency/ })).toContainText(
