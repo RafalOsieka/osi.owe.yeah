@@ -552,10 +552,7 @@ test('a share on a Receipt and a bar on Balances open where the share comes from
 
   // 6.27 split Even by three is 2.09 each, exactly; its parts each round to the cent.
   await page.getByRole('link', { name: /Lidl Rovinj/ }).click();
-  await page
-    .getByRole('region', { name: 'Shares' })
-    .getByRole('button', { name: /Ania/ })
-    .click();
+  await page.getByRole('region', { name: 'Shares' }).getByRole('button', { name: /Ania/ }).click();
   const sheet = page.getByRole('dialog', { name: "Ania's share" });
   await expect(sheet).toContainText('Goods at full price≈ +€1.77');
   await expect(sheet).toContainText('Deposits≈ +€0.83');
