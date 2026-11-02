@@ -484,8 +484,7 @@ describe('Receipt walkthroughs', () => {
     ]);
   });
 
-  it('a tip is an ordinary Line item, split like the dinner', () => {
-    // The Contribution half of this walkthrough (Kuba's cash) comes with Contributions.
+  it('cash tip from someone else: the tip is a Line item, and Kuba’s cash a Contribution', () => {
     const dinner = { name: 'Dinner', unitPrice: 6400, quantity: 1, split: even(everyone) };
     const tip = {
       name: 'Tip',
@@ -494,10 +493,30 @@ describe('Receipt walkthroughs', () => {
       split: newLineItemSplit([dinner], everyone),
     };
 
-    const { total, shares } = expenseShares(receipt(dinner, tip));
+    const tipped = {
+      ...receipt(dinner, tip),
+      contributions: [{ participantId: kuba, amount: 800 }],
+    };
 
+    const { total, paid, shares } = expenseShares(tipped);
+    expect(expenseProblems(tipped, trip)).toEqual([]);
     expect(total).toEqual(rational(72n));
+    // Rafał's card covers 64.00, Kuba's cash 8.00, and everyone's share is 18.00.
+    expect([...paid]).toEqual([
+      [rafal, rational(64n)],
+      [kuba, rational(8n)],
+    ]);
     expect([...shares.values()]).toEqual(Array.from({ length: 4 }, () => rational(18n)));
+    expect(balancesOf(tipped)).toEqual([
+      rational(46n),
+      rational(-18n),
+      rational(-10n),
+      rational(-18n),
+    ]);
+    // Kuba can't be made the Main payer while he has a Contribution.
+    expect(expenseProblems({ ...tipped, mainPayerId: kuba }, trip)).toEqual([
+      'contributionFromMainPayer',
+    ]);
   });
 
   it('things that should be refused: more units than bought, negative goods, too big discounts', () => {
