@@ -1,14 +1,16 @@
 import {
   expenseSchema,
   participantSchema,
+  pushProblemSchema,
   storedExpenseSchema,
   tripIdSchema,
   type ChangeResult,
+  type Currency,
   type ExpenseChange,
   type Participant,
+  type RateEntry,
   type StoredExpense,
   type SyncChange,
-  type TripCurrency,
   type TripSnapshot,
 } from '@osi/owe-yeah-domain';
 import { Dexie, type EntityTable } from 'dexie';
@@ -16,19 +18,19 @@ import { z } from 'zod';
 
 /**
  * Something sync did to this device's changes that the user should hear about, kept until
- * they dismiss it: a removed Participant an Expense of theirs brought back, a removal or a
- * Trip currency the server refused, or their Claim's Participant removed by someone else.
+ * they dismiss it: a removed Participant an Expense of theirs brought back, a removal the
+ * server refused, or their Claim's Participant removed by someone else.
  */
 export type Notice = { id: string } & (
   | { kind: 'participantRestored'; participant: Participant; expenseTitle: string }
   | { kind: 'removalRefused'; participant: Participant }
-  | { kind: 'currencyRefused'; currency: TripCurrency }
   | { kind: 'claimRemoved'; participant: Participant }
 );
 
 /**
  * A Trip opened on this device: how it reopens the Trip link, who the device says it is
- * there, the Trip as the server last answered it, and what sync has to tell.
+ * there, the Trip as the server last answered it, its cached rate entries, the currency of
+ * the last Expense saved here, and what sync has to tell.
  */
 export type DeviceTrip = {
   id: string;
@@ -43,6 +45,13 @@ export type DeviceTrip = {
    * `null` until the first pull, or the first push of a Trip created on this device.
    */
   snapshot: TripSnapshot | null;
+  /**
+   * Every rate entry pulled for the Trip, the newest of each (ADR 0003): this device's cached
+   * rates, which convert the Trip's Expenses into the Trip currency, offline too.
+   */
+  rates: RateEntry[];
+  /** The currency of the Expense last saved on this device, which a new Expense starts in. */
+  lastCurrency: Currency | null;
   notices: Notice[];
 };
 
@@ -157,9 +166,38 @@ export class DeviceDb extends Dexie {
             entry.change = { ...entry.change, removed: false };
         });
     });
+    this.version(5).upgrade(async (tx) => {
+      await tx
+        .table<DeviceTrip, string>('trips')
+        .toCollection()
+        .modify((trip) => {
+          trip.rates = [];
+          trip.lastCurrency = null;
+          // Notices of a Trip currency refused while Expenses were not converted yet go.
+          trip.notices = trip.notices.filter(({ kind }) => noticeKinds.has(kind));
+        });
+      await tx
+        .table<OutboxEntry, number>('outbox')
+        .toCollection()
+        .modify((entry) => {
+          if (entry.held?.status !== 'rejected') return;
+          // An Expense in another currency than the Trip's is accepted now: sent again.
+          const problems = entry.held.problems.filter(
+            (problem) => pushProblemSchema.safeParse(problem).success,
+          );
+          entry.held = problems.length > 0 ? { ...entry.held, problems } : null;
+        });
+    });
     this.on('populate', (tx) => tx.table('trips').bulkAdd(tripsFromLocalStorage()));
   }
 }
+
+/** The kinds of Notice there are, to drop those of older versions of the store. */
+const noticeKinds = new Set<string>([
+  'participantRestored',
+  'removalRefused',
+  'claimRemoved',
+] satisfies Notice['kind'][]);
 
 /**
  * An Expense kept by version 1 of the store, from before deletes and Revisions: never deleted,
@@ -196,7 +234,9 @@ function tripsFromLocalStorage(): DeviceTrip[] {
     const legacy = z.array(z.unknown()).parse(JSON.parse(localStorage.getItem(LEGACY_KEY) ?? '[]'));
     return legacy.flatMap((entry) => {
       const trip = legacyTripSchema.safeParse(entry);
-      return trip.success ? [{ ...trip.data, snapshot: null, notices: [] }] : [];
+      return trip.success
+        ? [{ ...trip.data, snapshot: null, rates: [], lastCurrency: null, notices: [] }]
+        : [];
     });
   } catch {
     return [];

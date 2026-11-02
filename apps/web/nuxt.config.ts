@@ -74,6 +74,11 @@ export default defineNuxtConfig({
     preference: 'system',
     fallback: 'light',
   },
+  runtimeConfig: {
+    // Where exchange rates come from (ADR 0003); `NUXT_FRANKFURTER_URL` points it at a
+    // self-hosted Frankfurter, or at a stand-in in tests.
+    frankfurterUrl: 'https://api.frankfurter.dev',
+  },
   compatibilityDate: '2025-07-15',
   // Nitro defaults to es2019, which lacks the BigInt literals the domain package's exact
   // arithmetic uses; the server runs on Node 24.

@@ -94,10 +94,9 @@ async function removeParticipant(participant: Participant): Promise<number> {
   return referencing;
 }
 
-async function saveTripDetails(details: Omit<Trip, 'id'>): Promise<boolean> {
-  const saved = await device.saveTripDetails(tripId, details);
-  if (saved) void device.sync(tripId);
-  return saved;
+async function saveTripDetails(details: Omit<Trip, 'id'>): Promise<void> {
+  await device.saveTripDetails(tripId, details);
+  void device.sync(tripId);
 }
 
 // My Trips first, so nothing on screen still reads the Trip as it goes.
@@ -115,6 +114,7 @@ provideOpenTrip({
   // Only read by the pages under it, which render once there is a Trip to show.
   trip: computed(() => trip.value!),
   claim,
+  lastCurrency: computed(() => view.value?.deviceTrip.lastCurrency ?? null),
   unsynced: computed(() => view.value?.unsynced ?? 0),
   everyone: computed(() => [
     ...(trip.value?.participants ?? []),

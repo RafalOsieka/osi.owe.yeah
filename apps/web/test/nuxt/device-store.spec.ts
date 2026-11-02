@@ -24,6 +24,8 @@ describe('the device store', () => {
         claim: ania,
         openedAt: opened.openedAt,
         snapshot: null,
+        rates: [],
+        lastCurrency: null,
         notices: [],
       },
     ]);
@@ -161,5 +163,47 @@ describe('the device store', () => {
       snapshot: { ...snapshot, version: 0, edited: null, removedParticipants: [] },
     });
     expect(entry?.change).toEqual({ ...change, participant: ania, removed: false });
+  });
+
+  it('sends again an Expense refused for not being in the Trip currency, and drops the notes of a refused Trip currency', async () => {
+    const name = uuidv7();
+    const v4 = new Dexie(name);
+    v4.version(4).stores({ trips: 'id', outbox: '++seq, tripId' });
+    const tripId = uuidv7();
+    const removed = {
+      id: uuidv7(),
+      kind: 'removalRefused',
+      participant: { id: uuidv7(), name: 'Ola' },
+    };
+    await v4.table('trips').add({
+      id: tripId,
+      token: 'the-token',
+      claim: null,
+      openedAt: '2026-07-01T10:00:00.000Z',
+      snapshot: null,
+      notices: [removed, { id: uuidv7(), kind: 'currencyRefused', currency: 'PLN' }],
+    });
+    const rejected = (problems: string[]) => ({
+      tripId,
+      change: { id: uuidv7(), kind: 'expense' },
+      held: { changeId: uuidv7(), status: 'rejected', problems },
+    });
+    await v4
+      .table('outbox')
+      .bulkAdd([
+        rejected(['currencyNotTripCurrency']),
+        rejected(['currencyNotTripCurrency', 'unknownMainPayer']),
+      ]);
+    v4.close();
+
+    const db = new DeviceDb(name);
+    const [trip] = await db.trips.toArray();
+    const entries = await db.outbox.toArray();
+
+    expect(trip).toMatchObject({ rates: [], lastCurrency: null, notices: [removed] });
+    expect(entries.map(({ held }) => held && held.status === 'rejected' && held.problems)).toEqual([
+      null,
+      ['unknownMainPayer'],
+    ]);
   });
 });

@@ -18,13 +18,15 @@ export function shownSign(amount: Rational, currency: string): -1 | 0 | 1 {
 
 /**
  * An exact amount as the UI shows it: rounded to the currency's minor units and formatted
- * for the locale, with "≈ " in front when rounding changed it (e.g. "≈ €3.33").
+ * for the locale, with "≈ " in front when rounding changed it (e.g. "≈ €3.33"), or when it is
+ * `approximate` anyway, e.g. converted at a Provisional rate.
  */
 export function formatMoney(
   amount: Rational,
   currency: string,
   locale: string,
   display: MoneyDisplay = 'currency',
+  approximate = false,
 ): string {
   const { decimal, exact } = roundMoney(amount, currency);
   const digits = minorUnits(currency);
@@ -38,7 +40,14 @@ export function formatMoney(
           signDisplay,
         });
   const formatted = format.format(decimal);
-  return exact ? formatted : `≈ ${formatted}`;
+  return exact && !approximate ? formatted : `≈ ${formatted}`;
+}
+
+/** An exchange rate as the UI shows it, to six significant digits (e.g. "4.24835"). */
+export function formatRate(rate: Rational, locale: string): string {
+  return new Intl.NumberFormat(locale, { maximumSignificantDigits: 6 }).format(
+    Number(rate.numerator) / Number(rate.denominator),
+  );
 }
 
 /**

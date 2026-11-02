@@ -5,6 +5,7 @@ import {
   spendingTotal,
   suggestedRepayments,
   type StoredExpense,
+  type RateEntry,
   type TripSnapshot,
 } from '@osi/owe-yeah-domain';
 
@@ -49,7 +50,10 @@ describe('suggestedRepayments', () => {
   });
 });
 
-const trip: TripSnapshot = {
+/** A pulled Trip with the rate table its Expenses are converted with. */
+type Trip = TripSnapshot & { rates: RateEntry[] };
+
+const trip: Trip = {
   id: '019a2b3c-4d5e-7f00-8a1b-2c3d4e5f6a7b',
   name: 'Croatia 2026',
   currency: 'EUR',
@@ -61,6 +65,7 @@ const trip: TripSnapshot = {
   edited: null,
   removedParticipants: [],
   expenses: [],
+  rates: [],
 };
 
 const stored = { version: 1, deleted: false, edited: null } as const;
@@ -113,6 +118,6 @@ describe('spendingTotal', () => {
       repaid('019a2b3c-4d5e-7f00-8a1b-0000000000e3', bartek, ania, 2905),
     ];
 
-    expect(spendingTotal(expenses)).toEqual(rational(581n, 10n));
+    expect(spendingTotal({ ...trip, expenses })).toEqual(rational(581n, 10n));
   });
 });

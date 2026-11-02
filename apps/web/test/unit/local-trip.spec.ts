@@ -69,7 +69,7 @@ describe('localTrip', () => {
       removed: false,
     } as const;
 
-    const trip = localTrip(pulled, [entry(edit), entry(added)]);
+    const trip = localTrip(pulled, [entry(edit), entry(added)], []);
 
     expect(trip?.participants).toEqual([kasia, ania]);
     expect(trip?.expenses).toEqual([
@@ -101,7 +101,7 @@ describe('localTrip', () => {
       deleted: true,
     } as const;
 
-    const trip = localTrip(snapshot, [entry(deletion)]);
+    const trip = localTrip(snapshot, [entry(deletion)], []);
 
     expect(trip?.expenses).toEqual([]);
     expect(trip?.deletedExpenses).toMatchObject([
@@ -125,7 +125,7 @@ describe('localTrip', () => {
       problems: ['unknownMainPayer'],
     };
 
-    const trip = localTrip(pulled, [entry(refused, held)]);
+    const trip = localTrip(pulled, [entry(refused, held)], []);
 
     expect(trip?.expenses.at(-1)).toMatchObject({ title: 'Pizza', unsynced: held });
   });
@@ -145,7 +145,7 @@ describe('localTrip', () => {
       removed: false,
     } as const;
 
-    expect(localTrip(null, [entry(created), entry(first)])).toEqual({
+    expect(localTrip(null, [entry(created), entry(first)], [])).toEqual({
       id: tripId,
       name: 'Mazury 2026',
       currency: 'PLN',
@@ -154,6 +154,7 @@ describe('localTrip', () => {
       removedParticipants: [],
       expenses: [],
       deletedExpenses: [],
+      rates: [],
     });
   });
 
@@ -177,11 +178,11 @@ describe('localTrip', () => {
       deleted: false,
     } as const;
 
-    expect(localTrip(snapshot, [entry(removeAnia)])).toMatchObject({
+    expect(localTrip(snapshot, [entry(removeAnia)], [])).toMatchObject({
       participants: [kasia],
       removedParticipants: [ola, ania],
     });
-    expect(localTrip(snapshot, [entry(withOla)])).toMatchObject({
+    expect(localTrip(snapshot, [entry(withOla)], [])).toMatchObject({
       participants: [kasia, ola],
       removedParticipants: [],
     });
@@ -196,7 +197,7 @@ describe('localTrip', () => {
       trip: { name: 'Chorwacja', currency: 'PLN' },
     } as const;
 
-    expect(localTrip(pulled, [entry(renamed)])).toMatchObject({
+    expect(localTrip(pulled, [entry(renamed)], [])).toMatchObject({
       name: 'Chorwacja',
       currency: 'PLN',
       edited: { by: kasia.id, at: null },
@@ -204,6 +205,6 @@ describe('localTrip', () => {
   });
 
   it('has no Trip to show before the first pull of a joined Trip', () => {
-    expect(localTrip(null, [])).toBeNull();
+    expect(localTrip(null, [], [])).toBeNull();
   });
 });

@@ -1,4 +1,5 @@
 import { z } from 'zod';
+import type { Currency } from './currency.ts';
 import { participantSchema } from './participant.ts';
 
 /**
@@ -36,7 +37,7 @@ export const TRIP_CURRENCIES = [
   'TRY',
   'USD',
   'ZAR',
-] as const;
+] as const satisfies readonly Currency[];
 
 export type TripCurrency = (typeof TRIP_CURRENCIES)[number];
 
@@ -84,15 +85,3 @@ export const tripWithParticipantsSchema = tripSchema.extend({
 });
 
 export type TripWithParticipants = z.infer<typeof tripWithParticipantsSchema>;
-
-/**
- * Whether a Trip's currency may not become `currency` yet: Expenses are not converted into
- * the Trip currency (until automatic exchange rates, #36), so it changes only while every
- * Expense, deleted ones included since they can be restored, is in `currency` already.
- */
-export function currencyChangeBlocked(
-  expenses: readonly { currency: string }[],
-  currency: TripCurrency,
-): boolean {
-  return expenses.some((expense) => expense.currency !== currency);
-}

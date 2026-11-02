@@ -9,6 +9,7 @@ import {
   type ParticipantChange,
   type PullResponse,
   type PushResponse,
+  type RateEntry,
   type RevisionsResponse,
   type StoredExpense,
   type SyncChange,
@@ -19,9 +20,13 @@ import {
 import { createTest, fetch } from '@nuxt/test-utils/e2e';
 import { v7 as uuidv7 } from 'uuid';
 import { afterAll, beforeAll, expect, inject, it } from 'vitest';
+import { startFrankfurter } from '../harness/frankfurter';
 import { describeWithDocker } from '../harness/postgres';
 
 const describeApi = describeWithDocker();
+
+// The rate provider the server under test fetches from.
+const frankfurter = await startFrankfurter();
 
 // Every change in these tests comes from one device, without a Claim unless given.
 const deviceId = uuidv7();
@@ -137,6 +142,12 @@ function revisionsResponse(tripId: string, token: string, expenseId: string): Pr
   });
 }
 
+/** The rate entries the whole-Trip pull brings, asked at the device's Trip version `since`. */
+async function pulledRates(tripId: string, token: string, since?: number): Promise<RateEntry[]> {
+  // SAFETY: a 200 from the whole-Trip pull is a PullResponse.
+  return ((await (await pullTrip(tripId, token, since)).json()) as PullResponse).rates;
+}
+
 async function pulledParticipants(tripId: string, token: string): Promise<Participant[]> {
   return (await pulled(tripId, token)).participants;
 }
@@ -175,10 +186,11 @@ describeApi('Trip API', () => {
   const server = createTest({
     rootDir: fileURLToPath(new URL('../../..', import.meta.url)),
     server: true,
-    env: { DATABASE_URL: inject('databaseUrl') },
+    env: { DATABASE_URL: inject('databaseUrl'), NUXT_FRANKFURTER_URL: frankfurter.url },
   });
   beforeAll(server.beforeAll, server.ctx.options.setupTimeout);
   afterAll(server.afterAll, server.ctx.options.teardownTimeout);
+  afterAll(frankfurter.close);
 
   it('accepts a Trip created offline on its first push, with Expenses in the same push', async () => {
     const kasia = participant('Kasia');
@@ -305,7 +317,10 @@ describeApi('Trip API', () => {
     const { trip, token, kasia } = await tripWithKasiaAndAnia();
     const { version } = await pulled(trip.id, token);
 
-    expect(await (await pullTrip(trip.id, token, version)).json()).toEqual({ trip: null });
+    expect(await (await pullTrip(trip.id, token, version)).json()).toEqual({
+      trip: null,
+      rates: [],
+    });
 
     await push(trip.id, token, change(plainExpense(kasia)));
     const newer = await (await pullTrip(trip.id, token, version)).json();
@@ -479,17 +494,79 @@ describeApi('Trip API', () => {
     });
   });
 
-  it('refuses a new Trip currency while an Expense is in another one', async () => {
+  it('changes the Trip currency without rewriting an Expense in another, converting it at the new pair', async () => {
     const { trip, token, kasia } = await tripWithKasiaAndAnia();
-    // Deleted, it still blocks: it can be restored.
-    const expense = plainExpense(kasia);
-    await push(trip.id, token, change(expense), deletion(expense, 1));
+    frankfurter.set('2026-07-14', 'CHF', 'PLN', 4.5);
+    const expense: Expense = { ...plainExpense(kasia), currency: 'CHF' };
+    await push(trip.id, token, change(expense));
     const toPln = tripChange({ name: 'Croatia', currency: 'PLN' });
 
     expect(await push(trip.id, token, toPln)).toEqual<ChangeResult[]>([
-      { changeId: toPln.id, status: 'rejected', problems: ['currencyChangeBlocked'] },
+      { changeId: toPln.id, status: 'accepted', version: null },
     ]);
-    expect(await pulled(trip.id, token)).toMatchObject({ name: trip.name, currency: 'EUR' });
+    expect(await pulled(trip.id, token)).toMatchObject({
+      currency: 'PLN',
+      expenses: [stored(expense, 1)],
+    });
+    expect(await pulledRates(trip.id, token)).toEqual<RateEntry[]>([
+      { date: '2026-07-14', from: 'CHF', to: 'PLN', rate: '4.5', fixed: true },
+    ]);
+  });
+
+  it('fills the fixed rate a foreign Expense needs on the pull, once, and never changes it', async () => {
+    const { trip, token, kasia } = await tripWithKasiaAndAnia();
+    frankfurter.set('2026-07-14', 'USD', 'EUR', 0.87593);
+    await push(trip.id, token, change({ ...plainExpense(kasia), currency: 'USD' }));
+    const usd: RateEntry = {
+      date: '2026-07-14',
+      from: 'USD',
+      to: 'EUR',
+      rate: '0.87593',
+      fixed: true,
+    };
+
+    expect(await pulledRates(trip.id, token)).toEqual([usd]);
+    const fetched = frankfurter.requests.length;
+    frankfurter.set('2026-07-14', 'USD', 'EUR', 0.9);
+    const { version } = await pulled(trip.id, token);
+    // Brought even while the Trip is unchanged.
+    expect(await pulledRates(trip.id, token, version)).toEqual([usd]);
+    expect(frankfurter.requests.length).toBe(fetched);
+  });
+
+  it('fixes the latest rate before a date the provider skipped, once it published a later one', async () => {
+    const { trip, token, kasia } = await tripWithKasiaAndAnia();
+    frankfurter.set('2026-07-10', 'SEK', 'EUR', 0.088);
+    frankfurter.set('2026-07-13', 'SEK', 'EUR', 0.089);
+    const time = { instant: '2026-07-12T10:00:00Z', zone: 'Europe/Stockholm' };
+    await push(trip.id, token, change({ ...plainExpense(kasia), currency: 'SEK', time }));
+
+    expect(await pulledRates(trip.id, token)).toEqual<RateEntry[]>([
+      { date: '2026-07-12', from: 'SEK', to: 'EUR', rate: '0.088', fixed: true },
+    ]);
+  });
+
+  it("fills today's rate as one not fixed yet, from the latest the provider has", async () => {
+    const { trip, token, kasia } = await tripWithKasiaAndAnia();
+    const now = new Date();
+    const today = now.toISOString().slice(0, 10);
+    const yesterday = new Date(now.getTime() - 86_400_000).toISOString().slice(0, 10);
+    // Today's rate is not published yet.
+    frankfurter.set(yesterday, 'GBP', 'EUR', 1.15);
+    const time = { instant: now.toISOString(), zone: 'UTC' };
+    await push(trip.id, token, change({ ...plainExpense(kasia), currency: 'GBP', time }));
+
+    expect(await pulledRates(trip.id, token)).toEqual<RateEntry[]>([
+      { date: today, from: 'GBP', to: 'EUR', rate: '1.15', fixed: false },
+    ]);
+  });
+
+  it('pulls no rate for a currency the provider does not cover', async () => {
+    const { trip, token, kasia } = await tripWithKasiaAndAnia();
+    await push(trip.id, token, change({ ...plainExpense(kasia), currency: 'KPW' }));
+
+    expect(await pulledRates(trip.id, token)).toEqual([]);
+    expect((await pulled(trip.id, token)).expenses).toHaveLength(1);
   });
 
   it('removes a Participant softly, but refuses while an Expense references them', async () => {

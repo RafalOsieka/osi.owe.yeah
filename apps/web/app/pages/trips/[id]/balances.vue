@@ -2,6 +2,7 @@
 import {
   balances,
   isSettled,
+  rateSummary,
   shareBreakdowns,
   spendingTotal,
   suggestedRepayments,
@@ -11,8 +12,10 @@ import {
 // everyone's balance as diverging bars, the other Suggested Repayments (all of them without
 // a Claim), Record another Repayment, and what the Trip spent. Once the Trip is Settled, "All
 // settled" replaces the balance and the suggestions. Balances are worked out exactly and
-// rounded with the largest remainder method, as settling up uses them. Tapping a bar opens
-// where that Participant's share comes from, with what they paid and their balance.
+// rounded with the largest remainder method, as settling up uses them, in the Trip currency.
+// The footer warns how many Expenses use a Provisional rate, so balances may still move a
+// little (settling up stays allowed), and how many are left out without any rate. Tapping a
+// bar opens where that Participant's share comes from, with what they paid and their balance.
 definePageMeta({ scrollToTop: false });
 useKeptScroll();
 
@@ -24,7 +27,8 @@ const settled = computed(() => isSettled(trip.value));
 const mine = computed(
   () => everyone.value.find(({ participantId }) => participantId === claim.value?.id) ?? null,
 );
-const total = computed(() => spendingTotal(trip.value.expenses));
+const total = computed(() => spendingTotal(trip.value));
+const rates = computed(() => rateSummary(trip.value));
 
 const breakdownOpen = ref(false);
 const breakdownOf = ref<string | null>(null);
@@ -122,9 +126,23 @@ const suggestions = computed(() => {
       class="mt-3 px-0"
     />
 
-    <p class="mt-4 text-xs text-muted">
-      {{ $t('balances.tripTotalIs', { amount: formatMoney(total, trip.currency, locale) }) }}
-    </p>
+    <div class="mt-4 flex flex-wrap justify-between gap-x-3 gap-y-1 text-xs text-muted">
+      <p>
+        {{
+          $t('balances.tripTotalIs', {
+            amount: formatMoney(total, trip.currency, locale, 'currency', rates.provisional > 0),
+          })
+        }}
+      </p>
+      <p v-if="rates.provisional > 0" class="flex items-center gap-1">
+        <UIcon name="i-lucide-triangle-alert" class="size-4 shrink-0 text-warning" />
+        {{ $t('rate.provisionalCount', rates.provisional) }}
+      </p>
+      <p v-if="rates.missing > 0" class="flex items-center gap-1">
+        <UIcon name="i-lucide-triangle-alert" class="size-4 shrink-0 text-warning" />
+        {{ $t('rate.missingCount', rates.missing) }}
+      </p>
+    </div>
 
     <ShareBreakdownSheet
       v-if="opened"

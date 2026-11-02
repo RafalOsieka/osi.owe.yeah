@@ -3,7 +3,8 @@ import type { AlertProps } from '@nuxt/ui';
 import { isRepayment } from '@osi/owe-yeah-domain';
 import { toExpense } from '~/sync/local-trip';
 
-// An Expense's detail page: the Expense in full; on top, why it is not synced yet if it
+// An Expense's detail page: the Expense in full, with its total converted into the Trip
+// currency; on top, why it is not synced yet if it
 // isn't; at the bottom, who last edited it and when, its History, and Delete. A Conflict
 // opens the Conflict screen; a rejected change is fixed with Edit or discarded. Edit opens the
 // Expense form. Delete moves it to Recently deleted, with Undo for a moment. Should the
@@ -103,7 +104,7 @@ useHead({ title: () => expense.value?.title ?? t('expense.notFound') });
 
     <template v-if="expense">
       <UAlert v-if="notSynced" v-bind="notSynced" variant="subtle" class="mb-4" />
-      <ExpenseDetails :expense="expense" />
+      <ExpenseDetails :expense="expense" converted />
 
       <footer class="mt-6 border-t border-default pt-3">
         <div class="flex items-center gap-2">

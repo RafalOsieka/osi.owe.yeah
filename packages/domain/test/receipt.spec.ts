@@ -23,6 +23,7 @@ const trip = {
     id,
     name: ['Rafał', 'Ania', 'Kuba', 'Ola'][index]!,
   })),
+  rates: [],
 };
 
 /** Each Participant's exact balance on this one Receipt, in the Trip's order. */

@@ -3,7 +3,7 @@ import { isReceipt, isRepayment, type Expense } from './expense.ts';
 import { fromMinor } from './money.ts';
 import { goodsMinor, isDepositRefund } from './line-item.ts';
 import { add, divide, multiply, negate, rational, type Rational } from './rational.ts';
-import type { TripExpenses } from './settle-up.ts';
+import { convertible, type TripExpenses } from './settle-up.ts';
 import { lineItemShares, receiptShares, spread } from './shares.ts';
 
 /**
@@ -44,14 +44,15 @@ type PartTotals = Map<string, Map<BreakdownPart, Rational>>;
 const zero = rational(0n);
 
 /**
- * Adds an Expense's parts to `totals`. Spreads every amount by its Line item's split as
- * `receiptShares` does, so the parts add up to the shares `expenseShares` gives.
+ * Adds an Expense's parts to `totals`, converted at `rate` (1 in its own currency). Spreads
+ * every amount by its Line item's split as `receiptShares` does, so the parts add up to the
+ * shares `expenseShares` gives.
  */
-function addExpense(totals: PartTotals, expense: Expense): void {
+function addExpense(totals: PartTotals, expense: Expense, rate = rational(1n)): void {
   const credit = (part: BreakdownPart, amounts: ReadonlyMap<string, Rational>) => {
     for (const [id, amount] of amounts) {
       const parts = totals.get(id) ?? new Map<BreakdownPart, Rational>();
-      parts.set(part, add(parts.get(part) ?? zero, amount));
+      parts.set(part, add(parts.get(part) ?? zero, multiply(amount, rate)));
       totals.set(id, parts);
     }
   };
@@ -110,11 +111,11 @@ export function shareBreakdown(expense: Expense): ReadonlyMap<string, ShareBreak
 /**
  * Where each Participant's share of the whole Trip comes from, every part added up over its
  * Expenses: the share `balances` works with. Every Participant by id, in the Trip's order.
- * Expenses must be in the Trip currency, as for `balances`. Shown from a Participant's bar
+ * In the Trip currency, leaving out Expenses without a rate, as `balances` does. Shown from a Participant's bar
  * on the Balances tab.
  */
 export function shareBreakdowns(trip: TripExpenses): ReadonlyMap<string, ShareBreakdown> {
   const totals: PartTotals = new Map();
-  for (const expense of trip.expenses) addExpense(totals, expense);
+  for (const { expense, rate } of convertible(trip)) addExpense(totals, expense, rate);
   return new Map(trip.participants.map(({ id }) => [id, toBreakdown(totals.get(id))]));
 }

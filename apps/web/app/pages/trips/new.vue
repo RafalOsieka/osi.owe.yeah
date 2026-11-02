@@ -1,5 +1,6 @@
 <script setup lang="ts">
 import {
+  TRIP_CURRENCIES,
   participantNameSchema,
   tripNameSchema,
   tripWithParticipantsSchema,
@@ -22,7 +23,7 @@ type TripForm = Omit<Trip, 'id'> & { me: string; others: string[] };
 
 const state = reactive<TripForm>({ name: '', currency: 'EUR', me: '', others: [''] });
 
-const currencies = useTripCurrencies();
+const currencies = useCurrencyItems(TRIP_CURRENCIES);
 
 // The domain rules for names, worded for the form; the currency picker only offers valid ones.
 function validate(trip: Partial<TripForm>): FormError[] {

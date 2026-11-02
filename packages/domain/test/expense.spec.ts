@@ -141,12 +141,6 @@ describe('expenseProblems', () => {
       'repaymentToSelf',
     ]);
   });
-
-  it('refuses a currency other than the Trip currency', () => {
-    expect(expenseProblems({ ...lidl, currency: 'HUF' }, trip)).toEqual([
-      'currencyNotTripCurrency',
-    ]);
-  });
 });
 
 describe('Expense time', () => {

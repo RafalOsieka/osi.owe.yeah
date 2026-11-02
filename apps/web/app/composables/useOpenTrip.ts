@@ -1,4 +1,11 @@
-import type { Expense, ExpenseProblem, Participant, Revision, Trip } from '@osi/owe-yeah-domain';
+import type {
+  Currency,
+  Expense,
+  ExpenseProblem,
+  Participant,
+  Revision,
+  Trip,
+} from '@osi/owe-yeah-domain';
 import type { InjectionKey } from 'vue';
 import type { ExpenseBase, Notice } from '~/sync/db';
 import type { LocalTrip } from '~/sync/local-trip';
@@ -13,6 +20,8 @@ export interface OpenTrip {
   trip: Readonly<Ref<LocalTrip>>;
   /** The Participant this device says it is in the Trip, if it has said. */
   claim: Readonly<Ref<Participant | null>>;
+  /** The currency of the Expense last saved on this device, which a new one starts in. */
+  lastCurrency: Readonly<Ref<Currency | null>>;
   /** How many of this device's changes to the Trip the server has not accepted yet. */
   unsynced: Readonly<Ref<number>>;
   /**
@@ -33,10 +42,10 @@ export interface OpenTrip {
    */
   removeParticipant(participant: Participant): Promise<number>;
   /**
-   * Saves the Trip's name and Trip currency on the device, last write wins. Resolves to
-   * `false`, saving nothing, for a Trip currency some Expense is not in.
+   * Saves the Trip's name and Trip currency on the device, last write wins; a new Trip
+   * currency rewrites no Expense.
    */
-  saveTripDetails(details: Omit<Trip, 'id'>): Promise<boolean>;
+  saveTripDetails(details: Omit<Trip, 'id'>): Promise<void>;
   /** Forgets the Trip on this device, losing changes not synced yet, and opens My Trips. */
   forget(): Promise<void>;
   /**

@@ -4,19 +4,38 @@ import {
   add,
   compare,
   floor,
+  multiply,
   negate,
   rational,
   roundHalfAwayFromZero,
   subtract,
   type Rational,
 } from './rational.ts';
+import { expenseRate, type RateEntry, type TripRates } from './rates.ts';
 import { expenseShares } from './shares.ts';
 import type { TripSnapshot } from './snapshot.ts';
 
-/** What balances are worked out from: the Trip currency, its Participants and its Expenses. */
+/**
+ * What balances are worked out from: the Trip currency, its Participants, its Expenses and
+ * the rate table that converts them into the Trip currency.
+ */
 export type TripExpenses = Pick<TripSnapshot, 'currency' | 'participants'> & {
   expenses: readonly Expense[];
+  rates: readonly RateEntry[];
 };
+
+/**
+ * The Expenses that can be converted into the Trip currency, each with its rate
+ * (`expenseRate`); those without one are left out of balances and totals.
+ */
+export function convertible<E extends Pick<Expense, 'currency' | 'time'>>(
+  trip: TripRates & { expenses: readonly E[] },
+): { expense: E; rate: Rational }[] {
+  return trip.expenses.flatMap((expense) => {
+    const found = expenseRate(expense, trip);
+    return found ? [{ expense, rate: found.rate }] : [];
+  });
+}
 
 /** What one Participant paid, their share of the costs, and the difference, in the Trip currency. */
 export type ParticipantBalance = {
@@ -36,8 +55,8 @@ export type ParticipantBalance = {
  * Every Participant's balance, exact and also rounded for settling up, in the order of the
  * Trip's Participants. Each Contribution counts as paid by whoever made it and the Main payer
  * pays the rest; each Line item is shared by its split, and a Repayment counts against its
- * recipient (`expenseShares`).
- * Expenses must be in the Trip currency (`expenseProblems` enforces it).
+ * recipient (`expenseShares`). Each Expense is converted into the Trip currency at its rate,
+ * and one without a rate is left out (`convertible`).
  */
 export function balances(trip: TripExpenses): ParticipantBalance[] {
   const zero = rational(0n);
@@ -46,13 +65,10 @@ export function balances(trip: TripExpenses): ParticipantBalance[] {
   const credit = (totals: Map<string, Rational>, id: string, amount: Rational) =>
     totals.set(id, add(totals.get(id) ?? zero, amount));
 
-  for (const expense of trip.expenses) {
-    if (expense.currency !== trip.currency) {
-      throw new RangeError(`Expense ${expense.id} is not in the Trip currency`);
-    }
+  for (const { expense, rate } of convertible(trip)) {
     const parts = expenseShares(expense);
-    for (const [id, part] of parts.paid) credit(paid, id, part);
-    for (const [id, part] of parts.shares) credit(share, id, part);
+    for (const [id, part] of parts.paid) credit(paid, id, multiply(part, rate));
+    for (const [id, part] of parts.shares) credit(share, id, multiply(part, rate));
   }
 
   const exact = trip.participants.map(({ id }) => {
@@ -79,11 +95,17 @@ export function isSettled(trip: TripExpenses): boolean {
   );
 }
 
-/** What the Trip spent: every Expense's total, net of Income, with Repayments left out. */
-export function spendingTotal(expenses: readonly Expense[]): Rational {
-  return expenses
-    .filter((expense) => !isRepayment(expense))
-    .reduce((sum, expense) => add(sum, expenseShares(expense).total), rational(0n));
+/**
+ * What the Trip spent in the Trip currency: every Expense's total, net of Income, with
+ * Repayments and Expenses without a rate left out.
+ */
+export function spendingTotal(trip: TripRates & { expenses: readonly Expense[] }): Rational {
+  return convertible(trip)
+    .filter(({ expense }) => !isRepayment(expense))
+    .reduce(
+      (sum, { expense, rate }) => add(sum, multiply(expenseShares(expense).total, rate)),
+      rational(0n),
+    );
 }
 
 /** A Repayment the app proposes: `payerId` hands `amount` (Trip currency) to `recipientId`. */

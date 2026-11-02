@@ -3,6 +3,7 @@ import {
   type Edited,
   type Expense,
   type Participant,
+  type RateEntry,
   type StoredExpense,
   type TripSnapshot,
   type TripWithParticipants,
@@ -48,10 +49,12 @@ export type LocalTrip = TripWithParticipants &
     expenses: LocalExpense[];
     /** Deleted Expenses, for Recently deleted. */
     deletedExpenses: LocalExpense[];
+    /** The rate entries this device has, converting Expenses into the Trip currency. */
+    rates: readonly RateEntry[];
   };
 
 /** A Trip as this device shows it, before deleted Expenses are set apart. */
-type AllExpenses = Omit<LocalTrip, 'deletedExpenses'>;
+type AllExpenses = Omit<LocalTrip, 'deletedExpenses' | 'rates'>;
 
 /** An Expense of the Trip by its id, deleted or not. */
 export function findExpense(trip: LocalTrip, expenseId: string): LocalExpense | undefined {
@@ -75,11 +78,13 @@ export function toExpense(local: LocalExpense): Expense {
  * on top, in order, so a pull never hides the device's own changes (ADR 0002). An Expense
  * with a held change stays held, whatever was queued after it. Deleted Expenses are set apart.
  * A pending Expense brings back the removed Participants it references, as the server will.
- * `null` when there is nothing to show yet: a joined Trip before its first pull.
+ * Expenses are converted with `rates`, the rate entries the device has. `null` when there is
+ * nothing to show yet: a joined Trip before its first pull.
  */
 export function localTrip(
   snapshot: TripSnapshot | null,
   outbox: readonly OutboxEntry[],
+  rates: readonly RateEntry[],
 ): LocalTrip | null {
   let trip: AllExpenses | null = snapshot && {
     id: snapshot.id,
@@ -131,6 +136,7 @@ export function localTrip(
       ...trip,
       expenses: trip.expenses.filter(({ deleted }) => !deleted),
       deletedExpenses: trip.expenses.filter(({ deleted }) => deleted),
+      rates,
     }
   );
 }

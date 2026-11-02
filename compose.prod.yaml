@@ -47,6 +47,8 @@ services:
       - '${APP_BIND:-127.0.0.1}:${APP_PORT:-3000}:3000'
     environment:
       DATABASE_URL: postgres://${POSTGRES_USER:-postgres}:${POSTGRES_PASSWORD:?POSTGRES_PASSWORD is required}@db:5432/${POSTGRES_DB:-owe_yeah}
+      # Where exchange rates come from (ADR 0003): the public Frankfurter, or a self-hosted one.
+      NUXT_FRANKFURTER_URL: ${FRANKFURTER_URL:-https://api.frankfurter.dev}
     depends_on:
       migrate:
         condition: service_completed_successfully

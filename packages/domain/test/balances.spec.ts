@@ -4,6 +4,7 @@ import {
   rational,
   roundMoney,
   type StoredExpense,
+  type RateEntry,
   type TripSnapshot,
 } from '@osi/owe-yeah-domain';
 
@@ -25,7 +26,10 @@ function expense(id: string, mainPayerId: string, unitPrice: number, participant
   } satisfies StoredExpense;
 }
 
-const trip: TripSnapshot = {
+/** A pulled Trip with the rate table its Expenses are converted with. */
+type Trip = TripSnapshot & { rates: RateEntry[] };
+
+const trip: Trip = {
   id: '019a2b3c-4d5e-7f00-8a1b-2c3d4e5f6a7b',
   name: 'Croatia 2026',
   currency: 'EUR',
@@ -34,6 +38,7 @@ const trip: TripSnapshot = {
   edited: null,
   removedParticipants: [],
   expenses: [],
+  rates: [],
 };
 
 describe('balances', () => {
@@ -51,7 +56,7 @@ describe('balances', () => {
   });
 
   it('splits evenly between ticked Participants, exactly, and credits the Main payer', () => {
-    const snapshot: TripSnapshot = {
+    const snapshot: Trip = {
       ...trip,
       expenses: [
         // 10.00 EUR for three: 10/3 each, which no cent amount matches.
@@ -92,7 +97,7 @@ describe('balances', () => {
 });
 
 describe('rounded balances', () => {
-  const rounded = (snapshot: TripSnapshot) =>
+  const rounded = (snapshot: Trip) =>
     balances(snapshot).map(({ rounded }) => roundMoney(rounded, 'EUR').decimal);
 
   it('add up to zero, the cent left over going to the lowest Participant id on a tie', () => {
