@@ -34,8 +34,9 @@ export type ParticipantBalance = {
 
 /**
  * Every Participant's balance, exact and also rounded for settling up, in the order of the
- * Trip's Participants. The Main payer pays each Expense in full; each Line item is split
- * evenly between its ticked Participants, and a Repayment counts against its recipient.
+ * Trip's Participants. Each Contribution counts as paid by whoever made it and the Main payer
+ * pays the rest; each Line item is shared by its split, and a Repayment counts against its
+ * recipient (`expenseShares`).
  * Expenses must be in the Trip currency (`expenseProblems` enforces it).
  */
 export function balances(trip: TripExpenses): ParticipantBalance[] {
@@ -49,9 +50,9 @@ export function balances(trip: TripExpenses): ParticipantBalance[] {
     if (expense.currency !== trip.currency) {
       throw new RangeError(`Expense ${expense.id} is not in the Trip currency`);
     }
-    const { total, shares } = expenseShares(expense);
-    credit(paid, expense.mainPayerId, total);
-    for (const [id, part] of shares) credit(share, id, part);
+    const parts = expenseShares(expense);
+    for (const [id, part] of parts.paid) credit(paid, id, part);
+    for (const [id, part] of parts.shares) credit(share, id, part);
   }
 
   const exact = trip.participants.map(({ id }) => {

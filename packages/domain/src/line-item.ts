@@ -1,5 +1,5 @@
 import { z } from 'zod';
-import { discountExceeds, discountSchema, takenOff } from './discount.ts';
+import { discountExceeds, discountSchema, takenOff, type Discount } from './discount.ts';
 import { participantIdSchema } from './participant.ts';
 import { add, rational, subtract, type Rational } from './rational.ts';
 
@@ -120,6 +120,22 @@ export function goodsMinor(lineItems: readonly LineItem[]): Rational {
   return lineItems
     .filter((item) => !isDepositRefund(item))
     .reduce((sum, item) => add(sum, lineNetMinor(item)), rational(0n));
+}
+
+/**
+ * What a Receipt (or plain Expense) comes to in minor units: the goods after their Line
+ * discounts (`goodsMinor`), less the Receipt discount, plus Deposits, plus Deposit refunds
+ * (which are negative). Negative when the refunds are bigger than the shopping.
+ */
+export function receiptTotalMinor(
+  lineItems: readonly LineItem[],
+  discount: Discount | undefined,
+): Rational {
+  const goods = goodsMinor(lineItems);
+  const extras = lineItems.map((item) =>
+    isDepositRefund(item) ? lineNetMinor(item) : rational(depositMinor(item)),
+  );
+  return extras.reduce(add, subtract(goods, takenOff(discount, goods)));
 }
 
 /**

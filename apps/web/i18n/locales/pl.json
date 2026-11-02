@@ -94,7 +94,9 @@
       "unitsExceedQuantity": "Pozycja ma przypisanych więcej sztuk, niż liczy.",
       "amountsExceedLineTotal": "Kwoty pozycji sumują się do więcej niż jej wartość.",
       "lineDiscountExceedsLineTotal": "Pozycja ma rabat większy niż jej wartość.",
-      "receiptDiscountExceedsLineItems": "Rabat na paragon jest większy niż pozycje po ich własnych rabatach."
+      "receiptDiscountExceedsLineItems": "Rabat na paragon jest większy niż pozycje po ich własnych rabatach.",
+      "contributionFromMainPayer": "Główny płatnik nie może mieć też dopłaty.",
+      "contributionsExceedTotal": "Dopłaty wynoszą więcej niż cały wydatek."
     },
     "emptyHelp": "Kto za coś płaci, dodaje to tutaj.",
     "addFirst": "Dodaj pierwszy wydatek",
@@ -186,6 +188,17 @@
     "refundHelp": "Pieniądze za oddane opakowania zwrotne, często bon wykorzystany przy kasie. Odejmowany od sumy, dzielony osobno i nigdy nie rabatowany.",
     "checkAmount": "Sprawdź kwotę."
   },
+  "contribution": {
+    "title": "Dopłaty",
+    "label": "Dopłata",
+    "add": "Dodaj dopłatę",
+    "amountFrom": "Dopłata: {name}",
+    "remove": "Usuń dopłatę: {name}",
+    "rest": "Resztę płaci {name}: {amount}",
+    "exceeds": "Dopłaty wynoszą więcej niż cały wydatek.",
+    "unreadable": "Sprawdź kwoty dopłat.",
+    "payerRefused": "{name} ma dopłatę w tym wydatku. Usuń ją, aby wskazać tę osobę jako głównego płatnika."
+  },
   "repayment": {
     "title": "Spłata",
     "new": "Nowa spłata",
@@ -246,7 +259,9 @@
       "unitsExceedQuantity": "pozycja ma przypisanych więcej sztuk, niż liczy.",
       "amountsExceedLineTotal": "kwoty pozycji sumują się do więcej niż jej wartość.",
       "lineDiscountExceedsLineTotal": "rabat pozycji jest większy niż jej wartość.",
-      "receiptDiscountExceedsLineItems": "rabat na paragon jest większy niż pozycje po ich własnych rabatach."
+      "receiptDiscountExceedsLineItems": "rabat na paragon jest większy niż pozycje po ich własnych rabatach.",
+      "contributionFromMainPayer": "główny płatnik nie może mieć też dopłaty.",
+      "contributionsExceedTotal": "dopłaty wynoszą więcej niż cały wydatek."
     },
     "pullToRefresh": "Pociągnij, aby zsynchronizować",
     "releaseToRefresh": "Puść, aby zsynchronizować"

@@ -19,6 +19,11 @@ import type { RouteLocationRaw } from 'vue-router';
 import { v7 as uuidv7 } from 'uuid';
 import type { LocalExpense } from '~/sync/local-trip';
 import {
+  contributionsFromDraft,
+  draftFromContributions,
+  type DraftContribution,
+} from '~/utils/contribution-draft';
+import {
   discountFromDraft,
   draftFromDiscount,
   draftFromLineItem,
@@ -37,9 +42,13 @@ import {
 // refunds come off it, and a Receipt discount below "Paid by" comes off the goods. The
 // Deposits total shows under the Receipt total, to check against the Deposits printed on the
 // paper Receipt, and the total may go negative. A Receipt may be saved with value not
-// assigned yet, which counts as the Main payer's until it is. Saving keeps the Expense's full
-// new state on the device, to sync later, and returns to `parent`'s screen, or wherever the
-// form was opened from. An Expense that breaks a Trip rule is not saved; why shows above Save.
+// assigned yet, which counts as the Main payer's until it is. Under "Paid by", any Expense
+// but Income takes Contributions from others (so the Income switch hides while there are
+// any); the Main payer covers the rest, so a price edit changes only their part, and someone
+// with a Contribution can't be picked as Main payer. Saving
+// keeps the Expense's full new state on the device, to sync later, and returns to `parent`'s
+// screen, or wherever the form was opened from. An Expense that breaks a Trip rule is not
+// saved; why shows above Save.
 const { expense = null, parent } = defineProps<{
   expense?: Extract<LocalExpense, SplitExpense> | null;
   /** The screen above the form, for back when it was opened from a link. */
@@ -65,6 +74,8 @@ type ExpenseFormState = {
   lineItems: DraftLineItem[] | null;
   /** The Receipt discount, used once itemised. */
   discount: DraftDiscount;
+  /** Contributions from Participants other than the Main payer, in the order added. */
+  contributions: DraftContribution[];
 };
 
 // Read once: the form is mounted afresh each time it opens.
@@ -75,7 +86,12 @@ function initialState(): ExpenseFormState {
     const [lineItem] = expense.lineItems;
     const price = lineItem!.unitPrice;
     const time = { local: localDateTime(expense.time), zone: expense.time.zone };
-    const shared = { title: expense.title, mainPayerId: expense.mainPayerId, ...time };
+    const shared = {
+      title: expense.title,
+      mainPayerId: expense.mainPayerId,
+      contributions: draftFromContributions(expense.contributions, expense.currency),
+      ...time,
+    };
     if (isReceipt(expense)) {
       return {
         ...shared,
@@ -107,6 +123,7 @@ function initialState(): ExpenseFormState {
     zone,
     lineItems: null,
     discount: noDiscount(),
+    contributions: [],
   };
 }
 
@@ -179,6 +196,32 @@ const discountError = computed(() => {
   return receipt.value?.discountExceeds ? t('receipt.receiptDiscountExceeds') : undefined;
 });
 
+// Who was refused as Main payer for having a Contribution; the reason shows while it stands.
+const refusedPayerId = ref<string>();
+const payerRefusal = computed(() => {
+  const refused = trip.value.participants.find(({ id }) => id === refusedPayerId.value);
+  if (!refused) return undefined;
+  const contributes = state.contributions.some(({ participantId }) => participantId === refused.id);
+  return contributes ? t('contribution.payerRefused', { name: refused.name }) : undefined;
+});
+
+function pickMainPayer(participantId: string): void {
+  if (state.contributions.some((contribution) => contribution.participantId === participantId)) {
+    refusedPayerId.value = participantId;
+    return;
+  }
+  refusedPayerId.value = undefined;
+  state.mainPayerId = participantId;
+}
+
+// What the Expense comes to so far, which the Contributions come off; `null` while unreadable.
+const total = computed(() => {
+  if (receipt.value) return receipt.value.total;
+  const { currency } = trip.value;
+  const amount = parseMoney(state.amount, currency);
+  return amount === null ? null : fromMinor(state.received ? -amount : amount, currency);
+});
+
 const payerName = computed(
   () => trip.value.participants.find(({ id }) => id === state.mainPayerId)?.name ?? '?',
 );
@@ -217,6 +260,9 @@ function validate(form: Partial<ExpenseFormState>): FormError[] {
       errors.push({ name: 'participantIds', message: t('expense.participantsMissing') });
     }
   }
+  if (contributionsFromDraft(state.contributions, trip.value.currency) === null) {
+    errors.push({ name: 'contributions', message: t('contribution.unreadable') });
+  }
   if (!form.mainPayerId) {
     const message = form.received ? t('expense.receiverMissing') : t('expense.payerMissing');
     errors.push({ name: 'mainPayerId', message });
@@ -244,6 +290,8 @@ const saving = ref(false);
 
 async function submit(): Promise<void> {
   saving.value = true;
+  // Readable by now: `validate` passed.
+  const contributions = contributionsFromDraft(state.contributions, trip.value.currency)!;
   const refused = await saveExpense(
     {
       id,
@@ -255,6 +303,7 @@ async function submit(): Promise<void> {
       lineItems: lineItems(),
       // Left out when there is none, as the device store and the server keep it.
       ...(receipt.value?.discount && { discount: receipt.value.discount }),
+      ...(contributions.length > 0 && { contributions }),
     },
     // Based on the Expense as the form read it when it opened.
     expense?.base ?? { version: null },
@@ -303,6 +352,7 @@ async function submit(): Promise<void> {
         </UFormField>
 
         <USwitch
+          v-if="state.contributions.length === 0"
           v-model="state.received"
           :label="$t('expense.moneyReceived')"
           :description="$t('expense.moneyReceivedHelp')"
@@ -325,12 +375,23 @@ async function submit(): Promise<void> {
         />
       </UFormField>
 
-      <UFormField name="mainPayerId">
+      <UFormField name="mainPayerId" :error="payerRefusal">
         <ParticipantPicker
-          v-model="state.mainPayerId"
+          :model-value="state.mainPayerId"
           :participants="trip.participants"
           :label="state.received ? $t('expense.receivedBy') : $t('expense.paidBy')"
           name="mainPayerId"
+          @update:model-value="pickMainPayer"
+        />
+      </UFormField>
+
+      <UFormField v-if="!state.received" name="contributions">
+        <ContributionList
+          v-model="state.contributions"
+          :participants="trip.participants"
+          :main-payer-id="state.mainPayerId"
+          :currency="trip.currency"
+          :total="total"
         />
       </UFormField>
 

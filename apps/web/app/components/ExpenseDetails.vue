@@ -11,11 +11,11 @@ import {
 } from '@osi/owe-yeah-domain';
 
 // An Expense in full, as its detail page and an old Revision show it: the full title, total,
-// when it was paid in its own zone, the Main payer (who received it, for Income), and each
-// Participant's share, the claimed Participant's in bold. A Repayment shows who paid whom. A
-// Receipt also lists its Line items, with how each is split, its Line discount, its Deposit,
-// and what is not assigned yet, Deposit refunds as negative lines, and then its Receipt
-// discount and its Deposits total.
+// when it was paid in its own zone, the Main payer (who received it, for Income) with their
+// part, then each Contribution from others, and each Participant's share, the claimed
+// Participant's in bold. A Repayment shows who paid whom. A Receipt also lists its Line items,
+// with how each is split, its Line discount, its Deposit, and what is not assigned yet,
+// Deposit refunds as negative lines, and then its Receipt discount and its Deposits total.
 const { expense } = defineProps<{ expense: Expense }>();
 
 const { trip, claim } = useOpenTrip();
@@ -25,7 +25,8 @@ const splitText = useSplitText();
 const money = (amount: Rational) => formatMoney(amount, expense.currency, locale.value);
 
 const details = computed(() => {
-  const { total, discountOff, deposits, shares, unassigned, lineItems } = expenseShares(expense);
+  const { total, discountOff, deposits, paid, shares, unassigned, lineItems } =
+    expenseShares(expense);
   const receipt = isReceipt(expense) && !isRepayment(expense);
   const discountText = (entered: Discount | undefined, off: Rational) =>
     entered && formatDiscount(entered, off, expense.currency, locale.value);
@@ -57,6 +58,11 @@ const details = computed(() => {
     income: total.numerator < 0n,
     when: formatExpenseTime(expense.time, locale.value),
     payer: trip.value.participants.find(({ id }) => id === expense.mainPayerId),
+    // The Main payer first, then the Contributions in the order they were added.
+    payers: [...paid].flatMap(([id, amount]) => {
+      const participant = trip.value.participants.find((other) => other.id === id);
+      return participant ? [{ participant, amount, contribution: id !== expense.mainPayerId }] : [];
+    }),
     // In the Trip's order.
     shares: trip.value.participants.flatMap((participant) => {
       const share = shares.get(participant.id);
@@ -78,11 +84,22 @@ const details = computed(() => {
       <h2 id="paid-by-heading" class="mt-5 mb-1 text-xs font-semibold text-muted uppercase">
         {{ details.income ? $t('expense.receivedBy') : $t('expense.paidBy') }}
       </h2>
-      <div v-if="details.payer" class="flex items-center gap-2.5 py-1.5">
-        <ParticipantAvatar :participant="details.payer" />
-        <span class="min-w-0 flex-1 truncate">{{ details.payer.name }}</span>
-        <span class="shrink-0 tabular-nums">{{ money(details.total) }}</span>
-      </div>
+      <ul>
+        <li
+          v-for="{ participant, amount, contribution } in details.payers"
+          :key="participant.id"
+          class="flex items-center gap-2.5 py-1.5"
+        >
+          <ParticipantAvatar :participant="participant" />
+          <span class="min-w-0 flex-1 leading-snug">
+            <span class="block truncate">{{ participant.name }}</span>
+            <span v-if="contribution" class="block text-xs text-muted">
+              {{ $t('contribution.label') }}
+            </span>
+          </span>
+          <span class="shrink-0 tabular-nums">{{ money(amount) }}</span>
+        </li>
+      </ul>
     </section>
 
     <section v-if="details.lineItems" aria-labelledby="line-items-heading">

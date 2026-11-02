@@ -46,6 +46,7 @@ export {
   receiptDiscountExceeds,
 } from './expense.ts';
 export type {
+  Contribution,
   Expense,
   ExpenseProblem,
   ExpenseState,
