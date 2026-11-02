@@ -470,6 +470,62 @@ test('a Line discount follows the Units and a Receipt discount is shared by what
   await other.close();
 });
 
+test('a Deposit is never discounted, and a Deposit refund comes off the Receipt total', async ({
+  page,
+  browser,
+}) => {
+  await page.goto('/');
+  await createTrip(page, 'Istria 2026', 'Kasia', ['Ania', 'Ola']);
+
+  await page.getByRole('link', { name: 'Add the first Expense' }).click();
+  await page.getByLabel('Title').fill('Lidl Rovinj');
+  await page.getByRole('button', { name: 'Itemise as a Receipt' }).click();
+  const adding = page.getByRole('group', { name: 'Add a Line item' });
+  await adding.getByLabel('New Line item unit price').fill('0,53');
+  await adding.getByLabel('New Line item quantity').fill('10');
+  await adding.getByLabel('New Line item name').fill('Mineral water');
+  await adding.getByLabel('New Line item Deposit per unit').fill('0,25');
+  await adding.getByRole('button', { name: 'Add' }).click();
+
+  const total = page.getByRole('status', { name: 'Receipt total' });
+  await expect(total).toHaveText('€7.80');
+  // The Deposits total, to check against the Pfand printed on the receipt.
+  await expect(page.getByRole('main')).toContainText('Deposits €2.50');
+
+  // A −10 % coupon takes 10 % of the 5.30 of water, not of its Deposit.
+  await page.getByRole('textbox', { name: 'Receipt discount' }).fill('10');
+  await page
+    .getByRole('group', { name: 'Receipt discount: amount or percent' })
+    .getByRole('button', { name: '%' })
+    .click();
+  await expect(total).toHaveText('€7.27');
+
+  const refund = page.getByRole('group', { name: 'Add a Deposit refund' });
+  await refund.getByLabel('Deposit refund amount').fill('1');
+  await refund.getByRole('button', { name: 'Add' }).click();
+  await expect(total).toHaveText('€6.27');
+  const lines = page.getByRole('region', { name: 'Line items' }).getByRole('listitem');
+  await expect(lines.nth(1)).toContainText('Deposit refund');
+  await expect(lines.nth(1)).toContainText('-€1.00');
+  await page.getByRole('button', { name: 'Save Expense' }).click();
+  const row = page.getByRole('link', { name: /Lidl Rovinj/ });
+  await expect(row).not.toContainText('not synced');
+
+  const other = await browser.newContext();
+  const otherPage = await other.newPage();
+  await otherPage.goto(await tripLinkOnDevice(page));
+  await otherPage.getByRole('dialog').getByRole('button', { name: 'Ania' }).click();
+  const otherRow = otherPage.getByRole('link', { name: /Lidl Rovinj/ });
+  // Water, Deposit and the refund are all split Even, so a third of 6.27 each.
+  await expect(otherRow).toContainText('your share 2.09');
+  await otherRow.click();
+  const main = otherPage.getByRole('main');
+  await expect(main).toContainText('Deposit €2.50');
+  await expect(main).toContainText('Deposit refund');
+  await expect(main).toContainText('Deposits');
+  await other.close();
+});
+
 test('a Trip link with a wrong token shows no Trip', async ({ page }) => {
   await page.goto('/trips/019a2b3c-4d5e-7f00-8a1b-2c3d4e5f6a7b#not-the-token');
 

@@ -16,6 +16,7 @@ export { discountSchema, parsePercent } from './discount.ts';
 export type { Discount } from './discount.ts';
 export {
   MAX_UNITS,
+  isDepositRefund,
   lineItemProblems,
   lineItemSchema,
   newLineItemSplit,

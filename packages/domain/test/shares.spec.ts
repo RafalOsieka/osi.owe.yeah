@@ -100,6 +100,31 @@ describe('claimView', () => {
     expect(claimView(income, ania)).toEqual({ kind: 'getBack', amount: rational(3n) });
   });
 
+  it('shows a part of a Deposit refund as money you get back, whoever paid', () => {
+    // Kasia's own 10.00 of beer, less a 0.90 bottle voucher shared Even by all three.
+    const shop: Expense = {
+      ...expense(kasia, 1000, [kasia]),
+      lineItems: [
+        {
+          name: 'Beer',
+          unitPrice: 1000,
+          quantity: 1,
+          split: { mode: 'even', participantIds: [kasia] },
+        },
+        {
+          name: 'Bottle voucher',
+          unitPrice: -90,
+          quantity: 1,
+          split: { mode: 'even', participantIds: [kasia, ania, ola] },
+        },
+      ],
+    };
+
+    expect(claimView(shop, ania)).toEqual({ kind: 'getBack', amount: rational(3n, 10n) });
+    // She paid 9.10 and bears 9.70, so this Receipt costs her 0.60 more than she paid.
+    expect(claimView(shop, kasia)).toEqual({ kind: 'share', amount: rational(3n, 5n) });
+  });
+
   it('shows a Repayment as paid by its payer and received by its recipient, and nobody else', () => {
     const paid = repayment(ania, kasia, 1260);
 

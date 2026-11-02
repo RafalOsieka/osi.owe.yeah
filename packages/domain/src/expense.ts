@@ -97,8 +97,8 @@ export function isRepayment<E extends Expense>(expense: E): expense is Extract<E
 
 /**
  * Whether an Expense is a Receipt, entered Line item by Line item, rather than a plain
- * Expense (or Income), whose one Line item is unnamed, a single unit, undiscounted and split
- * Even, with no Receipt discount.
+ * Expense (or Income), whose one Line item is unnamed, a single unit, undiscounted, without a
+ * Deposit and split Even, with no Receipt discount.
  */
 export function isReceipt(expense: Expense): boolean {
   if (isRepayment(expense)) return false;
@@ -109,6 +109,7 @@ export function isReceipt(expense: Expense): boolean {
     only!.quantity > 1 ||
     only!.split.mode !== 'even' ||
     only!.discount !== undefined ||
+    only!.depositPerUnit !== undefined ||
     expense.discount !== undefined
   );
 }
@@ -126,7 +127,6 @@ export const expenseProblemSchema = z.enum([
   'unknownParticipant',
   'currencyNotTripCurrency',
   'repaymentToSelf',
-  'negativeLineItem',
   ...LINE_ITEM_PROBLEMS,
   'receiptDiscountExceedsLineItems',
 ]);
@@ -136,9 +136,9 @@ export type ExpenseProblem = z.infer<typeof expenseProblemSchema>;
 /**
  * The rules an Expense must follow within its Trip; empty when it may be saved. The device
  * checks them before pushing and the server again before accepting. A Repayment's recipient
- * counts as its ticked Participant. Only a plain Expense (Income) may have a negative Line
- * item, every Line item must fit together (`lineItemProblems`), and the Receipt discount
- * may not take off more than the Line items come to after their Line discounts.
+ * counts as its ticked Participant. Every Line item must fit together (`lineItemProblems`),
+ * and the Receipt discount may not take off more than the goods come to after their Line
+ * discounts. The total may be negative.
  */
 export function expenseProblems(expense: Expense, trip: TripWithParticipants): ExpenseProblem[] {
   const known = new Set(trip.participants.map(({ id }) => id));
@@ -155,9 +155,6 @@ export function expenseProblems(expense: Expense, trip: TripWithParticipants): E
   }
   if (!isRepayment(expense)) {
     const { lineItems } = expense;
-    if (lineItems.length > 1 && lineItems.some(({ unitPrice }) => unitPrice < 0)) {
-      problems.push('negativeLineItem');
-    }
     const lineProblems = new Set(lineItems.flatMap(lineItemProblems));
     problems.push(...LINE_ITEM_PROBLEMS.filter((problem) => lineProblems.has(problem)));
     if (receiptDiscountExceeds(expense)) problems.push('receiptDiscountExceedsLineItems');
@@ -166,8 +163,8 @@ export function expenseProblems(expense: Expense, trip: TripWithParticipants): E
 }
 
 /**
- * Whether a Receipt discount takes off more than the Line items come to after their Line
- * discounts; checked while the Receipt is entered as well as before it is saved.
+ * Whether a Receipt discount takes off more than the goods come to after their Line
+ * discounts (`goodsMinor`); checked while the Receipt is entered as well as before it is saved.
  */
 export function receiptDiscountExceeds({
   lineItems,

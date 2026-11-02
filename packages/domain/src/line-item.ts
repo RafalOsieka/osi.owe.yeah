@@ -55,10 +55,12 @@ type EvenSplit = Extract<Split, { mode: 'even' }>;
 
 /**
  * One position of an Expense: a name (empty on a plain Expense), a unit price and a whole
- * quantity, so "6 × water" is one line and weighed goods are one unit at the line price, and
- * an optional Line discount, which a per-unit discount is entered as in full (2 × 0.20 off is
- * 0.40 off). A negative unit price is money received, which makes a plain Expense Income; it
- * is never zero. Name and quantity default for Expenses saved before Receipts existed.
+ * quantity, so "6 × water" is one line and weighed goods are one unit at the line price, an
+ * optional Line discount, which a per-unit discount is entered as in full (2 × 0.20 off is
+ * 0.40 off), and an optional Deposit per unit in minor units, never discounted. A negative
+ * unit price is money received: a plain Expense with one is Income, and on a Receipt it is a
+ * Deposit refund (`isDepositRefund`). It is never zero. Name and quantity default for
+ * Expenses saved before Receipts existed.
  */
 export const lineItemSchema = z.object({
   name: z.string().trim().max(100).default(''),
@@ -70,6 +72,7 @@ export const lineItemSchema = z.object({
     .refine((price) => price !== 0, { message: 'A Line item is never zero' }),
   quantity: unitsSchema.default(1),
   discount: discountSchema.optional(),
+  depositPerUnit: minorAmountSchema.optional(),
   split: splitSchema,
 });
 
@@ -88,20 +91,35 @@ export function lineTotalMinor({ unitPrice, quantity }: LineItem): bigint {
 }
 
 /**
- * A Line item's total after its Line discount, in minor units: what its split shares, and
- * what the Receipt discount applies to.
+ * A Line item's total after its Line discount, in minor units: what its split shares besides
+ * its Deposit, and what the Receipt discount applies to.
  */
 export function lineNetMinor(item: LineItem): Rational {
   const total = rational(lineTotalMinor(item));
   return subtract(total, takenOff(item.discount, total));
 }
 
+/** A Line item's Deposit in minor units: Deposit per unit × quantity; zero without one. */
+export function depositMinor({ depositPerUnit, quantity }: LineItem): bigint {
+  return BigInt(depositPerUnit ?? 0) * BigInt(quantity);
+}
+
 /**
- * What a Receipt's Line items come to after their Line discounts, in minor units: what the
- * Receipt discount applies to.
+ * Whether a Line item is money received, told apart by its negative unit price: on a Receipt
+ * a Deposit refund, split on its own and never discounted; the one Line item of Income.
+ */
+export function isDepositRefund({ unitPrice }: LineItem): boolean {
+  return unitPrice < 0;
+}
+
+/**
+ * What a Receipt's goods come to after their Line discounts, in minor units: what the Receipt
+ * discount applies to, so without Deposits and Deposit refunds.
  */
 export function goodsMinor(lineItems: readonly LineItem[]): Rational {
-  return lineItems.reduce((sum, item) => add(sum, lineNetMinor(item)), rational(0n));
+  return lineItems
+    .filter((item) => !isDepositRefund(item))
+    .reduce((sum, item) => add(sum, lineNetMinor(item)), rational(0n));
 }
 
 /**
@@ -143,8 +161,9 @@ export function splitWeights(item: LineItem): SplitWeights {
 
 const abs = (value: bigint) => (value < 0n ? -value : value);
 
-/** Why a Line item does not fit together: its split, or its Line discount. */
+/** Why a Line item does not fit together: what it is, its split, or its Line discount. */
 export const LINE_ITEM_PROBLEMS = [
+  'negativeLineItem',
   'unitsExceedQuantity',
   'amountsExceedLineTotal',
   'lineDiscountExceedsLineTotal',
@@ -153,14 +172,22 @@ export const LINE_ITEM_PROBLEMS = [
 export type LineItemProblem = (typeof LINE_ITEM_PROBLEMS)[number];
 
 /**
- * Why a Line item does not fit together; empty when it does. Units may not add up to more
- * than the quantity, and Amounts not to more than the full-price Line total; adding up to
- * less is allowed, the rest is unassigned. The Line discount may not take off more than the
- * full-price Line total.
+ * Why a Line item does not fit together; empty when it does. A negative Line item is a
+ * Deposit refund, so a single unit with no discount and no Deposit. Units may not add up to
+ * more than the quantity, and Amounts not to more than the full-price Line total; adding up
+ * to less is allowed, the rest is unassigned. The Line discount may not take off more than
+ * the full-price Line total.
  */
 export function lineItemProblems(item: LineItem): LineItemProblem[] {
   const { split } = item;
   const problems: LineItemProblem[] = [];
+  const refund = isDepositRefund(item);
+  if (
+    refund &&
+    (item.quantity !== 1 || item.discount !== undefined || item.depositPerUnit !== undefined)
+  ) {
+    problems.push('negativeLineItem');
+  }
   if (split.mode === 'units') {
     const units = split.parts.reduce((sum, part) => sum + part.units, 0);
     if (units > item.quantity) problems.push('unitsExceedQuantity');
@@ -169,7 +196,7 @@ export function lineItemProblems(item: LineItem): LineItemProblem[] {
     const amounts = split.parts.reduce((sum, part) => sum + BigInt(part.amount), 0n);
     if (amounts > abs(lineTotalMinor(item))) problems.push('amountsExceedLineTotal');
   }
-  if (discountExceeds(item.discount, rational(lineTotalMinor(item)))) {
+  if (!refund && discountExceeds(item.discount, rational(lineTotalMinor(item)))) {
     problems.push('lineDiscountExceedsLineTotal');
   }
   return problems;

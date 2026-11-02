@@ -195,6 +195,67 @@ describe('Receipt discounts', () => {
   });
 });
 
+describe('Deposits', () => {
+  it('follow an Amounts split, and a Line discount leaves them whole', () => {
+    // 2 × 1.50 of juice with 0.50 off and 0.25 Deposit a bottle; Ania typed 2.00, Kuba 1.00.
+    const juice = receipt({
+      name: 'Juice',
+      unitPrice: 150,
+      quantity: 2,
+      discount: { kind: 'amount', amount: 50 },
+      depositPerUnit: 25,
+      split: {
+        mode: 'amounts',
+        parts: [
+          { participantId: ania, amount: 200 },
+          { participantId: kuba, amount: 100 },
+        ],
+      },
+    });
+
+    const { total, deposits, shares, lineItems } = expenseShares(juice);
+
+    expect(lineItems[0]!.discountOff).toEqual(rational(1n, 2n));
+    expect(deposits).toEqual(rational(1n, 2n));
+    expect(total).toEqual(rational(3n));
+    expect([...shares]).toEqual([
+      [ania, rational(2n)],
+      [kuba, rational(1n)],
+    ]);
+  });
+
+  it('come back as a Deposit refund, which may be split by Amounts', () => {
+    const beer = {
+      name: 'Beer',
+      unitPrice: 120,
+      quantity: 4,
+      depositPerUnit: 25,
+      split: even([kuba]),
+    };
+    // Kuba took the empties back, but Ola kept 0.10 of the voucher for a bottle she had found.
+    const voucher = {
+      name: 'Bottle voucher',
+      unitPrice: -100,
+      quantity: 1,
+      split: {
+        mode: 'amounts' as const,
+        parts: [
+          { participantId: kuba, amount: 90 },
+          { participantId: ola, amount: 10 },
+        ],
+      },
+    };
+
+    const { total, shares } = expenseShares(receipt(beer, voucher));
+
+    expect(total).toEqual(rational(48n, 10n));
+    expect([...shares]).toEqual([
+      [kuba, rational(49n, 10n)],
+      [ola, rational(-1n, 10n)],
+    ]);
+  });
+});
+
 describe('the split a Line item starts with', () => {
   it("copies the previous Line item's split when it was Even", () => {
     const previous = { name: 'Bread', unitPrice: 249, quantity: 1, split: even([ania, ola]) };
@@ -221,8 +282,8 @@ describe('the split a Line item starts with', () => {
   });
 });
 
-// The walkthroughs of the Receipt logic prototype (on the `prototype/receipt-entry` branch)
-// that need only Split modes and discounts. Rafał pays every Receipt.
+// The walkthroughs of the Receipt logic prototype (on the `prototype/receipt-entry` branch).
+// Rafał pays every Receipt unless one says otherwise.
 describe('Receipt walkthroughs', () => {
   it('Units with a Line discount: 5 × 2.00, 1.00 off, Units 2/2/1 gives 3.60 / 3.60 / 1.80 / 0', () => {
     const beer = {
@@ -263,36 +324,51 @@ describe('Receipt walkthroughs', () => {
     ]);
   });
 
-  it('−10 % coupon: the Receipt discount takes 10 % of the goods', () => {
-    // The Pfand half of this walkthrough (never discounted) comes with Deposits.
-    const water = { name: 'Mineral water', unitPrice: 53, quantity: 10, split: even(everyone) };
+  it('−10 % coupon on a Pfand receipt: neither the Deposit nor a voucher is discounted', () => {
+    const water = {
+      name: 'Mineral water',
+      unitPrice: 53,
+      quantity: 10,
+      depositPerUnit: 25,
+      split: even(everyone),
+    };
+    const coupon = { kind: 'percent', basisPoints: 1000 } as const;
 
-    const { total, discountOff, shares } = expenseShares({
-      ...receipt(water),
-      discount: { kind: 'percent', basisPoints: 1000 },
-    });
+    const crate = expenseShares({ ...receipt(water), discount: coupon });
+    // 10 % of the 5.30 of water, not of the 7.80 with its Deposit.
+    expect(crate.discountOff).toEqual(rational(53n, 100n));
+    expect(crate.deposits).toEqual(rational(5n, 2n));
+    expect(crate.total).toEqual(rational(727n, 100n));
 
+    // A bottle voucher redeemed at the same till starts Even across everyone.
+    const voucher = { name: 'Bottle voucher', unitPrice: -100, quantity: 1, split: even(everyone) };
+    const withVoucher = { ...receipt(water, voucher), discount: coupon };
+
+    const { total, discountOff, shares } = expenseShares(withVoucher);
+    expect(expenseProblems(withVoucher, trip)).toEqual([]);
+    // 5.30 − 0.53 + 2.50 − 1.00.
+    expect(total).toEqual(rational(627n, 100n));
     expect(discountOff).toEqual(rational(53n, 100n));
-    expect(total).toEqual(rational(477n, 100n));
-    expect([...shares.values()]).toEqual(Array.from({ length: 4 }, () => rational(477n, 400n)));
+    expect([...shares.values()]).toEqual(Array.from({ length: 4 }, () => rational(627n, 400n)));
   });
 
-  it('quick shop at the till: shared bread, water by Units, chocolate for Ola', () => {
+  it('quick shop at the till: shared bread, water by Units with its Deposit, chocolate for Ola', () => {
     const bread = { name: 'Bread', unitPrice: 249, quantity: 1, split: even(everyone) };
     // The water copies the bread's Even split, then switches to Units with nobody assigned.
     const water = {
       name: 'Water 1.5l',
       unitPrice: 29,
       quantity: 6,
+      depositPerUnit: 25,
       split: newLineItemSplit([bread], everyone),
     };
     expect(water.split).toEqual(even(everyone));
 
     const unassignedWater = { ...water, split: splitFromScratch('units', everyone) };
     const incomplete = expenseShares(receipt(bread, unassignedWater));
-    // The whole water line counts as Rafał's own until it is assigned.
-    expect(incomplete.unassigned).toEqual(rational(174n, 100n));
-    expect(incomplete.shares.get(rafal)).toEqual(rational(189n, 80n));
+    // The whole water line, Deposit included, counts as Rafał's own until it is assigned.
+    expect(incomplete.unassigned).toEqual(rational(324n, 100n));
+    expect(incomplete.shares.get(rafal)).toEqual(rational(309n, 80n));
 
     const splitWater = {
       ...water,
@@ -309,16 +385,44 @@ describe('Receipt walkthroughs', () => {
     const chocolate = { name: 'Chocolate', unitPrice: 89, quantity: 1, split: even([ola]) };
 
     const done = receipt(bread, splitWater, chocolate);
-    const { total, unassigned } = expenseShares(done);
-    expect(total).toEqual(rational(512n, 100n));
+    const { total, deposits, unassigned } = expenseShares(done);
+    // The Deposits total matches the 1.50 Pfand printed at the bottom of the receipt.
+    expect(deposits).toEqual(rational(3n, 2n));
+    expect(total).toEqual(rational(662n, 100n));
     expect(unassigned).toEqual(rational(0n));
     expect(expenseProblems(done, trip)).toEqual([]);
-    // Bread 2.49 / 4 each, water 0.87 each for Rafał and Ania, chocolate 0.89 for Ola.
+    // Bread 2.49 / 4 each, water 0.87 and Deposit 0.75 each for Rafał and Ania, chocolate
+    // 0.89 for Ola.
     expect(balancesOf(done)).toEqual([
-      rational(1451n, 400n),
-      rational(-597n, 400n),
+      rational(1751n, 400n),
+      rational(-897n, 400n),
       rational(-249n, 400n),
       rational(-121n, 80n),
+    ]);
+  });
+
+  it('voucher bigger than the shopping: a negative total, and the Main payer owes the others', () => {
+    // Ania returns bottles from shared shopping and spends the 3.75 voucher on her own snack.
+    const snack = { name: 'Snack', unitPrice: 129, quantity: 1, split: even([ania]) };
+    const voucher = { name: 'Bottle voucher', unitPrice: -375, quantity: 1, split: even(everyone) };
+    const atTheTill = { ...receipt(snack, voucher), mainPayerId: ania };
+
+    const { total, shares } = expenseShares(atTheTill);
+    expect(expenseProblems(atTheTill, trip)).toEqual([]);
+    // Ania walked out with 2.46.
+    expect(total).toEqual(rational(-246n, 100n));
+    expect([...shares]).toEqual([
+      [ania, rational(141n, 400n)],
+      [rafal, rational(-15n, 16n)],
+      [kuba, rational(-15n, 16n)],
+      [ola, rational(-15n, 16n)],
+    ]);
+    // Each of the others gets back exactly 0.9375, and Ania owes it to them.
+    expect(balancesOf(atTheTill)).toEqual([
+      rational(15n, 16n),
+      rational(-45n, 16n),
+      rational(15n, 16n),
+      rational(15n, 16n),
     ]);
   });
 
@@ -396,7 +500,7 @@ describe('Receipt walkthroughs', () => {
     expect([...shares.values()]).toEqual(Array.from({ length: 4 }, () => rational(18n)));
   });
 
-  it('things that should be refused: more units than bought, a negative line, too big discounts', () => {
+  it('things that should be refused: more units than bought, negative goods, too big discounts', () => {
     const eggs = {
       name: 'Eggs',
       unitPrice: 35,
@@ -410,10 +514,18 @@ describe('Receipt walkthroughs', () => {
       },
     };
     const melon = { name: 'Melon', unitPrice: 199, quantity: 1, split: even(everyone) };
-    const bottle = { name: 'Bottle', unitPrice: -25, quantity: 1, split: even(everyone) };
+    // A negative line is a Deposit refund: one amount, never discounted, with no Deposit.
+    const voucher = { name: 'Bottle voucher', unitPrice: -25, quantity: 1, split: even(everyone) };
 
     expect(expenseProblems(receipt(melon, eggs), trip)).toEqual(['unitsExceedQuantity']);
-    expect(expenseProblems(receipt(melon, bottle), trip)).toEqual(['negativeLineItem']);
+    expect(expenseProblems(receipt(melon, voucher), trip)).toEqual([]);
+    for (const negativeGoods of [
+      { ...voucher, quantity: 4 },
+      { ...voucher, discount: { kind: 'amount' as const, amount: 5 } },
+      { ...voucher, depositPerUnit: 25 },
+    ]) {
+      expect(expenseProblems(receipt(melon, negativeGoods), trip)).toEqual(['negativeLineItem']);
+    }
     const melonOff = (discount: NonNullable<LineItem['discount']>) => ({ ...melon, discount });
     expect(expenseProblems(receipt(melonOff({ kind: 'amount', amount: 250 })), trip)).toEqual([
       'lineDiscountExceedsLineTotal',
@@ -439,5 +551,6 @@ describe('isReceipt', () => {
     const discount = { kind: 'amount' as const, amount: 500 };
     expect(isReceipt(receipt({ ...plain, discount }))).toBe(true);
     expect(isReceipt({ ...receipt(plain), discount })).toBe(true);
+    expect(isReceipt(receipt({ ...plain, depositPerUnit: 25 }))).toBe(true);
   });
 });
