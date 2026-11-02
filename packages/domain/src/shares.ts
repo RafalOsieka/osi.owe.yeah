@@ -81,9 +81,10 @@ const one = rational(1n);
 
 /**
  * `amount` divided in proportion to a Line item's split weights (`splitWeights`): each
- * assigned Participant's part, and the part of the weight nobody has been given.
+ * assigned Participant's part, and the part of the weight nobody has been given. Shared with
+ * `shareBreakdown`, so a breakdown's parts add up to the shares exactly.
  */
-function spread(item: LineItem, amount: Rational) {
+export function spread(item: LineItem, amount: Rational) {
   const { weights, rest } = splitWeights(item);
   const whole = [...weights.values()].reduce((sum, weight) => sum + weight, rest);
   const part = (weight: bigint) => multiply(amount, divide(rational(weight), rational(whole)));

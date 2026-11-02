@@ -14,7 +14,7 @@ import { expenseShares } from './shares.ts';
 import type { TripSnapshot } from './snapshot.ts';
 
 /** What balances are worked out from: the Trip currency, its Participants and its Expenses. */
-type TripExpenses = Pick<TripSnapshot, 'currency' | 'participants'> & {
+export type TripExpenses = Pick<TripSnapshot, 'currency' | 'participants'> & {
   expenses: readonly Expense[];
 };
 

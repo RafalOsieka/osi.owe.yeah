@@ -526,6 +526,56 @@ test('a Deposit is never discounted, and a Deposit refund comes off the Receipt 
   await other.close();
 });
 
+test('a share on a Receipt and a bar on Balances open where the share comes from', async ({
+  page,
+}) => {
+  await page.goto('/');
+  await createTrip(page, 'Istria 2026', 'Kasia', ['Ania', 'Ola']);
+
+  await page.getByRole('link', { name: 'Add the first Expense' }).click();
+  await page.getByLabel('Title').fill('Lidl Rovinj');
+  await page.getByRole('button', { name: 'Itemise as a Receipt' }).click();
+  const adding = page.getByRole('group', { name: 'Add a Line item' });
+  await adding.getByLabel('New Line item unit price').fill('0,53');
+  await adding.getByLabel('New Line item quantity').fill('10');
+  await adding.getByLabel('New Line item Deposit per unit').fill('0,25');
+  await adding.getByRole('button', { name: 'Add' }).click();
+  await page.getByRole('textbox', { name: 'Receipt discount' }).fill('10');
+  await page
+    .getByRole('group', { name: 'Receipt discount: amount or percent' })
+    .getByRole('button', { name: '%' })
+    .click();
+  const refund = page.getByRole('group', { name: 'Add a Deposit refund' });
+  await refund.getByLabel('Deposit refund amount').fill('1');
+  await refund.getByRole('button', { name: 'Add' }).click();
+  await page.getByRole('button', { name: 'Save Expense' }).click();
+
+  // 6.27 split Even by three is 2.09 each, exactly; its parts each round to the cent.
+  await page.getByRole('link', { name: /Lidl Rovinj/ }).click();
+  await page.getByRole('region', { name: 'Shares' }).getByRole('button', { name: /Ania/ }).click();
+  const sheet = page.getByRole('dialog', { name: "Ania's share" });
+  await expect(sheet).toContainText('Goods at full price≈ +€1.77');
+  await expect(sheet).toContainText('Deposits≈ +€0.83');
+  await expect(sheet).toContainText('Deposit refunds≈ -€0.33');
+  await expect(sheet).toContainText('Receipt discount≈ -€0.18');
+  await expect(sheet).toContainText('Share€2.09');
+  await expect(sheet).toContainText('may not add up to the total');
+
+  // System back closes the sheet first, then leaves the Expense.
+  await page.goBack();
+  await expect(sheet).toBeHidden();
+  await page.goBack();
+  await page.getByRole('link', { name: 'Balances' }).click();
+  await page
+    .getByRole('region', { name: 'Everyone' })
+    .getByRole('button', { name: /Kasia/ })
+    .click();
+  const kasia = page.getByRole('dialog', { name: "Kasia's share" });
+  await expect(kasia).toContainText('Paid€6.27');
+  await expect(kasia).toContainText('Share€2.09');
+  await expect(kasia).toContainText('Balance+€4.18');
+});
+
 test('Contributions from others: added, edited and removed, the Main payer covering the rest', async ({
   page,
 }) => {

@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest';
-import { expenseProblemSchema } from '@osi/owe-yeah-domain';
+import { BREAKDOWN_PARTS, expenseProblemSchema } from '@osi/owe-yeah-domain';
 import en from '../../i18n/locales/en.json';
 import pl from '../../i18n/locales/pl.json';
 
@@ -29,5 +29,10 @@ describe('locale catalogs', () => {
       [`expense.refused.${problem}`, `sync.reason.${problem}`].filter((path) => !paths.has(path)),
     );
     expect(missing).toEqual([]);
+  });
+
+  it('names every part a share breakdown can have', () => {
+    const paths = new Set(messagePaths(en));
+    expect(BREAKDOWN_PARTS.filter((part) => !paths.has(`breakdown.part.${part}`))).toEqual([]);
   });
 });

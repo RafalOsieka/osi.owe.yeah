@@ -233,6 +233,24 @@
     "allSettled": "Podróż rozliczona",
     "allSettledHelp": "Każdy wychodzi na zero."
   },
+  "breakdown": {
+    "title": "Udział: {name}",
+    "paid": "Płatności",
+    "share": "Udział",
+    "balance": "Saldo",
+    "rounded": "≈ oznacza kwotę zaokrągloną do wyświetlenia. Udziały liczymy dokładnie, więc po zaokrągleniu mogą nie sumować się do całości.",
+    "part": {
+      "expenses": "Wydatki",
+      "goods": "Towary w pełnej cenie",
+      "lineDiscounts": "Rabaty na pozycje",
+      "deposits": "Kaucje",
+      "depositRefunds": "Zwroty kaucji",
+      "receiptDiscounts": "Rabat na paragon",
+      "unassigned": "Jeszcze nieprzypisane",
+      "income": "Wpływy",
+      "repayments": "Otrzymane spłaty"
+    }
+  },
   "sync": {
     "status": "Stan synchronizacji",
     "unsynced": "Wszystko zsynchronizowane. | Niezsynchronizowane zmiany: 1 | Niezsynchronizowane zmiany: {count}",
