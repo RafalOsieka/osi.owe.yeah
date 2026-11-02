@@ -24,6 +24,7 @@ describe('the device store', () => {
         claim: ania,
         openedAt: opened.openedAt,
         snapshot: null,
+        notices: [],
       },
     ]);
   });
@@ -124,5 +125,41 @@ describe('the device store', () => {
     expect(trip?.snapshot?.expenses).toEqual([{ ...stored, ...migrated }]);
     expect(entry?.change).toEqual({ ...change, expense: migrated });
     expect(entry?.held).toMatchObject({ current: { ...stored, ...migrated } });
+  });
+
+  it('keeps Participants queued before removal as kept, and pulls their Trip again', async () => {
+    const name = uuidv7();
+    const ania = { id: uuidv7(), name: 'Ania' };
+    const v3 = new Dexie(name);
+    v3.version(3).stores({ trips: 'id', outbox: '++seq, tripId' });
+    const tripId = uuidv7();
+    const snapshot = {
+      id: tripId,
+      name: 'Croatia 2026',
+      currency: 'EUR',
+      participants: [ania],
+      version: 7,
+      expenses: [],
+    };
+    await v3.table('trips').add({
+      id: tripId,
+      token: 'the-token',
+      claim: ania,
+      openedAt: '2026-07-01T10:00:00.000Z',
+      snapshot,
+    });
+    const change = { claimId: null, deviceId: uuidv7(), id: uuidv7(), kind: 'participant' };
+    await v3.table('outbox').add({ tripId, change: { ...change, participant: ania }, held: null });
+    v3.close();
+
+    const db = new DeviceDb(name);
+    const [trip] = await db.trips.toArray();
+    const [entry] = await db.outbox.toArray();
+
+    expect(trip).toMatchObject({
+      notices: [],
+      snapshot: { ...snapshot, version: 0, edited: null, removedParticipants: [] },
+    });
+    expect(entry?.change).toEqual({ ...change, participant: ania, removed: false });
   });
 });

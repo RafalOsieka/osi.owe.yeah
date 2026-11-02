@@ -8,14 +8,27 @@ import {
   type Participant,
   type StoredExpense,
   type SyncChange,
+  type TripCurrency,
   type TripSnapshot,
 } from '@osi/owe-yeah-domain';
 import { Dexie, type EntityTable } from 'dexie';
 import { z } from 'zod';
 
 /**
+ * Something sync did to this device's changes that the user should hear about, kept until
+ * they dismiss it: a removed Participant an Expense of theirs brought back, a removal or a
+ * Trip currency the server refused, or their Claim's Participant removed by someone else.
+ */
+export type Notice = { id: string } & (
+  | { kind: 'participantRestored'; participant: Participant; expenseTitle: string }
+  | { kind: 'removalRefused'; participant: Participant }
+  | { kind: 'currencyRefused'; currency: TripCurrency }
+  | { kind: 'claimRemoved'; participant: Participant }
+);
+
+/**
  * A Trip opened on this device: how it reopens the Trip link, who the device says it is
- * there, and the Trip as the server last answered it.
+ * there, the Trip as the server last answered it, and what sync has to tell.
  */
 export type DeviceTrip = {
   id: string;
@@ -30,6 +43,7 @@ export type DeviceTrip = {
    * `null` until the first pull, or the first push of a Trip created on this device.
    */
   snapshot: TripSnapshot | null;
+  notices: Notice[];
 };
 
 /**
@@ -124,6 +138,25 @@ export class DeviceDb extends Dexie {
           }
         });
     });
+    this.version(4).upgrade(async (tx) => {
+      await tx
+        .table<DeviceTrip, string>('trips')
+        .toCollection()
+        .modify((trip) => {
+          trip.notices = [];
+          if (!trip.snapshot) return;
+          // Version 0 brings the whole Trip again, now with who last changed its details and
+          // its removed Participants.
+          trip.snapshot = { ...trip.snapshot, version: 0, edited: null, removedParticipants: [] };
+        });
+      await tx
+        .table<OutboxEntry, number>('outbox')
+        .toCollection()
+        .modify((entry) => {
+          if (entry.change.kind === 'participant')
+            entry.change = { ...entry.change, removed: false };
+        });
+    });
     this.on('populate', (tx) => tx.table('trips').bulkAdd(tripsFromLocalStorage()));
   }
 }
@@ -163,7 +196,7 @@ function tripsFromLocalStorage(): DeviceTrip[] {
     const legacy = z.array(z.unknown()).parse(JSON.parse(localStorage.getItem(LEGACY_KEY) ?? '[]'));
     return legacy.flatMap((entry) => {
       const trip = legacyTripSchema.safeParse(entry);
-      return trip.success ? [{ ...trip.data, snapshot: null }] : [];
+      return trip.success ? [{ ...trip.data, snapshot: null, notices: [] }] : [];
     });
   } catch {
     return [];

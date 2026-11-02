@@ -6,7 +6,7 @@ import type { Rational } from '@osi/owe-yeah-domain';
 // as the whole old Expense, where it can be restored. Needs a connection.
 definePageMeta({ viewTransition: { toTypes: ['forward'], fromTypes: ['back'] } });
 
-const { trip } = useOpenTrip();
+const { trip, everyone } = useOpenTrip();
 const { t, locale } = useI18n();
 const route = useRoute();
 
@@ -24,7 +24,7 @@ const rows = computed(() => {
     return {
       version: revision.version,
       kind: t(`history.kind.${kind}`),
-      author: trip.value.participants.find(({ id }) => id === by),
+      author: everyone.value.find(({ id }) => id === by),
       when: formatTimeAgo(at, now, locale.value),
       total: before === null ? money(after) : `${money(before)} → ${money(after)}`,
     };

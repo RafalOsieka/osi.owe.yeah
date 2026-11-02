@@ -1,9 +1,11 @@
-import type {
-  Edited,
-  Expense,
-  StoredExpense,
-  TripSnapshot,
-  TripWithParticipants,
+import {
+  referencedParticipantIds,
+  type Edited,
+  type Expense,
+  type Participant,
+  type StoredExpense,
+  type TripSnapshot,
+  type TripWithParticipants,
 } from '@osi/owe-yeah-domain';
 import type { ExpenseBase, Held, OutboxEntry, QueuedChange } from './db';
 
@@ -13,33 +15,43 @@ import type { ExpenseBase, Held, OutboxEntry, QueuedChange } from './db';
  */
 export type Unsynced = ({ status: 'pending' } | Held) & { claimId: string | null };
 
+/**
+ * Who made what this device shows and when, by the server's clock; `at` is `null` for a
+ * change made on this device the server has not answered yet.
+ */
+export type LocalEdited = Omit<Edited, 'at'> & { at: string | null };
+
 /** An Expense as this device shows it, which may include changes not synced yet. */
 export type LocalExpense = Expense & {
   /** Deleted softly: listed under Recently deleted, where it can be restored. */
   deleted: boolean;
-  /**
-   * Who made the version shown and when, by the server's clock; `at` is `null` for a change
-   * made on this device the server has not answered yet. `null` where not known.
-   */
-  edited: (Omit<Edited, 'at'> & { at: string | null }) | null;
+  /** Who made the version shown and when; `null` where not known. */
+  edited: LocalEdited | null;
   /** What a new edit of the Expense is based on. */
   base: ExpenseBase;
   /** `null` once the server has the Expense as shown. */
   unsynced: Unsynced | null;
 };
 
+/** Who takes part in a Trip, with those removed softly kept apart. */
+type TripPeople = Pick<TripSnapshot, 'participants' | 'removedParticipants'>;
+
 /**
  * A Trip as this device shows it: the pulled Trip with the outbox on top. Deleted Expenses
- * are kept apart, so balances and the Expense list never see them.
+ * and removed Participants are kept apart, so balances, the Expense list and the pickers
+ * never see them; older versions and deleted Expenses can still name removed Participants.
  */
-export type LocalTrip = TripWithParticipants & {
-  expenses: LocalExpense[];
-  /** Deleted Expenses, for Recently deleted. */
-  deletedExpenses: LocalExpense[];
-};
+export type LocalTrip = TripWithParticipants &
+  TripPeople & {
+    /** Who last changed the Trip's details and when; `null` where not known. */
+    edited: LocalEdited | null;
+    expenses: LocalExpense[];
+    /** Deleted Expenses, for Recently deleted. */
+    deletedExpenses: LocalExpense[];
+  };
 
 /** A Trip as this device shows it, before deleted Expenses are set apart. */
-type AllExpenses = TripWithParticipants & { expenses: LocalExpense[] };
+type AllExpenses = Omit<LocalTrip, 'deletedExpenses'>;
 
 /** An Expense of the Trip by its id, deleted or not. */
 export function findExpense(trip: LocalTrip, expenseId: string): LocalExpense | undefined {
@@ -62,6 +74,7 @@ export function toExpense(local: LocalExpense): Expense {
  * The Trip as this device shows it: `snapshot` with every change still in the outbox applied
  * on top, in order, so a pull never hides the device's own changes (ADR 0002). An Expense
  * with a held change stays held, whatever was queued after it. Deleted Expenses are set apart.
+ * A pending Expense brings back the removed Participants it references, as the server will.
  * `null` when there is nothing to show yet: a joined Trip before its first pull.
  */
 export function localTrip(
@@ -72,7 +85,9 @@ export function localTrip(
     id: snapshot.id,
     name: snapshot.name,
     currency: snapshot.currency,
+    edited: snapshot.edited,
     participants: snapshot.participants,
+    removedParticipants: snapshot.removedParticipants,
     expenses: snapshot.expenses.map(({ version, ...expense }) => ({
       ...expense,
       base: { version },
@@ -82,12 +97,21 @@ export function localTrip(
 
   for (const { tripId, change, held } of outbox) {
     if (change.kind === 'trip') {
+      const edited = { by: change.claimId, at: null };
       trip = trip
-        ? { ...trip, name: change.trip.name }
-        : { id: tripId, ...change.trip, participants: [], expenses: [] };
+        ? { ...trip, ...change.trip, edited }
+        : {
+            id: tripId,
+            ...change.trip,
+            edited,
+            participants: [],
+            removedParticipants: [],
+            expenses: [],
+          };
     } else if (trip && change.kind === 'participant') {
-      trip = { ...trip, participants: upsert(trip.participants, change.participant) };
+      trip = { ...trip, ...withParticipant(trip, change.participant, change.removed) };
     } else if (trip && change.kind === 'expense') {
+      if (!change.deleted) trip = { ...trip, ...restoredBy(trip, change.expense) };
       const before = trip.expenses.find(({ id }) => id === change.expense.id)?.unsynced;
       const heldBefore = before && before.status !== 'pending' ? before : null;
       trip = {
@@ -127,24 +151,30 @@ export function withAccepted(
   switch (change.kind) {
     case 'trip':
       return snapshot
-        ? { ...snapshot, name: change.trip.name }
-        : { id: tripId, ...change.trip, participants: [], expenses: [], version: 0 };
+        ? { ...snapshot, ...change.trip }
+        : {
+            id: tripId,
+            ...change.trip,
+            edited: null,
+            participants: [],
+            removedParticipants: [],
+            expenses: [],
+            version: 0,
+          };
     case 'participant':
       return (
         snapshot && {
           ...snapshot,
-          participants: upsert(snapshot.participants, change.participant),
+          ...withParticipant(snapshot, change.participant, change.removed),
         }
       );
     case 'expense':
       return (
         snapshot &&
-        withExpense(snapshot, {
-          ...change.expense,
-          version: version ?? 1,
-          deleted: change.deleted,
-          edited: null,
-        })
+        withExpense(
+          change.deleted ? snapshot : { ...snapshot, ...restoredBy(snapshot, change.expense) },
+          { ...change.expense, version: version ?? 1, deleted: change.deleted, edited: null },
+        )
       );
   }
 }
@@ -152,6 +182,35 @@ export function withAccepted(
 /** The snapshot with `expense` as the server has it, e.g. the current one from a Conflict. */
 export function withExpense(snapshot: TripSnapshot, expense: StoredExpense): TripSnapshot {
   return { ...snapshot, expenses: upsert(snapshot.expenses, expense) };
+}
+
+/** The Trip's people with `participant` added, renamed, removed or brought back. */
+function withParticipant(
+  people: TripPeople,
+  participant: Participant,
+  removed: boolean,
+): TripPeople {
+  const others = (list: readonly Participant[]) => list.filter(({ id }) => id !== participant.id);
+  return removed
+    ? {
+        participants: others(people.participants),
+        removedParticipants: upsert(people.removedParticipants, participant),
+      }
+    : {
+        participants: upsert(people.participants, participant),
+        removedParticipants: others(people.removedParticipants),
+      };
+}
+
+/** The Trip's people with the removed Participants `expense` references brought back. */
+function restoredBy(people: TripPeople, expense: Expense): TripPeople {
+  const referenced = referencedParticipantIds(expense);
+  return people.removedParticipants
+    .filter(({ id }) => referenced.has(id))
+    .reduce<TripPeople>((restored, participant) => withParticipant(restored, participant, false), {
+      participants: people.participants,
+      removedParticipants: people.removedParticipants,
+    });
 }
 
 /** `items` with `item` in place of the one with its id, or added at the end. */

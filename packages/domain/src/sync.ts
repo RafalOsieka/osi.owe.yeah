@@ -23,7 +23,8 @@ const changeMeta = {
 /**
  * A Trip's details, last-write-wins (ADR 0002). Pushed to a Trip the server doesn't have
  * yet, it creates the Trip under the request's token: that is how a Trip created offline
- * reaches the server.
+ * reaches the server. A new Trip currency is refused while an Expense is in another one
+ * (`currencyChangeBlocked`).
  */
 export const tripChangeSchema = z.object({
   ...changeMeta,
@@ -31,11 +32,15 @@ export const tripChangeSchema = z.object({
   trip: tripSchema.omit({ id: true }),
 });
 
-/** A Participant added or renamed, last-write-wins (ADR 0002); never a Conflict. */
+/**
+ * A Participant added, renamed, removed or brought back, last-write-wins (ADR 0002); never a
+ * Conflict. Removing is soft, and refused while an Expense references the Participant.
+ */
 export const participantChangeSchema = z.object({
   ...changeMeta,
   kind: z.literal('participant'),
   participant: participantSchema,
+  removed: z.boolean(),
 });
 
 /**
@@ -72,20 +77,24 @@ export type PushRequest = z.infer<typeof pushRequestSchema>;
 
 /**
  * Why the server refused a change outright: a Trip rule (`expenseProblems`), an id another
- * Trip uses, or an edit of an Expense the server does not have.
+ * Trip uses, an edit of an Expense the server does not have, removing a Participant an
+ * Expense references, or a Trip currency some Expense is not in.
  */
 export const pushProblemSchema = z.enum([
   ...expenseProblemSchema.options,
   'expenseIdTaken',
   'unknownExpense',
   'participantIdTaken',
+  'participantReferenced',
+  'currencyChangeBlocked',
 ]);
 
 export type PushProblem = z.infer<typeof pushProblemSchema>;
 
 /**
  * The outcome of one change. `accepted` gives an Expense's new version (`null` for Trip
- * and Participant changes, which have none). `conflict` means the Expense changed since the
+ * and Participant changes, which have none), and the removed Participants the Expense brought
+ * back by referencing them, if it did. `conflict` means the Expense changed since the
  * base version and gives its current state, with the Claim sent with the change that made it
  * (`null` without one). `rejected` says why. Refused changes leave the Trip as it was.
  */
@@ -94,6 +103,7 @@ export const changeResultSchema = z.discriminatedUnion('status', [
     changeId: z.uuid(),
     status: z.literal('accepted'),
     version: expenseVersionSchema.nullable(),
+    restored: z.array(participantIdSchema).min(1).optional(),
   }),
   z.object({
     changeId: z.uuid(),

@@ -20,6 +20,9 @@ export function resolveDatabaseUrl(env: NodeJS.ProcessEnv = process.env): string
 
 export type Database = PostgresJsDatabase<typeof schema>;
 
+/** A transaction on the database, for helpers that run inside one or on their own. */
+export type Transaction = Parameters<Parameters<Database['transaction']>[0]>[0];
+
 export type DatabaseClient = {
   db: Database;
   sql: Sql;

@@ -31,6 +31,8 @@ const trip: TripSnapshot = {
   currency: 'EUR',
   participants: [kasia, ania, ola],
   version: 1,
+  edited: null,
+  removedParticipants: [],
   expenses: [],
 };
 

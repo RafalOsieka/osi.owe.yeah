@@ -22,7 +22,7 @@ import {
 // rounded only to show them, so a note explains "≈" when they don't add up to the total.
 const { expense } = defineProps<{ expense: Expense }>();
 
-const { trip, claim } = useOpenTrip();
+const { trip, claim, everyone } = useOpenTrip();
 const { t, locale } = useI18n();
 const splitText = useSplitText();
 
@@ -54,21 +54,21 @@ const details = computed(() => {
             locale.value,
             'number',
           ),
-          split: splitText(item.split, trip.value.participants),
+          split: splitText(item.split, everyone.value),
           ...lineItems[index]!,
         }))
       : null,
     repayment: isRepayment(expense),
     income: total.numerator < 0n,
     when: formatExpenseTime(expense.time, locale.value),
-    payer: trip.value.participants.find(({ id }) => id === expense.mainPayerId),
+    payer: everyone.value.find(({ id }) => id === expense.mainPayerId),
     // The Main payer first, then the Contributions in the order they were added.
     payers: [...paid].flatMap(([id, amount]) => {
-      const participant = trip.value.participants.find((other) => other.id === id);
+      const participant = everyone.value.find((other) => other.id === id);
       return participant ? [{ participant, amount, contribution: id !== expense.mainPayerId }] : [];
     }),
     // In the Trip's order.
-    shares: trip.value.participants.flatMap((participant) => {
+    shares: everyone.value.flatMap((participant) => {
       const share = shares.get(participant.id);
       return share ? [{ participant, share }] : [];
     }),
@@ -83,7 +83,7 @@ const breakdowns = computed(() =>
 const breakdownOpen = ref(false);
 const breakdownOf = ref<string | null>(null);
 const opened = computed(() => {
-  const participant = trip.value.participants.find(({ id }) => id === breakdownOf.value);
+  const participant = everyone.value.find(({ id }) => id === breakdownOf.value);
   const breakdown = breakdowns.value?.get(breakdownOf.value ?? '');
   return participant && breakdown ? { participant, breakdown } : null;
 });

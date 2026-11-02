@@ -7,7 +7,7 @@ import { findExpense } from '~/sync/local-trip';
 // a Revision that deleted the Expense, nor for the version the Expense is at.
 definePageMeta({ viewTransition: { toTypes: ['forward'], fromTypes: ['back'] } });
 
-const { trip, saveExpense } = useOpenTrip();
+const { trip, everyone, saveExpense } = useOpenTrip();
 const { t, locale } = useI18n();
 const route = useRoute();
 const router = useRouter();
@@ -23,7 +23,7 @@ const current = computed(() => findExpense(trip.value, expenseId));
 const byline = computed(() => {
   if (!revision.value) return '';
   const { by, at } = revision.value.edited;
-  const name = trip.value.participants.find(({ id }) => id === by)?.name;
+  const name = everyone.value.find(({ id }) => id === by)?.name;
   const when = formatTimeAgo(at, new Date(), locale.value);
   return name ? t('history.byline', { name, when }) : when;
 });

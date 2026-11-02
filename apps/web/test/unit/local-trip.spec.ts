@@ -36,6 +36,8 @@ const pulled: TripSnapshot = {
   name: 'Croatia 2026',
   currency: 'EUR',
   participants: [kasia],
+  removedParticipants: [],
+  edited: null,
   version: 7,
   expenses: [
     { ...lidl, version: 3, deleted: false, edited },
@@ -64,6 +66,7 @@ describe('localTrip', () => {
       id: '019a2b3c-4d5e-7f00-8a1b-100000000002',
       kind: 'participant',
       participant: ania,
+      removed: false,
     } as const;
 
     const trip = localTrip(pulled, [entry(edit), entry(added)]);
@@ -139,15 +142,64 @@ describe('localTrip', () => {
       id: '019a2b3c-4d5e-7f00-8a1b-100000000005',
       kind: 'participant',
       participant: kasia,
+      removed: false,
     } as const;
 
     expect(localTrip(null, [entry(created), entry(first)])).toEqual({
       id: tripId,
       name: 'Mazury 2026',
       currency: 'PLN',
+      edited: { by: null, at: null },
       participants: [kasia],
+      removedParticipants: [],
       expenses: [],
       deletedExpenses: [],
+    });
+  });
+
+  it('sets removed Participants apart, and brings back one that a pending Expense references', () => {
+    const ola = { id: '019a2b3c-4d5e-7f00-8a1b-000000000003', name: 'Ola' };
+    const snapshot: TripSnapshot = { ...pulled, participants: [kasia], removedParticipants: [ola] };
+    const removeAnia = {
+      ...meta,
+      id: '019a2b3c-4d5e-7f00-8a1b-100000000006',
+      kind: 'participant',
+      participant: ania,
+      removed: true,
+    } as const;
+    // Made offline before someone else removed Ola.
+    const withOla = {
+      ...meta,
+      id: '019a2b3c-4d5e-7f00-8a1b-100000000007',
+      kind: 'expense',
+      base: { version: null },
+      expense: { ...expense('019a2b3c-4d5e-7f00-8a1b-200000000003', 'Pizza'), mainPayerId: ola.id },
+      deleted: false,
+    } as const;
+
+    expect(localTrip(snapshot, [entry(removeAnia)])).toMatchObject({
+      participants: [kasia],
+      removedParticipants: [ola, ania],
+    });
+    expect(localTrip(snapshot, [entry(withOla)])).toMatchObject({
+      participants: [kasia, ola],
+      removedParticipants: [],
+    });
+  });
+
+  it('shows Trip details changed on this device as changed by its Claim, not yet synced', () => {
+    const renamed = {
+      ...meta,
+      claimId: kasia.id,
+      id: '019a2b3c-4d5e-7f00-8a1b-100000000008',
+      kind: 'trip',
+      trip: { name: 'Chorwacja', currency: 'PLN' },
+    } as const;
+
+    expect(localTrip(pulled, [entry(renamed)])).toMatchObject({
+      name: 'Chorwacja',
+      currency: 'PLN',
+      edited: { by: kasia.id, at: null },
     });
   });
 

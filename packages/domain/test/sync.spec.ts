@@ -27,6 +27,7 @@ describe('pushRequestSchema', () => {
         id: '019a2b3c-4d5e-7f00-8a1b-100000000002',
         kind: 'participant',
         participant: kasia,
+        removed: false,
       },
       {
         ...meta,
@@ -66,6 +67,7 @@ describe('pushRequestSchema', () => {
       claimId: null,
       kind: 'participant',
       participant: kasia,
+      removed: false,
     };
 
     expect(pushRequestSchema.safeParse({ changes: [change] }).success).toBe(false);

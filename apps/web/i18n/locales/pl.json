@@ -36,6 +36,22 @@
     "settings": {
       "onThisDevice": "Na tym urządzeniu",
       "thisTrip": "Ta podróż"
+    },
+    "details": {
+      "title": "Nazwa i waluta podróży",
+      "row": "{name} · {currency}",
+      "save": "Zapisz",
+      "lastChangedBy": "Ostatnia zmiana: {name}, {when}",
+      "lastChanged": "Ostatnia zmiana: {when}",
+      "currencyLocked": "Waluty podróży nie da się zmienić, dopóki podróż ma wydatki, także te ostatnio usunięte: nie są jeszcze przeliczane."
+    },
+    "forget": {
+      "title": "Zapomnij tę podróż",
+      "help": "{name} zniknie z moich podróży na tym urządzeniu. Jej uczestnicy, także ty, zostają w podróży dla pozostałych.",
+      "unsynced": "Wszystko zsynchronizowane. | Niezsynchronizowane zmiany na tym urządzeniu: 1. Zapomnienie podróży je utraci. | Niezsynchronizowane zmiany na tym urządzeniu: {count}. Zapomnienie podróży je utraci.",
+      "linkNeeded": "Aby znowu otworzyć podróż, potrzebny będzie link do podróży.",
+      "confirm": "Zapomnij",
+      "anyway": "Zapomnij mimo to | Zapomnij mimo to (utracone zmiany: 1) | Zapomnij mimo to (utracone zmiany: {count})"
     }
   },
   "participants": {
@@ -45,7 +61,10 @@
     "add": "Dodaj",
     "name": "Imię",
     "addParticipant": "Dodaj uczestnika",
-    "you": "ty"
+    "you": "ty",
+    "remove": "Usuń z podróży",
+    "removeHelp": "Imię zostaje w starszych wersjach i usuniętych wydatkach. Wydatek, który znowu go obejmie, przywróci uczestnika.",
+    "referenced": "{name}: brak wydatków. | {name}: wydatki z tym uczestnikiem: 1, więc nie można go usunąć. | {name}: wydatki z tym uczestnikiem: {count}, więc nie można go usunąć."
   },
   "claim": {
     "title": "Kim jesteś?",
@@ -56,7 +75,8 @@
     "cancel": "Anuluj",
     "justLooking": "Tylko przeglądam",
     "whoYouAre": "Kim jesteś",
-    "nobody": "Jeszcze nie wskazano"
+    "nobody": "Jeszcze nie wskazano",
+    "removed": "Uczestnik {name}, wskazany na tym urządzeniu jako ty, został usunięty z podróży. Kim jesteś teraz?"
   },
   "expense": {
     "list": "Wydatki",
@@ -338,5 +358,10 @@
     "empty": "Nic nie usunięto",
     "emptyHelp": "Tu czekają usunięte wydatki, aby można je było przywrócić.",
     "row": "{total} · {deleted}"
+  },
+  "notices": {
+    "participantRestored": "Uczestnika {name} usunięto, zanim zsynchronizował się twój wydatek „{title}”. Wydatek go przywrócił.",
+    "removalRefused": "Uczestnik {name} nie został usunięty: jest teraz w wydatku.",
+    "currencyRefused": "Waluta podróży nie zmieniła się na {currency}: podróż ma teraz wydatki w innej walucie."
   }
 }

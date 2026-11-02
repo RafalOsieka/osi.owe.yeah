@@ -36,6 +36,22 @@
     "settings": {
       "onThisDevice": "On this device",
       "thisTrip": "This Trip"
+    },
+    "details": {
+      "title": "Name and Trip currency",
+      "row": "{name} · {currency}",
+      "save": "Save",
+      "lastChangedBy": "Last changed by {name}, {when}",
+      "lastChanged": "Last changed {when}",
+      "currencyLocked": "The Trip currency can't change while the Trip has Expenses, Recently deleted ones too: they aren't converted yet."
+    },
+    "forget": {
+      "title": "Forget this Trip",
+      "help": "{name} leaves My Trips on this device. Its Participants, you too, stay in the Trip for everyone else.",
+      "unsynced": "Everything is synced. | 1 change on this device hasn't synced yet. Forgetting the Trip loses it. | {count} changes on this device haven't synced yet. Forgetting the Trip loses them.",
+      "linkNeeded": "To open the Trip again, you'll need its Trip link.",
+      "confirm": "Forget",
+      "anyway": "Forget anyway | Forget anyway (lose 1 change) | Forget anyway (lose {count} changes)"
     }
   },
   "participants": {
@@ -45,7 +61,10 @@
     "add": "Add",
     "name": "Name",
     "addParticipant": "Add Participant",
-    "you": "you"
+    "you": "you",
+    "remove": "Remove from Trip",
+    "removeHelp": "Their name stays on older versions and deleted Expenses. An Expense that includes them again brings them back.",
+    "referenced": "{name} is on no Expenses. | {name} is on 1 Expense, so they can't be removed. | {name} is on {count} Expenses, so they can't be removed."
   },
   "claim": {
     "title": "Who are you?",
@@ -56,7 +75,8 @@
     "cancel": "Cancel",
     "justLooking": "Just looking",
     "whoYouAre": "Who you are",
-    "nobody": "Not said yet"
+    "nobody": "Not said yet",
+    "removed": "{name}, who you were on this device, was removed from the Trip. Who are you now?"
   },
   "expense": {
     "list": "Expenses",
@@ -338,5 +358,10 @@
     "empty": "Nothing deleted",
     "emptyHelp": "Deleted Expenses wait here, so you can bring them back.",
     "row": "{total} · {deleted}"
+  },
+  "notices": {
+    "participantRestored": "{name} was removed while you were offline. Your Expense \"{title}\" brought them back.",
+    "removalRefused": "{name} wasn't removed: they're on an Expense now.",
+    "currencyRefused": "The Trip currency wasn't changed to {currency}: the Trip has Expenses in another one now."
   }
 }

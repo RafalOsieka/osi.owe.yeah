@@ -1,20 +1,25 @@
 import {
+  currencyChangeBlocked,
   expenseProblems,
+  expensesReferencing,
   pushRequestSchema,
+  referencedParticipantIds,
+  tripSchema,
   type ChangeResult,
+  type Expense,
   type ExpenseChange,
-  type Participant,
   type ParticipantChange,
   type PushResponse,
   type SyncChange,
+  type Trip,
   type TripChange,
 } from '@osi/owe-yeah-domain';
-import { and, eq, sql } from 'drizzle-orm';
+import { and, eq, inArray, not, sql } from 'drizzle-orm';
 import { defineEventHandler, readValidatedBody } from 'nuxt/server';
 import { getDb } from '../../../db';
-import type { Database } from '../../../db/client';
+import type { Transaction } from '../../../db/client';
 import { changes, expenses, participants, revisions, trips } from '../../../db/schema';
-import { createTripIfMissing, requireTrip, type StoredTrip } from '../../../utils/trip-access';
+import { createTripIfMissing, requireTrip } from '../../../utils/trip-access';
 import {
   loadParticipants,
   selectStoredExpenses,
@@ -24,49 +29,45 @@ import {
 /**
  * The sync push (ADR 0002): applies a device's outbox changes in order and answers with a
  * result per change. A push carrying a Trip change creates the Trip if the server doesn't
- * have it yet. Trip details and Participants are last-write-wins. An Expense change carries
- * the Expense's full new state and the version it was based on; it is accepted only if it
- * follows the Trip's rules and that version is still current, and then kept as a Revision.
- * Deletes and restores are Expense changes like edits. A change applied before is
- * answered as the first time and not applied again. A malformed push is refused as a whole
- * with 400.
+ * have it yet. Trip details and Participants are last-write-wins, except that a Participant
+ * an Expense references is never removed, and the Trip currency changes only while every
+ * Expense is in it already. An Expense change carries the Expense's full new state and the
+ * version it was based on; it is accepted only if it follows the Trip's rules and that
+ * version is still current, and then kept as a Revision. It brings back any removed
+ * Participant it references. Deletes and restores are Expense changes like edits. A change
+ * applied before is answered as the first time and not applied again. A malformed push is
+ * refused as a whole with 400.
  */
 export default defineEventHandler(async (event): Promise<PushResponse> => {
   const { changes: pushed } = await readValidatedBody(event, pushRequestSchema);
   const creation = pushed.find((change) => change.kind === 'trip');
   if (creation) await createTripIfMissing(event, creation.trip);
-  const trip = await requireTrip(event);
-  const known = await loadParticipants(trip.id);
+  const { id: tripId } = await requireTrip(event);
 
   const results: ChangeResult[] = [];
-  for (const change of pushed) results.push(await applyOnce(change, trip, known));
+  for (const change of pushed) results.push(await applyOnce(change, tripId));
   return { results };
 });
 
 /**
- * Applies one change unless it was applied before. `known` is the Trip's Participants,
- * kept up to date as Participant changes are applied, so a later Expense in the same push
- * may use them.
+ * Applies one change unless it was applied before, in a transaction of its own that locks
+ * the Trip first (`lockTrip`).
  */
-async function applyOnce(
-  change: SyncChange,
-  trip: StoredTrip,
-  known: Participant[],
-): Promise<ChangeResult> {
-  const before = await appliedBefore(change, trip.id);
+async function applyOnce(change: SyncChange, tripId: string): Promise<ChangeResult> {
+  const before = await appliedBefore(change, tripId);
   if (before) return before;
 
   switch (change.kind) {
     case 'trip':
-      return applyTripChange(change, trip.id);
+      return applyTripChange(change, tripId);
     case 'participant':
-      return applyParticipantChange(change, trip.id, known);
+      return applyParticipantChange(change, tripId);
     case 'expense':
       return (
-        (await applyExpenseChange(change, { ...trip, participants: known })) ??
+        (await applyExpenseChange(change, tripId)) ??
         // Not applied, unless a retry of the same change racing this one applied it.
-        (await appliedBefore(change, trip.id)) ??
-        (await refusal(change, trip.id))
+        (await appliedBefore(change, tripId)) ??
+        (await refusal(change, tripId))
       );
   }
 }
@@ -80,7 +81,34 @@ async function appliedBefore(change: SyncChange, tripId: string): Promise<Change
   return applied ? { changeId: change.id, status: 'accepted', version: applied.version } : null;
 }
 
-type Transaction = Parameters<Parameters<Database['transaction']>[0]>[0];
+/**
+ * Locks the Trip until the transaction ends and reads its details. Changes to one Trip are
+ * then applied one at a time, so no check races another change: e.g. an Expense referencing
+ * a Participant that is being removed, or one in a Trip currency that is being changed.
+ */
+async function lockTrip(tx: Transaction, tripId: string): Promise<Trip> {
+  const [trip] = await tx
+    .select({ id: trips.id, name: trips.name, currency: trips.currency })
+    .from(trips)
+    .where(eq(trips.id, tripId))
+    .for('update');
+  // Narrows the stored currency to a Trip currency.
+  return tripSchema.parse(trip);
+}
+
+/** A Trip's Expenses as they are now, deleted ones only `withDeleted`. */
+async function tripExpenses(
+  tx: Transaction,
+  tripId: string,
+  withDeleted: boolean,
+): Promise<Expense[]> {
+  const ofTrip = eq(expenses.tripId, tripId);
+  const rows = await tx
+    .select({ id: expenses.id, state: expenses.state })
+    .from(expenses)
+    .where(withDeleted ? ofTrip : and(ofTrip, not(expenses.deleted)));
+  return rows.map(({ id, state }) => ({ ...state, id }));
+}
 
 /**
  * Records an applied change and bumps the Trip version, in the transaction that applied
@@ -105,66 +133,82 @@ async function record(
 }
 
 /**
- * A Trip's details, last write wins. Only the name changes: the Trip currency is set when
- * the Trip is created, as changing it means converting its Expenses.
+ * A Trip's details, last write wins; who sent the change is who last changed them. A new
+ * Trip currency is refused while an Expense, even a deleted one, is in another: Expenses
+ * are not converted yet (`currencyChangeBlocked`).
  */
 async function applyTripChange(change: TripChange, tripId: string): Promise<ChangeResult> {
-  await getDb().transaction(async (tx) => {
-    await tx.update(trips).set({ name: change.trip.name }).where(eq(trips.id, tripId));
+  const changeId = change.id;
+  return getDb().transaction(async (tx): Promise<ChangeResult> => {
+    const { currency } = await lockTrip(tx, tripId);
+    const blocked =
+      change.trip.currency !== currency &&
+      currencyChangeBlocked(await tripExpenses(tx, tripId, true), change.trip.currency);
+    if (blocked) return { changeId, status: 'rejected', problems: ['currencyChangeBlocked'] };
+
+    const { name, currency: newCurrency } = change.trip;
+    await tx.update(trips).set({ name, currency: newCurrency }).where(eq(trips.id, tripId));
     await record(tx, change, tripId, tripId, null);
+    return { changeId, status: 'accepted', version: null };
   });
-  return { changeId: change.id, status: 'accepted', version: null };
 }
 
-/** Adds or renames a Participant, last write wins. An id another Trip uses is refused. */
+/**
+ * Adds, renames, removes or brings back a Participant, last write wins. Removing one that an
+ * Expense references (deleted ones aside) is refused, and so is an id another Trip uses.
+ */
 async function applyParticipantChange(
   change: ParticipantChange,
   tripId: string,
-  known: Participant[],
 ): Promise<ChangeResult> {
-  const { participant } = change;
-  const stored = await getDb().transaction(async (tx) => {
+  const { id: changeId, participant, removed } = change;
+  return getDb().transaction(async (tx): Promise<ChangeResult> => {
+    await lockTrip(tx, tripId);
+    const referenced =
+      removed && expensesReferencing(await tripExpenses(tx, tripId, false), participant.id) > 0;
+    if (referenced) return { changeId, status: 'rejected', problems: ['participantReferenced'] };
+
     // An id another Trip uses is left alone: the update is limited to this Trip's row.
     const [upserted] = await tx
       .insert(participants)
-      .values({ ...participant, tripId })
+      .values({ ...participant, removed, tripId })
       .onConflictDoUpdate({
         target: participants.id,
-        set: { name: participant.name },
+        set: { name: participant.name, removed },
         setWhere: eq(participants.tripId, tripId),
       })
       .returning({ id: participants.id });
-    if (upserted) await record(tx, change, tripId, participant.id, null);
-    return upserted;
-  });
-  if (!stored) return { changeId: change.id, status: 'rejected', problems: ['participantIdTaken'] };
+    if (!upserted) return { changeId, status: 'rejected', problems: ['participantIdTaken'] };
 
-  const index = known.findIndex(({ id }) => id === participant.id);
-  if (index < 0) known.push(participant);
-  else known[index] = participant;
-  return { changeId: change.id, status: 'accepted', version: null };
+    await record(tx, change, tripId, participant.id, null);
+    return { changeId, status: 'accepted', version: null };
+  });
 }
 
 /**
  * Creates the Expense (base version `null`) or updates it if it is still at the base
  * version, in one conditional statement so concurrent pushes cannot both win, and adds the
- * Revision it makes. Returns nothing when the change did not apply.
+ * Revision it makes. Removed Participants still count as the Trip's, and an Expense that is
+ * not deleted brings back those it references. Returns nothing when the change did not
+ * apply.
  */
 async function applyExpenseChange(
   change: ExpenseChange,
-  trip: StoredTrip & { participants: Participant[] },
+  tripId: string,
 ): Promise<ChangeResult | null> {
-  const problems = expenseProblems(change.expense, trip);
-  if (problems.length > 0) return { changeId: change.id, status: 'rejected', problems };
-
   const { id, ...state } = change.expense;
-  const { deleted } = change;
-  const applied = await getDb().transaction(async (tx) => {
+  const { id: changeId, deleted } = change;
+  return getDb().transaction(async (tx): Promise<ChangeResult | null> => {
+    const trip = await lockTrip(tx, tripId);
+    const known = await loadParticipants(tripId, tx);
+    const problems = expenseProblems(change.expense, { ...trip, participants: known });
+    if (problems.length > 0) return { changeId, status: 'rejected', problems };
+
     const [stored] =
       change.baseVersion === null
         ? await tx
             .insert(expenses)
-            .values({ id, tripId: trip.id, version: 1, state, deleted })
+            .values({ id, tripId, version: 1, state, deleted })
             .onConflictDoNothing({ target: expenses.id })
             .returning({ version: expenses.version })
         : await tx
@@ -173,25 +217,37 @@ async function applyExpenseChange(
             .where(
               and(
                 eq(expenses.id, id),
-                eq(expenses.tripId, trip.id),
+                eq(expenses.tripId, tripId),
                 eq(expenses.version, change.baseVersion),
               ),
             )
             .returning({ version: expenses.version });
-    if (!stored) return undefined;
+    if (!stored) return null;
     await tx.insert(revisions).values({
       expenseId: id,
       version: stored.version,
-      tripId: trip.id,
+      tripId,
       state,
       deleted,
       claimId: change.claimId,
       deviceId: change.deviceId,
     });
-    await record(tx, change, trip.id, id, stored.version);
-    return stored;
+
+    const referenced = referencedParticipantIds(change.expense);
+    const restored = deleted
+      ? []
+      : known.filter((p) => p.removed && referenced.has(p.id)).map((p) => p.id);
+    if (restored.length > 0) {
+      await tx
+        .update(participants)
+        .set({ removed: false })
+        .where(and(eq(participants.tripId, tripId), inArray(participants.id, restored)));
+    }
+    await record(tx, change, tripId, id, stored.version);
+
+    const accepted = { changeId, status: 'accepted', version: stored.version } as const;
+    return restored.length > 0 ? { ...accepted, restored } : accepted;
   });
-  return applied ? { changeId: change.id, status: 'accepted', version: applied.version } : null;
 }
 
 /**
