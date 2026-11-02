@@ -1,5 +1,11 @@
 import { describe, expect, it } from 'vite-plus/test';
-import { rational, shareBreakdown, shareBreakdowns, type Expense } from '@osi/owe-yeah-domain';
+import {
+  balances,
+  rational,
+  shareBreakdown,
+  shareBreakdowns,
+  type Expense,
+} from '@osi/owe-yeah-domain';
 
 const rafal = '019a2b3c-4d5e-7f00-8a1b-000000000001';
 const ania = '019a2b3c-4d5e-7f00-8a1b-000000000002';
@@ -169,6 +175,14 @@ describe('shareBreakdowns of a Trip', () => {
         { part: 'repayments', amount: cents(500n) },
       ],
     });
+  });
+
+  it('adds up to the share each balance works with', () => {
+    const breakdowns = shareBreakdowns(trip);
+
+    for (const { participantId, share } of balances(trip)) {
+      expect(breakdowns.get(participantId)?.share).toEqual(share);
+    }
   });
 
   it('lists every Participant in the Trip’s order, with nothing for one who had nothing', () => {

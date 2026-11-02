@@ -64,28 +64,27 @@ function addExpense(totals: PartTotals, expense: Expense): void {
     return;
   }
   const { lineItems, discount, currency, mainPayerId } = expense;
-  if (!isReceipt(expense)) {
-    const shares = receiptShares(expense);
-    credit(shares.total.numerator < 0n ? 'income' : 'expenses', shares.assigned);
-    return;
-  }
-
-  // The fraction of the goods the Receipt discount takes off.
-  const goods = goodsMinor(lineItems);
-  const off = goods.numerator === 0n ? zero : divide(takenOff(discount, goods), goods);
-  for (const item of lineItems) {
-    const line = lineItemShares(item, currency);
-    const parts = (amount: Rational) => spread(item, amount).shares;
-    if (isDepositRefund(item)) {
-      credit('depositRefunds', parts(line.net));
-      continue;
+  const { total, assigned, unassigned } = receiptShares(expense);
+  if (isReceipt(expense)) {
+    // The fraction of the goods the Receipt discount takes off.
+    const goods = goodsMinor(lineItems);
+    const off = goods.numerator === 0n ? zero : divide(takenOff(discount, goods), goods);
+    for (const item of lineItems) {
+      const line = lineItemShares(item, currency);
+      const byWeight = (amount: Rational) => spread(item, amount).shares;
+      if (isDepositRefund(item)) {
+        credit('depositRefunds', byWeight(line.net));
+        continue;
+      }
+      credit('goods', byWeight(line.total));
+      credit('lineDiscounts', byWeight(negate(line.discountOff)));
+      credit('deposits', byWeight(line.deposit));
+      credit('receiptDiscounts', byWeight(negate(multiply(line.net, off))));
     }
-    credit('goods', parts(line.total));
-    credit('lineDiscounts', parts(negate(line.discountOff)));
-    credit('deposits', parts(line.deposit));
-    credit('receiptDiscounts', parts(negate(multiply(line.net, off))));
+  } else {
+    credit(total.numerator < 0n ? 'income' : 'expenses', assigned);
   }
-  const { unassigned } = receiptShares(expense);
+  // Whatever nobody has been given yet is the Main payer's own until it is.
   if (unassigned.numerator !== 0n) credit('unassigned', new Map([[mainPayerId, unassigned]]));
 }
 
