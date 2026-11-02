@@ -5,6 +5,8 @@ import {
   isDepositRefund,
   isReceipt,
   isRepayment,
+  roundMoney,
+  shareBreakdown,
   type Discount,
   type Expense,
   type Rational,
@@ -16,6 +18,8 @@ import {
 // Participant's in bold. A Repayment shows who paid whom. A Receipt also lists its Line items,
 // with how each is split, its Line discount, its Deposit, and what is not assigned yet,
 // Deposit refunds as negative lines, and then its Receipt discount and its Deposits total.
+// On a Receipt, tapping a share opens where it comes from (`ShareBreakdownSheet`). Shares are
+// rounded only to show them, so a note explains "≈" when they don't add up to the total.
 const { expense } = defineProps<{ expense: Expense }>();
 
 const { trip, claim } = useOpenTrip();
@@ -68,8 +72,27 @@ const details = computed(() => {
       const share = shares.get(participant.id);
       return share ? [{ participant, share }] : [];
     }),
+    rounded: [...shares.values()].some((share) => !roundMoney(share, expense.currency).exact),
   };
 });
+
+// Every share's breakdown, on a Receipt; the open sheet shows the one tapped.
+const breakdowns = computed(() =>
+  isReceipt(expense) && !isRepayment(expense) ? shareBreakdown(expense) : null,
+);
+const breakdownOpen = ref(false);
+const breakdownOf = ref<string | null>(null);
+const opened = computed(() => {
+  const participant = trip.value.participants.find(({ id }) => id === breakdownOf.value);
+  const breakdown = breakdowns.value?.get(breakdownOf.value ?? '');
+  return participant && breakdown ? { participant, breakdown } : null;
+});
+useCloseOnBack(breakdownOpen);
+
+function openBreakdown(participantId: string): void {
+  breakdownOf.value = participantId;
+  breakdownOpen.value = true;
+}
 </script>
 
 <template>
@@ -165,21 +188,33 @@ const details = computed(() => {
         }}
       </h2>
       <ul>
-        <li
-          v-for="{ participant, share } in details.shares"
-          :key="participant.id"
-          class="flex items-center gap-2.5 py-1.5"
-        >
-          <ParticipantAvatar :participant="participant" />
-          <span
-            class="min-w-0 flex-1 truncate"
-            :class="{ 'font-semibold': participant.id === claim?.id }"
+        <li v-for="{ participant, share } in details.shares" :key="participant.id">
+          <component
+            :is="breakdowns ? 'button' : 'div'"
+            :type="breakdowns ? 'button' : undefined"
+            :aria-haspopup="breakdowns ? 'dialog' : undefined"
+            class="flex w-full items-center gap-2.5 py-1.5 text-start"
+            :class="{ 'cursor-pointer rounded-md hover:bg-elevated': breakdowns }"
+            @click="breakdowns && openBreakdown(participant.id)"
           >
-            {{ participant.name }}
-          </span>
-          <span class="shrink-0 tabular-nums">{{ money(share) }}</span>
+            <ParticipantAvatar :participant="participant" />
+            <span
+              class="min-w-0 flex-1 truncate"
+              :class="{ 'font-semibold': participant.id === claim?.id }"
+            >
+              {{ participant.name }}
+            </span>
+            <span class="shrink-0 tabular-nums">{{ money(share) }}</span>
+            <UIcon
+              v-if="breakdowns"
+              name="i-lucide-chevron-right"
+              class="size-4 shrink-0 text-dimmed"
+              aria-hidden="true"
+            />
+          </component>
         </li>
       </ul>
+      <p v-if="details.rounded" class="mt-1 text-xs text-muted">{{ $t('breakdown.rounded') }}</p>
       <p v-if="details.unassigned" class="mt-1 text-sm text-warning">
         {{
           $t('receipt.unassignedTotal', {
@@ -189,5 +224,13 @@ const details = computed(() => {
         }}
       </p>
     </section>
+
+    <ShareBreakdownSheet
+      v-if="opened"
+      v-model:open="breakdownOpen"
+      :participant="opened.participant"
+      :breakdown="opened.breakdown"
+      :currency="expense.currency"
+    />
   </div>
 </template>

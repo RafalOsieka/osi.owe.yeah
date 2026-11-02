@@ -3,7 +3,9 @@ import type { Participant, ParticipantBalance } from '@osi/owe-yeah-domain';
 
 // Everyone's balance as diverging bars, one per Participant in the Trip's order: owing to
 // the left in red, owed to the right in green, scaled to the largest balance, with the
-// amount at the end of the bar. Shows the rounded balances settling up uses. Hand-built: `UChart` only draws vertical bars.
+// amount at the end of the bar. Shows the rounded balances settling up uses. Tapping a bar
+// selects its Participant, to open their breakdown. Hand-built: `UChart` only draws vertical
+// bars.
 const {
   balances,
   participants,
@@ -16,6 +18,7 @@ const {
   currency: string;
   claimId?: string | null;
 }>();
+const emit = defineEmits<{ select: [participantId: string] }>();
 
 const { locale } = useI18n();
 
@@ -48,31 +51,34 @@ const rows = computed(() => {
       <span>{{ $t('balances.isOwed') }}</span>
     </div>
     <ul>
-      <li
-        v-for="row in rows"
-        :key="row.participantId"
-        class="grid h-8 grid-cols-[4rem_1fr_1fr] items-center text-xs"
-      >
-        <span
-          class="truncate pe-1"
-          :class="row.participantId === claimId ? 'font-bold' : 'font-medium'"
+      <li v-for="row in rows" :key="row.participantId">
+        <button
+          type="button"
+          aria-haspopup="dialog"
+          class="grid h-8 w-full cursor-pointer grid-cols-[4rem_1fr_1fr] items-center rounded-md text-start text-xs hover:bg-elevated"
+          @click="emit('select', row.participantId)"
         >
-          {{ row.name }}
-        </span>
-        <span
-          class="flex h-full min-w-0 items-center justify-end overflow-hidden border-e-[1.5px] border-accented"
-        >
-          <template v-if="row.owes">
-            <span class="px-1 whitespace-nowrap text-muted tabular-nums">{{ row.amount }}</span>
-            <span class="h-4 shrink-0 rounded-s bg-error/85" :style="{ width: row.width }" />
-          </template>
-        </span>
-        <span class="flex h-full min-w-0 items-center overflow-hidden">
-          <template v-if="!row.owes">
-            <span class="h-4 shrink-0 rounded-e bg-success/85" :style="{ width: row.width }" />
-            <span class="px-1 whitespace-nowrap text-muted tabular-nums">{{ row.amount }}</span>
-          </template>
-        </span>
+          <span
+            class="truncate pe-1"
+            :class="row.participantId === claimId ? 'font-bold' : 'font-medium'"
+          >
+            {{ row.name }}
+          </span>
+          <span
+            class="flex h-full min-w-0 items-center justify-end overflow-hidden border-e-[1.5px] border-accented"
+          >
+            <template v-if="row.owes">
+              <span class="px-1 whitespace-nowrap text-muted tabular-nums">{{ row.amount }}</span>
+              <span class="h-4 shrink-0 rounded-s bg-error/85" :style="{ width: row.width }" />
+            </template>
+          </span>
+          <span class="flex h-full min-w-0 items-center overflow-hidden">
+            <template v-if="!row.owes">
+              <span class="h-4 shrink-0 rounded-e bg-success/85" :style="{ width: row.width }" />
+              <span class="px-1 whitespace-nowrap text-muted tabular-nums">{{ row.amount }}</span>
+            </template>
+          </span>
+        </button>
       </li>
     </ul>
   </div>

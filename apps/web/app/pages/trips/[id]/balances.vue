@@ -1,11 +1,18 @@
 <script setup lang="ts">
-import { balances, isSettled, spendingTotal, suggestedRepayments } from '@osi/owe-yeah-domain';
+import {
+  balances,
+  isSettled,
+  shareBreakdowns,
+  spendingTotal,
+  suggestedRepayments,
+} from '@osi/owe-yeah-domain';
 
 // The Balances tab: your balance and your own Suggested Repayments ("To settle") first, then
 // everyone's balance as diverging bars, the other Suggested Repayments (all of them without
 // a Claim), Record another Repayment, and what the Trip spent. Once the Trip is Settled, "All
 // settled" replaces the balance and the suggestions. Balances are worked out exactly and
-// rounded with the largest remainder method, as settling up uses them.
+// rounded with the largest remainder method, as settling up uses them. Tapping a bar opens
+// where that Participant's share comes from, with what they paid and their balance.
 definePageMeta({ scrollToTop: false });
 useKeptScroll();
 
@@ -18,6 +25,21 @@ const mine = computed(
   () => everyone.value.find(({ participantId }) => participantId === claim.value?.id) ?? null,
 );
 const total = computed(() => spendingTotal(trip.value.expenses));
+
+const breakdownOpen = ref(false);
+const breakdownOf = ref<string | null>(null);
+const opened = computed(() => {
+  const participant = trip.value.participants.find(({ id }) => id === breakdownOf.value);
+  const balance = everyone.value.find(({ participantId }) => participantId === breakdownOf.value);
+  const breakdown = participant && shareBreakdowns(trip.value).get(participant.id);
+  return participant && balance && breakdown ? { participant, balance, breakdown } : null;
+});
+useCloseOnBack(breakdownOpen);
+
+function openBreakdown(participantId: string): void {
+  breakdownOf.value = participantId;
+  breakdownOpen.value = true;
+}
 
 const suggestions = computed(() => {
   const all = suggestedRepayments(everyone.value);
@@ -72,6 +94,7 @@ const suggestions = computed(() => {
         :participants="trip.participants"
         :currency="trip.currency"
         :claim-id="claim?.id"
+        @select="openBreakdown"
       />
     </section>
 
@@ -102,5 +125,15 @@ const suggestions = computed(() => {
     <p class="mt-4 text-xs text-muted">
       {{ $t('balances.tripTotalIs', { amount: formatMoney(total, trip.currency, locale) }) }}
     </p>
+
+    <ShareBreakdownSheet
+      v-if="opened"
+      v-model:open="breakdownOpen"
+      :participant="opened.participant"
+      :breakdown="opened.breakdown"
+      :currency="trip.currency"
+      :paid="opened.balance.paid"
+      :balance="opened.balance.rounded"
+    />
   </NuxtLayout>
 </template>
