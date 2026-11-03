@@ -5,71 +5,8 @@
     {
       "idx": 0,
       "version": "7",
-      "when": 1793214490322,
-      "tag": "0000_create_trips",
-      "breakpoints": true
-    },
-    {
-      "idx": 1,
-      "version": "7",
-      "when": 1793216750300,
-      "tag": "0001_add_trip_token",
-      "breakpoints": true
-    },
-    {
-      "idx": 2,
-      "version": "7",
-      "when": 1793220279587,
-      "tag": "0002_add_participants",
-      "breakpoints": true
-    },
-    {
-      "idx": 3,
-      "version": "7",
-      "when": 1793484795726,
-      "tag": "0003_add_expenses",
-      "breakpoints": true
-    },
-    {
-      "idx": 4,
-      "version": "7",
-      "when": 1793551855424,
-      "tag": "0004_add_changes",
-      "breakpoints": true
-    },
-    {
-      "idx": 5,
-      "version": "7",
-      "when": 1793561690972,
-      "tag": "0005_add_revisions",
-      "breakpoints": true
-    },
-    {
-      "idx": 6,
-      "version": "7",
-      "when": 1793643115059,
-      "tag": "0006_add_participant_removed",
-      "breakpoints": true
-    },
-    {
-      "idx": 7,
-      "version": "7",
-      "when": 1793646270575,
-      "tag": "0007_add_rates",
-      "breakpoints": true
-    },
-    {
-      "idx": 8,
-      "version": "7",
-      "when": 1793698839455,
-      "tag": "0008_add_push_subscriptions",
-      "breakpoints": true
-    },
-    {
-      "idx": 9,
-      "version": "7",
-      "when": 1793704260781,
-      "tag": "0009_add_reminders",
+      "when": 1793723985924,
+      "tag": "0000_init",
       "breakpoints": true
     }
   ]

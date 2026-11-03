@@ -74,7 +74,7 @@ Status: `todo`, `grilling`, `decided`, `done`, `dropped`.
 - [ ] **Fire-and-forget calls.** `void notifyAffected(…)` and `void deliver(…)` run without `event.waitUntil`. That is fine on Node and fragile on serverless.
 - [ ] **`tools/tricount-import`** duplicates token generation and `hashTripToken`, and copies the schema. After #73, either delete it or share the hash.
 - [ ] **The domain interface is wide.** About 19 exports of `packages/domain` are unused outside the package (`changeResultSchema`, `syncChangeSchema`, `tripSnapshotSchema`, `lineItemSchema`, `parseAmount`, `localDay`, …).
-- [ ] **Flatten the migrations** into one initial migration (no production yet).
+- [x] **Flatten the migrations** into one initial migration (no production yet). Done in #75: `0000_init.sql`.
 
 ## Decisions
 
