@@ -1,5 +1,11 @@
 import { randomBytes } from 'node:crypto';
-import type { PushRequest, SyncChange } from '@osi/owe-yeah-domain';
+import {
+  SYNC_SCHEMA_HEADER,
+  SYNC_SCHEMA_VERSION,
+  TRIP_TOKEN_HEADER,
+  type PushRequest,
+  type SyncChange,
+} from '@osi/owe-yeah-domain';
 import { expect, test, type APIRequestContext, type Page } from '@playwright/test';
 import { v7 as uuidv7 } from 'uuid';
 
@@ -54,7 +60,7 @@ async function tripWithExpenses(
     })),
   ];
   const pushed = await request.post(`/api/trips/${id}/push`, {
-    headers: { 'x-trip-token': token },
+    headers: { [TRIP_TOKEN_HEADER]: token, [SYNC_SCHEMA_HEADER]: String(SYNC_SCHEMA_VERSION) },
     data: { changes },
   });
   expect(pushed.ok()).toBe(true);
@@ -1051,6 +1057,34 @@ test('forgetting a Trip is blocked while its changes have not synced, unless you
 
   await expect(page).toHaveURL('/');
   await expect(page.getByRole('link', { name: /Hel 2026/ })).toHaveCount(0);
+});
+
+test('an app a sync schema behind the server asks to reload, and its changes sync once it has', async ({
+  page,
+}) => {
+  // Stands in for an app from before the server's newest sync schema.
+  const api = '**/api/**';
+  await page.route(api, (route) =>
+    route.continue({
+      headers: {
+        ...route.request().headers(),
+        [SYNC_SCHEMA_HEADER]: String(SYNC_SCHEMA_VERSION - 1),
+      },
+    }),
+  );
+  await createTrip(page, 'Krk 2026', 'Kasia', ['Ania']);
+
+  await expect(page.getByText('New version available', { exact: true })).toBeVisible();
+  await expect(
+    page.getByText('Your changes wait on this device and sync once you reload.', { exact: true }),
+  ).toBeVisible();
+  await expect(page.getByRole('button', { name: '3 changes not synced yet' })).toBeVisible();
+
+  // Reloaded, the app speaks the server's sync schema again.
+  await page.unroute(api);
+  await page.getByRole('button', { name: 'Reload' }).click();
+  await expect(page.getByRole('button', { name: 'Everything is synced.' })).toBeVisible();
+  await expect(page.getByText('New version available', { exact: true })).toHaveCount(0);
 });
 
 test('Invite waits until the Trip has synced, then passes on its Trip link by QR code, share sheet or copy', async ({

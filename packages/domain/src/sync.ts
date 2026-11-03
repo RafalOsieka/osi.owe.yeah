@@ -11,6 +11,19 @@ import {
 import { tripSchema } from './trip.ts';
 
 /**
+ * The sync schema: the shape of pushes, pulls and Revisions. The server speaks only the
+ * newest one and answers an older app's requests to `/api` with 426 "update needed" (ADR
+ * 0002). Bump it whenever an older app could no longer talk to the server. It counts apart
+ * from the device store's version: not every store change touches the wire. A bump that
+ * changes what the outbox has to send also appends a link to the store's migration chain
+ * (`migrations` in the web app), so queued changes go out in the new schema.
+ */
+export const SYNC_SCHEMA_VERSION = 1;
+
+/** The request header that carries the sync schema version the app speaks. */
+export const SYNC_SCHEMA_HEADER = 'x-sync-schema';
+
+/**
  * Who made a change and where (stored for display only, they grant nothing): the Claim on
  * the device at change time, or `null` without one, and the device's opaque id. The change's
  * own id, a UUIDv7 from the device, makes a retry idempotent (ADR 0002).

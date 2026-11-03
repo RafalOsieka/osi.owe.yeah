@@ -1,6 +1,8 @@
 import { randomBytes } from 'node:crypto';
 import { fileURLToPath } from 'node:url';
 import {
+  SYNC_SCHEMA_HEADER,
+  SYNC_SCHEMA_VERSION,
   TRIP_TOKEN_HEADER,
   type ChangeResult,
   type Expense,
@@ -84,13 +86,27 @@ function stored(expense: Expense, version: number, by: string | null = null): St
   return { ...expense, version, deleted: false, edited: { by, at: expect.any(String) } };
 }
 
-/** A push as a device sends it; its changes may be ones the server refuses as malformed. */
-function pushResponse(tripId: string, changes: unknown[], token?: string): Promise<Response> {
+/**
+ * The headers a device sends: its Trip link's token, if given, and the sync schema it speaks
+ * (`null` for an app from before it said).
+ */
+function deviceHeaders(token?: string, schema: number | null = SYNC_SCHEMA_VERSION): Headers {
   const headers = new Headers({ 'content-type': 'application/json' });
   if (token) headers.set(TRIP_TOKEN_HEADER, token);
+  if (schema !== null) headers.set(SYNC_SCHEMA_HEADER, String(schema));
+  return headers;
+}
+
+/** A push as a device sends it; its changes may be ones the server refuses as malformed. */
+function pushResponse(
+  tripId: string,
+  changes: unknown[],
+  token?: string,
+  schema?: number | null,
+): Promise<Response> {
   return fetch(`/api/trips/${tripId}/push`, {
     method: 'POST',
-    headers,
+    headers: deviceHeaders(token, schema),
     body: JSON.stringify({ changes }),
   });
 }
@@ -117,9 +133,14 @@ async function createdToken(trip: TripWithParticipants): Promise<string> {
   return token;
 }
 
-function pullTrip(id: string, token?: string, since?: number): Promise<Response> {
+function pullTrip(
+  id: string,
+  token?: string,
+  since?: number,
+  schema?: number | null,
+): Promise<Response> {
   return fetch(`/api/trips/${id}${since === undefined ? '' : `?since=${since}`}`, {
-    headers: token ? { [TRIP_TOKEN_HEADER]: token } : {},
+    headers: deviceHeaders(token, schema),
   });
 }
 
@@ -138,7 +159,7 @@ async function revisions(tripId: string, token: string, expenseId: string) {
 
 function revisionsResponse(tripId: string, token: string, expenseId: string): Promise<Response> {
   return fetch(`/api/trips/${tripId}/expenses/${expenseId}/revisions`, {
-    headers: { [TRIP_TOKEN_HEADER]: token },
+    headers: deviceHeaders(token),
   });
 }
 
@@ -303,6 +324,31 @@ describeApi('Trip API', () => {
     const unknown = uuidv7();
     const ola = participantChange(participant('Ola'));
     expect((await pushResponse(unknown, [ola], newToken())).status).toBe(401);
+  });
+
+  it('answers a push or pull in an older sync schema "update needed", applying nothing', async () => {
+    const { trip, token, kasia } = await tripWithKasiaAndAnia();
+    const before = await pulled(trip.id, token);
+    const lidl = change(plainExpense(kasia));
+
+    // `null`: an app from before the sync schema was sent.
+    for (const schema of [SYNC_SCHEMA_VERSION - 1, null]) {
+      const pushed = await pushResponse(trip.id, [lidl], token, schema);
+      const pulledOlder = await pullTrip(trip.id, token, undefined, schema);
+
+      expect([pushed.status, pulledOlder.status]).toEqual([426, 426]);
+    }
+    expect(await pulled(trip.id, token)).toEqual(before);
+  });
+
+  it('refuses an app newer than the server without telling it to update', async () => {
+    const { trip, token, kasia } = await tripWithKasiaAndAnia();
+    const newer = SYNC_SCHEMA_VERSION + 1;
+
+    const pushed = await pushResponse(trip.id, [change(plainExpense(kasia))], token, newer);
+
+    expect(pushed.status).toBe(409);
+    expect((await pulled(trip.id, token)).expenses).toEqual([]);
   });
 
   it("refuses to create a Trip under an id that is taken, keeping the first Trip's token", async () => {
