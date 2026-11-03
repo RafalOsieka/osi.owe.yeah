@@ -28,17 +28,20 @@ const membershipSchema = z
     deleted: member.status === 'DELETED',
   }));
 
-/** One member's part of an entry: in the Tricount currency, and in the entry's own if foreign. */
+/**
+ * One member's part of an entry: in the Tricount currency, and in the entry's own if foreign.
+ * Its membership is a trimmed copy without `status`, so only the id is read.
+ */
 const allocationSchema = z
   .object({
-    membership: membershipSchema,
+    membership: z.object({ RegistryMembershipNonUser: z.object({ id: z.number().int() }) }),
     amount: moneySchema,
     amount_local: moneySchema.nullish(),
     type: z.enum(['AMOUNT', 'RATIO']),
     share_ratio: z.number().int().nullish(),
   })
   .transform((allocation) => ({
-    memberId: allocation.membership.id,
+    memberId: allocation.membership.RegistryMembershipNonUser.id,
     amount: allocation.amount,
     amountLocal: allocation.amount_local ?? undefined,
     // The weight of a `RATIO` allocation; `null` for an exact `AMOUNT`.

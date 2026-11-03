@@ -2,7 +2,7 @@ import { mkdir, readFile, writeFile } from 'node:fs/promises';
 import { resolve } from 'node:path';
 import { fileURLToPath } from 'node:url';
 import { parseArgs } from 'node:util';
-import { roundMoney, type Rational } from '@osi/owe-yeah-domain';
+import { minorUnits, rational, roundMoney, type Rational } from '@osi/owe-yeah-domain';
 import { fetchTricount, shareToken } from './api.ts';
 import { importTricount } from './mapping.ts';
 import { parseTricount } from './tricount.ts';
@@ -10,7 +10,7 @@ import { BalanceMismatchError, writeTrip } from './write.ts';
 
 const USAGE = `Moves a Tricount into a new Trip, once.
 
-  DATABASE_URL=… pnpm --filter @osi/owe-yeah-tricount-import import -- \\
+  DATABASE_URL=… pnpm --filter @osi/owe-yeah-tricount-import run import \\
     (<Tricount share link> | --from-file <saved response>) \\
     --zone <IANA zone, e.g. Europe/Warsaw> --origin <app URL, e.g. https://owe.example.com>
 
@@ -57,11 +57,21 @@ export async function main(argv: string[], env: NodeJS.ProcessEnv): Promise<numb
   try {
     const raw = fromFile ? await readFile(fromFile, 'utf8') : await fetchAndSave(link!);
     const imported = importTricount(parseTricount(raw), zone);
-    const { trip, expenses, skipped } = imported;
+    const { trip, expenses, skipped, rounding } = imported;
     console.log(
       `"${trip.name}": ${trip.participants.length} Participants, ${expenses.length} Expenses` +
         ` (${skipped} entries skipped), in ${trip.currency}.`,
     );
+    if (rounding.size > 0) {
+      const scale = 10n ** BigInt(minorUnits(trip.currency));
+      const moved = trip.participants.flatMap(({ id, name }) => {
+        const minor = rounding.get(id);
+        if (minor === undefined) return [];
+        const { decimal } = roundMoney(rational(minor, scale), trip.currency);
+        return [`${name} ${minor > 0n ? '+' : ''}${decimal}`];
+      });
+      console.log(`With a Tricount rounding Expense moving balances by: ${moved.join(', ')}.`);
+    }
     const token = await writeTrip(databaseUrl, imported);
     console.log(`Imported. Trip link:\n${new URL(`/trips/${trip.id}#${token}`, origin).href}`);
     return 0;

@@ -143,8 +143,7 @@
                           "type": "UUID",
                           "value": "member-101"
                         }
-                      },
-                      "status": "ACTIVE"
+                      }
                     }
                   },
                   "amount": {
@@ -167,8 +166,7 @@
                           "type": "UUID",
                           "value": "member-102"
                         }
-                      },
-                      "status": "ACTIVE"
+                      }
                     }
                   },
                   "amount": {
@@ -191,8 +189,7 @@
                           "type": "UUID",
                           "value": "member-103"
                         }
-                      },
-                      "status": "ACTIVE"
+                      }
                     }
                   },
                   "amount": {
@@ -253,8 +250,7 @@
                           "type": "UUID",
                           "value": "member-101"
                         }
-                      },
-                      "status": "ACTIVE"
+                      }
                     }
                   },
                   "amount": {
@@ -277,8 +273,7 @@
                           "type": "UUID",
                           "value": "member-102"
                         }
-                      },
-                      "status": "ACTIVE"
+                      }
                     }
                   },
                   "amount": {
@@ -301,8 +296,7 @@
                           "type": "UUID",
                           "value": "member-103"
                         }
-                      },
-                      "status": "ACTIVE"
+                      }
                     }
                   },
                   "amount": {
@@ -363,8 +357,7 @@
                           "type": "UUID",
                           "value": "member-101"
                         }
-                      },
-                      "status": "ACTIVE"
+                      }
                     }
                   },
                   "amount": {
@@ -387,8 +380,7 @@
                           "type": "UUID",
                           "value": "member-102"
                         }
-                      },
-                      "status": "ACTIVE"
+                      }
                     }
                   },
                   "amount": {
@@ -411,8 +403,7 @@
                           "type": "UUID",
                           "value": "member-103"
                         }
-                      },
-                      "status": "ACTIVE"
+                      }
                     }
                   },
                   "amount": {
@@ -477,8 +468,7 @@
                           "type": "UUID",
                           "value": "member-102"
                         }
-                      },
-                      "status": "ACTIVE"
+                      }
                     }
                   },
                   "amount": {
@@ -505,8 +495,7 @@
                           "type": "UUID",
                           "value": "member-105"
                         }
-                      },
-                      "status": "DELETED"
+                      }
                     }
                   },
                   "amount": {
@@ -571,8 +560,7 @@
                           "type": "UUID",
                           "value": "member-101"
                         }
-                      },
-                      "status": "ACTIVE"
+                      }
                     }
                   },
                   "amount": {
@@ -595,8 +583,7 @@
                           "type": "UUID",
                           "value": "member-102"
                         }
-                      },
-                      "status": "ACTIVE"
+                      }
                     }
                   },
                   "amount": {
@@ -619,8 +606,7 @@
                           "type": "UUID",
                           "value": "member-103"
                         }
-                      },
-                      "status": "ACTIVE"
+                      }
                     }
                   },
                   "amount": {
@@ -681,8 +667,7 @@
                           "type": "UUID",
                           "value": "member-101"
                         }
-                      },
-                      "status": "ACTIVE"
+                      }
                     }
                   },
                   "amount": {
@@ -704,8 +689,7 @@
                           "type": "UUID",
                           "value": "member-103"
                         }
-                      },
-                      "status": "ACTIVE"
+                      }
                     }
                   },
                   "amount": {
@@ -765,8 +749,7 @@
                           "type": "UUID",
                           "value": "member-104"
                         }
-                      },
-                      "status": "DELETED"
+                      }
                     }
                   },
                   "amount": {

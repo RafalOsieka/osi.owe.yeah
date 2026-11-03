@@ -68,9 +68,46 @@ describe('importTricount', () => {
     expect(balanceMismatches(trip, expenses, tricountBalances)).toEqual([]);
   });
 
-  it('reports the Participants whose balance would differ from Tricount by a cent or more', () => {
+  it('spreads a foreign entry by its base-currency parts when its own miss what was paid', () => {
     const registry = parseTricount(saved);
-    // The tickets' Czech crowns split 100 / 150, while Tricount's euros split 5.00 / 5.00.
+    const tickets = registry.entries.find(({ description }) => description === 'Castle tickets')!;
+    tickets.allocations[0]!.amountLocal = { value: '-125.01', currency: 'CZK' };
+
+    const { expenses, rounding } = importTricount(registry, 'Europe/Zagreb');
+
+    expect(byTitle(expenses, 'Castle tickets')).toMatchObject({
+      lineItems: [{ unitPrice: 25000, split: { mode: 'even' } }],
+    });
+    expect(rounding.size).toBe(0);
+  });
+
+  it('adds one Expense that moves balances a rounded cent off back onto Tricount', () => {
+    const registry = parseTricount(saved);
+    // 250 CZK split evenly is 5.00 EUR each, while Tricount rounded the euros 5.01 / 4.99.
+    const tickets = registry.entries.find(({ description }) => description === 'Castle tickets')!;
+    tickets.allocations[0]!.amount = { value: '-5.01', currency: 'EUR' };
+    tickets.allocations[1]!.amount = { value: '-4.99', currency: 'EUR' };
+
+    const { trip, expenses, tricountBalances, rounding } = importTricount(
+      registry,
+      'Europe/Zagreb',
+    );
+    const name = new Map(trip.participants.map(({ id, name }) => [id, name]));
+
+    expect(Object.fromEntries([...rounding].map(([id, minor]) => [name.get(id), minor]))).toEqual({
+      Kasia: -1n,
+      Gone: 1n,
+    });
+    const correction = expenses.at(-1)!;
+    expect(correction).toMatchObject({ title: 'Tricount rounding', currency: 'EUR' });
+    expect(name.get(correction.mainPayerId)).toBe('Gone');
+    expect(balanceMismatches(trip, expenses, tricountBalances)).toEqual([]);
+  });
+
+  it('reports the Participants whose balance would differ from Tricount by more than rounding', () => {
+    const registry = parseTricount(saved);
+    // The tickets' Czech crowns split 100 / 150, while Tricount's euros split 5.00 / 5.00: a
+    // euro off, more than the rounding correction may move with one foreign entry.
     const tickets = registry.entries.find(({ description }) => description === 'Castle tickets')!;
     tickets.allocations[0]!.amountLocal = { value: '-100.00', currency: 'CZK' };
     tickets.allocations[1]!.amountLocal = { value: '-150.00', currency: 'CZK' };

@@ -47,7 +47,7 @@ vp run db:migrate    # apply committed migrations to DATABASE_URL (see .env.exam
 - `tools/tricount-import` (`@osi/owe-yeah-tricount-import`): throwaway admin tool that moves each Tricount into a new Trip once, run from the operator's machine with an explicit `DATABASE_URL`. It is in no image, and it is deleted after the migration (with its workspace and root-script entries). Usage:
 
   ```sh
-  DATABASE_URL=… pnpm --filter @osi/owe-yeah-tricount-import import -- <share link> --zone Europe/Warsaw --origin https://<app>
+  DATABASE_URL=… pnpm --filter @osi/owe-yeah-tricount-import run import <share link> --zone Europe/Warsaw --origin https://<app>
   ```
 
   Each fetch saves the response, without the share token, to `tools/tricount-import/responses/` (git-ignored); `--from-file <file>` imports a saved one instead.
