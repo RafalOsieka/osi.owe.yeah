@@ -23,9 +23,9 @@ import {
 
 // The full-screen Repayment form, for a new Repayment or to edit one: amount, its currency
 // with a Manual rate if needed (`ExpenseCurrency`), who paid, who got the money, a title and
-// when. A new one is in the Trip currency and may start from a Suggested Repayment
-// (`suggested`), its amount still editable for a partial Repayment; otherwise who paid
-// defaults to the Claim. Saving works like the Expense form's.
+// when. A new one is in the Trip currency until another is picked, and may start from a
+// Suggested Repayment (`suggested`), its amount still editable for a partial Repayment;
+// otherwise who paid defaults to the Claim. Saving works like the Expense form's.
 const {
   repayment = null,
   suggested = null,

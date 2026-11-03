@@ -56,8 +56,8 @@ import {
 // Expense saved last on this device, or else the Trip currency. Every amount is entered in it,
 // and the pill says what the total comes to in the Trip currency, at a Manual rate if one is
 // typed next to it (`ExpenseCurrency`). Saving keeps the Expense's full new state on the
-// device, to sync later, and returns to `parent`'s screen, or wherever the form was opened from. An Expense that breaks a Trip rule is not
-// saved; why shows above Save.
+// device, to sync later, and returns to `parent`'s screen, or wherever the form was opened
+// from. An Expense that breaks a Trip rule is not saved; why shows above Save.
 const { expense = null, parent } = defineProps<{
   expense?: Extract<LocalExpense, SplitExpense> | null;
   /** The screen above the form, for back when it was opened from a link. */

@@ -15,9 +15,9 @@ import { manualRateFromDraft, type DraftManualRate } from '~/utils/manual-rate-d
 // than the Trip's, the Manual rate. That is typed as a rate ("1 USD = … EUR") or as the amount
 // actually charged, in the currency it targets: the Trip currency, or the one it was typed for
 // when it was saved before the Trip currency changed. It opens by itself when one is saved, and
-// asks for one while there is no automatic rate. Picking another currency points the Manual
-// rate at the Trip currency again. The form reads and checks the Manual rate (`name`
-// `manualRate`).
+// asks for one while there is no automatic rate. A Manual rate is for one currency, so picking
+// another clears it and points it at the Trip currency again. The form reads and checks the
+// Manual rate (`name` `manualRate`).
 const { total, time } = defineProps<{
   /** What the Expense comes to so far in its own currency; `null` while unreadable. */
   total: Rational | null;
@@ -31,7 +31,7 @@ const { trip } = useOpenTrip();
 const { t, locale } = useI18n();
 
 watch(currency, () => {
-  manualRate.value = { ...manualRate.value, currency: trip.value.currency };
+  manualRate.value = { ...manualRate.value, value: '', currency: trip.value.currency };
 });
 
 const foreign = computed(() => currency.value !== trip.value.currency);

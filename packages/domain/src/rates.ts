@@ -28,11 +28,11 @@ export type RateEntry = z.infer<typeof rateEntrySchema>;
 export type TripRates = { currency: TripCurrency; rates: readonly RateEntry[] };
 
 /**
- * The rate converting an Expense into the Trip currency, exact, whether it is a Provisional
- * rate (amounts converted with it are approximate and update by themselves), and whether it
- * comes from a Manual rate; `null` without one.
+ * The rate converting an Expense into the Trip currency, exact, and whether it is a
+ * Provisional rate (amounts converted with it are approximate and update by themselves);
+ * `null` without one.
  */
-export type ExpenseRate = { rate: Rational; provisional: boolean; manual: boolean } | null;
+export type ExpenseRate = { rate: Rational; provisional: boolean } | null;
 
 /**
  * What an Expense's rate depends on: its currency, its local date, its Manual rate, and its
@@ -59,20 +59,18 @@ export function expenseRate(expense: Expense, trip: TripRates): ExpenseRate {
  */
 export function conversionRate(conversion: Conversion, trip: TripRates): ExpenseRate {
   if (conversion.currency === trip.currency) {
-    return { rate: rational(1n), provisional: false, manual: false };
+    return { rate: rational(1n), provisional: false };
   }
   const date = localDay(conversion.time);
   const { manualRate } = conversion;
   if (!manualRate) {
-    const found = automaticRate(conversion.currency, date, trip);
-    return found && { ...found, manual: false };
+    return automaticRate(conversion.currency, date, trip);
   }
   const typed = manualRateValue(manualRate, conversion.total);
   if (!typed) return null;
-  if (manualRate.currency === trip.currency)
-    return { rate: typed, provisional: false, manual: true };
+  if (manualRate.currency === trip.currency) return { rate: typed, provisional: false };
   const chained = automaticRate(manualRate.currency, date, trip);
-  return chained && { ...chained, rate: multiply(typed, chained.rate), manual: true };
+  return chained && { ...chained, rate: multiply(typed, chained.rate) };
 }
 
 /**

@@ -81,7 +81,6 @@ describe('expenseRate', () => {
     expect(expenseRate(expense('USD', 100), trip)).toEqual({
       rate: rational(1n, 4n),
       provisional: false,
-      manual: false,
     });
   });
 
@@ -89,7 +88,6 @@ describe('expenseRate', () => {
     expect(expenseRate(expense('EUR', 100), inEur([]))).toEqual({
       rate: rational(1n),
       provisional: false,
-      manual: false,
     });
   });
 
@@ -99,7 +97,6 @@ describe('expenseRate', () => {
     expect(expenseRate(expense('USD', 100), trip)).toEqual({
       rate: rational(7n, 8n),
       provisional: true,
-      manual: false,
     });
   });
 
@@ -113,7 +110,6 @@ describe('expenseRate', () => {
     expect(expenseRate(expense('USD', 100), trip)).toEqual({
       rate: rational(9n, 10n),
       provisional: true,
-      manual: false,
     });
   });
 
@@ -142,7 +138,6 @@ describe('a Manual rate', () => {
     expect(expenseRate(exchanged, trip)).toEqual({
       rate: rational(1n, 400n),
       provisional: false,
-      manual: true,
     });
   });
 
@@ -154,7 +149,6 @@ describe('a Manual rate', () => {
     expect(expenseRate(carded, trip)).toEqual({
       rate: rational(3107n, 3333n),
       provisional: false,
-      manual: true,
     });
     expect(balances(trip)[0]!.paid).toEqual(rational(3107n, 100n));
 
@@ -190,7 +184,6 @@ describe('a Manual rate', () => {
     expect(expenseRate(carded, trip)).toEqual({
       rate: rational(27n, 25n),
       provisional: true,
-      manual: true,
     });
     expect(expenseRate(carded, inEur([rate('2026-07-15', 'USD', '0.9')], carded))).toBe(null);
   });
@@ -204,7 +197,6 @@ describe('a Manual rate', () => {
     expect(expenseRate(back, trip)).toEqual({
       rate: rational(1n),
       provisional: false,
-      manual: false,
     });
   });
 });
