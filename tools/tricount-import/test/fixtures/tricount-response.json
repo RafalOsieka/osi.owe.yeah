@@ -1,0 +1,786 @@
+{
+  "Response": [
+    {
+      "Registry": {
+        "id": 9001,
+        "uuid": "registry-9001",
+        "created": "2026-07-01 08:00:00.000000",
+        "title": "Croatia 2026",
+        "description": null,
+        "emoji": "🏖️",
+        "currency": "EUR",
+        "status": "READ_WRITE",
+        "public_identifier_token": "[redacted]",
+        "memberships": [
+          {
+            "RegistryMembershipNonUser": {
+              "id": 101,
+              "uuid": "00000000-0000-4000-8000-00000000101",
+              "created": "2026-07-01 08:00:00.000000",
+              "updated": "2026-07-01 08:00:00.000000",
+              "alias": {
+                "display_name": "Ania",
+                "pointer": {
+                  "type": "UUID",
+                  "value": "member-101"
+                }
+              },
+              "status": "ACTIVE"
+            }
+          },
+          {
+            "RegistryMembershipNonUser": {
+              "id": 102,
+              "uuid": "00000000-0000-4000-8000-00000000102",
+              "created": "2026-07-01 08:00:00.000000",
+              "updated": "2026-07-01 08:00:00.000000",
+              "alias": {
+                "display_name": "Kasia",
+                "pointer": {
+                  "type": "UUID",
+                  "value": "member-102"
+                }
+              },
+              "status": "ACTIVE"
+            }
+          },
+          {
+            "RegistryMembershipNonUser": {
+              "id": 103,
+              "uuid": "00000000-0000-4000-8000-00000000103",
+              "created": "2026-07-01 08:00:00.000000",
+              "updated": "2026-07-01 08:00:00.000000",
+              "alias": {
+                "display_name": "Bartek",
+                "pointer": {
+                  "type": "UUID",
+                  "value": "member-103"
+                }
+              },
+              "status": "ACTIVE"
+            }
+          },
+          {
+            "RegistryMembershipNonUser": {
+              "id": 104,
+              "uuid": "00000000-0000-4000-8000-00000000104",
+              "created": "2026-07-01 08:00:00.000000",
+              "updated": "2026-07-01 08:00:00.000000",
+              "alias": {
+                "display_name": "Old",
+                "pointer": {
+                  "type": "UUID",
+                  "value": "member-104"
+                }
+              },
+              "status": "DELETED"
+            }
+          },
+          {
+            "RegistryMembershipNonUser": {
+              "id": 105,
+              "uuid": "00000000-0000-4000-8000-00000000105",
+              "created": "2026-07-01 08:00:00.000000",
+              "updated": "2026-07-01 08:00:00.000000",
+              "alias": {
+                "display_name": "Gone",
+                "pointer": {
+                  "type": "UUID",
+                  "value": "member-105"
+                }
+              },
+              "status": "DELETED"
+            }
+          }
+        ],
+        "all_registry_gallery_attachment": [],
+        "all_registry_entry": [
+          {
+            "RegistryEntry": {
+              "id": 1,
+              "uuid": "entry-1",
+              "created": "2026-07-20 10:00:00.000000",
+              "updated": "2026-07-20 10:00:00.000000",
+              "type": "MANUAL",
+              "status": "ACTIVE",
+              "category": "UNCATEGORIZED",
+              "attachment": [],
+              "exchange_rate": "1",
+              "type_transaction": "NORMAL",
+              "description": "Groceries",
+              "date": "2026-07-14 19:30:00.000000",
+              "amount": {
+                "value": "-30.00",
+                "currency": "EUR"
+              },
+              "membership_owned": {
+                "RegistryMembershipNonUser": {
+                  "id": 101,
+                  "uuid": "00000000-0000-4000-8000-00000000101",
+                  "created": "2026-07-01 08:00:00.000000",
+                  "updated": "2026-07-01 08:00:00.000000",
+                  "alias": {
+                    "display_name": "Ania",
+                    "pointer": {
+                      "type": "UUID",
+                      "value": "member-101"
+                    }
+                  },
+                  "status": "ACTIVE"
+                }
+              },
+              "allocations": [
+                {
+                  "membership": {
+                    "RegistryMembershipNonUser": {
+                      "id": 101,
+                      "uuid": "00000000-0000-4000-8000-00000000101",
+                      "created": "2026-07-01 08:00:00.000000",
+                      "updated": "2026-07-01 08:00:00.000000",
+                      "alias": {
+                        "display_name": "Ania",
+                        "pointer": {
+                          "type": "UUID",
+                          "value": "member-101"
+                        }
+                      },
+                      "status": "ACTIVE"
+                    }
+                  },
+                  "amount": {
+                    "value": "-10.00",
+                    "currency": "EUR"
+                  },
+                  "type": "RATIO",
+                  "share_ratio": 1
+                },
+                {
+                  "membership": {
+                    "RegistryMembershipNonUser": {
+                      "id": 102,
+                      "uuid": "00000000-0000-4000-8000-00000000102",
+                      "created": "2026-07-01 08:00:00.000000",
+                      "updated": "2026-07-01 08:00:00.000000",
+                      "alias": {
+                        "display_name": "Kasia",
+                        "pointer": {
+                          "type": "UUID",
+                          "value": "member-102"
+                        }
+                      },
+                      "status": "ACTIVE"
+                    }
+                  },
+                  "amount": {
+                    "value": "-10.00",
+                    "currency": "EUR"
+                  },
+                  "type": "RATIO",
+                  "share_ratio": 1
+                },
+                {
+                  "membership": {
+                    "RegistryMembershipNonUser": {
+                      "id": 103,
+                      "uuid": "00000000-0000-4000-8000-00000000103",
+                      "created": "2026-07-01 08:00:00.000000",
+                      "updated": "2026-07-01 08:00:00.000000",
+                      "alias": {
+                        "display_name": "Bartek",
+                        "pointer": {
+                          "type": "UUID",
+                          "value": "member-103"
+                        }
+                      },
+                      "status": "ACTIVE"
+                    }
+                  },
+                  "amount": {
+                    "value": "-10.00",
+                    "currency": "EUR"
+                  },
+                  "type": "RATIO",
+                  "share_ratio": 1
+                }
+              ]
+            }
+          },
+          {
+            "RegistryEntry": {
+              "id": 2,
+              "uuid": "entry-2",
+              "created": "2026-07-20 10:00:00.000000",
+              "updated": "2026-07-20 10:00:00.000000",
+              "type": "MANUAL",
+              "status": "ACTIVE",
+              "category": "UNCATEGORIZED",
+              "attachment": [],
+              "exchange_rate": "1",
+              "type_transaction": "NORMAL",
+              "description": "Ice cream",
+              "date": "2026-07-15 16:05:00.000000",
+              "amount": {
+                "value": "-10.00",
+                "currency": "EUR"
+              },
+              "membership_owned": {
+                "RegistryMembershipNonUser": {
+                  "id": 102,
+                  "uuid": "00000000-0000-4000-8000-00000000102",
+                  "created": "2026-07-01 08:00:00.000000",
+                  "updated": "2026-07-01 08:00:00.000000",
+                  "alias": {
+                    "display_name": "Kasia",
+                    "pointer": {
+                      "type": "UUID",
+                      "value": "member-102"
+                    }
+                  },
+                  "status": "ACTIVE"
+                }
+              },
+              "allocations": [
+                {
+                  "membership": {
+                    "RegistryMembershipNonUser": {
+                      "id": 101,
+                      "uuid": "00000000-0000-4000-8000-00000000101",
+                      "created": "2026-07-01 08:00:00.000000",
+                      "updated": "2026-07-01 08:00:00.000000",
+                      "alias": {
+                        "display_name": "Ania",
+                        "pointer": {
+                          "type": "UUID",
+                          "value": "member-101"
+                        }
+                      },
+                      "status": "ACTIVE"
+                    }
+                  },
+                  "amount": {
+                    "value": "-3.34",
+                    "currency": "EUR"
+                  },
+                  "type": "RATIO",
+                  "share_ratio": 1
+                },
+                {
+                  "membership": {
+                    "RegistryMembershipNonUser": {
+                      "id": 102,
+                      "uuid": "00000000-0000-4000-8000-00000000102",
+                      "created": "2026-07-01 08:00:00.000000",
+                      "updated": "2026-07-01 08:00:00.000000",
+                      "alias": {
+                        "display_name": "Kasia",
+                        "pointer": {
+                          "type": "UUID",
+                          "value": "member-102"
+                        }
+                      },
+                      "status": "ACTIVE"
+                    }
+                  },
+                  "amount": {
+                    "value": "-3.33",
+                    "currency": "EUR"
+                  },
+                  "type": "RATIO",
+                  "share_ratio": 1
+                },
+                {
+                  "membership": {
+                    "RegistryMembershipNonUser": {
+                      "id": 103,
+                      "uuid": "00000000-0000-4000-8000-00000000103",
+                      "created": "2026-07-01 08:00:00.000000",
+                      "updated": "2026-07-01 08:00:00.000000",
+                      "alias": {
+                        "display_name": "Bartek",
+                        "pointer": {
+                          "type": "UUID",
+                          "value": "member-103"
+                        }
+                      },
+                      "status": "ACTIVE"
+                    }
+                  },
+                  "amount": {
+                    "value": "-3.33",
+                    "currency": "EUR"
+                  },
+                  "type": "RATIO",
+                  "share_ratio": 1
+                }
+              ]
+            }
+          },
+          {
+            "RegistryEntry": {
+              "id": 3,
+              "uuid": "entry-3",
+              "created": "2026-07-20 10:00:00.000000",
+              "updated": "2026-07-20 10:00:00.000000",
+              "type": "MANUAL",
+              "status": "ACTIVE",
+              "category": "UNCATEGORIZED",
+              "attachment": [],
+              "exchange_rate": "1",
+              "type_transaction": "NORMAL",
+              "description": "Taxi",
+              "date": "2026-07-16 23:40:00.000000",
+              "amount": {
+                "value": "-20.00",
+                "currency": "EUR"
+              },
+              "membership_owned": {
+                "RegistryMembershipNonUser": {
+                  "id": 103,
+                  "uuid": "00000000-0000-4000-8000-00000000103",
+                  "created": "2026-07-01 08:00:00.000000",
+                  "updated": "2026-07-01 08:00:00.000000",
+                  "alias": {
+                    "display_name": "Bartek",
+                    "pointer": {
+                      "type": "UUID",
+                      "value": "member-103"
+                    }
+                  },
+                  "status": "ACTIVE"
+                }
+              },
+              "allocations": [
+                {
+                  "membership": {
+                    "RegistryMembershipNonUser": {
+                      "id": 101,
+                      "uuid": "00000000-0000-4000-8000-00000000101",
+                      "created": "2026-07-01 08:00:00.000000",
+                      "updated": "2026-07-01 08:00:00.000000",
+                      "alias": {
+                        "display_name": "Ania",
+                        "pointer": {
+                          "type": "UUID",
+                          "value": "member-101"
+                        }
+                      },
+                      "status": "ACTIVE"
+                    }
+                  },
+                  "amount": {
+                    "value": "-5.00",
+                    "currency": "EUR"
+                  },
+                  "type": "RATIO",
+                  "share_ratio": 1
+                },
+                {
+                  "membership": {
+                    "RegistryMembershipNonUser": {
+                      "id": 102,
+                      "uuid": "00000000-0000-4000-8000-00000000102",
+                      "created": "2026-07-01 08:00:00.000000",
+                      "updated": "2026-07-01 08:00:00.000000",
+                      "alias": {
+                        "display_name": "Kasia",
+                        "pointer": {
+                          "type": "UUID",
+                          "value": "member-102"
+                        }
+                      },
+                      "status": "ACTIVE"
+                    }
+                  },
+                  "amount": {
+                    "value": "-15.00",
+                    "currency": "EUR"
+                  },
+                  "type": "RATIO",
+                  "share_ratio": 3
+                },
+                {
+                  "membership": {
+                    "RegistryMembershipNonUser": {
+                      "id": 103,
+                      "uuid": "00000000-0000-4000-8000-00000000103",
+                      "created": "2026-07-01 08:00:00.000000",
+                      "updated": "2026-07-01 08:00:00.000000",
+                      "alias": {
+                        "display_name": "Bartek",
+                        "pointer": {
+                          "type": "UUID",
+                          "value": "member-103"
+                        }
+                      },
+                      "status": "ACTIVE"
+                    }
+                  },
+                  "amount": {
+                    "value": "0.00",
+                    "currency": "EUR"
+                  },
+                  "type": "RATIO",
+                  "share_ratio": 0
+                }
+              ]
+            }
+          },
+          {
+            "RegistryEntry": {
+              "id": 4,
+              "uuid": "entry-4",
+              "created": "2026-07-20 10:00:00.000000",
+              "updated": "2026-07-20 10:00:00.000000",
+              "type": "MANUAL",
+              "status": "ACTIVE",
+              "category": "UNCATEGORIZED",
+              "attachment": [],
+              "exchange_rate": "0.04",
+              "type_transaction": "NORMAL",
+              "description": "Castle tickets",
+              "date": "2026-07-17 11:00:00.000000",
+              "amount": {
+                "value": "-10.00",
+                "currency": "EUR"
+              },
+              "amount_local": {
+                "value": "-250.00",
+                "currency": "CZK"
+              },
+              "membership_owned": {
+                "RegistryMembershipNonUser": {
+                  "id": 101,
+                  "uuid": "00000000-0000-4000-8000-00000000101",
+                  "created": "2026-07-01 08:00:00.000000",
+                  "updated": "2026-07-01 08:00:00.000000",
+                  "alias": {
+                    "display_name": "Ania",
+                    "pointer": {
+                      "type": "UUID",
+                      "value": "member-101"
+                    }
+                  },
+                  "status": "ACTIVE"
+                }
+              },
+              "allocations": [
+                {
+                  "membership": {
+                    "RegistryMembershipNonUser": {
+                      "id": 102,
+                      "uuid": "00000000-0000-4000-8000-00000000102",
+                      "created": "2026-07-01 08:00:00.000000",
+                      "updated": "2026-07-01 08:00:00.000000",
+                      "alias": {
+                        "display_name": "Kasia",
+                        "pointer": {
+                          "type": "UUID",
+                          "value": "member-102"
+                        }
+                      },
+                      "status": "ACTIVE"
+                    }
+                  },
+                  "amount": {
+                    "value": "-5.00",
+                    "currency": "EUR"
+                  },
+                  "amount_local": {
+                    "value": "-125.00",
+                    "currency": "CZK"
+                  },
+                  "type": "RATIO",
+                  "share_ratio": 1
+                },
+                {
+                  "membership": {
+                    "RegistryMembershipNonUser": {
+                      "id": 105,
+                      "uuid": "00000000-0000-4000-8000-00000000105",
+                      "created": "2026-07-01 08:00:00.000000",
+                      "updated": "2026-07-01 08:00:00.000000",
+                      "alias": {
+                        "display_name": "Gone",
+                        "pointer": {
+                          "type": "UUID",
+                          "value": "member-105"
+                        }
+                      },
+                      "status": "DELETED"
+                    }
+                  },
+                  "amount": {
+                    "value": "-5.00",
+                    "currency": "EUR"
+                  },
+                  "amount_local": {
+                    "value": "-125.00",
+                    "currency": "CZK"
+                  },
+                  "type": "RATIO",
+                  "share_ratio": 1
+                }
+              ]
+            }
+          },
+          {
+            "RegistryEntry": {
+              "id": 5,
+              "uuid": "entry-5",
+              "created": "2026-07-20 10:00:00.000000",
+              "updated": "2026-07-20 10:00:00.000000",
+              "type": "MANUAL",
+              "status": "ACTIVE",
+              "category": "UNCATEGORIZED",
+              "attachment": [],
+              "exchange_rate": "1",
+              "type_transaction": "INCOME",
+              "description": "Deposit back",
+              "date": "2026-07-18 09:15:00.000000",
+              "amount": {
+                "value": "12.00",
+                "currency": "EUR"
+              },
+              "membership_owned": {
+                "RegistryMembershipNonUser": {
+                  "id": 102,
+                  "uuid": "00000000-0000-4000-8000-00000000102",
+                  "created": "2026-07-01 08:00:00.000000",
+                  "updated": "2026-07-01 08:00:00.000000",
+                  "alias": {
+                    "display_name": "Kasia",
+                    "pointer": {
+                      "type": "UUID",
+                      "value": "member-102"
+                    }
+                  },
+                  "status": "ACTIVE"
+                }
+              },
+              "allocations": [
+                {
+                  "membership": {
+                    "RegistryMembershipNonUser": {
+                      "id": 101,
+                      "uuid": "00000000-0000-4000-8000-00000000101",
+                      "created": "2026-07-01 08:00:00.000000",
+                      "updated": "2026-07-01 08:00:00.000000",
+                      "alias": {
+                        "display_name": "Ania",
+                        "pointer": {
+                          "type": "UUID",
+                          "value": "member-101"
+                        }
+                      },
+                      "status": "ACTIVE"
+                    }
+                  },
+                  "amount": {
+                    "value": "4.00",
+                    "currency": "EUR"
+                  },
+                  "type": "RATIO",
+                  "share_ratio": 1
+                },
+                {
+                  "membership": {
+                    "RegistryMembershipNonUser": {
+                      "id": 102,
+                      "uuid": "00000000-0000-4000-8000-00000000102",
+                      "created": "2026-07-01 08:00:00.000000",
+                      "updated": "2026-07-01 08:00:00.000000",
+                      "alias": {
+                        "display_name": "Kasia",
+                        "pointer": {
+                          "type": "UUID",
+                          "value": "member-102"
+                        }
+                      },
+                      "status": "ACTIVE"
+                    }
+                  },
+                  "amount": {
+                    "value": "4.00",
+                    "currency": "EUR"
+                  },
+                  "type": "RATIO",
+                  "share_ratio": 1
+                },
+                {
+                  "membership": {
+                    "RegistryMembershipNonUser": {
+                      "id": 103,
+                      "uuid": "00000000-0000-4000-8000-00000000103",
+                      "created": "2026-07-01 08:00:00.000000",
+                      "updated": "2026-07-01 08:00:00.000000",
+                      "alias": {
+                        "display_name": "Bartek",
+                        "pointer": {
+                          "type": "UUID",
+                          "value": "member-103"
+                        }
+                      },
+                      "status": "ACTIVE"
+                    }
+                  },
+                  "amount": {
+                    "value": "4.00",
+                    "currency": "EUR"
+                  },
+                  "type": "RATIO",
+                  "share_ratio": 1
+                }
+              ]
+            }
+          },
+          {
+            "RegistryEntry": {
+              "id": 6,
+              "uuid": "entry-6",
+              "created": "2026-07-20 10:00:00.000000",
+              "updated": "2026-07-20 10:00:00.000000",
+              "type": "MANUAL",
+              "status": "ACTIVE",
+              "category": "UNCATEGORIZED",
+              "attachment": [],
+              "exchange_rate": "1",
+              "type_transaction": "BALANCE",
+              "description": "Paid back",
+              "date": "2026-07-19 20:00:00.000000",
+              "amount": {
+                "value": "5.00",
+                "currency": "EUR"
+              },
+              "membership_owned": {
+                "RegistryMembershipNonUser": {
+                  "id": 103,
+                  "uuid": "00000000-0000-4000-8000-00000000103",
+                  "created": "2026-07-01 08:00:00.000000",
+                  "updated": "2026-07-01 08:00:00.000000",
+                  "alias": {
+                    "display_name": "Bartek",
+                    "pointer": {
+                      "type": "UUID",
+                      "value": "member-103"
+                    }
+                  },
+                  "status": "ACTIVE"
+                }
+              },
+              "allocations": [
+                {
+                  "membership": {
+                    "RegistryMembershipNonUser": {
+                      "id": 101,
+                      "uuid": "00000000-0000-4000-8000-00000000101",
+                      "created": "2026-07-01 08:00:00.000000",
+                      "updated": "2026-07-01 08:00:00.000000",
+                      "alias": {
+                        "display_name": "Ania",
+                        "pointer": {
+                          "type": "UUID",
+                          "value": "member-101"
+                        }
+                      },
+                      "status": "ACTIVE"
+                    }
+                  },
+                  "amount": {
+                    "value": "5.00",
+                    "currency": "EUR"
+                  },
+                  "type": "AMOUNT"
+                },
+                {
+                  "membership": {
+                    "RegistryMembershipNonUser": {
+                      "id": 103,
+                      "uuid": "00000000-0000-4000-8000-00000000103",
+                      "created": "2026-07-01 08:00:00.000000",
+                      "updated": "2026-07-01 08:00:00.000000",
+                      "alias": {
+                        "display_name": "Bartek",
+                        "pointer": {
+                          "type": "UUID",
+                          "value": "member-103"
+                        }
+                      },
+                      "status": "ACTIVE"
+                    }
+                  },
+                  "amount": {
+                    "value": "0.00",
+                    "currency": "EUR"
+                  },
+                  "type": "AMOUNT"
+                }
+              ]
+            }
+          },
+          {
+            "RegistryEntry": {
+              "id": 7,
+              "uuid": "entry-7",
+              "created": "2026-07-20 10:00:00.000000",
+              "updated": "2026-07-20 10:00:00.000000",
+              "type": "MANUAL",
+              "status": "DELETED",
+              "category": "UNCATEGORIZED",
+              "attachment": [],
+              "exchange_rate": "1",
+              "type_transaction": "NORMAL",
+              "description": "Mistake",
+              "date": "2026-07-19 21:00:00.000000",
+              "amount": {
+                "value": "-99.00",
+                "currency": "EUR"
+              },
+              "membership_owned": {
+                "RegistryMembershipNonUser": {
+                  "id": 104,
+                  "uuid": "00000000-0000-4000-8000-00000000104",
+                  "created": "2026-07-01 08:00:00.000000",
+                  "updated": "2026-07-01 08:00:00.000000",
+                  "alias": {
+                    "display_name": "Old",
+                    "pointer": {
+                      "type": "UUID",
+                      "value": "member-104"
+                    }
+                  },
+                  "status": "DELETED"
+                }
+              },
+              "allocations": [
+                {
+                  "membership": {
+                    "RegistryMembershipNonUser": {
+                      "id": 104,
+                      "uuid": "00000000-0000-4000-8000-00000000104",
+                      "created": "2026-07-01 08:00:00.000000",
+                      "updated": "2026-07-01 08:00:00.000000",
+                      "alias": {
+                        "display_name": "Old",
+                        "pointer": {
+                          "type": "UUID",
+                          "value": "member-104"
+                        }
+                      },
+                      "status": "DELETED"
+                    }
+                  },
+                  "amount": {
+                    "value": "-99.00",
+                    "currency": "EUR"
+                  },
+                  "type": "RATIO",
+                  "share_ratio": 1
+                }
+              ]
+            }
+          }
+        ]
+      }
+    }
+  ]
+}
