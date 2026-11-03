@@ -86,6 +86,7 @@
     "share": "Share the Trip link",
     "copy": "Copy the Trip link",
     "copied": "Trip link copied",
+    "copyFailed": "The Trip link couldn't be copied. Try again.",
     "notSynced": "The Trip hasn't synced yet",
     "notSyncedHelp": "Its Trip link works once the Trip reaches the server, which happens on its own when you're online."
   },

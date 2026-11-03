@@ -86,6 +86,7 @@
     "share": "Udostępnij link do podróży",
     "copy": "Skopiuj link do podróży",
     "copied": "Skopiowano link do podróży",
+    "copyFailed": "Nie udało się skopiować linku do podróży. Spróbuj ponownie.",
     "notSynced": "Podróż nie jest jeszcze zsynchronizowana",
     "notSyncedHelp": "Link do podróży zadziała, gdy podróż trafi na serwer. Stanie się to samo, gdy będziesz online."
   },

@@ -1080,7 +1080,9 @@ test('Invite waits until the Trip has synced, then passes on its Trip link by QR
   expect(shared?.url).toMatch(/^http:\/\/localhost:\d+\/trips\/[\w-]+#[\w-]{43}$/);
   await page.keyboard.press('Escape');
 
-  // The Trip tab offers it too. Without a share sheet, the link is copied instead.
+  // The Trip tab offers it too, and without signal: the QR code needs none. Without a share
+  // sheet, the link is copied instead.
+  await context.setOffline(true);
   await page.addInitScript(() => {
     Reflect.deleteProperty(navigator, 'share');
     Reflect.deleteProperty(Navigator.prototype, 'share');
@@ -1089,6 +1091,7 @@ test('Invite waits until the Trip has synced, then passes on its Trip link by QR
   await context.grantPermissions(['clipboard-read', 'clipboard-write']);
   await page.getByRole('link', { name: 'Trip', exact: true }).click();
   await page.getByRole('main').getByRole('button', { name: 'Invite' }).click();
+  await expect(sheet.getByRole('img', { name: 'QR code of the Trip link' })).toBeVisible();
   await sheet.getByRole('button', { name: 'Copy the Trip link' }).click();
   await expect(page.getByText('Trip link copied', { exact: true })).toBeVisible();
   const copied = await page.evaluate(() => navigator.clipboard.readText());

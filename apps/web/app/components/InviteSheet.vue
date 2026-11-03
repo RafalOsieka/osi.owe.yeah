@@ -20,9 +20,14 @@ async function share(url: string): Promise<void> {
   }
 }
 
+// The clipboard may be refused, e.g. while the page isn't focused: then the user hears it.
 async function copy(url: string): Promise<void> {
-  await navigator.clipboard.writeText(url);
-  toast.add({ title: t('invite.copied'), icon: 'i-lucide-check' });
+  try {
+    await navigator.clipboard.writeText(url);
+    toast.add({ title: t('invite.copied'), icon: 'i-lucide-check' });
+  } catch {
+    toast.add({ title: t('invite.copyFailed'), color: 'error' });
+  }
 }
 </script>
 
