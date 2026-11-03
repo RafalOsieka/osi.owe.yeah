@@ -1,30 +1,47 @@
 <script setup lang="ts">
 import type { Participant } from '@osi/owe-yeah-domain';
+import type { BrowserSubscription } from '~/sync/db';
 
 // The "Who are you?" sheet: the device picks one of the Trip's Participants as its Claim,
 // or uses "Add me" to create a new Participant and Claim it in one step. Closing it ("Just
 // looking", or "Cancel" with a Claim) changes nothing. Asked again because someone removed
-// the Participant this device was, it says so.
-defineProps<{
+// the Participant this device was, it says so. With `offerFor` (the Trip's name), it ends
+// with the offer of notifications that follows a Claim (#41).
+const {
+  current,
+  removed = null,
+  offerFor = null,
+} = defineProps<{
   participants: readonly Participant[];
   current: Participant | null;
   removed?: Participant | null;
+  offerFor?: string | null;
 }>();
 const emit = defineEmits<{
   claim: [participant: Participant];
   addMe: [name: string];
+  subscribed: [subscription: BrowserSubscription];
 }>();
 const open = defineModel<boolean>('open', { required: true });
+
+const { t } = useI18n();
+const title = computed(() => (offerFor ? t('notifications.title') : t('claim.title')));
+const description = computed(() => {
+  if (offerFor) return t('claim.youAre', { name: current?.name ?? '' });
+  return removed ? t('claim.removed', { name: removed.name }) : t('claim.help');
+});
 </script>
 
 <template>
-  <UDrawer
-    v-model:open="open"
-    :title="$t('claim.title')"
-    :description="removed ? $t('claim.removed', { name: removed.name }) : $t('claim.help')"
-  >
+  <UDrawer v-model:open="open" :title="title" :description="description">
     <template #body>
-      <div class="space-y-4">
+      <NotificationsOffer
+        v-if="offerFor"
+        :trip-name="offerFor"
+        @subscribed="emit('subscribed', $event)"
+        @not-now="open = false"
+      />
+      <div v-else class="space-y-4">
         <ul v-if="participants.length > 0" class="grid grid-cols-2 gap-2">
           <li v-for="participant in participants" :key="participant.id" class="min-w-0">
             <UButton
@@ -47,7 +64,7 @@ const open = defineModel<boolean>('open', { required: true });
         />
       </div>
     </template>
-    <template #footer>
+    <template v-if="!offerFor" #footer>
       <UButton
         variant="ghost"
         color="neutral"

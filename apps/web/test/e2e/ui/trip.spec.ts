@@ -220,6 +220,61 @@ test('"Add me", and changing who you are from the Trip tab, last past a reload',
   await expect(sheet).toBeHidden();
 });
 
+test('notifications are offered once after a Claim, and turned on and off from the Trip tab', async ({
+  page,
+
+  request,
+}) => {
+  // The browser allows notifications and its push service is stood in for: headless Chromium
+  // reports them blocked, and can't reach a push service.
+  await page.addInitScript(() => {
+    Object.defineProperty(Notification, 'permission', { get: () => 'granted' });
+    Notification.requestPermission = async () => 'granted';
+    const endpoint = 'https://push.example.com/ui-e2e';
+    const subscription = {
+      endpoint,
+      options: { applicationServerKey: null, userVisibleOnly: true },
+      toJSON: () => ({ endpoint, keys: { p256dh: 'p256dh', auth: 'auth' } }),
+      unsubscribe: async () => true,
+    };
+    // SAFETY: the app reads only these members of a PushSubscription.
+    PushManager.prototype.subscribe = async () => subscription as PushSubscription;
+    PushManager.prototype.getSubscription = async () => null;
+  });
+  const tripLink = await tripLinkFor(request, 'Mazury 2026', ['Kasia', 'Ania']);
+  await page.goto(tripLink);
+  await page.waitForFunction(() => navigator.serviceWorker.controller !== null);
+  const sheet = page.getByRole('dialog', { name: 'Who are you?' });
+  await sheet.getByRole('button', { name: 'Just looking' }).click();
+
+  // Without a Claim, the Trip tab asks who you are first; the Claim ends with the offer,
+  // explained before the browser's prompt.
+  await page.getByRole('link', { name: 'Trip', exact: true }).click();
+  await page.getByRole('button', { name: /Notifications\s*Pick who you are first/ }).click();
+  await sheet.getByRole('button', { name: 'Kasia' }).click();
+  const offer = page.getByRole('dialog', { name: 'Notifications' });
+  await expect(offer).toContainText('Only for Mazury 2026, only on this device.');
+  await offer.getByRole('button', { name: 'Not now' }).click();
+  await expect(offer).toBeHidden();
+
+  // "Not now" is not asked again by itself, even for another Claim.
+  await page.getByRole('button', { name: /Who you are/ }).click();
+  await sheet.getByRole('button', { name: 'Ania' }).click();
+  await expect(sheet).toBeHidden();
+
+  // The toggle lives on the Trip tab: off, then turned on from its explanation, and off.
+  const row = page.getByRole('link', { name: /Notifications/ });
+  await expect(row).toContainText('Off');
+  await row.click();
+  await expect(page.getByRole('main')).toContainText('Get notified when someone else adds');
+  await page.getByRole('button', { name: 'Turn on' }).click();
+  await expect(row).toContainText('On');
+  await row.click();
+  await page.getByRole('button', { name: 'Turn off' }).click();
+  await page.getByRole('button', { name: 'Back' }).click();
+  await expect(row).toContainText('Off');
+});
+
 test('system back closes an open sheet before it leaves the Trip', async ({ page, request }) => {
   const tripLink = await tripLinkFor(request, 'Mazury 2026', ['Ola']);
   await page.goto(tripLink);

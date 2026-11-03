@@ -57,6 +57,13 @@
       "when": 1793646270575,
       "tag": "0007_add_rates",
       "breakpoints": true
+    },
+    {
+      "idx": 8,
+      "version": "7",
+      "when": 1793698839455,
+      "tag": "0008_add_push_subscriptions",
+      "breakpoints": true
     }
   ]
 }

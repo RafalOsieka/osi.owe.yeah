@@ -1,12 +1,13 @@
 <script setup lang="ts">
 import type { Expense, Participant, Trip } from '@osi/owe-yeah-domain';
 import { v7 as uuidv7 } from 'uuid';
-import type { ExpenseBase } from '~/sync/db';
+import { NOTIFICATIONS_OFF, type BrowserSubscription, type ExpenseBase } from '~/sync/db';
 
 // Opens a Trip for its tabs and Expense pages from the device, joins it from a Trip link,
 // saves changes on the device and syncs them, and asks "Who are you?" when needed: also
-// when sync finds this device's Participant removed by someone else. Holds Invite, opened
-// from the Trip header, the Trip tab and the empty Expenses tab.
+// when sync finds this device's Participant removed by someone else. A Claim made there is
+// followed by the offer of notifications, once per Trip (#41). Holds Invite, opened from the
+// Trip header, the Trip tab and the empty Expenses tab.
 const route = useRoute();
 const router = useRouter();
 const { t } = useI18n();
@@ -39,6 +40,13 @@ const nothingToShow = computed(() => !onDevice || view.value?.local === null);
 
 const whoAreYouOpen = ref(false);
 useCloseOnBack(whoAreYouOpen);
+// Whether the sheet shows the offer of notifications that follows a Claim.
+const offering = ref(false);
+watch(whoAreYouOpen, (open) => {
+  if (!open) offering.value = false;
+});
+const { support } = usePushNotifications();
+const notifications = computed(() => view.value?.deviceTrip.notifications ?? NOTIFICATIONS_OFF);
 
 const inviteOpen = ref(false);
 useCloseOnBack(inviteOpen);
@@ -70,10 +78,32 @@ onMounted(async () => {
   );
 });
 
+// Offered once: shown, it counts as "Not now" until turned on.
 async function claimParticipant(participant: Participant): Promise<void> {
   await device.claim(tripId, participant);
-  whoAreYouOpen.value = false;
+  void device.sync(tripId);
   removedClaim.value = null;
+  if (!notifications.value.offered && support.value === 'available') {
+    offering.value = true;
+    await device.declineNotifications(tripId);
+  } else {
+    whoAreYouOpen.value = false;
+  }
+}
+
+async function turnOnNotifications(subscription: BrowserSubscription): Promise<void> {
+  await device.turnOnNotifications(tripId, subscription);
+  void device.sync(tripId);
+}
+
+async function turnOffNotifications(): Promise<void> {
+  await device.turnOffNotifications(tripId);
+  void device.sync(tripId);
+}
+
+async function subscribedFromOffer(subscription: BrowserSubscription): Promise<void> {
+  await turnOnNotifications(subscription);
+  whoAreYouOpen.value = false;
 }
 
 async function addParticipant(participant: Participant): Promise<void> {
@@ -143,6 +173,9 @@ provideOpenTrip({
   revisions: (expenseId) => device.revisions(tripId, expenseId),
   keepMine,
   discardChanges: (expenseId) => device.discardChanges(tripId, expenseId),
+  notifications,
+  turnOnNotifications,
+  turnOffNotifications,
   askWhoYouAre: () => (whoAreYouOpen.value = true),
   invite: () => (inviteOpen.value = true),
 });
@@ -159,8 +192,10 @@ useHead({ title: () => trip.value?.name ?? t('trip.invalidLink') });
         :participants="trip.participants"
         :current="claim"
         :removed="removedClaim"
+        :offer-for="offering ? trip.name : null"
         @claim="claimParticipant"
         @add-me="addMe"
+        @subscribed="subscribedFromOffer"
       />
       <InviteSheet v-model:open="inviteOpen" :trip-name="trip.name" :link="tripLink" />
     </template>

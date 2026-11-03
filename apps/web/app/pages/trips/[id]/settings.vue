@@ -3,13 +3,30 @@ import { expensesReferencing, type Participant } from '@osi/owe-yeah-domain';
 import { v7 as uuidv7 } from 'uuid';
 
 // The Trip tab: everything about the Trip that is not money. Invite on top, its Participants (tap one to
-// remove them, refused while an Expense references them), who this device says it is, the
-// Trip's name and Trip currency, Recently deleted, and forgetting the Trip on this device.
+// remove them, refused while an Expense references them), who this device says it is and its
+// notifications, the Trip's name and Trip currency, Recently deleted, and forgetting the Trip
+// on this device. Notifications need a Claim first; on iOS outside the installed app, the row
+// says to add the app to the Home Screen instead.
 definePageMeta({ scrollToTop: false });
 useKeptScroll();
 
-const { trip, claim, unsynced, addParticipant, removeParticipant, askWhoYouAre, invite, forget } =
-  useOpenTrip();
+const {
+  trip,
+  claim,
+  unsynced,
+  notifications,
+  addParticipant,
+  removeParticipant,
+  askWhoYouAre,
+  invite,
+  forget,
+} = useOpenTrip();
+const { t } = useI18n();
+const { support } = usePushNotifications();
+const notificationsState = computed(() => {
+  if (notifications.value.subscription) return t('notifications.on');
+  return support.value === 'denied' ? t('notifications.blocked') : t('notifications.off');
+});
 
 const adding = ref(false);
 useCloseOnBack(adding);
@@ -107,6 +124,38 @@ async function forgetTrip(): Promise<void> {
         </span>
         <UIcon name="i-lucide-chevron-right" class="size-5 text-dimmed" />
       </button>
+      <div
+        v-if="support === 'homeScreen'"
+        class="flex w-full items-center gap-3 border-b border-default py-2.5"
+      >
+        <span class="min-w-0 flex-1">
+          <span class="block">{{ $t('notifications.title') }}</span>
+          <span class="block text-sm text-muted">{{ $t('notifications.homeScreen') }}</span>
+        </span>
+      </div>
+      <button
+        v-else-if="!claim"
+        type="button"
+        class="flex w-full cursor-pointer items-center gap-3 border-b border-default py-2.5 text-start"
+        @click="askWhoYouAre"
+      >
+        <span class="min-w-0 flex-1">
+          <span class="block">{{ $t('notifications.title') }}</span>
+          <span class="block text-sm text-muted">{{ $t('notifications.pickFirst') }}</span>
+        </span>
+        <UIcon name="i-lucide-chevron-right" class="size-5 text-dimmed" />
+      </button>
+      <NuxtLink
+        v-else
+        :to="`/trips/${trip.id}/notifications`"
+        class="flex w-full items-center gap-3 border-b border-default py-2.5"
+      >
+        <span class="min-w-0 flex-1">
+          <span class="block">{{ $t('notifications.title') }}</span>
+          <span class="block text-sm text-muted">{{ notificationsState }}</span>
+        </span>
+        <UIcon name="i-lucide-chevron-right" class="size-5 text-dimmed" />
+      </NuxtLink>
     </section>
 
     <section aria-labelledby="this-trip-heading" class="mt-6">

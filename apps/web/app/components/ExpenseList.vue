@@ -18,10 +18,16 @@ import type { LocalExpense, LocalTrip } from '~/sync/local-trip';
 // opens its detail page and, with a Claim, says what the Expense means for the claimed
 // Participant. A row is marked while it is not synced, or in Conflict, and when its rate is a
 // Provisional rate or it has none yet. A Receipt reads "Receipt · N items", marked with how
-// many Line items are not fully assigned yet.
-const { trip, claimId = null } = defineProps<{
+// many Line items are not fully assigned yet. The Expense `highlightId` names, e.g. the one a
+// tapped notification was about, is scrolled to and marked.
+const {
+  trip,
+  claimId = null,
+  highlightId = null,
+} = defineProps<{
   trip: LocalTrip;
   claimId?: string | null;
+  highlightId?: string | null;
 }>();
 
 const { t, locale } = useI18n();
@@ -97,8 +103,17 @@ const days = computed(() =>
   }),
 );
 
+const rowId = (expenseId: string) => `expense-${expenseId}`;
+// Also when a notification is tapped while the list is open already.
+watch(
+  () => highlightId,
+  (id) => id && document.getElementById(rowId(id))?.scrollIntoView({ block: 'center' }),
+  { immediate: true, flush: 'post' },
+);
+
 // A local day (`YYYY-MM-DD`) in words. It is a calendar date, not an instant, so it is
 // formatted in UTC to keep the device's zone from shifting it.
+
 function dayHeading(day: string): string {
   return new Intl.DateTimeFormat(locale.value, { dateStyle: 'full', timeZone: 'UTC' }).format(
     new Date(`${day}T00:00:00Z`),
@@ -118,8 +133,10 @@ function dayHeading(day: string): string {
       <ul>
         <li
           v-for="row in rows"
+          :id="rowId(row.expense.id)"
           :key="row.expense.id"
           class="border-b border-default last:border-b-0"
+          :class="{ '-mx-2 rounded-md bg-primary/10 px-2': row.expense.id === highlightId }"
         >
           <NuxtLink
             :to="`/trips/${trip.id}/expenses/${row.expense.id}`"

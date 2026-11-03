@@ -6,6 +6,7 @@ import {
   type ExpenseChange,
   type Participant,
   type RateEntry,
+  type SubscriptionRequest,
   type SyncChange,
   type TripSnapshot,
 } from '@osi/owe-yeah-domain';
@@ -24,10 +25,43 @@ export type Notice = { id: string } & (
   | { kind: 'claimRemoved'; participant: Participant }
 );
 
+/** The browser's push subscription: where the server sends to, and the keys it encrypts with. */
+export type BrowserSubscription = Omit<SubscriptionRequest, 'claimId'>;
+
+/**
+ * Push notifications for one Trip on this device (#41). The server gets the device's
+ * subscription on sync while the toggle is on and the device has a Claim, and loses it once
+ * either is gone.
+ */
+export type DeviceNotifications = {
+  /** The browser's push subscription while the toggle is on; `null` while it is off. */
+  subscription: BrowserSubscription | null;
+  /**
+   * Whether the device was offered notifications after making a Claim, or turned them on or
+   * off itself: from then on it is never offered them again by itself.
+   */
+  offered: boolean;
+  /** The endpoint and Claim the server last took for this device; `null` when it has none. */
+  registered: { endpoint: string; claimId: string } | null;
+};
+
+/** Push notifications as a Trip new on this device has them: off, never offered. */
+export const NOTIFICATIONS_OFF: DeviceNotifications = {
+  subscription: null,
+  offered: false,
+  registered: null,
+};
+
+/**
+ * A Trip forgotten on this device whose push subscription the server may still have: kept,
+ * with the token that removes it, until it is removed on a sync.
+ */
+export type ForgottenTrip = { tripId: string; token: string };
+
 /**
  * A Trip opened on this device: how it reopens the Trip link, who the device says it is
  * there, the Trip as the server last answered it, its cached rate entries, the currency of
- * the last Expense saved here, and what sync has to tell.
+ * the last Expense saved here, what sync has to tell, and its push notifications.
  */
 export type DeviceTrip = {
   id: string;
@@ -50,6 +84,7 @@ export type DeviceTrip = {
   /** The currency of the Expense last saved on this device, which a new Expense starts in. */
   lastCurrency: Currency | null;
   notices: Notice[];
+  notifications: DeviceNotifications;
 };
 
 /**
@@ -79,32 +114,35 @@ export type OutboxEntry = {
 
 /**
  * The device store (Dexie on IndexedDB). Version 1 is the first; each link of the migration
- * chain (`migrations`) is a version after it, whose `upgrade()` runs the link on every Trip and
- * outbox entry. A device coming back after any number of releases runs every link it missed,
+ * chain (`migrations`) is a version after it, which adds the tables the link names and whose
+ * `upgrade()` runs the link on every Trip and outbox entry. A device coming back after any number of releases runs every link it missed,
  * in order, and then sends its migrated outbox (ADR 0002).
  */
 export class DeviceDb extends Dexie {
   trips!: EntityTable<DeviceTrip, 'id'>;
   outbox!: EntityTable<OutboxEntry, 'seq'>;
+  forgotten!: EntityTable<ForgottenTrip, 'tripId'>;
 
   constructor(name = 'owe-yeah') {
     super(name);
     this.version(1).stores({ trips: 'id', outbox: '++seq, tripId' });
-    for (const [index, { trip, entry }] of migrations.entries()) {
-      this.version(index + 2).upgrade(async (tx) => {
-        await tx
-          .table<DeviceTrip, string>('trips')
-          .toCollection()
-          .modify((kept, ref) => {
-            ref.value = trip(kept);
-          });
-        await tx
-          .table<OutboxEntry, number>('outbox')
-          .toCollection()
-          .modify((kept, ref) => {
-            ref.value = entry(kept);
-          });
-      });
+    for (const [index, { trip, entry, tables = {} }] of migrations.entries()) {
+      this.version(index + 2)
+        .stores(tables)
+        .upgrade(async (tx) => {
+          await tx
+            .table<DeviceTrip, string>('trips')
+            .toCollection()
+            .modify((kept, ref) => {
+              ref.value = trip(kept);
+            });
+          await tx
+            .table<OutboxEntry, number>('outbox')
+            .toCollection()
+            .modify((kept, ref) => {
+              ref.value = entry(kept);
+            });
+        });
     }
     this.on('populate', (tx) => tx.table('trips').bulkAdd(tripsFromLocalStorage()));
   }
@@ -130,7 +168,16 @@ function tripsFromLocalStorage(): DeviceTrip[] {
     return legacy.flatMap((entry) => {
       const trip = legacyTripSchema.safeParse(entry);
       return trip.success
-        ? [{ ...trip.data, snapshot: null, rates: [], lastCurrency: null, notices: [] }]
+        ? [
+            {
+              ...trip.data,
+              snapshot: null,
+              rates: [],
+              lastCurrency: null,
+              notices: [],
+              notifications: NOTIFICATIONS_OFF,
+            },
+          ]
         : [];
     });
   } catch {

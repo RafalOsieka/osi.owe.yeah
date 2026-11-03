@@ -50,7 +50,7 @@ vp run db:migrate    # apply committed migrations to DATABASE_URL (see .env.exam
 `Dockerfile` builds two images: `runtime` (the default target, the Nitro server for the SPA and API) and `migrator`. `compose.prod.yaml` runs `db` (PostgreSQL 18), `migrate` (runs to completion before `app` starts) and `app`, published on `127.0.0.1:3000` for the existing reverse proxy, which terminates HTTPS.
 
 ```sh
-cp .env.example .env   # fill in POSTGRES_PASSWORD
+cp .env.example .env   # fill in POSTGRES_PASSWORD, and the VAPID keys for push notifications
 docker compose -f compose.prod.yaml up -d --build
 ```
 

@@ -8,6 +8,7 @@ import type {
   RateEntry,
   Revision,
   StoredExpense,
+  SubscriptionRequest,
   SyncChange,
   TripSnapshot,
   TripWithParticipants,
@@ -60,6 +61,21 @@ class FakeServer implements Transport {
 
   async revisions(): Promise<Revision[]> {
     return [];
+  }
+
+  /** The device's push subscription to each Trip, as the server has it. */
+  subscriptions = new Map<string, SubscriptionRequest>();
+  subscribeCalls = 0;
+
+  async subscribe(tripId: string, _token: string, _deviceId: string, request: SubscriptionRequest) {
+    if (this.offline) throw new Error('offline');
+    this.subscribeCalls++;
+    this.subscriptions.set(tripId, request);
+  }
+
+  async unsubscribe(tripId: string) {
+    if (this.offline) throw new Error('offline');
+    this.subscriptions.delete(tripId);
   }
 
   /** The changes of every push, in the order they were sent. */
@@ -128,6 +144,12 @@ const pulledTrip = { ...trip, edited: null, removedParticipants: [] };
 function stored(expense: Expense, version: number): StoredExpense {
   return { ...expense, version, deleted: false, edited: null };
 }
+
+/** The browser's push subscription, as the device keeps it while notifications are on. */
+const browserSubscription = {
+  endpoint: 'https://push.example.com/abc',
+  keys: { p256dh: 'p256dh', auth: 'auth' },
+};
 
 function plainExpense(title: string, id = uuidv7()): Expense {
   return {
@@ -540,5 +562,56 @@ describe('the device', () => {
       claim: null,
       notices: [{ kind: 'claimRemoved', participant: kasia }],
     });
+  });
+
+  it('registers its push subscription on sync while notifications are on, following its Claim', async () => {
+    const { server, device } = setUp();
+    await device.createTrip(trip, token);
+    await device.turnOnNotifications(trip.id, browserSubscription);
+
+    await device.sync(trip.id);
+    expect(server.subscriptions.get(trip.id)).toEqual({
+      ...browserSubscription,
+      claimId: kasia.id,
+    });
+
+    await device.claim(trip.id, ania);
+    await device.sync(trip.id);
+    await device.sync(trip.id);
+    expect(server.subscriptions.get(trip.id)).toEqual({ ...browserSubscription, claimId: ania.id });
+    // Sent once per Claim: an unchanged subscription is not sent again.
+    expect(server.subscribeCalls).toBe(2);
+  });
+
+  it('removes its push subscription once notifications are off, after being offline', async () => {
+    const { server, device } = setUp();
+    await device.createTrip(trip, token);
+    await device.turnOnNotifications(trip.id, browserSubscription);
+    await device.sync(trip.id);
+
+    server.offline = true;
+    await device.turnOffNotifications(trip.id);
+    await device.sync(trip.id);
+    expect(server.subscriptions.has(trip.id)).toBe(true);
+
+    server.offline = false;
+    await device.sync(trip.id);
+    expect(server.subscriptions.has(trip.id)).toBe(false);
+  });
+
+  it('removes the push subscription of a Trip forgotten offline once it is back online', async () => {
+    const { server, device } = setUp();
+    await device.createTrip(trip, token);
+    await device.turnOnNotifications(trip.id, browserSubscription);
+    await device.sync(trip.id);
+
+    server.offline = true;
+    await device.forgetTrip(trip.id);
+    await device.syncForgotten();
+    expect(server.subscriptions.has(trip.id)).toBe(true);
+
+    server.offline = false;
+    await device.syncForgotten();
+    expect(server.subscriptions.has(trip.id)).toBe(false);
   });
 });

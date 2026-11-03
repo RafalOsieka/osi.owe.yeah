@@ -1,10 +1,13 @@
 <script setup lang="ts">
 // The Expenses tab: the Trip's Expenses, each opening its detail page, and "+ Expense".
-// While there are none, it offers the first Expense and Invite.
+// While there are none, it offers the first Expense and Invite. Opened from a notification,
+// `?highlight=<id>` marks the Expense it was about (#41).
 definePageMeta({ scrollToTop: false });
 useKeptScroll();
 
 const { trip, claim, invite } = useOpenTrip();
+const route = useRoute();
+const highlight = computed(() => String(route.query.highlight ?? '') || null);
 
 const canAdd = computed(() => trip.value.participants.length > 0);
 const newExpense = computed(() => `/trips/${trip.value.id}/expenses/new`);
@@ -12,7 +15,12 @@ const newExpense = computed(() => `/trips/${trip.value.id}/expenses/new`);
 
 <template>
   <NuxtLayout name="trip">
-    <ExpenseList v-if="trip.expenses.length > 0" :trip="trip" :claim-id="claim?.id" />
+    <ExpenseList
+      v-if="trip.expenses.length > 0"
+      :trip="trip"
+      :claim-id="claim?.id"
+      :highlight-id="highlight"
+    />
     <UEmpty
       v-else
       icon="i-lucide-receipt-text"

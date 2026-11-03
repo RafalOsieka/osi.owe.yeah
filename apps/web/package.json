@@ -8,7 +8,7 @@
     "dev": "nuxt dev --dotenv ../../.env",
     "preview": "nuxt preview",
     "postinstall": "nuxt prepare",
-    "type-check": "nuxt typecheck",
+    "type-check": "nuxt typecheck && tsc -p app/service-worker/tsconfig.json",
     "test:unit": "vp test run --project unit",
     "test:nuxt": "vp test run --project nuxt",
     "test:e2e:db": "vp test run --project e2e-db",
@@ -29,6 +29,7 @@
     "uuid": "^14.0.3",
     "vue": "^3.5.44",
     "vue-router": "^5.4.0",
+    "web-push": "^3.6.7",
     "zod": "^4.6.7"
   },
   "devDependencies": {
@@ -40,6 +41,7 @@
     "@playwright/test": "^1.64.1",
     "@total-typescript/shoehorn": "^0.1.2",
     "@types/node": "^26.6.5",
+    "@types/web-push": "^3.6.4",
     "@vite-pwa/nuxt": "^1.1.1",
     "@vue/test-utils": "^2.5.1",
     "drizzle-kit": "^0.31.11",
@@ -48,7 +50,10 @@
     "typescript": "^6.0.3",
     "vite-plus": "catalog:",
     "vitest": "catalog:",
-    "vue-tsc": "^3.3.13"
+    "vue-tsc": "^3.3.13",
+    "workbox-core": "^7.4.1",
+    "workbox-precaching": "^7.4.1",
+    "workbox-routing": "^7.4.1"
   },
   "engines": {
     "node": ">=24.11"

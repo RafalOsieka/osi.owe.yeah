@@ -27,6 +27,7 @@ describe('the device store', () => {
         rates: [],
         lastCurrency: null,
         notices: [],
+        notifications: { subscription: null, offered: false, registered: null },
       },
     ]);
   });
@@ -68,6 +69,7 @@ describe('the device store', () => {
       rates: [],
       lastCurrency: null,
       notices: [],
+      notifications: { subscription: null, offered: false, registered: null },
       snapshot: {
         ...snapshot,
         version: 0,
@@ -77,5 +79,6 @@ describe('the device store', () => {
       },
     });
     expect(entry?.change).toEqual({ ...change, expense: migrated, deleted: false });
+    expect(await db.forgotten.toArray()).toEqual([]);
   });
 });

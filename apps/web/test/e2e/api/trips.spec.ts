@@ -22,13 +22,18 @@ import {
 import { createTest, fetch } from '@nuxt/test-utils/e2e';
 import { v7 as uuidv7 } from 'uuid';
 import { afterAll, beforeAll, expect, inject, it } from 'vitest';
+import webpush from 'web-push';
 import { startFrankfurter } from '../harness/frankfurter';
 import { describeWithDocker } from '../harness/postgres';
+import { startPushService } from '../harness/push-service';
 
 const describeApi = describeWithDocker();
 
 // The rate provider the server under test fetches from.
 const frankfurter = await startFrankfurter();
+// The push services devices subscribe with, and the server's VAPID keys.
+const pushService = await startPushService();
+const vapid = webpush.generateVAPIDKeys();
 
 // Every change in these tests comes from one device, without a Claim unless given.
 const deviceId = uuidv7();
@@ -201,17 +206,79 @@ async function tripWithKasiaAndAnia() {
   return { trip, token, kasia, ania };
 }
 
+/** Registers `device`'s push subscription to the Trip, for the Participant it claims. */
+function subscribe(tripId: string, token: string | undefined, device: string, claimId: string) {
+  return fetch(`/api/trips/${tripId}/subscriptions/${device}`, {
+    method: 'PUT',
+    headers: deviceHeaders(token),
+    body: JSON.stringify({ ...pushService.subscription(device), claimId }),
+  });
+}
+
+function unsubscribe(tripId: string, token: string, device: string) {
+  return fetch(`/api/trips/${tripId}/subscriptions/${device}`, {
+    method: 'DELETE',
+    headers: deviceHeaders(token),
+  });
+}
+
+/**
+ * A Trip with Kasia, Ania and Ola, with a device subscribed for each of them, named after
+ * the Participant it claims.
+ */
+async function subscribedTrip() {
+  const kasia = participant('Kasia');
+  const ania = participant('Ania');
+  const ola = participant('Ola');
+  const trip = newTrip('Croatia 2026', [kasia, ania, ola]);
+  const token = await createdToken(trip);
+  const devices = { kasia: uuidv7(), ania: uuidv7(), ola: uuidv7() };
+  for (const [name, claim] of [
+    ['kasia', kasia],
+    ['ania', ania],
+    ['ola', ola],
+  ] as const) {
+    expect((await subscribe(trip.id, token, devices[name], claim.id)).status).toBe(204);
+  }
+  return { trip, token, kasia, ania, ola, devices };
+}
+
+/** What a device is sent about one change, as the only one or the latest of `count`. */
+function activity(
+  trip: TripWithParticipants,
+  expense: Expense,
+  latest: { author: string | null; action: string; paid: string; share: string },
+  count = 1,
+) {
+  return {
+    tripId: trip.id,
+    tripName: trip.name,
+    currency: trip.currency,
+    count,
+    latest: { expenseId: expense.id, title: expense.title, ...latest },
+  };
+}
+
 describeApi('Trip API', () => {
   // Builds and serves the app. The hooks are registered here rather than through `setup()`,
   // whose own `import('vitest')` misses the running suite when started from the repo root.
   const server = createTest({
     rootDir: fileURLToPath(new URL('../../..', import.meta.url)),
     server: true,
-    env: { DATABASE_URL: inject('databaseUrl'), NUXT_FRANKFURTER_URL: frankfurter.url },
+    env: {
+      DATABASE_URL: inject('databaseUrl'),
+      NUXT_FRANKFURTER_URL: frankfurter.url,
+      NUXT_VAPID_PUBLIC_KEY: vapid.publicKey,
+      NUXT_VAPID_PRIVATE_KEY: vapid.privateKey,
+      NUXT_VAPID_SUBJECT: 'mailto:test@example.com',
+      // The stand-in push service is plain http; real ones are https only.
+      NUXT_PUSH_ALLOW_HTTP: 'true',
+    },
   });
   beforeAll(server.beforeAll, server.ctx.options.setupTimeout);
   afterAll(server.afterAll, server.ctx.options.teardownTimeout);
   afterAll(frankfurter.close);
+  afterAll(pushService.close);
 
   it('accepts a Trip created offline on its first push, with Expenses in the same push', async () => {
     const kasia = participant('Kasia');
@@ -664,6 +731,116 @@ describeApi('Trip API', () => {
       participants: [kasia, ania],
       removedParticipants: [],
     });
+  });
+
+  it('registers a push subscription only with the Trip link', async () => {
+    const { trip, token, kasia } = await tripWithKasiaAndAnia();
+
+    expect((await subscribe(trip.id, undefined, uuidv7(), kasia.id)).status).toBe(401);
+    expect((await subscribe(trip.id, newToken(), uuidv7(), kasia.id)).status).toBe(401);
+    expect((await subscribe(trip.id, token, uuidv7(), kasia.id)).status).toBe(204);
+  });
+
+  it("notifies the devices of the Participants a change affects, but not the author's", async () => {
+    const { trip, token, kasia, ania, devices } = await subscribedTrip();
+    // 30.00 EUR paid by Kasia for herself and Ania; Ola is not in it.
+    const expense = plainExpense(kasia, [kasia, ania]);
+    const lidl = { ...expense, lineItems: [{ ...expense.lineItems[0]!, unitPrice: 3000 }] };
+
+    await push(trip.id, token, change(lidl, null, kasia.id));
+
+    const added = { author: 'Kasia', action: 'added', paid: '0.00', share: '15.00' };
+    await expect
+      .poll(() => pushService.payloadsOf(devices.ania))
+      .toEqual([activity(trip, lidl, added)]);
+    expect(pushService.payloadsOf(devices.ola)).toEqual([]);
+    expect(pushService.payloadsOf(devices.kasia)).toEqual([]);
+
+    // Ania deletes it: Kasia hears what she paid and her share are taken back.
+    await push(trip.id, token, deletion(lidl, 1, ania.id));
+
+    const deleted = { author: 'Ania', action: 'deleted', paid: '-30.00', share: '-15.00' };
+    await expect
+      .poll(() => pushService.payloadsOf(devices.kasia))
+      .toEqual([activity(trip, lidl, deleted)]);
+    expect(pushService.payloadsOf(devices.ania)).toHaveLength(1);
+  });
+
+  it('sends one notification per device for a push, about the latest change in it', async () => {
+    const { trip, token, kasia, ola, devices } = await subscribedTrip();
+    const first = plainExpense(kasia, [ola]);
+    const second = { ...plainExpense(kasia, [kasia, ola]), title: 'Konzum' };
+
+    await push(trip.id, token, change(first), change(second));
+
+    const latest = { author: null, action: 'added', paid: '0.00', share: '12.25' };
+    await expect
+      .poll(() => pushService.payloadsOf(devices.ola))
+      .toEqual([activity(trip, second, latest, 2)]);
+  });
+
+  it('notifies nobody of a Conflict, a rejected change or a retried one', async () => {
+    const { trip, token, kasia, ania, ola, devices } = await subscribedTrip();
+    const expense = plainExpense(kasia, [ania]);
+    const accepted = change(expense, null, kasia.id);
+    await push(trip.id, token, accepted);
+    await expect.poll(() => pushService.payloadsOf(devices.ania)).toHaveLength(1);
+
+    await push(
+      trip.id,
+      token,
+      // Retried, a Conflict (version 1 is taken), and an Expense paid by nobody in the Trip.
+      accepted,
+      change({ ...expense, title: 'Konzum' }, null, kasia.id),
+      change({ ...plainExpense(participant('Stranger'), [ania]) }, null, kasia.id),
+    );
+    // A change Ola hears about comes after them all.
+    const later = plainExpense(kasia, [ania, ola]);
+    await push(trip.id, token, change(later, null, kasia.id));
+
+    await expect.poll(() => pushService.payloadsOf(devices.ola)).toHaveLength(1);
+    await expect.poll(() => pushService.payloadsOf(devices.ania)).toHaveLength(2);
+    expect(pushService.payloadsOf(devices.ania)[1]).toMatchObject({
+      latest: { expenseId: later.id },
+    });
+  });
+
+  it("follows a device's Claim, and stops once the device unsubscribes", async () => {
+    const { trip, token, kasia, ania, ola, devices } = await subscribedTrip();
+    // Ania's device now says it is Kasia: Kasia's own changes are not news to it.
+    await subscribe(trip.id, token, devices.ania, kasia.id);
+    expect((await unsubscribe(trip.id, token, devices.ola)).status).toBe(204);
+
+    await push(trip.id, token, change(plainExpense(kasia, [ania, ola]), null, kasia.id));
+    const forKasia = plainExpense(ania, [kasia]);
+    await push(trip.id, token, change(forKasia, null, ania.id));
+
+    await expect
+      .poll(() => pushService.payloadsOf(devices.ania))
+      .toEqual([
+        activity(trip, forKasia, { author: 'Ania', action: 'added', paid: '0.00', share: '24.50' }),
+      ]);
+    expect(pushService.payloadsOf(devices.ola)).toEqual([]);
+  });
+
+  it('prunes a subscription its push service says is gone', async () => {
+    const { trip, token, kasia, ania, ola, devices } = await subscribedTrip();
+    pushService.gone(devices.ania);
+    await push(trip.id, token, change(plainExpense(kasia, [ania, ola]), null, kasia.id));
+    await expect.poll(() => pushService.payloadsOf(devices.ania)).toHaveLength(1);
+
+    // The 410 is pruned after the push answered: from then on, a change Ania is in only
+    // reaches Ola.
+    await expect
+      .poll(async () => {
+        const [tried, reached] = [devices.ania, devices.ola].map(
+          (device) => pushService.payloadsOf(device).length,
+        );
+        await push(trip.id, token, change(plainExpense(kasia, [ania, ola]), null, kasia.id));
+        await expect.poll(() => pushService.payloadsOf(devices.ola)).toHaveLength(reached! + 1);
+        return pushService.payloadsOf(devices.ania).length - tried!;
+      })
+      .toBe(0);
   });
 
   it('refuses a push with a malformed Expense', async () => {

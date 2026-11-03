@@ -1,0 +1,18 @@
+{
+  // The service worker runs in its own global scope, so it is checked apart from the app
+  // (`type-check`), with the WebWorker library in place of the DOM.
+  "compilerOptions": {
+    "target": "ES2024",
+    "lib": ["ES2024", "WebWorker"],
+    "module": "ESNext",
+    "moduleResolution": "Bundler",
+    "resolveJsonModule": true,
+    "allowImportingTsExtensions": true,
+    "strict": true,
+    "noUncheckedIndexedAccess": true,
+    "skipLibCheck": true,
+    "noEmit": true,
+    "types": []
+  },
+  "include": ["sw.ts"]
+}
