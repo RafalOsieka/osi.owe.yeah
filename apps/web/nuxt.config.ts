@@ -97,8 +97,9 @@ export default defineNuxtConfig({
     vapidPrivateKey: '',
     vapidSubject: '',
     // Push services are https only, so a device can't make the server post anywhere else;
-    // `NUXT_PUSH_ALLOW_HTTP` lets the api e2e suite's stand-in push service be plain http.
-    pushAllowHttp: false,
+    // `NUXT_NOTIFICATIONS_ALLOW_HTTP` lets the api e2e suite's stand-in push service be
+    // plain http.
+    notificationsAllowHttp: false,
   },
   compatibilityDate: '2025-07-15',
   // Nitro defaults to es2019, which lacks the BigInt literals the domain package's exact

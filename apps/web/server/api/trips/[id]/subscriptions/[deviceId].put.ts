@@ -23,7 +23,7 @@ export default defineEventHandler(async (event): Promise<void> => {
   if (!deviceId.success) throw createError({ status: 400, statusText: 'Invalid device id' });
   const { endpoint, keys, claimId } = await readValidatedBody(event, subscriptionRequestSchema);
   const secure = new URL(endpoint).protocol === 'https:';
-  if (!secure && !useRuntimeConfig().pushAllowHttp) {
+  if (!secure && !useRuntimeConfig().notificationsAllowHttp) {
     throw createError({ status: 400, statusText: 'A push endpoint is https' });
   }
 

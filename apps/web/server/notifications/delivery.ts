@@ -59,10 +59,10 @@ export async function deliver(
 async function send(
   subscription: webpush.PushSubscription,
   message: PushMessage,
-  vapidDetails: VapidDetails,
+  vapid: VapidDetails,
 ): Promise<number | null> {
   const request = webpush.generateRequestDetails(subscription, JSON.stringify(message), {
-    vapidDetails,
+    vapidDetails: vapid,
     TTL: TTL_SECONDS,
   });
   // `fetch` works the length out itself and refuses to be told.
