@@ -6,41 +6,26 @@ import {
   type Expense,
   type ExpenseChange,
   type ActivityMessage,
-  type PushMessage,
   type Trip,
 } from '@osi/owe-yeah-domain';
-import { and, eq, inArray, or } from 'drizzle-orm';
-import { createError, getRouterParam, useRuntimeConfig, type RequestEvent } from 'nuxt/server';
-import webpush from 'web-push';
-import { z } from 'zod';
+import { and, eq, or } from 'drizzle-orm';
 import { getDb } from '../db';
-import { pushSubscriptions, revisions, trips } from '../db/schema';
-import { loadRates } from './rates';
-import { loadParticipants } from './trip-snapshot';
+import { notificationSubscriptions, revisions, trips } from '../db/schema';
+import { loadRates } from '../utils/rates';
+import { loadParticipants } from '../utils/trip-snapshot';
+import { deliver, vapidDetails } from './delivery';
 
-/** An Expense change the push has just applied (not a retry), with the version it made. */
+/** An Expense change the sync push has just applied (not a retry), with the version it made. */
 export type AppliedExpenseChange = { change: ExpenseChange; version: number };
 
-/** The `deviceId` route param: the device's opaque id, the one its changes carry. */
-export function requireDeviceId(event: RequestEvent): string {
-  const deviceId = z.uuid().safeParse(getRouterParam(event, 'deviceId'));
-  if (!deviceId.success) throw createError({ status: 400, statusText: 'Invalid device id' });
-  return deviceId.data;
-}
-
-// How long a push service keeps a notification for a device that is offline. The next pull
-// brings the change anyway.
-const TTL_SECONDS = 24 * 60 * 60;
-
 /**
- * Tells the devices subscribed to a Trip about the Expense changes a push has just applied,
- * fire-and-forget once the push has answered (#41). A device hears about a change that
- * affects the Participant it claims (`balanceChanges`), made under another Claim on another
- * device: one notification for the whole push, about the latest of them and how many there
- * were. Conflicts and refused changes never get here, and nothing is said about a Trip
+ * Tells the devices subscribed to a Trip about the Expense changes a sync push has just
+ * applied, fire-and-forget once the push has answered (#41). A device hears about a change
+ * that affects the Participant it claims (`balanceChanges`), made under another Claim on
+ * another device: one Notification for the whole push, about the latest of them and how many
+ * there were. Conflicts and refused changes never get here, and nothing is said about a Trip
  * becoming Settled. Subscriptions whose push service answers 404 or 410 are deleted. Nothing
- * is retried: a lost notification is fine, as the next pull brings the change. Never
- * rejects.
+ * is retried: a lost Notification is fine, as the next pull brings the change. Never rejects.
  */
 export async function notifyAffected(
   tripId: string,
@@ -49,7 +34,7 @@ export async function notifyAffected(
   try {
     await notify(tripId, applied);
   } catch (error) {
-    console.warn('Push notifications could not be worked out', error);
+    console.warn('Notifications could not be worked out', error);
   }
 }
 
@@ -59,8 +44,8 @@ async function notify(tripId: string, applied: readonly AppliedExpenseChange[]):
   const db = getDb();
   const subscriptions = await db
     .select()
-    .from(pushSubscriptions)
-    .where(eq(pushSubscriptions.tripId, tripId));
+    .from(notificationSubscriptions)
+    .where(eq(notificationSubscriptions.tripId, tripId));
   if (subscriptions.length === 0) return;
 
   const [row] = await db
@@ -73,49 +58,7 @@ async function notify(tripId: string, applied: readonly AppliedExpenseChange[]):
   await deliver(subscriptions, (device) => messageFor(trip, activities, device), vapid);
 }
 
-/** The server's VAPID keys and subject, which every push message is signed with. */
-export type VapidDetails = webpush.VapidKeys & { subject: string };
-
-/** The VAPID keys push messages are sent with; `null` when none are set, so nothing is sent. */
-export function vapidDetails(): VapidDetails | null {
-  const { vapidPublicKey, vapidPrivateKey, vapidSubject } = useRuntimeConfig();
-  if (!vapidPublicKey || !vapidPrivateKey) return null;
-  return { subject: vapidSubject, publicKey: vapidPublicKey, privateKey: vapidPrivateKey };
-}
-
-type PushSubscriptionRow = typeof pushSubscriptions.$inferSelect;
-
-/**
- * Sends each subscription the message `messageOf` writes for it (`null`: none), all at once,
- * then deletes those whose push service answers 404 or 410, as gone. Nothing is retried.
- * Never rejects.
- */
-export async function deliver(
-  subscriptions: readonly PushSubscriptionRow[],
-  messageOf: (subscription: PushSubscriptionRow) => PushMessage | null,
-  vapid: VapidDetails,
-): Promise<void> {
-  const gone = new Set<string>();
-  await Promise.allSettled(
-    subscriptions.map(async (subscription) => {
-      const message = messageOf(subscription);
-      if (!message) return;
-      const { endpoint, p256dh, auth } = subscription;
-      const status = await send({ endpoint, keys: { p256dh, auth } }, message, vapid);
-      if (status === 404 || status === 410) gone.add(endpoint);
-    }),
-  );
-  if (gone.size === 0) return;
-  try {
-    await getDb()
-      .delete(pushSubscriptions)
-      .where(inArray(pushSubscriptions.endpoint, [...gone]));
-  } catch (error) {
-    console.warn('Gone push subscriptions could not be pruned', error);
-  }
-}
-
-/** One applied change as notifications tell it: what it did, who made it, whom it moved. */
+/** One applied change as Notifications tell it: what it did, who made it, whom it moved. */
 type Activity = {
   change: ExpenseChange;
   action: ActivityMessage['latest']['action'];
@@ -192,7 +135,7 @@ function messageFor(
   };
 }
 
-/** What a change did to its Expense, as a notification says. */
+/** What a change did to its Expense, as a Notification says. */
 function actionOf(
   change: ExpenseChange,
   version: number,
@@ -235,34 +178,4 @@ async function expensesBefore(
       return [change.id, expense];
     }),
   );
-}
-
-/**
- * Sends one push message, encrypted for the subscription, and resolves to the push service's
- * status, or `null` when it can't be reached. `web-push` builds the request; it is sent with
- * `fetch` here, which also speaks the plain http of the api e2e suite's stand-in.
- */
-async function send(
-  subscription: webpush.PushSubscription,
-  message: PushMessage,
-  vapidDetails: VapidDetails,
-): Promise<number | null> {
-  const request = webpush.generateRequestDetails(subscription, JSON.stringify(message), {
-    vapidDetails,
-    TTL: TTL_SECONDS,
-  });
-  // `fetch` works the length out itself and refuses to be told.
-  const { 'Content-Length': _, ...headers } = request.headers;
-  try {
-    const response = await fetch(request.endpoint, {
-      method: request.method,
-      headers,
-      body: request.body && new Uint8Array(request.body),
-      signal: AbortSignal.timeout(10_000),
-    });
-    return response.status;
-  } catch (error) {
-    console.warn('A push notification could not be sent', error);
-    return null;
-  }
 }

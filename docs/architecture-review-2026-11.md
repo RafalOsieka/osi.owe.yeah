@@ -163,6 +163,7 @@ Round 2:
   - a new Split mode starts from scratch
 
   Plain toggles stay in the components.
+
 - **Tests:**
   - Unit tests cover the draft round trip (Expense → draft → Expense) for every variant, plus reasons and transitions.
   - Domain tests cover Expense kind and the two new Manual rate rules.

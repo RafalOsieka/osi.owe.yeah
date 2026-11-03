@@ -11,8 +11,8 @@ import {
 import { and, eq, gte, not, sql } from 'drizzle-orm';
 import { createError } from 'nuxt/server';
 import { getDb } from '../db';
-import { expenses, pushSubscriptions, reminders } from '../db/schema';
-import { deliver, vapidDetails } from './push';
+import { expenses, notificationSubscriptions, reminders } from '../db/schema';
+import { deliver, vapidDetails } from '../notifications/delivery';
 import { loadTripRates } from './rates';
 import { loadParticipants } from './trip-snapshot';
 
@@ -40,8 +40,13 @@ export async function sendReminder(trip: Trip, { from, to }: ReminderRequest): P
   const devices = vapid
     ? await db
         .select()
-        .from(pushSubscriptions)
-        .where(and(eq(pushSubscriptions.tripId, trip.id), eq(pushSubscriptions.claimId, to)))
+        .from(notificationSubscriptions)
+        .where(
+          and(
+            eq(notificationSubscriptions.tripId, trip.id),
+            eq(notificationSubscriptions.claimId, to),
+          ),
+        )
     : [];
   if (!vapid || devices.length === 0) {
     throw createError({ status: 409, statusText: 'The debtor cannot be notified' });
@@ -104,9 +109,9 @@ export async function reminderStatus(tripId: string): Promise<ReminderStatus> {
   const [subscribed, today] = await Promise.all([
     vapidDetails()
       ? db
-          .selectDistinct({ claimId: pushSubscriptions.claimId })
-          .from(pushSubscriptions)
-          .where(eq(pushSubscriptions.tripId, tripId))
+          .selectDistinct({ claimId: notificationSubscriptions.claimId })
+          .from(notificationSubscriptions)
+          .where(eq(notificationSubscriptions.tripId, tripId))
       : [],
     db
       .select({ from: reminders.fromId, to: reminders.toId })

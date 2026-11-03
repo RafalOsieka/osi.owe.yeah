@@ -301,7 +301,7 @@ describeApi('Trip API', () => {
       NUXT_VAPID_PRIVATE_KEY: vapid.privateKey,
       NUXT_VAPID_SUBJECT: 'mailto:test@example.com',
       // The stand-in push service is plain http; real ones are https only.
-      NUXT_PUSH_ALLOW_HTTP: 'true',
+      NUXT_NOTIFICATIONS_ALLOW_HTTP: 'true',
     },
   });
   beforeAll(server.beforeAll, server.ctx.options.setupTimeout);
