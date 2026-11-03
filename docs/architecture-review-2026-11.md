@@ -122,6 +122,7 @@ Round 3:
   - reminders
 
   The rest, about 25 tests, moves to the module tests.
+
 - **PRs, in order:** A flattens the migrations. B adds the Trip store, rates, Trip sync and notifier, the rename to `server/notifications/`, handlers as adapters, `restored`, and the module tests. C moves `device.spec` onto the real module and removes `FakeServer`.
 - **Issues.** One GitHub issue per PR, labelled `ready-for-agent`, created once a shared understanding is confirmed.
 
