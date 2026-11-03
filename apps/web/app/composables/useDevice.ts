@@ -1,6 +1,7 @@
 import {
   pullResponseSchema,
   pushResponseSchema,
+  reminderStatusSchema,
   revisionsResponseSchema,
   TRIP_TOKEN_HEADER,
 } from '@osi/owe-yeah-domain';
@@ -48,6 +49,32 @@ const transport: Transport = {
     });
     if (!response.ok && response.status !== 401) {
       throw new Error(`Unsubscribe failed with ${response.status}`);
+    }
+  },
+  async reminderStatus(tripId, token) {
+    const response = await syncApi(`/api/trips/${tripId}/reminders`, {
+      headers: { [TRIP_TOKEN_HEADER]: token },
+    });
+    return reminderStatusSchema.parse(response);
+  },
+  async remind(tripId, token, request) {
+    const response = await syncApi.raw(`/api/trips/${tripId}/reminders`, {
+      method: 'POST',
+      headers: { [TRIP_TOKEN_HEADER]: token },
+      body: request,
+      ignoreResponseError: true,
+    });
+    if (response.ok) return 'sent';
+    // The server's refusals (`server/utils/reminders.ts`).
+    switch (response.status) {
+      case 403:
+        return 'notSuggested';
+      case 409:
+        return 'unreachable';
+      case 429:
+        return 'remindedToday';
+      default:
+        throw new Error(`Reminder failed with ${response.status}`);
     }
   },
 };

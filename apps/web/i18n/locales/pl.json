@@ -275,6 +275,20 @@
     "allSettled": "Podróż rozliczona",
     "allSettledHelp": "Każdy wychodzi na zero."
   },
+  "reminder": {
+    "remind": "Przypomnij",
+    "remindedToday": "Przypomniano dziś",
+    "pushLabel": "Przypomnij powiadomieniem: {name}",
+    "shareLabel": "Przypomnij wiadomością do udostępnienia: {name}",
+    "copyLabel": "Przypomnij wiadomością do skopiowania: {name}",
+    "byShare": "Bez powiadomień: udostępnisz wiadomość",
+    "byCopy": "Bez powiadomień: skopiujesz wiadomość",
+    "sent": "Wysłano przypomnienie: {name}",
+    "notSuggested": "To nie jest już sugerowana spłata. Odśwież i spróbuj ponownie.",
+    "message": "Cześć {name}, przypominam: do oddania {amount} za podróż „{trip}”.",
+    "copied": "Skopiowano przypomnienie. Wklej je do wiadomości.",
+    "copyFailed": "Nie udało się skopiować przypomnienia. Spróbuj ponownie."
+  },
   "breakdown": {
     "title": "Udział: {name}",
     "paid": "Płatności",
@@ -438,6 +452,7 @@
     "someone": "ktoś",
     "share": "Twój udział {amount}",
     "paid": "Twoja płatność {amount}",
-    "collapsed": "Zmiany w podróży {trip}: {count}"
+    "collapsed": "Zmiany w podróży {trip}: {count}",
+    "reminder": "{name} przypomina: do oddania {amount}"
   }
 }

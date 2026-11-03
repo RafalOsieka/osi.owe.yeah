@@ -43,7 +43,8 @@ const decimalSchema = z.string().regex(/^-?\d+(\.\d+)?$/);
  * who made it (`null` without a Claim), what it did, and how it moved what the recipient
  * paid and their share, rounded, in the Trip currency.
  */
-export const pushMessageSchema = z.object({
+export const activityMessageSchema = z.object({
+  kind: z.literal('activity'),
   tripId: tripIdSchema,
   tripName: tripNameSchema,
   currency: z.enum(TRIP_CURRENCIES),
@@ -57,6 +58,31 @@ export const pushMessageSchema = z.object({
     share: decimalSchema,
   }),
 });
+
+export type ActivityMessage = z.infer<typeof activityMessageSchema>;
+
+/**
+ * What a Reminder's push notification carries (#42), sent to the debtor's devices: who
+ * reminds them (the creditor), the debtor it is for, and the Suggested Repayment's amount,
+ * rounded, in the Trip currency.
+ */
+export const reminderMessageSchema = z.object({
+  kind: z.literal('reminder'),
+  tripId: tripIdSchema,
+  tripName: tripNameSchema,
+  currency: z.enum(TRIP_CURRENCIES),
+  from: z.object({ id: participantIdSchema, name: participantNameSchema }),
+  to: participantIdSchema,
+  amount: decimalSchema,
+});
+
+export type ReminderMessage = z.infer<typeof reminderMessageSchema>;
+
+/** Every push message the server sends, told apart by `kind`. */
+export const pushMessageSchema = z.discriminatedUnion('kind', [
+  activityMessageSchema,
+  reminderMessageSchema,
+]);
 
 export type PushMessage = z.infer<typeof pushMessageSchema>;
 
@@ -77,3 +103,26 @@ export type SubscriptionRequest = z.infer<typeof subscriptionRequestSchema>;
 export const pushKeyResponseSchema = z.object({ publicKey: z.string().min(1) });
 
 export type PushKeyResponse = z.infer<typeof pushKeyResponseSchema>;
+
+/**
+ * A Reminder as the creditor's device asks for it (#42): `from`, the creditor it claims,
+ * reminds `to` of the Suggested Repayment `to` owes them. Not a change: never in the outbox.
+ */
+export const reminderRequestSchema = z.object({
+  from: participantIdSchema,
+  to: participantIdSchema,
+});
+
+export type ReminderRequest = z.infer<typeof reminderRequestSchema>;
+
+/**
+ * What a creditor's device needs to know before it reminds anyone: whom a Reminder can reach
+ * (Participants with a device subscribed to the Trip; anyone else is sent a shared message
+ * instead), and the pairs reminded today (UTC), which can't be reminded again until tomorrow.
+ */
+export const reminderStatusSchema = z.object({
+  reachable: z.array(participantIdSchema),
+  remindedToday: z.array(reminderRequestSchema),
+});
+
+export type ReminderStatus = z.infer<typeof reminderStatusSchema>;

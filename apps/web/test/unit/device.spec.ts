@@ -6,6 +6,7 @@ import type {
   PushRequest,
   PushResponse,
   RateEntry,
+  ReminderStatus,
   Revision,
   StoredExpense,
   SubscriptionRequest,
@@ -16,7 +17,7 @@ import type {
 import { v7 as uuidv7 } from 'uuid';
 import { describe, expect, it } from 'vitest';
 import { DeviceDb } from '../../app/sync/db';
-import { createDevice, type Transport } from '../../app/sync/device';
+import { createDevice, type Reminded, type Transport } from '../../app/sync/device';
 import { toExpense } from '../../app/sync/local-trip';
 
 const deviceId = '0b6e8f3a-2c1d-4e5f-8a9b-1c2d3e4f5a6b';
@@ -61,6 +62,14 @@ class FakeServer implements Transport {
 
   async revisions(): Promise<Revision[]> {
     return [];
+  }
+
+  async reminderStatus(): Promise<ReminderStatus> {
+    return { reachable: [], remindedToday: [] };
+  }
+
+  async remind(): Promise<Reminded> {
+    return 'sent';
   }
 
   /** The device's push subscription to each Trip, as the server has it. */

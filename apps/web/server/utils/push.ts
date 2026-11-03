@@ -5,6 +5,7 @@ import {
   type BalanceChange,
   type Expense,
   type ExpenseChange,
+  type ActivityMessage,
   type PushMessage,
   type Trip,
 } from '@osi/owe-yeah-domain';
@@ -53,8 +54,8 @@ export async function notifyAffected(
 }
 
 async function notify(tripId: string, applied: readonly AppliedExpenseChange[]): Promise<void> {
-  const { vapidPublicKey, vapidPrivateKey, vapidSubject } = useRuntimeConfig();
-  if (applied.length === 0 || !vapidPublicKey || !vapidPrivateKey) return;
+  const vapid = vapidDetails();
+  if (applied.length === 0 || !vapid) return;
   const db = getDb();
   const subscriptions = await db
     .select()
@@ -69,30 +70,55 @@ async function notify(tripId: string, applied: readonly AppliedExpenseChange[]):
   // Narrows the stored currency to a Trip currency.
   const trip = tripSchema.parse(row);
   const activities = await activitiesOf(trip, applied);
+  await deliver(subscriptions, (device) => messageFor(trip, activities, device), vapid);
+}
 
-  const vapidDetails = {
-    subject: vapidSubject,
-    publicKey: vapidPublicKey,
-    privateKey: vapidPrivateKey,
-  };
+/** The server's VAPID keys and subject, which every push message is signed with. */
+export type VapidDetails = webpush.VapidKeys & { subject: string };
+
+/** The VAPID keys push messages are sent with; `null` when none are set, so nothing is sent. */
+export function vapidDetails(): VapidDetails | null {
+  const { vapidPublicKey, vapidPrivateKey, vapidSubject } = useRuntimeConfig();
+  if (!vapidPublicKey || !vapidPrivateKey) return null;
+  return { subject: vapidSubject, publicKey: vapidPublicKey, privateKey: vapidPrivateKey };
+}
+
+type PushSubscriptionRow = typeof pushSubscriptions.$inferSelect;
+
+/**
+ * Sends each subscription the message `messageOf` writes for it (`null`: none), all at once,
+ * then deletes those whose push service answers 404 or 410, as gone. Nothing is retried.
+ * Never rejects.
+ */
+export async function deliver(
+  subscriptions: readonly PushSubscriptionRow[],
+  messageOf: (subscription: PushSubscriptionRow) => PushMessage | null,
+  vapid: VapidDetails,
+): Promise<void> {
   const gone = new Set<string>();
   await Promise.allSettled(
-    subscriptions.map(async ({ deviceId, claimId, endpoint, p256dh, auth }) => {
-      const message = messageFor(trip, activities, { deviceId, claimId });
+    subscriptions.map(async (subscription) => {
+      const message = messageOf(subscription);
       if (!message) return;
-      const status = await send({ endpoint, keys: { p256dh, auth } }, message, vapidDetails);
+      const { endpoint, p256dh, auth } = subscription;
+      const status = await send({ endpoint, keys: { p256dh, auth } }, message, vapid);
       if (status === 404 || status === 410) gone.add(endpoint);
     }),
   );
-  if (gone.size > 0) {
-    await db.delete(pushSubscriptions).where(inArray(pushSubscriptions.endpoint, [...gone]));
+  if (gone.size === 0) return;
+  try {
+    await getDb()
+      .delete(pushSubscriptions)
+      .where(inArray(pushSubscriptions.endpoint, [...gone]));
+  } catch (error) {
+    console.warn('Gone push subscriptions could not be pruned', error);
   }
 }
 
 /** One applied change as notifications tell it: what it did, who made it, whom it moved. */
 type Activity = {
   change: ExpenseChange;
-  action: PushMessage['latest']['action'];
+  action: ActivityMessage['latest']['action'];
   author: string | null;
   affected: ReadonlyMap<string, BalanceChange>;
 };
@@ -140,7 +166,7 @@ function messageFor(
   trip: Trip,
   activities: readonly Activity[],
   device: { deviceId: string; claimId: string },
-): PushMessage | null {
+): ActivityMessage | null {
   const news = activities.flatMap(({ change, action, author, affected }) => {
     const moved = affected.get(device.claimId);
     const others = change.deviceId !== device.deviceId && change.claimId !== device.claimId;
@@ -150,6 +176,7 @@ function messageFor(
   if (!latest) return null;
   const { expense, action, author, moved } = latest;
   return {
+    kind: 'activity',
     tripId: trip.id,
     tripName: trip.name,
     currency: trip.currency,
@@ -170,7 +197,7 @@ function actionOf(
   change: ExpenseChange,
   version: number,
   before: Expense | null,
-): PushMessage['latest']['action'] {
+): ActivityMessage['latest']['action'] {
   if (change.deleted) return 'deleted';
   if (version === 1) return 'added';
   // Not there before, though it had a version: it was deleted.
@@ -218,7 +245,7 @@ async function expensesBefore(
 async function send(
   subscription: webpush.PushSubscription,
   message: PushMessage,
-  vapidDetails: webpush.VapidKeys & { subject: string },
+  vapidDetails: VapidDetails,
 ): Promise<number | null> {
   const request = webpush.generateRequestDetails(subscription, JSON.stringify(message), {
     vapidDetails,

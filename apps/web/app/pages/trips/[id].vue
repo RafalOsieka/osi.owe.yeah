@@ -184,6 +184,9 @@ provideOpenTrip({
   turnOffNotifications,
   askWhoYouAre: () => (whoAreYouOpen.value = true),
   invite: () => (inviteOpen.value = true),
+  link: tripLink,
+  reminderStatus: () => device.reminderStatus(tripId),
+  remind: (to) => device.remind(tripId, to),
 });
 
 useHead({ title: () => trip.value?.name ?? t('trip.invalidLink') });

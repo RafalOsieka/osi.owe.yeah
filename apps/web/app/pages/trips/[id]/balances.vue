@@ -2,11 +2,13 @@
 import {
   balances,
   isSettled,
+  participantIdSchema,
   rateSummary,
   shareBreakdowns,
   spendingTotal,
   suggestedRepayments,
 } from '@osi/owe-yeah-domain';
+import { z } from 'zod';
 
 // The Balances tab: your balance and your own Suggested Repayments ("To settle") first, then
 // everyone's balance as diverging bars, the other Suggested Repayments (all of them without
@@ -16,11 +18,36 @@ import {
 // The footer warns how many Expenses use a Provisional rate, so balances may still move a
 // little (settling up stays allowed), and how many are left out without any rate. Tapping a
 // bar opens where that Participant's share comes from, with what they paid and their balance.
+// On the claimed Participant's suggestions as creditor, Remind reminds the debtor (#42).
+// Opened from a Reminder, `?payer=<id>&recipient=<id>` marks the suggestion it was about,
+// Record one tap away, until the tab is opened again: the address loses it at once.
 definePageMeta({ scrollToTop: false });
 useKeptScroll();
 
 const { trip, claim } = useOpenTrip();
-const { locale } = useI18n();
+const { t, locale } = useI18n();
+const route = useRoute();
+const router = useRouter();
+const reminders = useReminders();
+
+// The suggestion a tapped Reminder is about.
+const reminderQuerySchema = z.object({
+  payer: participantIdSchema,
+  recipient: participantIdSchema,
+});
+const highlight = ref<string | null>(null);
+watch(
+  () => route.query,
+  (current) => {
+    const reminded = reminderQuerySchema.safeParse(current);
+    if (!reminded.success) return;
+    const { payer, recipient } = reminded.data;
+    highlight.value = suggestionKey({ payerId: payer, recipientId: recipient });
+    const { payer: _, recipient: __, ...query } = current;
+    void router.replace({ query, hash: route.hash });
+  },
+  { immediate: true },
+);
 
 const everyone = computed(() => balances(trip.value));
 const settled = computed(() => isSettled(trip.value));
@@ -52,6 +79,23 @@ const suggestions = computed(() => {
     payerId === claimId || recipientId === claimId;
   return { own: all.filter(own), others: all.filter((suggestion) => !own(suggestion)) };
 });
+
+// The claimed Participant's debtors, Remind on their suggestions: how it reminds each, and the
+// line saying beforehand when it passes on a message instead of notifying them.
+const remindable = computed(
+  () =>
+    new Map(
+      suggestions.value.own
+        .filter(({ recipientId }) => recipientId === claim.value?.id)
+        .map(({ payerId }) => {
+          const by = reminders.by(payerId);
+          const hints = { share: t('reminder.byShare'), copy: t('reminder.byCopy') };
+          const hint = by === 'share' || by === 'copy' ? hints[by] : null;
+          const debtor = trip.value.participants.find(({ id }) => id === payerId)?.name ?? '?';
+          return [payerId, { by, hint, debtor }];
+        }),
+    ),
+);
 </script>
 
 <template>
@@ -82,7 +126,23 @@ const suggestions = computed(() => {
           :trip-id="trip.id"
           :currency="trip.currency"
           :claim-id="claim?.id"
-        />
+          :highlight="highlight"
+        >
+          <template #detail="{ suggestion }">
+            <span v-if="remindable.get(suggestion.payerId)?.hint" class="block text-xs text-muted">
+              {{ remindable.get(suggestion.payerId)?.hint }}
+            </span>
+          </template>
+          <template #action="{ suggestion }">
+            <RemindButton
+              v-if="remindable.has(suggestion.payerId)"
+              :by="remindable.get(suggestion.payerId)!.by"
+              :debtor="remindable.get(suggestion.payerId)!.debtor"
+              :sending="reminders.sending.value === suggestion.payerId"
+              @remind="reminders.remind(suggestion)"
+            />
+          </template>
+        </SuggestedRepaymentList>
       </section>
     </template>
 
@@ -115,6 +175,7 @@ const suggestions = computed(() => {
         :trip-id="trip.id"
         :currency="trip.currency"
         :claim-id="claim?.id"
+        :highlight="highlight"
       />
     </section>
 

@@ -1,4 +1,4 @@
-import type { PushMessage } from '@osi/owe-yeah-domain';
+import type { ActivityMessage, PushMessage, ReminderMessage } from '@osi/owe-yeah-domain';
 import en from '../../i18n/locales/en.json';
 import pl from '../../i18n/locales/pl.json';
 
@@ -9,12 +9,13 @@ const catalogs = { en: en.push, pl: pl.push };
 
 export type NotificationLocale = keyof typeof catalogs;
 
+type Messages = (typeof catalogs)[NotificationLocale];
+
 /** What a notification remembers, to collapse the next one into it and to open it. */
 export type NotificationData = {
-  tripId: string;
-  /** The Expense to highlight once opened; `null` once collapsed. */
-  expenseId: string | null;
-  /** How many changes it stands for. */
+  /** The app page tapping it opens. */
+  url: string;
+  /** How many changes it stands for; always 1 for a Reminder. */
   count: number;
 };
 
@@ -36,12 +37,13 @@ export function notificationLocale(languages: readonly string[]): NotificationLo
   return 'en';
 }
 
+/** The tag a Trip's activity notifications share, so a burst replaces one on screen. */
+export const activityTag = (tripId: string) => `trip:${tripId}`;
+
 /**
- * The notification to show for a push message, tagged with its Trip so a burst replaces one
- * notification instead of piling up. `shown` is how many changes the Trip's notification on
- * screen already stands for (0 without one): with more than one change in all, it reads
- * "3 changes in Croatia 2026" and opens no Expense. Otherwise it says who did what to which
- * Expense, and how that moved what you paid and your share.
+ * The notification to show for a push message: about a Trip's activity
+ * (`activityNotification`), or a Reminder (`reminderNotification`). `shown` is how many
+ * changes the Trip's activity notification on screen already stands for (0 without one).
  */
 export function notificationFor(
   message: PushMessage,
@@ -49,35 +51,79 @@ export function notificationFor(
   locale: NotificationLocale,
 ): ShownNotification {
   const messages = catalogs[locale];
-  const say = (key: keyof typeof messages, values: Record<string, string | number>) =>
+  const say = (key: keyof Messages, values: Record<string, string | number> = {}) =>
     messages[key].replace(/\{(\w+)\}/g, (_, name: string) => String(values[name]));
+  const format = (currency: string, amount: `${number}`, signed: boolean) =>
+    new Intl.NumberFormat(locale, {
+      style: 'currency',
+      currency,
+      signDisplay: signed ? 'exceptZero' : 'auto',
+    }).format(amount);
+  return message.kind === 'reminder'
+    ? reminderNotification(message, say, format)
+    : activityNotification(message, shown, say, format);
+}
+
+type Say = (key: keyof Messages, values?: Record<string, string | number>) => string;
+type Format = (currency: string, amount: `${number}`, signed: boolean) => string;
+
+/**
+ * Tagged with its Trip so a burst replaces one notification instead of piling up: with more
+ * than one change in all, it reads "3 changes in Croatia 2026" and opens the Trip's
+ * Expenses. Otherwise it says who did what to which Expense, and how that moved what you
+ * paid and your share, and opens the Expenses with that one highlighted.
+ */
+function activityNotification(
+  message: ActivityMessage,
+  shown: number,
+  say: Say,
+  format: Format,
+): ShownNotification {
   const { tripId, tripName, currency, latest } = message;
-  const tag = `trip:${tripId}`;
+  const tag = activityTag(tripId);
   const count = shown + message.count;
   if (count > 1) {
     return {
       title: say('collapsed', { count, trip: tripName }),
-      options: { tag, data: { tripId, expenseId: null, count } },
+      options: { tag, data: { url: `/trips/${tripId}`, count } },
     };
   }
 
-  const format = new Intl.NumberFormat(locale, {
-    style: 'currency',
-    currency,
-    signDisplay: 'exceptZero',
-  });
   // SAFETY: the push message schema checks both are plain decimals.
   const amounts = (['share', 'paid'] as const)
     .filter((part) => Number(latest[part]) !== 0)
-    .map((part) => say(part, { amount: format.format(latest[part] as `${number}`) }));
-  const author = latest.author ?? say('someone', {});
+    .map((part) => say(part, { amount: format(currency, latest[part] as `${number}`, true) }));
+  const author = latest.author ?? say('someone');
   const done = say(latest.action, { author, title: latest.title });
   return {
     title: tripName,
     options: {
       tag,
       body: [done, ...(amounts.length > 0 ? [amounts.join(' · ')] : [])].join('\n'),
-      data: { tripId, expenseId: latest.expenseId, count },
+      data: { url: `/trips/${tripId}?highlight=${latest.expenseId}`, count },
+    },
+  };
+}
+
+/**
+ * "Kasia reminds you to pay them back 123.45 PLN", one per creditor and Trip, never
+ * collapsed into the Trip's activity. Opens Balances with that Suggested Repayment
+ * highlighted, its Record one tap away.
+ */
+function reminderNotification(
+  message: ReminderMessage,
+  say: Say,
+  format: Format,
+): ShownNotification {
+  const { tripId, tripName, currency, from, to, amount } = message;
+  // SAFETY: the push message schema checks it is a plain decimal.
+  const owed = format(currency, amount as `${number}`, false);
+  return {
+    title: tripName,
+    options: {
+      tag: `reminder:${tripId}:${from.id}`,
+      body: say('reminder', { name: from.name, amount: owed }),
+      data: { url: `/trips/${tripId}/balances?payer=${to}&recipient=${from.id}`, count: 1 },
     },
   };
 }
