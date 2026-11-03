@@ -7,6 +7,7 @@ import {
   expenseSchema,
   expenseTimeFromLocal,
   minorUnits,
+  multiply,
   negate,
   rational,
   referencedParticipantIds,
@@ -26,11 +27,14 @@ import type { TricountMoney, TricountRegistry } from './tricount.ts';
  * A Tricount mapped to a new, ordinary Trip, checked by the domain package and ready to be
  * written. `tricountBalances` is each Participant's balance as Tricount works it out from its
  * stored allocations, in the Trip currency's minor units: what the Trip's balances must match.
+ * `rounding` is what the rounding correction among `expenses` moves each Participant's
+ * balance by, in minor units; empty when there is none (`roundingCorrection`).
  */
 export type ImportedTrip = {
   trip: TripWithParticipants;
   expenses: Expense[];
   tricountBalances: Map<string, bigint>;
+  rounding: Map<string, bigint>;
   /** Entries left out: deleted ones, and those of no amount. */
   skipped: number;
 };
@@ -51,7 +55,9 @@ type Mapping = {
  * Income and `BALANCE` a Repayment, with signs normalised. Equal ratios become Even when Even
  * comes to exactly the stored allocations; anything else becomes Amounts from them, so the
  * cents Tricount rounded stay where it put them. A foreign entry keeps its own currency and
- * gets a Manual rate in its charged-amount form: what it came to in the base currency. Entry
+ * gets a Manual rate in its charged-amount form: what it came to in the base currency
+ * (`foreignAmounts`). Converted exactly, foreign entries leave balances a fraction of a cent
+ * off Tricount's rounded ones, so one more Expense corrects that (`roundingCorrection`). Entry
  * times are read as local wall-clock time in `zone`. Throws when something can't be imported.
  */
 export function importTricount(registry: TricountRegistry, zone: string): ImportedTrip {
@@ -68,6 +74,7 @@ export function importTricount(registry: TricountRegistry, zone: string): Import
   const credit = (id: string, minor: bigint) => owed.set(id, (owed.get(id) ?? 0n) + minor);
   const expenses: Expense[] = [];
   let skipped = 0;
+  let foreign = 0;
   for (const entry of registry.entries) {
     if (entry.amount.currency !== currency) {
       throw new Error(`${entryLabel(entry)} is not in the Tricount currency ${currency}`);
@@ -77,7 +84,9 @@ export function importTricount(registry: TricountRegistry, zone: string): Import
       skipped++;
       continue;
     }
-    expenses.push(toExpense(entry, mapping));
+    const expense = toExpense(entry, mapping);
+    if (expense.currency !== currency) foreign++;
+    expenses.push(expense);
     // Income is the mirror image of an Expense: whoever received it owes it to the others.
     const sign = entry.kind === 'INCOME' ? -1n : 1n;
     credit(idOf(entry.payerId), sign * amount);
@@ -97,10 +106,14 @@ export function importTricount(registry: TricountRegistry, zone: string): Import
     participants,
   });
 
+  const valid = expenses.map((expense) => validInTrip(expense, trip));
+  const tricountBalances = new Map(participants.map(({ id }) => [id, owed.get(id) ?? 0n]));
+  const correction = roundingCorrection(trip, valid, tricountBalances, BigInt(foreign));
   return {
     trip,
-    expenses: expenses.map((expense) => validInTrip(expense, trip)),
-    tricountBalances: new Map(participants.map(({ id }) => [id, owed.get(id) ?? 0n])),
+    expenses: correction ? [...valid, validInTrip(correction.expense, trip)] : valid,
+    tricountBalances,
+    rounding: correction?.rounding ?? new Map(),
     skipped,
   };
 }
@@ -113,18 +126,15 @@ function toExpense(entry: Entry, { currency, zone, idOf }: Mapping): Expense {
   const total = minorMagnitude(paid);
   const mainPayerId = idOf(entry.payerId);
   // Who the entry is for, in the currency it was paid in; zero parts are nobody's.
+  const amounts = foreign
+    ? foreignAmounts(entry, foreign)
+    : entry.allocations.map(({ amount }) => partMinor(entry, amount, paid.currency));
   const parts = entry.allocations
-    .map((allocation) => {
-      const local = foreign ? allocation.amountLocal : allocation.amount;
-      if (local?.currency !== paid.currency) {
-        throw new Error(`${entryLabel(entry)} has a part without an amount in ${paid.currency}`);
-      }
-      return {
-        participantId: idOf(allocation.memberId),
-        amount: minorMagnitude(local),
-        ratio: allocation.ratio,
-      };
-    })
+    .map((allocation, index) => ({
+      participantId: idOf(allocation.memberId),
+      amount: amounts[index]!,
+      ratio: allocation.ratio,
+    }))
     .filter(({ amount }) => amount > 0n);
 
   const base = {
@@ -159,6 +169,31 @@ function toExpense(entry: Entry, { currency, zone, idOf }: Mapping): Expense {
 }
 
 const TITLES = { NORMAL: 'Expense', INCOME: 'Income', BALANCE: 'Repayment' } as const;
+
+/** A part's size in minor units, when it is in `currency`. */
+function partMinor(entry: Entry, part: TricountMoney | undefined, currency: string): bigint {
+  if (part?.currency !== currency) {
+    throw new Error(`${entryLabel(entry)} has a part without an amount in ${currency}`);
+  }
+  return minorMagnitude(part);
+}
+
+/**
+ * A foreign entry's parts in the currency it was paid in, in minor units: Tricount's own when
+ * they add up to what was paid. Tricount rounds each part in each currency on its own, so they
+ * can miss it by a cent or two; then what was paid is spread by the base-currency parts.
+ */
+function foreignAmounts(entry: Entry, paid: TricountMoney): bigint[] {
+  const total = minorMagnitude(paid);
+  const stored = entry.allocations.map(({ amountLocal }) =>
+    partMinor(entry, amountLocal, paid.currency),
+  );
+  if (sum(stored) === total) return stored;
+  const base = entry.allocations.map(({ amount }) => minorMagnitude(amount));
+  const baseTotal = sum(base);
+  if (baseTotal === 0n) throw new Error(`${entryLabel(entry)} is for nobody`);
+  return roundKeepingSum(base.map((part) => rational(part * total, baseTotal)));
+}
 
 type Part = { participantId: string; amount: bigint; ratio: number | null };
 
@@ -248,4 +283,98 @@ export function balanceMismatches(
     const differs = (numerator < 0n ? -numerator : numerator) * scale >= denominator;
     return differs ? [{ participant, imported, tricount }] : [];
   });
+}
+
+/**
+ * A Trip-currency Expense, dated with the latest one, that moves every Participant's balance
+ * to within a cent of Tricount's, with what it moves each by; nothing when none needs moving.
+ * It corrects only rounding: at most `limit` minor units each, one per foreign entry, and
+ * nothing when the gaps don't add up to zero. Anything more is left to `balanceMismatches`.
+ * Whoever it owes the most pays, others it owes chip in as Contributions, and those who owe
+ * share it by Amounts.
+ */
+function roundingCorrection(
+  trip: TripWithParticipants,
+  expenses: readonly Expense[],
+  tricountBalances: ReadonlyMap<string, bigint>,
+  limit: bigint,
+): { expense: Expense; rounding: Map<string, bigint> } | undefined {
+  const scale = rational(10n ** BigInt(minorUnits(trip.currency)));
+  const worked = balances({ ...trip, expenses, rates: [] });
+  const gaps = trip.participants.map(({ id }, index) =>
+    add(rational(tricountBalances.get(id) ?? 0n), negate(multiply(worked[index]!.balance, scale))),
+  );
+  const total = gaps.reduce(add, rational(0n));
+  if (total.numerator !== 0n) return undefined;
+
+  const moves = roundKeepingSum(gaps)
+    .map((minor, index) => ({ participantId: trip.participants[index]!.id, minor }))
+    .filter(({ minor }) => minor !== 0n);
+  if (moves.some(({ minor }) => minor > limit || -minor > limit)) return undefined;
+  const [payer, ...chippingIn] = moves
+    .filter(({ minor }) => minor > 0n)
+    .sort((a, b) => (b.minor > a.minor ? 1 : b.minor < a.minor ? -1 : 0));
+  if (!payer) return undefined;
+
+  const owing = moves.filter(({ minor }) => minor < 0n);
+  const latest = expenses.reduce((a, b) => (b.time.instant > a.time.instant ? b : a));
+  const expense: Expense = {
+    id: uuidv7(),
+    title: 'Tricount rounding',
+    currency: trip.currency,
+    time: latest.time,
+    mainPayerId: payer.participantId,
+    lineItems: [
+      {
+        name: '',
+        unitPrice: Number(sum(owing.map(({ minor }) => -minor))),
+        quantity: 1,
+        split: {
+          mode: 'amounts',
+          parts: owing.map(({ participantId, minor }) => ({
+            participantId,
+            amount: Number(-minor),
+          })),
+        },
+      },
+    ],
+    ...(chippingIn.length > 0 && {
+      contributions: chippingIn.map(({ participantId, minor }) => ({
+        participantId,
+        amount: Number(minor),
+      })),
+    }),
+  };
+  return {
+    expense,
+    rounding: new Map(moves.map(({ participantId, minor }) => [participantId, minor])),
+  };
+}
+
+/**
+ * Rounds `values`, which must add up to a whole number, to whole numbers that add up to the
+ * same: each goes down, then those that lost the most go back up by one (largest remainder).
+ * Each result is less than one away from its value.
+ */
+function roundKeepingSum(values: readonly Rational[]): bigint[] {
+  const total = values.reduce(add, rational(0n));
+  if (total.denominator !== 1n) throw new Error('Only values with a whole sum can keep it');
+  const floors = values.map(
+    ({ numerator, denominator }) =>
+      numerator / denominator - (numerator % denominator < 0n ? 1n : 0n),
+  );
+  const remainders = values.map((value, index) => add(value, rational(-floors[index]!)));
+  const byRemainder = values
+    .map((_, index) => index)
+    .sort((a, b) => {
+      const [x, y] = [remainders[a]!, remainders[b]!];
+      const difference = y.numerator * x.denominator - x.numerator * y.denominator;
+      return difference > 0n ? 1 : difference < 0n ? -1 : 0;
+    });
+  const up = new Set(byRemainder.slice(0, Number(total.numerator - sum(floors))));
+  return floors.map((floor, index) => (up.has(index) ? floor + 1n : floor));
+}
+
+function sum(values: readonly bigint[]): bigint {
+  return values.reduce((total, value) => total + value, 0n);
 }
