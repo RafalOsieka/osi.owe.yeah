@@ -96,5 +96,14 @@ export type {
 } from './sync.ts';
 export { CURRENCIES, currencySchema } from './currency.ts';
 export type { Currency } from './currency.ts';
-export { expenseRate, isRateDateOver, neededRates, rateEntrySchema, rateSummary } from './rates.ts';
-export type { ExpenseRate, RateEntry, TripRates } from './rates.ts';
+export {
+  conversionRate,
+  expenseRate,
+  isRateDateOver,
+  neededRates,
+  rateEntrySchema,
+  rateSummary,
+} from './rates.ts';
+export type { Conversion, ExpenseRate, RateEntry, TripRates } from './rates.ts';
+export { decimal, manualRateSchema, parseRate, rateSchema } from './manual-rate.ts';
+export type { ManualRate } from './manual-rate.ts';

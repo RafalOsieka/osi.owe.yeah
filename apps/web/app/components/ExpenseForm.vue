@@ -1,11 +1,9 @@
 <script setup lang="ts">
 import {
   deviceTimeZone,
-  expenseRate,
   expenseTimeFromLocal,
   expenseTitleSchema,
   fromMinor,
-  multiply,
   isReceipt,
   localDateTime,
   minorUnits,
@@ -26,6 +24,11 @@ import {
   draftFromContributions,
   type DraftContribution,
 } from '~/utils/contribution-draft';
+import {
+  draftFromManualRate,
+  manualRateToSave,
+  type DraftManualRate,
+} from '~/utils/manual-rate-draft';
 import {
   discountFromDraft,
   draftFromDiscount,
@@ -51,10 +54,9 @@ import {
 // with a Contribution can't be picked as Main payer. The Expense has its own currency, any in
 // circulation, picked from the pill under the amount: a new one starts in the currency of the
 // Expense saved last on this device, or else the Trip currency. Every amount is entered in it,
-// and the pill says what the total comes to in the Trip currency ("≈" at a Provisional rate).
-// Saving
-// keeps the Expense's full new state on the device, to sync later, and returns to `parent`'s
-// screen, or wherever the form was opened from. An Expense that breaks a Trip rule is not
+// and the pill says what the total comes to in the Trip currency, at a Manual rate if one is
+// typed next to it (`ExpenseCurrency`). Saving keeps the Expense's full new state on the
+// device, to sync later, and returns to `parent`'s screen, or wherever the form was opened from. An Expense that breaks a Trip rule is not
 // saved; why shows above Save.
 const { expense = null, parent } = defineProps<{
   expense?: Extract<LocalExpense, SplitExpense> | null;
@@ -65,11 +67,14 @@ const { expense = null, parent } = defineProps<{
 const { trip, claim, lastCurrency, saveExpense } = useOpenTrip();
 const { t, locale } = useI18n();
 const back = useBack();
+const manualRateErrors = useManualRateErrors();
 
 type ExpenseFormState = {
   title: string;
   /** The currency every amount is entered in. */
   currency: Currency;
+  /** The Manual rate, as typed; empty for none. */
+  manualRate: DraftManualRate;
   /** The amount as typed, never negative. */
   amount: string;
   /** Income: money received rather than paid. */
@@ -98,6 +103,7 @@ function initialState(): ExpenseFormState {
     const shared = {
       title: expense.title,
       currency: expense.currency,
+      manualRate: draftFromManualRate(expense.manualRate, trip.value.currency),
       mainPayerId: expense.mainPayerId,
       contributions: draftFromContributions(expense.contributions, expense.currency),
       ...time,
@@ -126,6 +132,7 @@ function initialState(): ExpenseFormState {
   return {
     title: '',
     currency: lastCurrency.value ?? trip.value.currency,
+    manualRate: draftFromManualRate(undefined, trip.value.currency),
     amount: '',
     received: false,
     mainPayerId: claimed?.id ?? participants[0]?.id ?? '',
@@ -233,25 +240,8 @@ const total = computed(() => {
   return amount === null ? null : fromMinor(state.received ? -amount : amount, currency);
 });
 
-// What the Expense comes to in the Trip currency at the rate for its local date, while it is in
-// another one; `null` in the Trip currency or while the amount can't be read.
-const converted = computed(() => {
-  const { currency } = trip.value;
-  if (state.currency === currency || !state.local) return null;
-  const found = expenseRate(
-    { currency: state.currency, time: expenseTimeFromLocal(state.local, state.zone) },
-    trip.value,
-  );
-  if (!found) return t('rate.noRate');
-  if (total.value === null) return null;
-  return formatMoney(
-    multiply(total.value, found.rate),
-    currency,
-    locale.value,
-    'currency',
-    found.provisional,
-  );
-});
+// When the Expense happened, as typed so far; `null` while it is not set.
+const time = computed(() => (state.local ? expenseTimeFromLocal(state.local, state.zone) : null));
 
 const payerName = computed(
   () => trip.value.participants.find(({ id }) => id === state.mainPayerId)?.name ?? '?',
@@ -291,6 +281,7 @@ function validate(form: Partial<ExpenseFormState>): FormError[] {
       errors.push({ name: 'participantIds', message: t('expense.participantsMissing') });
     }
   }
+  errors.push(...manualRateErrors(state.manualRate, state.currency, total.value));
   if (contributionsFromDraft(state.contributions, state.currency) === null) {
     errors.push({ name: 'contributions', message: t('contribution.unreadable') });
   }
@@ -323,6 +314,7 @@ async function submit(): Promise<void> {
   saving.value = true;
   // Readable by now: `validate` passed.
   const contributions = contributionsFromDraft(state.contributions, state.currency)!;
+  const manualRate = manualRateToSave(state.manualRate, state.currency);
   const refused = await saveExpense(
     {
       id,
@@ -331,6 +323,7 @@ async function submit(): Promise<void> {
       time: expenseTimeFromLocal(state.local, state.zone),
       mainPayerId: state.mainPayerId,
       lineItems: lineItems(),
+      ...(manualRate && { manualRate }),
       // Left out when there is none, as the device store and the server keep it.
       ...(receipt.value?.discount && { discount: receipt.value.discount }),
       ...(contributions.length > 0 && { contributions }),
@@ -352,10 +345,13 @@ async function submit(): Promise<void> {
         <output aria-labelledby="receipt-total-label" class="block text-4xl font-bold tabular-nums">
           {{ formatMoney(receipt.total, state.currency, locale) }}
         </output>
-        <div class="mt-2 flex items-center justify-center gap-2">
-          <CurrencyPill v-model="state.currency" />
-          <span v-if="converted" class="text-sm text-muted tabular-nums">{{ converted }}</span>
-        </div>
+        <ExpenseCurrency
+          v-model:currency="state.currency"
+          v-model:manual-rate="state.manualRate"
+          :total="total"
+          :time="time"
+          class="mt-2 text-start"
+        />
         <p v-if="receipt.discount" class="mt-1 text-sm text-muted">
           {{
             $t('receipt.receiptDiscountFact', {
@@ -384,10 +380,13 @@ async function submit(): Promise<void> {
         <UFormField name="amount" :label="$t('expense.amount')" :ui="{ label: 'sr-only' }">
           <AmountInput v-model="state.amount" :currency="state.currency" />
         </UFormField>
-        <div class="-mt-3 flex items-center justify-center gap-2">
-          <CurrencyPill v-model="state.currency" />
-          <span v-if="converted" class="text-sm text-muted tabular-nums">{{ converted }}</span>
-        </div>
+        <ExpenseCurrency
+          v-model:currency="state.currency"
+          v-model:manual-rate="state.manualRate"
+          :total="total"
+          :time="time"
+          class="-mt-3"
+        />
 
         <USwitch
           v-if="state.contributions.length === 0"

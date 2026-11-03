@@ -569,6 +569,26 @@ describeApi('Trip API', () => {
     expect((await pulled(trip.id, token)).expenses).toHaveLength(1);
   });
 
+  it('keeps a Manual rate as typed, and pulls the rate it is chained through instead of its own', async () => {
+    const { trip, token, kasia } = await tripWithKasiaAndAnia();
+    frankfurter.set('2026-07-14', 'PLN', 'EUR', 0.235);
+    // Typed while the Trip was in PLN: 1000 KPW were charged as 4.50 PLN.
+    const expense: Expense = {
+      ...plainExpense(kasia),
+      currency: 'KPW',
+      manualRate: { kind: 'charged', amount: 450, currency: 'PLN' },
+    };
+    await push(trip.id, token, change(expense));
+    const fetched = frankfurter.requests.length;
+
+    expect((await pulled(trip.id, token)).expenses).toEqual([stored(expense, 1)]);
+    expect(await pulledRates(trip.id, token)).toEqual<RateEntry[]>([
+      { date: '2026-07-14', from: 'PLN', to: 'EUR', rate: '0.235', fixed: true },
+    ]);
+    const bases = frankfurter.requests.slice(fetched).map((query) => query.get('base'));
+    expect(bases).not.toContain('KPW');
+  });
+
   it('removes a Participant softly, but refuses while an Expense references them', async () => {
     const { trip, token, kasia, ania } = await tripWithKasiaAndAnia();
     await push(trip.id, token, change(plainExpense(kasia)));

@@ -28,7 +28,7 @@ export type TripExpenses = Pick<TripSnapshot, 'currency' | 'participants'> & {
  * The Expenses that can be converted into the Trip currency, each with its rate
  * (`expenseRate`); those without one are left out of balances and totals.
  */
-export function convertible<E extends Pick<Expense, 'currency' | 'time'>>(
+export function convertible<E extends Expense>(
   trip: TripRates & { expenses: readonly E[] },
 ): { expense: E; rate: Rational }[] {
   return trip.expenses.flatMap((expense) => {

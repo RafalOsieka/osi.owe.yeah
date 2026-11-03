@@ -8,15 +8,22 @@ import {
   minorUnits,
   parseMoney,
   roundMoney,
+  type Currency,
   type Repayment,
 } from '@osi/owe-yeah-domain';
 import type { FormError } from '@nuxt/ui';
 import type { RouteLocationRaw } from 'vue-router';
 import { v7 as uuidv7 } from 'uuid';
 import type { LocalExpense } from '~/sync/local-trip';
+import {
+  draftFromManualRate,
+  manualRateToSave,
+  type DraftManualRate,
+} from '~/utils/manual-rate-draft';
 
-// The full-screen Repayment form, for a new Repayment or to edit one: amount, who paid, who
-// got the money, a title and when. A new one may start from a Suggested Repayment
+// The full-screen Repayment form, for a new Repayment or to edit one: amount, its currency
+// with a Manual rate if needed (`ExpenseCurrency`), who paid, who got the money, a title and
+// when. A new one is in the Trip currency and may start from a Suggested Repayment
 // (`suggested`), its amount still editable for a partial Repayment; otherwise who paid
 // defaults to the Claim. Saving works like the Expense form's.
 const {
@@ -34,10 +41,15 @@ const {
 const { trip, claim, saveExpense } = useOpenTrip();
 const { t } = useI18n();
 const back = useBack();
+const manualRateErrors = useManualRateErrors();
 
 type RepaymentFormState = {
   title: string;
   amount: string;
+  /** The currency the amount is in. */
+  currency: Currency;
+  /** The Manual rate, as typed; empty for none. */
+  manualRate: DraftManualRate;
   mainPayerId: string;
   recipientId: string;
   /** Local date and time (`YYYY-MM-DDTHH:mm`) in `zone`. */
@@ -52,6 +64,8 @@ function initialState(): RepaymentFormState {
       title: repayment.title,
       amount: roundMoney(fromMinor(repayment.amount, repayment.currency), repayment.currency)
         .decimal,
+      currency: repayment.currency,
+      manualRate: draftFromManualRate(repayment.manualRate, trip.value.currency),
       mainPayerId: repayment.mainPayerId,
       recipientId: repayment.recipientId,
       local: localDateTime(repayment.time),
@@ -64,6 +78,8 @@ function initialState(): RepaymentFormState {
   return {
     title: t('repayment.title'),
     amount: suggested?.amount ?? '',
+    currency: trip.value.currency,
+    manualRate: draftFromManualRate(undefined, trip.value.currency),
     mainPayerId: known(suggested?.payerId) ?? known(claim.value?.id) ?? '',
     recipientId: known(suggested?.recipientId) ?? '',
     local: localDateTime({ instant: new Date().toISOString(), zone }),
@@ -72,17 +88,22 @@ function initialState(): RepaymentFormState {
 }
 
 const state = reactive(initialState());
-// A Repayment stays in the currency it was recorded in, even after the Trip currency changed;
-// a new one is in the Trip currency (Manual rates for others come with #37).
-const currency = repayment?.currency ?? trip.value.currency;
 const id = repayment?.id ?? uuidv7();
+
+// The amount and when, as typed so far; `null` while unreadable or not set.
+const total = computed(() => {
+  const amount = parseMoney(state.amount, state.currency);
+  return amount === null ? null : fromMinor(amount, state.currency);
+});
+const time = computed(() => (state.local ? expenseTimeFromLocal(state.local, state.zone) : null));
 
 function validate(form: Partial<RepaymentFormState>): FormError[] {
   const errors: FormError[] = [];
-  if (parseMoney(form.amount ?? '', currency) === null) {
-    const decimals = minorUnits(currency);
+  if (parseMoney(form.amount ?? '', state.currency) === null) {
+    const decimals = minorUnits(state.currency);
     errors.push({ name: 'amount', message: t('expense.amountInvalid', { decimals }, decimals) });
   }
+  errors.push(...manualRateErrors(state.manualRate, state.currency, total.value));
   if (!form.mainPayerId) errors.push({ name: 'mainPayerId', message: t('expense.payerMissing') });
   if (!form.recipientId) {
     errors.push({ name: 'recipientId', message: t('repayment.recipientMissing') });
@@ -102,15 +123,17 @@ const saving = ref(false);
 
 async function submit(): Promise<void> {
   saving.value = true;
+  const manualRate = manualRateToSave(state.manualRate, state.currency);
   const refused = await saveExpense(
     {
       id,
       title: state.title.trim(),
-      currency,
+      currency: state.currency,
       time: expenseTimeFromLocal(state.local, state.zone),
       mainPayerId: state.mainPayerId,
       recipientId: state.recipientId,
-      amount: parseMoney(state.amount, currency)!,
+      amount: parseMoney(state.amount, state.currency)!,
+      ...(manualRate && { manualRate }),
     },
     // Based on the Repayment as the form read it when it opened.
     repayment?.base ?? { version: null },
@@ -136,8 +159,15 @@ async function submit(): Promise<void> {
       @submit="submit"
     >
       <UFormField name="amount" :label="$t('expense.amount')" :ui="{ label: 'sr-only' }">
-        <AmountInput v-model="state.amount" :currency="currency" />
+        <AmountInput v-model="state.amount" :currency="state.currency" />
       </UFormField>
+      <ExpenseCurrency
+        v-model:currency="state.currency"
+        v-model:manual-rate="state.manualRate"
+        :total="total"
+        :time="time"
+        class="-mt-3"
+      />
 
       <UFormField name="mainPayerId">
         <ParticipantPicker
