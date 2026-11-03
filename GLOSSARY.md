@@ -114,6 +114,12 @@ _Polish_: Przypomnienie
 _Avoid_: Nudge, ping, dunning
 _Polish avoid_: Ponaglenie, monit
 
+**Notification**:
+A message on a Participant's device saying that someone else added, changed or deleted an Expense that involves them, or carrying a Reminder. Only devices that turned notifications on for the Trip get them.
+_Polish_: Powiadomienie
+_Avoid_: Push, push notification, alert
+_Polish avoid_: Push, alert, komunikat
+
 **Settled**:
 A Trip with at least one Expense in which every Participant's balance, rounded to whole cents, is zero.
 _Polish_: Rozliczona (of a Podróż)
