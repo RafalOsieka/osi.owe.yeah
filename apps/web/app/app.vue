@@ -13,6 +13,8 @@ useHead({
   },
   titleTemplate: (pageTitle) => (pageTitle ? `${pageTitle} | ${t('app.title')}` : t('app.title')),
 });
+
+useAppUpdatePrompt();
 </script>
 
 <template>

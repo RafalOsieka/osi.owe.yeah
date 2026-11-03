@@ -20,7 +20,7 @@ export default defineConfig({
   webServer: {
     command: 'nuxt build && node .output/server/index.mjs',
     url: `http://localhost:${PORT}`,
-    env: { PORT: String(PORT), DATABASE_URL: DEFAULT_DATABASE_URL },
+    env: { PORT: String(PORT), DATABASE_URL: DEFAULT_DATABASE_URL, UI_E2E: '1' },
     timeout: 300_000,
     reuseExistingServer: false,
   },

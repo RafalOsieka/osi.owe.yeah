@@ -3,6 +3,17 @@
     "title": "Owe Yeah",
     "more": "More"
   },
+  "appUpdate": {
+    "title": "New version available",
+    "syncWaits": "Your changes wait on this device and sync once you reload.",
+    "reload": "Reload"
+  },
+  "install": {
+    "title": "Install Owe Yeah",
+    "why": "It opens like an app, and the browser keeps your Trips on this device for good.",
+    "ios": "Tap Share, then Add to Home Screen: it opens like an app, and Safari keeps your Trips on this device for good.",
+    "action": "Install"
+  },
   "myTrips": {
     "title": "My Trips",
     "empty": "No Trips yet.",

@@ -1,20 +1,17 @@
 import {
-  expenseSchema,
   participantSchema,
-  pushProblemSchema,
-  storedExpenseSchema,
   tripIdSchema,
   type ChangeResult,
   type Currency,
   type ExpenseChange,
   type Participant,
   type RateEntry,
-  type StoredExpense,
   type SyncChange,
   type TripSnapshot,
 } from '@osi/owe-yeah-domain';
 import { Dexie, type EntityTable } from 'dexie';
 import { z } from 'zod';
+import { migrations } from './migrations';
 
 /**
  * Something sync did to this device's changes that the user should hear about, kept until
@@ -81,9 +78,10 @@ export type OutboxEntry = {
 };
 
 /**
- * The device store (Dexie on IndexedDB). Each schema change is a new `version()` with an
- * `upgrade()` that migrates local data and queued changes; the chain is kept forever, as a
- * device may come back after any number of releases (ADR 0002).
+ * The device store (Dexie on IndexedDB). Version 1 is the first; each link of the migration
+ * chain (`migrations`) is a version after it, whose `upgrade()` runs the link on every Trip and
+ * outbox entry. A device coming back after any number of releases runs every link it missed,
+ * in order, and then sends its migrated outbox (ADR 0002).
  */
 export class DeviceDb extends Dexie {
   trips!: EntityTable<DeviceTrip, 'id'>;
@@ -92,127 +90,24 @@ export class DeviceDb extends Dexie {
   constructor(name = 'owe-yeah') {
     super(name);
     this.version(1).stores({ trips: 'id', outbox: '++seq, tripId' });
-    this.version(2).upgrade(async (tx) => {
-      await tx
-        .table<DeviceTrip, string>('trips')
-        .toCollection()
-        .modify((trip) => {
-          if (!trip.snapshot) return;
-          // Version 0 is older than any the server has, so the next pull brings the whole Trip
-          // again, now with who made each Expense's version.
-          trip.snapshot = {
-            ...trip.snapshot,
-            version: 0,
-            expenses: trip.snapshot.expenses.map(beforeRevisions),
-          };
-        });
-      await tx
-        .table<OutboxEntry, number>('outbox')
-        .toCollection()
-        .modify((entry) => {
-          if (entry.change.kind !== 'expense') return;
-          entry.change = { ...entry.change, deleted: false };
-          if (entry.held?.status === 'conflict') {
-            entry.held = { ...entry.held, current: beforeRevisions(entry.held.current) };
-          }
-        });
-    });
-    this.version(3).upgrade(async (tx) => {
-      await tx
-        .table<DeviceTrip, string>('trips')
-        .toCollection()
-        .modify((trip) => {
-          if (!trip.snapshot) return;
-          trip.snapshot = {
-            ...trip.snapshot,
-            expenses: trip.snapshot.expenses.map((expense) =>
-              beforeReceipts(storedExpenseSchema, expense),
-            ),
-          };
-        });
-      await tx
-        .table<OutboxEntry, number>('outbox')
-        .toCollection()
-        .modify((entry) => {
-          if (entry.change.kind !== 'expense') return;
-          entry.change = {
-            ...entry.change,
-            expense: beforeReceipts(expenseSchema, entry.change.expense),
-          };
-          if (entry.held?.status === 'conflict') {
-            entry.held = {
-              ...entry.held,
-              current: beforeReceipts(storedExpenseSchema, entry.held.current),
-            };
-          }
-        });
-    });
-    this.version(4).upgrade(async (tx) => {
-      await tx
-        .table<DeviceTrip, string>('trips')
-        .toCollection()
-        .modify((trip) => {
-          trip.notices = [];
-          if (!trip.snapshot) return;
-          // Version 0 brings the whole Trip again, now with who last changed its details and
-          // its removed Participants.
-          trip.snapshot = { ...trip.snapshot, version: 0, edited: null, removedParticipants: [] };
-        });
-      await tx
-        .table<OutboxEntry, number>('outbox')
-        .toCollection()
-        .modify((entry) => {
-          if (entry.change.kind === 'participant')
-            entry.change = { ...entry.change, removed: false };
-        });
-    });
-    this.version(5).upgrade(async (tx) => {
-      await tx
-        .table<DeviceTrip, string>('trips')
-        .toCollection()
-        .modify((trip) => {
-          trip.rates = [];
-          trip.lastCurrency = null;
-          // Notices of a Trip currency refused while Expenses were not converted yet go.
-          trip.notices = trip.notices.filter(({ kind }) => noticeKinds.has(kind));
-        });
-      await tx
-        .table<OutboxEntry, number>('outbox')
-        .toCollection()
-        .modify((entry) => {
-          if (entry.held?.status !== 'rejected') return;
-          // An Expense in another currency than the Trip's is accepted now: sent again.
-          const problems = entry.held.problems.filter(
-            (problem) => pushProblemSchema.safeParse(problem).success,
-          );
-          entry.held = problems.length > 0 ? { ...entry.held, problems } : null;
-        });
-    });
+    for (const [index, { trip, entry }] of migrations.entries()) {
+      this.version(index + 2).upgrade(async (tx) => {
+        await tx
+          .table<DeviceTrip, string>('trips')
+          .toCollection()
+          .modify((kept, ref) => {
+            ref.value = trip(kept);
+          });
+        await tx
+          .table<OutboxEntry, number>('outbox')
+          .toCollection()
+          .modify((kept, ref) => {
+            ref.value = entry(kept);
+          });
+      });
+    }
     this.on('populate', (tx) => tx.table('trips').bulkAdd(tripsFromLocalStorage()));
   }
-}
-
-/** The kinds of Notice there are, to drop those of older versions of the store. */
-const noticeKinds = new Set<string>([
-  'participantRestored',
-  'removalRefused',
-  'claimRemoved',
-] satisfies Notice['kind'][]);
-
-/**
- * An Expense kept by version 1 of the store, from before deletes and Revisions: never deleted,
- * and who made its version is not known.
- */
-function beforeRevisions(expense: StoredExpense): StoredExpense {
-  return { ...expense, deleted: false, edited: null };
-}
-
-/**
- * An Expense kept by version 2 of the store, from before Receipts, read again with `schema`,
- * whose defaults make each Line item one unnamed unit. Anything unreadable is kept as it was.
- */
-function beforeReceipts<E>(schema: z.ZodType<E>, expense: E): E {
-  return schema.safeParse(expense).data ?? expense;
 }
 
 const LEGACY_KEY = 'owe-yeah:trips';

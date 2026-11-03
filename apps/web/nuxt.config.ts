@@ -14,12 +14,20 @@ export default defineNuxtConfig({
   // i18n catalogs and the icons (bundled into the JS, see `icon`). API responses are never
   // cached by it: the device store holds the data (ADR 0002). The first visit is taken over
   // right away, so it works offline without a reload; a new version waits until every tab
-  // of the app is closed. App icons come with the logo (#54).
+  // of the app is closed, or the "New version" toast reloads (`useAppUpdatePrompt`). App icons
+  // come with the logo (#54).
   pwa: {
     // Off under Vitest, whose Nuxt environment can't load the service worker's virtual
     // modules; the ui e2e suite builds outside Vitest and gets the real thing.
     disable: !!process.env.VITEST,
-    client: { registerPlugin: !process.env.VITEST },
+    client: {
+      registerPlugin: !process.env.VITEST,
+      // Looks for a new version hourly, as the app may stay open for days.
+      periodicSyncForUpdates: 60 * 60,
+      // Keeps the browser's install prompt for the install nudge on My Trips, which keeps its
+      // own dismissal (`InstallNudge`).
+      installPrompt: true,
+    },
     manifest: {
       name: 'Owe Yeah',
       short_name: 'Owe Yeah',
@@ -93,8 +101,9 @@ export default defineNuxtConfig({
     // The Trip link is the credential (ADR 0001) and there are no cookie sessions, so CSRF
     // tokens protect nothing here.
     csrf: false,
-    // Off in development, so Vite's many module requests don't exhaust the shared bucket.
-    rateLimiter: process.env.NODE_ENV === 'development' ? false : undefined,
+    // Off in development, so Vite's many module requests don't exhaust the shared bucket, and
+    // for the ui e2e suite (`UI_E2E`), whose journeys all come from one address.
+    rateLimiter: process.env.NODE_ENV === 'development' || process.env.UI_E2E ? false : undefined,
   },
   typescript: {
     // Disabled: the in-dev checker breaks under Nuxt's `/_nuxt/` base

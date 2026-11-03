@@ -38,6 +38,7 @@
     "@nuxtjs/i18n": "^10.6.0",
     "@osi/owe-yeah-migrator": "workspace:*",
     "@playwright/test": "^1.64.1",
+    "@total-typescript/shoehorn": "^0.1.2",
     "@types/node": "^26.6.5",
     "@vite-pwa/nuxt": "^1.1.1",
     "@vue/test-utils": "^2.5.1",

@@ -3,6 +3,17 @@
     "title": "Owe Yeah",
     "more": "Więcej"
   },
+  "appUpdate": {
+    "title": "Dostępna nowa wersja",
+    "syncWaits": "Twoje zmiany czekają na tym urządzeniu i zsynchronizują się po odświeżeniu.",
+    "reload": "Odśwież"
+  },
+  "install": {
+    "title": "Zainstaluj Owe Yeah",
+    "why": "Otwiera się jak aplikacja, a przeglądarka zachowa Twoje podróże na tym urządzeniu na stałe.",
+    "ios": "Stuknij Udostępnij, a potem Do ekranu początkowego: otwiera się jak aplikacja, a Safari zachowa Twoje podróże na tym urządzeniu na stałe.",
+    "action": "Zainstaluj"
+  },
   "myTrips": {
     "title": "Moje podróże",
     "empty": "Nie masz jeszcze żadnych podróży.",

@@ -3,7 +3,7 @@ import { balances, isSettled } from '@osi/owe-yeah-domain';
 
 // My Trips: every Trip on this device, most recently opened first and Settled ones below the
 // rest, with its Claim, your balance there (or a Settled badge), and how many of your
-// changes haven't synced yet.
+// changes haven't synced yet. Above them, the install nudge.
 const { t, locale } = useI18n();
 const device = useDevice();
 const trips = useLiveQuery(() => device.readAll());
@@ -43,6 +43,8 @@ useHead({ title: () => t('myTrips.title') });
 <template>
   <NuxtLayout name="default">
     <h1 class="sr-only">{{ $t('myTrips.title') }}</h1>
+    <!-- Once there are Trips to keep safe: a first visit gets "New Trip" alone. -->
+    <InstallNudge v-if="rows.length > 0" />
     <ul v-if="rows.length > 0" class="space-y-2.5">
       <li v-for="trip in rows" :key="trip.id">
         <NuxtLink
