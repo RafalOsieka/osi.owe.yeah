@@ -42,7 +42,6 @@ type Mapping = {
   currency: TripCurrency;
   zone: string;
   idOf: (memberId: number) => string;
-  newId: () => string;
 };
 
 /**
@@ -55,19 +54,15 @@ type Mapping = {
  * gets a Manual rate in its charged-amount form: what it came to in the base currency. Entry
  * times are read as local wall-clock time in `zone`. Throws when something can't be imported.
  */
-export function importTricount(
-  registry: TricountRegistry,
-  zone: string,
-  newId: () => string = uuidv7,
-): ImportedTrip {
+export function importTricount(registry: TricountRegistry, zone: string): ImportedTrip {
   const currency = tripCurrency(registry.currency);
-  const ids = new Map(registry.members.map(({ id }) => [id, newId()]));
+  const ids = new Map(registry.members.map(({ id }) => [id, uuidv7()]));
   const idOf = (memberId: number) => {
     const id = ids.get(memberId);
     if (!id) throw new Error(`An entry names member ${memberId}, who is not in the Tricount`);
     return id;
   };
-  const mapping: Mapping = { currency, zone, idOf, newId };
+  const mapping: Mapping = { currency, zone, idOf };
 
   const owed = new Map<string, bigint>();
   const credit = (id: string, minor: bigint) => owed.set(id, (owed.get(id) ?? 0n) + minor);
@@ -75,16 +70,17 @@ export function importTricount(
   let skipped = 0;
   for (const entry of registry.entries) {
     if (entry.amount.currency !== currency) {
-      throw new Error(`${describe(entry)} is not in the Tricount currency ${currency}`);
+      throw new Error(`${entryLabel(entry)} is not in the Tricount currency ${currency}`);
     }
-    if (!entry.active || minorMagnitude(entry.amount) === 0n) {
+    const amount = minorMagnitude(entry.amount);
+    if (!entry.active || amount === 0n) {
       skipped++;
       continue;
     }
     expenses.push(toExpense(entry, mapping));
     // Income is the mirror image of an Expense: whoever received it owes it to the others.
     const sign = entry.kind === 'INCOME' ? -1n : 1n;
-    credit(idOf(entry.payerId), sign * minorMagnitude(entry.amount));
+    credit(idOf(entry.payerId), sign * amount);
     for (const allocation of entry.allocations) {
       credit(idOf(allocation.memberId), -sign * minorMagnitude(allocation.amount));
     }
@@ -95,7 +91,7 @@ export function importTricount(
     .filter(({ id, deleted }) => !deleted || referenced.has(idOf(id)))
     .map(({ id, name }) => ({ id: idOf(id), name: name.trim().slice(0, 50) || 'Unnamed' }));
   const trip = tripWithParticipantsSchema.parse({
-    id: newId(),
+    id: uuidv7(),
     name: registry.title.trim().slice(0, 100) || 'Tricount',
     currency,
     participants,
@@ -103,14 +99,14 @@ export function importTricount(
 
   return {
     trip,
-    expenses: expenses.map((expense) => checked(expense, trip)),
+    expenses: expenses.map((expense) => validInTrip(expense, trip)),
     tricountBalances: new Map(participants.map(({ id }) => [id, owed.get(id) ?? 0n])),
     skipped,
   };
 }
 
 /** One active entry as a plain Expense, Income or Repayment (see `importTricount`). */
-function toExpense(entry: Entry, { currency, zone, idOf, newId }: Mapping): Expense {
+function toExpense(entry: Entry, { currency, zone, idOf }: Mapping): Expense {
   const foreign =
     entry.amountLocal && entry.amountLocal.currency !== currency ? entry.amountLocal : undefined;
   const paid = foreign ?? entry.amount;
@@ -121,7 +117,7 @@ function toExpense(entry: Entry, { currency, zone, idOf, newId }: Mapping): Expe
     .map((allocation) => {
       const local = foreign ? allocation.amountLocal : allocation.amount;
       if (local?.currency !== paid.currency) {
-        throw new Error(`${describe(entry)} has a part without an amount in ${paid.currency}`);
+        throw new Error(`${entryLabel(entry)} has a part without an amount in ${paid.currency}`);
       }
       return {
         participantId: idOf(allocation.memberId),
@@ -132,7 +128,7 @@ function toExpense(entry: Entry, { currency, zone, idOf, newId }: Mapping): Expe
     .filter(({ amount }) => amount > 0n);
 
   const base = {
-    id: newId(),
+    id: uuidv7(),
     title: entry.description.trim().slice(0, 100) || TITLES[entry.kind],
     currency: currencySchema.parse(paid.currency),
     time: expenseTimeFromLocal(entry.date.replace(' ', 'T'), zone),
@@ -170,7 +166,7 @@ type Part = { participantId: string; amount: bigint; ratio: number | null };
 function recipientOf(entry: Entry, parts: readonly Part[], payerId: string): string {
   const [recipient, ...more] = parts;
   if (!recipient || more.length > 0 || recipient.participantId === payerId) {
-    throw new Error(`${describe(entry)} is a Repayment without exactly one recipient`);
+    throw new Error(`${entryLabel(entry)} is a Repayment without exactly one recipient`);
   }
   return recipient.participantId;
 }
@@ -181,7 +177,7 @@ function recipientOf(entry: Entry, parts: readonly Part[], payerId: string): str
  */
 function splitOf(entry: Entry, parts: readonly Part[], total: bigint): Split {
   const [first] = parts;
-  if (!first) throw new Error(`${describe(entry)} is for nobody`);
+  if (!first) throw new Error(`${entryLabel(entry)} is for nobody`);
   const even = parts.every(
     ({ ratio, amount }) =>
       ratio !== null && ratio === first.ratio && amount * BigInt(parts.length) === total,
@@ -198,7 +194,7 @@ function splitOf(entry: Entry, parts: readonly Part[], total: bigint): Split {
 }
 
 /** The Expense as the domain package reads it, after checking it fits its Trip. */
-function checked(expense: Expense, trip: TripWithParticipants): Expense {
+function validInTrip(expense: Expense, trip: TripWithParticipants): Expense {
   const parsed = expenseSchema.parse(expense);
   const problems = expenseProblems(parsed, trip);
   if (problems.length > 0) {
@@ -207,6 +203,7 @@ function checked(expense: Expense, trip: TripWithParticipants): Expense {
   return parsed;
 }
 
+/** The Tricount currency as a Trip currency, which only rate-provider currencies can be. */
 function tripCurrency(currency: string): TripCurrency {
   const parsed = z.enum(TRIP_CURRENCIES).safeParse(currency);
   if (!parsed.success) {
@@ -225,7 +222,8 @@ function minorMagnitude({ value, currency }: TricountMoney): bigint {
   return BigInt(whole + fraction.slice(0, units).padEnd(units, '0'));
 }
 
-function describe(entry: Entry): string {
+/** How errors name an entry, so the operator can find it in Tricount. */
+function entryLabel(entry: Entry): string {
   return `Entry ${entry.id} ("${entry.description}", ${entry.date})`;
 }
 

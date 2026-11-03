@@ -1,5 +1,5 @@
 import { createHash, randomBytes } from 'node:crypto';
-import { expenseSchema } from '@osi/owe-yeah-domain';
+import { expenseSchema, type TripCurrency } from '@osi/owe-yeah-domain';
 import { eq } from 'drizzle-orm';
 import { drizzle } from 'drizzle-orm/postgres-js';
 import postgres from 'postgres';
@@ -13,9 +13,9 @@ const DEVICE_ID = 'tricount-import';
 export class BalanceMismatchError extends Error {
   readonly mismatches: BalanceMismatch[];
   /** The Trip currency the balances are in. */
-  readonly currency: string;
+  readonly currency: TripCurrency;
 
-  constructor(mismatches: BalanceMismatch[], currency: string) {
+  constructor(mismatches: BalanceMismatch[], currency: TripCurrency) {
     super(`${mismatches.length} balance(s) would differ from Tricount by a cent or more`);
     this.mismatches = mismatches;
     this.currency = currency;

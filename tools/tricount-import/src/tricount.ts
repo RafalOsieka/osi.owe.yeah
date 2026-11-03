@@ -2,7 +2,8 @@ import { z } from 'zod';
 
 /**
  * What the importer reads of a Tricount, as the unofficial API returns it from
- * `GET /v1/user/{id}/registry` (see the research on `research/tricount-export`). Every
+ * `GET /v1/user/{id}/registry` (see
+ * `docs/research/tricount-export.md` on the `research/tricount-export` branch). Every
  * object comes wrapped in its type name, e.g. `{ "RegistryEntry": { … } }`; parsing unwraps
  * them and keeps only what the import uses. Categories, attachments and stamps are dropped.
  */

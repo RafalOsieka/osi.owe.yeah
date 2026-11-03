@@ -2,11 +2,11 @@ import { generateKeyPairSync, randomUUID } from 'node:crypto';
 import { z } from 'zod';
 
 /**
- * Tricount's unofficial API, as its Android app talks to it (see the research on
- * `research/tricount-export`). Only read: an anonymous device session is registered, then
- * the Tricount is read with GET. The share token is kept in memory only: it never appears in
- * a message, a log or a saved file, as it gives write access to the Tricount and can't be
- * revoked.
+ * Tricount's unofficial API, as its Android app talks to it (see
+ * `docs/research/tricount-export.md` on the `research/tricount-export` branch). Only read:
+ * an anonymous device session is registered, then the Tricount is read with GET. The share
+ * token is kept in memory only: it never appears in a message, a log or a saved file, as it
+ * gives write access to the Tricount and can't be revoked.
  */
 const API = 'https://api.tricount.bunq.com';
 const HEADERS = {
@@ -17,7 +17,8 @@ const HEADERS = {
 
 /** The share token of a link (`https://tricount.com/<token>`), or a token on its own. */
 export function shareToken(link: string): string {
-  const token = link.trim().split(/[/?#]/).filter(Boolean).at(-1) ?? '';
+  const [path = ''] = link.trim().split(/[?#]/);
+  const token = path.split('/').filter(Boolean).at(-1) ?? '';
   if (!/^[\w-]+$/.test(token)) throw new Error('That is not a Tricount share link');
   return token;
 }

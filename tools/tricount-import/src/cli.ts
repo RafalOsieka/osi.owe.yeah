@@ -3,7 +3,7 @@ import { resolve } from 'node:path';
 import { fileURLToPath } from 'node:url';
 import { parseArgs } from 'node:util';
 import { roundMoney, type Rational } from '@osi/owe-yeah-domain';
-import { fetchTricount } from './api.ts';
+import { fetchTricount, shareToken } from './api.ts';
 import { importTricount } from './mapping.ts';
 import { parseTricount } from './tricount.ts';
 import { BalanceMismatchError, writeTrip } from './write.ts';
@@ -80,21 +80,20 @@ export async function main(argv: string[], env: NodeJS.ProcessEnv): Promise<numb
 }
 
 /**
- * Fetches the Tricount and saves the response before anything else reads it, with the share
- * token taken out, so a run that fails later can be repeated with `--from-file`.
+ * Fetches the Tricount and saves the response as received before anything else reads it, with
+ * the share token taken out wherever it appears, so a run that fails later can be repeated
+ * with `--from-file`.
  */
 async function fetchAndSave(link: string): Promise<string> {
   const raw = await fetchTricount(link);
-  const redacted = JSON.parse(raw, (key, value) =>
-    key === 'public_identifier_token' ? '[redacted]' : value,
-  );
   await mkdir(RESPONSES, { recursive: true });
   const file = resolve(RESPONSES, `${new Date().toISOString().replaceAll(':', '-')}.json`);
-  await writeFile(file, `${JSON.stringify(redacted, null, 2)}\n`);
+  await writeFile(file, raw.replaceAll(shareToken(link), '[redacted]'));
   console.log(`Saved the response to ${file}`);
   return raw;
 }
 
+/** Whether `zone` is an IANA time zone the runtime knows. */
 function isTimeZone(zone: string): boolean {
   try {
     new Intl.DateTimeFormat('en', { timeZone: zone });
