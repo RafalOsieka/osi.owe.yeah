@@ -6,6 +6,7 @@ import {
   isDepositRefund,
   isReceipt,
   isRepayment,
+  decimal,
   multiply,
   roundMoney,
   shareBreakdown,
@@ -24,7 +25,7 @@ import {
 // rounded only to show them, so a note explains "≈" when they don't add up to the total. All
 // amounts are in the Expense's own currency; `converted` adds its total in the Trip currency
 // under it, at the rate for its local date, "≈" and explained at a Provisional rate, or says
-// it is left out of balances while there is no rate yet.
+// it is left out of balances while there is no rate yet. A Manual rate shows as it was typed.
 const { expense, converted = false } = defineProps<{
   expense: Expense;
   /** Show the total converted into the Trip currency, as the Expense is now. */
@@ -90,11 +91,17 @@ const conversion = computed(() => {
   const { currency } = trip.value;
   if (!converted || expense.currency === currency) return null;
   const found = expenseRate(expense, trip.value);
+  const manual = manualRateText();
   if (!found) {
-    return { text: t('rate.noRate'), help: t('rate.missingHelp', { from: expense.currency }) };
+    return {
+      text: t('rate.noRate'),
+      manual,
+      help: t('rate.missingHelp', { from: expense.currency }),
+    };
   }
   const total = multiply(details.value.total, found.rate);
   return {
+    manual,
     text: t('rate.converted', {
       amount: formatMoney(total, currency, locale.value, 'currency', found.provisional),
       from: expense.currency,
@@ -104,6 +111,27 @@ const conversion = computed(() => {
     help: found.provisional ? t('rate.provisionalHelp', { currency }) : null,
   };
 });
+
+// The Manual rate as typed, e.g. "Manual rate: 1 USD = 4.05 PLN" or "Manual rate: zł45.00
+// charged"; `null` without one.
+function manualRateText(): string | null {
+  const { manualRate } = expense;
+  if (!manualRate) return null;
+  if (manualRate.kind === 'rate') {
+    return t('rate.manualTypedRate', {
+      from: expense.currency,
+      rate: formatRate(decimal(manualRate.rate), locale.value),
+      to: manualRate.currency,
+    });
+  }
+  return t('rate.manualTypedCharged', {
+    amount: formatMoney(
+      fromMinor(manualRate.amount, manualRate.currency),
+      manualRate.currency,
+      locale.value,
+    ),
+  });
+}
 
 // Every share's breakdown, on a Receipt; the open sheet shows the one tapped.
 const breakdowns = computed(() =>
@@ -130,6 +158,9 @@ function openBreakdown(participantId: string): void {
     <p class="mt-0.5 text-3xl font-bold tabular-nums">{{ money(details.total) }}</p>
     <template v-if="conversion">
       <p class="font-medium tabular-nums">{{ conversion.text }}</p>
+      <p v-if="conversion.manual" class="text-sm text-muted tabular-nums">
+        {{ conversion.manual }}
+      </p>
       <p v-if="conversion.help" class="text-xs text-warning">{{ conversion.help }}</p>
     </template>
     <p class="text-sm text-muted">

@@ -2,7 +2,10 @@ import { Temporal } from 'temporal-polyfill';
 import { z } from 'zod';
 import { currencySchema, type Currency } from './currency.ts';
 import { localDay, type Expense } from './expense.ts';
-import { rational, type Rational } from './rational.ts';
+import { decimal, rateSchema, type ManualRate } from './manual-rate.ts';
+import { fromMinor } from './money.ts';
+import { divide, multiply, rational, type Rational } from './rational.ts';
+import { expenseShares } from './shares.ts';
 import { TRIP_CURRENCIES, type TripCurrency } from './trip.ts';
 
 /**
@@ -15,10 +18,7 @@ export const rateEntrySchema = z.object({
   date: z.iso.date(),
   from: currencySchema,
   to: z.enum(TRIP_CURRENCIES),
-  rate: z
-    .string()
-    .regex(/^\d+(\.\d+)?$/)
-    .refine((rate) => /[1-9]/.test(rate), { message: 'A rate is positive' }),
+  rate: rateSchema,
   fixed: z.boolean(),
 });
 
@@ -35,21 +35,65 @@ export type TripRates = { currency: TripCurrency; rates: readonly RateEntry[] };
 export type ExpenseRate = { rate: Rational; provisional: boolean } | null;
 
 /**
- * The rate converting an Expense into the Trip currency, looked up by the Expense's local
- * date and currency, never stored on it (ADR 0003): the fixed rate for that date; else the
- * date's rate that is not fixed yet, or else the latest rate the table has for the pair, as a
- * Provisional rate. `null` for a pair the table has never seen: such an Expense is left out
- * of balances until a rate arrives. In the Trip currency itself, the rate is 1.
+ * What an Expense's rate depends on: its currency, its local date, its Manual rate, and its
+ * total in its own currency, which a charged amount is divided by. The Expense form converts a
+ * total still being typed with it (`conversionRate`).
  */
-export function expenseRate(
-  expense: Pick<Expense, 'currency' | 'time'>,
-  trip: TripRates,
-): ExpenseRate {
-  if (expense.currency === trip.currency) return { rate: rational(1n), provisional: false };
-  const date = localDay(expense.time);
-  const pair = trip.rates.filter(
-    ({ from, to }) => from === expense.currency && to === trip.currency,
-  );
+export type Conversion = Pick<Expense, 'currency' | 'time' | 'manualRate'> & { total: Rational };
+
+/**
+ * The rate converting an Expense into the Trip currency (see `conversionRate`), at its total
+ * as it is now.
+ */
+export function expenseRate(expense: Expense, trip: TripRates): ExpenseRate {
+  return conversionRate({ ...expense, total: expenseShares(expense).total }, trip);
+}
+
+/**
+ * The rate converting an Expense into the Trip currency. In the Trip currency itself it is 1.
+ * A Manual rate replaces the automatic one: typed as a rate it is that rate; typed as the
+ * amount charged it is charged ÷ total, exact, so the charged amount stays what the Expense
+ * comes to however its Receipt is edited (`null` while the total is zero). Otherwise it is
+ * looked up by the Expense's local date and currency, never stored on it (ADR 0003): see
+ * `automaticRate`.
+ */
+export function conversionRate(conversion: Conversion, trip: TripRates): ExpenseRate {
+  if (conversion.currency === trip.currency) {
+    return { rate: rational(1n), provisional: false };
+  }
+  const date = localDay(conversion.time);
+  const { manualRate } = conversion;
+  if (!manualRate) {
+    return automaticRate(conversion.currency, date, trip);
+  }
+  const typed = manualRateValue(manualRate, conversion.total);
+  if (!typed) return null;
+  if (manualRate.currency === trip.currency) return { rate: typed, provisional: false };
+  const chained = automaticRate(manualRate.currency, date, trip);
+  return chained && { ...chained, rate: multiply(typed, chained.rate) };
+}
+
+/**
+ * A Manual rate's value in the currency it targets: the rate typed, or the amount charged ÷
+ * the magnitude of the total (`null` while the total is zero).
+ */
+function manualRateValue(manualRate: ManualRate, total: Rational): Rational | null {
+  if (manualRate.kind === 'rate') return decimal(manualRate.rate);
+  if (total.numerator === 0n) return null;
+  const magnitude = rational(abs(total.numerator), total.denominator);
+  return divide(fromMinor(manualRate.amount, manualRate.currency), magnitude);
+}
+
+const abs = (value: bigint) => (value < 0n ? -value : value);
+
+/**
+ * The automatic rate of `from` in the Trip currency on a local `date`: the fixed rate for
+ * that date; else the date's rate that is not fixed yet, or else the latest rate the table
+ * has for the pair, as a Provisional rate. `null` for a pair the table has never seen: an
+ * Expense converted with it is left out of balances until a rate arrives.
+ */
+function automaticRate(from: Currency, date: string, trip: TripRates) {
+  const pair = trip.rates.filter((entry) => entry.from === from && entry.to === trip.currency);
   const sameDate = pair.find((entry) => entry.date === date);
   const latest = pair.toSorted((a, b) => b.date.localeCompare(a.date))[0];
   const found = sameDate ?? latest;
@@ -57,19 +101,11 @@ export function expenseRate(
   return { rate: decimal(found.rate), provisional: found !== sameDate || !found.fixed };
 }
 
-/** A plain decimal (`0.87593`) as an exact Rational. */
-function decimal(text: string): Rational {
-  const [whole, fraction = ''] = text.split('.');
-  return rational(BigInt(whole + fraction), 10n ** BigInt(fraction.length));
-}
-
 /**
  * How many Expenses are converted at a Provisional rate, and how many have no rate at all
  * and are left out of balances, as the Balances tab warns about them.
  */
-export function rateSummary(
-  trip: TripRates & { expenses: readonly Pick<Expense, 'currency' | 'time'>[] },
-) {
+export function rateSummary(trip: TripRates & { expenses: readonly Expense[] }) {
   const found = trip.expenses.map((expense) => expenseRate(expense, trip));
   return {
     provisional: found.filter((rate) => rate?.provisional).length,
@@ -79,18 +115,20 @@ export function rateSummary(
 
 /**
  * The rates Expenses need to be converted into the Trip currency `to`: each local date and
- * currency once, in the order the Expenses first need them. The backend fills these lazily
- * on the pull.
+ * currency once, in the order the Expenses first need them. An Expense with a Manual rate
+ * needs the rate of the currency it targets, which it is chained through, or none when that
+ * is `to`. The backend fills these lazily on the pull.
  */
 export function neededRates(
-  expenses: readonly Pick<Expense, 'currency' | 'time'>[],
+  expenses: readonly Pick<Expense, 'currency' | 'time' | 'manualRate'>[],
   to: TripCurrency,
 ): { date: string; from: Currency }[] {
   const needed = new Map<string, { date: string; from: Currency }>();
-  for (const { currency, time } of expenses) {
-    if (currency === to) continue;
+  for (const { currency, time, manualRate } of expenses) {
+    const from = currency === to ? to : (manualRate?.currency ?? currency);
+    if (from === to) continue;
     const date = localDay(time);
-    needed.set(`${date} ${currency}`, { date, from: currency });
+    needed.set(`${date} ${from}`, { date, from });
   }
   return [...needed.values()];
 }

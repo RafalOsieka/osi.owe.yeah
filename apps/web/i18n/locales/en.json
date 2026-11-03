@@ -278,7 +278,20 @@
     "provisionalBadge": "Provisional rate",
     "missingBadge": "no rate yet",
     "provisionalCount": "No Provisional rates | 1 Provisional rate | {count} Provisional rates",
-    "missingCount": "No Expenses left out | 1 Expense left out: no rate yet | {count} Expenses left out: no rate yet"
+    "missingCount": "No Expenses left out | 1 Expense left out: no rate yet | {count} Expenses left out: no rate yet",
+    "manual": "Manual rate",
+    "manualKind": "Manual rate: amount charged or rate",
+    "kindCharged": "Charged",
+    "kindRate": "Rate",
+    "typeManual": "Type a Manual rate",
+    "askManual": "No exchange rate for {from} yet. Type a Manual rate, or this is left out of balances until one arrives.",
+    "chargedHelp": "What you were actually charged in {to}, e.g. by your card. It stays the same when the amounts change.",
+    "rateHelp": "How much 1 {from} was in {to}, e.g. at an exchange office.",
+    "rateInvalid": "Enter a rate above zero.",
+    "chargedWithoutTotal": "An amount charged needs a total other than zero.",
+    "manualTypedRate": "Manual rate: 1 {from} = {rate} {to}",
+    "manualTypedCharged": "Manual rate: {amount} charged",
+    "ratePrefix": "1 {from} ="
   },
   "sync": {
     "status": "Sync status",

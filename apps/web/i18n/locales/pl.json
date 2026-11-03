@@ -278,7 +278,20 @@
     "provisionalBadge": "kurs wstępny",
     "missingBadge": "brak kursu",
     "provisionalCount": "Kursy wstępne: {count}",
-    "missingCount": "Wydatki bez kursu, pominięte w saldach: {count}"
+    "missingCount": "Wydatki bez kursu, pominięte w saldach: {count}",
+    "manual": "Kurs ręczny",
+    "manualKind": "Kurs ręczny: pobrana kwota lub kurs",
+    "kindCharged": "Pobrano",
+    "kindRate": "Kurs",
+    "typeManual": "Wpisz kurs ręczny",
+    "askManual": "Brak kursu wymiany dla {from}. Wpisz kurs ręczny, inaczej kwota nie będzie wliczana do sald, dopóki kurs się nie pojawi.",
+    "chargedHelp": "Ile faktycznie pobrano w {to}, np. z karty. Nie zmienia się, gdy zmieniają się kwoty.",
+    "rateHelp": "Ile {to} kosztował 1 {from}, np. w kantorze.",
+    "rateInvalid": "Podaj kurs większy od zera.",
+    "chargedWithoutTotal": "Pobrana kwota wymaga sumy różnej od zera.",
+    "manualTypedRate": "Kurs ręczny: 1 {from} = {rate} {to}",
+    "manualTypedCharged": "Kurs ręczny: pobrano {amount}",
+    "ratePrefix": "1 {from} ="
   },
   "sync": {
     "status": "Stan synchronizacji",

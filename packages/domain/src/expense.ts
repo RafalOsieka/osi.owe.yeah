@@ -11,6 +11,7 @@ import {
   splitParticipantIds,
 } from './line-item.ts';
 import { currencySchema } from './currency.ts';
+import { manualRateSchema } from './manual-rate.ts';
 import { compare, rational } from './rational.ts';
 import { participantIdSchema } from './participant.ts';
 import type { TripWithParticipants } from './trip.ts';
@@ -56,8 +57,9 @@ export type ExpenseTime = z.infer<typeof expenseTimeSchema>;
 /**
  * What every Expense has. It carries its own currency, any in circulation, which all its
  * amounts are in; it is converted into the Trip currency at the rate for its local date
- * (`expenseRate`), never stored on it (ADR 0003). `mainPayerId` is who paid, or who received
- * the money of an Income.
+ * (`expenseRate`), never stored on it (ADR 0003), unless someone typed a Manual rate for it;
+ * without one the field is left out. `mainPayerId` is who paid, or who received the money of
+ * an Income.
  */
 const expenseBase = {
   id: expenseIdSchema,
@@ -65,6 +67,7 @@ const expenseBase = {
   currency: currencySchema,
   time: expenseTimeSchema,
   mainPayerId: participantIdSchema,
+  manualRate: manualRateSchema.optional(),
 };
 
 /**
