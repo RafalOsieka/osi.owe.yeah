@@ -1,9 +1,10 @@
 <script setup lang="ts">
 // The Expenses tab: the Trip's Expenses, each opening its detail page, and "+ Expense".
+// While there are none, it offers the first Expense and Invite.
 definePageMeta({ scrollToTop: false });
 useKeptScroll();
 
-const { trip, claim } = useOpenTrip();
+const { trip, claim, invite } = useOpenTrip();
 
 const canAdd = computed(() => trip.value.participants.length > 0);
 const newExpense = computed(() => `/trips/${trip.value.id}/expenses/new`);
@@ -24,6 +25,12 @@ const newExpense = computed(() => `/trips/${trip.value.id}/expenses/new`);
           icon: 'i-lucide-plus',
           disabled: !canAdd,
           to: newExpense,
+        },
+        {
+          label: $t('invite.action'),
+          icon: 'i-lucide-share-2',
+          variant: 'outline',
+          onClick: invite,
         },
       ]"
       class="pt-16"

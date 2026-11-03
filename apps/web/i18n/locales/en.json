@@ -77,6 +77,19 @@
     "nobody": "Not said yet",
     "removed": "{name}, who you were on this device, was removed from the Trip. Who are you now?"
   },
+  "invite": {
+    "action": "Invite",
+    "title": "Invite to {name}",
+    "help": "Whoever has the Trip link can see and edit everything in the Trip.",
+    "qr": "QR code of the Trip link",
+    "qrHelp": "Let someone next to you scan it with their phone's camera.",
+    "share": "Share the Trip link",
+    "copy": "Copy the Trip link",
+    "copied": "Trip link copied",
+    "copyFailed": "The Trip link couldn't be copied. Try again.",
+    "notSynced": "The Trip hasn't synced yet",
+    "notSyncedHelp": "Its Trip link works once the Trip reaches the server, which happens on its own when you're online."
+  },
   "expense": {
     "list": "Expenses",
     "empty": "No Expenses yet",
