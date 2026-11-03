@@ -89,7 +89,7 @@ _Avoid_: Version, snapshot, edit
 _Polish avoid_: Rewizja, migawka, edycja
 
 **Income**:
-Money received by a Participant on behalf of some Participants, e.g. a cash Deposit refund; modelled as an Expense with a negative total.
+Money received by a Participant on behalf of some Participants, e.g. a cash Deposit refund; modelled as an Expense with a single Line item of negative amount. A Receipt whose Deposit refunds outweigh its goods stays a Receipt.
 _Polish_: Wpływ
 _Avoid_: Revenue, earnings, refund
 _Polish avoid_: Przychód, zarobek, zwrot

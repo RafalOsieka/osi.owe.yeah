@@ -25,7 +25,7 @@ Status: `todo`, `grilling`, `decided`, `done`, `dropped`.
 - **Note:** With no production and a fresh dev db, the pre-#61 bug (`BigInt(undefined)`) is theoretical. The structural risk stays: the next schema default will only work in the pull.
 - **Direction:** One server Trip-store module for reads (Trip, Participants, live and deleted Expenses, Revisions), always through the domain schemas. Writes stay in Trip sync (#1). This fits naturally with #1.
 
-### 3. One "Expense draft" module instead of logic in the forms (Strong). Status: todo
+### 3. One "Expense draft" module instead of logic in the forms (Strong). Status: grilling (together with #7)
 
 - **Files:** `ExpenseForm.vue` (about 260 lines of logic), `RepaymentForm.vue`, `TillLine.vue:42-56`, `TillList.vue`, `utils/{receipt,contribution,manual-rate}-draft.ts`, `useManualRateErrors.ts`, `ExpenseCurrency.vue`
 - **Problem:** Converting between a draft and an Expense is spread over about 8 modules, mostly in components.
@@ -55,7 +55,7 @@ Status: `todo`, `grilling`, `decided`, `done`, `dropped`.
   - "Validate with removed Participants included."
 - **Direction:** The domain exports the rule ("the Trip's Participants after this Expense change"), not just its ingredients. Don't go as far as a shared reducer; the SQL update stays the arbiter.
 
-### 7. Expense kind named in the domain (Worth exploring, small). Status: todo
+### 7. Expense kind named in the domain (Worth exploring, small). Status: grilling (together with #3)
 
 - **Files:** `ExpenseList.vue:74-83`, `ExpenseDetails.vue:43,72,138`, `ExpenseVersion.vue:27`, `packages/domain/src/expense.ts:132`
 - **Problem:** The kind is decided ad hoc in three components. For a Receipt where the Deposit refund exceeds the goods, the list says Receipt while the details and the version say Income. `isReceipt` is not a type guard.
@@ -134,3 +134,40 @@ Checked against GLOSSARY and ADRs:
 - **Glossary:** added **Notification** (Powiadomienie). "Notice" is not part of this plan.
 - **ADR 0004:** client sync is tested against the real server module, not a fake server.
 - **"Snapshot"** goes away on the server (`loadTripSnapshot` becomes `readTrip`). Renaming the domain type `TripSnapshot` goes on the small-findings list.
+
+### #3 + #7: Expense draft module and Expense kind (grilling, round 1)
+
+- **Location.** A pure TypeScript module in the app, with no Vue and no i18n, tested in the `unit` project. Not in `packages/domain`: a draft is text as typed in a form (amounts as strings, a list key, empty meaning none).
+- **Scope.** One module with two kinds of draft: a split Expense (plain, Income, Receipt, Contributions, Manual rate) and a Repayment. The kinds share their common parts: Manual rate, amount as text, time, title.
+- **#7 is part of the same work.** A domain function names an Expense's kind and narrows its type. The draft and the three components that classify Expenses ad hoc today use it.
+- **Domain problems show at their fields before saving.** Once the draft makes an Expense, the module runs `expenseProblems` and assigns each problem to a field. One list carries both unreadable fields and domain problems. The note above Save stays only for refusals the client couldn't foresee. `RepaymentForm` loses its own recipient-not-payer check.
+- **Rules that live only in the UI move to the domain**, so that the device and the server also refuse them:
+  - a Manual rate "charged" against a zero total (`chargedWithoutTotal`)
+  - a Manual rate targeting the Expense's own currency
+
+  The draft still drops such a Manual rate silently when the Expense is switched to the Trip currency. `useManualRateErrors` goes away.
+
+Round 2:
+
+- **Glossary: Income is narrowed** to "an Expense with a single Line item of negative amount". A Receipt whose Deposit refunds outweigh its goods stays a Receipt. "Plain Expense" stays a descriptive phrase, not a term.
+- **The interface:**
+  - `readDraft(draft, trip)` returns the Expense once it is complete, the Receipt as far as it can be read so far (for live totals), and the reasons per field.
+  - `readLineItem(line, currency)` returns the Line item or the reasons. `TillLine` uses it, and so does `readDraft`.
+  - Functions that make a draft: from an Expense, and a new one.
+  - None of these return a bare `null`. The form reads the same result both live and when saving.
+- **Reasons are codes with their field**, e.g. `{ field, code }`, with a line key for Line items. Domain codes are the `ExpenseProblem` names. A single composable turns them into i18n text, reusing the existing keys.
+- **No hidden dependencies.** "Now", the device time zone, the Claim and the last-used currency are arguments.
+- **Transitions that carry a rule are in the module:**
+  - itemise as a Receipt
+  - a Main payer cannot have a Contribution
+  - a new Split mode starts from scratch
+
+  Plain toggles stay in the components.
+- **Tests:**
+  - Unit tests cover the draft round trip (Expense → draft → Expense) for every variant, plus reasons and transitions.
+  - Domain tests cover Expense kind and the two new Manual rate rules.
+  - UI e2e keeps one happy path per variant (plain, Income, Receipt with discount, Deposit and Deposit refund, Contribution, Manual rate, Repayment), plus one test showing a domain problem at its field before saving.
+
+Round 3:
+
+- **The sync schema version goes up from 1 to 2 with the new Manual rate rules.** The client parses `problems` as an enum, so an older app would break on a code it doesn't know. The outbox keeps its shape, so the client store needs no new migration link. Having the client tolerate unknown problem codes is YAGNI while there is no production.
