@@ -110,9 +110,22 @@ export type { Conversion, ExpenseRate, RateEntry, TripRates } from './rates.ts';
 export { decimal, manualRateSchema, parseRate, rateSchema } from './manual-rate.ts';
 export type { ManualRate } from './manual-rate.ts';
 export {
+  activityMessageSchema,
   balanceChanges,
   pushKeyResponseSchema,
   pushMessageSchema,
+  reminderMessageSchema,
+  reminderRequestSchema,
+  reminderStatusSchema,
   subscriptionRequestSchema,
 } from './push.ts';
-export type { BalanceChange, PushKeyResponse, PushMessage, SubscriptionRequest } from './push.ts';
+export type {
+  ActivityMessage,
+  BalanceChange,
+  PushKeyResponse,
+  PushMessage,
+  ReminderMessage,
+  ReminderRequest,
+  ReminderStatus,
+  SubscriptionRequest,
+} from './push.ts';

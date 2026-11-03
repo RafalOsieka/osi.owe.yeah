@@ -1,8 +1,9 @@
-import type { PushMessage } from '@osi/owe-yeah-domain';
+import type { ActivityMessage, ReminderMessage } from '@osi/owe-yeah-domain';
 import { describe, expect, it } from 'vitest';
 import { notificationFor, notificationLocale } from '../../app/service-worker/notification';
 
-const message: PushMessage = {
+const message: ActivityMessage = {
+  kind: 'activity',
   tripId: '019a2b3c-4d5e-7f00-8a1b-2c3d4e5f6a7b',
   tripName: 'Croatia 2026',
   currency: 'EUR',
@@ -17,7 +18,7 @@ const message: PushMessage = {
   },
 };
 
-// Intl puts a no-break space between a Polish amount and its currency.
+// Intl puts a no-break space between an amount and its currency code or Polish symbol.
 const nbsp = ' ';
 
 describe('notificationFor', () => {
@@ -27,7 +28,7 @@ describe('notificationFor', () => {
       options: {
         tag: `trip:${message.tripId}`,
         body: 'Kasia added “Lidl Rovinj”\nYour share +€15.00',
-        data: { tripId: message.tripId, expenseId: message.latest.expenseId, count: 1 },
+        data: { url: `/trips/${message.tripId}?highlight=${message.latest.expenseId}`, count: 1 },
       },
     });
   });
@@ -36,7 +37,7 @@ describe('notificationFor', () => {
     const deleted = {
       ...message,
       latest: { ...message.latest, author: null, action: 'deleted', paid: '-30.00' },
-    } satisfies PushMessage;
+    } satisfies ActivityMessage;
 
     expect(notificationFor(deleted, 0, 'pl').options.body).toBe(
       `Usunięty wydatek: „Lidl Rovinj” (ktoś)\nTwój udział +15,00${nbsp}€ · Twoja płatność -30,00${nbsp}€`,
@@ -48,9 +49,42 @@ describe('notificationFor', () => {
       title: '3 changes in Croatia 2026',
       options: {
         tag: `trip:${message.tripId}`,
-        data: { tripId: message.tripId, expenseId: null, count: 3 },
+        data: { url: `/trips/${message.tripId}`, count: 3 },
       },
     });
+  });
+});
+
+describe('notificationFor a Reminder', () => {
+  const reminder: ReminderMessage = {
+    kind: 'reminder',
+    tripId: message.tripId,
+    tripName: 'Croatia 2026',
+    currency: 'PLN',
+    from: { id: '019a2b3c-4d5e-7f00-8a1b-0000000000a1', name: 'Kasia' },
+    to: '019a2b3c-4d5e-7f00-8a1b-0000000000a2',
+    amount: '123.45',
+  };
+
+  it('says who reminds you and how much, and opens Balances with that suggestion', () => {
+    expect(notificationFor(reminder, 0, 'en')).toEqual({
+      title: 'Croatia 2026',
+      options: {
+        tag: `reminder:${reminder.tripId}:${reminder.from.id}`,
+        body: `Kasia reminds you to pay them back PLN${nbsp}123.45`,
+        data: {
+          url: `/trips/${reminder.tripId}/balances?payer=${reminder.to}&recipient=${reminder.from.id}`,
+          count: 1,
+        },
+      },
+    });
+  });
+
+  it("writes it in Polish, never collapsing into the Trip's activity", () => {
+    const shown = notificationFor(reminder, 4, 'pl');
+
+    expect(shown.options.body).toBe(`Kasia przypomina o spłacie 123,45${nbsp}zł`);
+    expect(shown.options.data.count).toBe(1);
   });
 });
 

@@ -1,6 +1,7 @@
 import { randomBytes } from 'node:crypto';
 import { fileURLToPath } from 'node:url';
 import {
+  reminderMessageSchema,
   SYNC_SCHEMA_HEADER,
   SYNC_SCHEMA_VERSION,
   TRIP_TOKEN_HEADER,
@@ -12,6 +13,7 @@ import {
   type PullResponse,
   type PushResponse,
   type RateEntry,
+  type ReminderStatus,
   type RevisionsResponse,
   type StoredExpense,
   type SyncChange,
@@ -243,6 +245,32 @@ async function subscribedTrip() {
   return { trip, token, kasia, ania, ola, devices };
 }
 
+/** `from` reminds `to` of the Repayment `to` owes them, as `from`'s device asks. */
+function remind(tripId: string, token: string, from: Participant, to: Participant) {
+  return fetch(`/api/trips/${tripId}/reminders`, {
+    method: 'POST',
+    headers: deviceHeaders(token),
+    body: JSON.stringify({ from: from.id, to: to.id }),
+  });
+}
+
+/** The Reminders `device` got, in the order they came, leaving out news of changes. */
+function remindersOf(device: string): unknown[] {
+  return pushService
+    .payloadsOf(device)
+    .filter((payload) => reminderMessageSchema.safeParse(payload).success);
+}
+
+/** Who a Reminder can reach in the Trip and who was reminded today, expecting it to succeed. */
+async function reminderStatus(tripId: string, token: string): Promise<ReminderStatus> {
+  const response = await fetch(`/api/trips/${tripId}/reminders`, {
+    headers: deviceHeaders(token),
+  });
+  expect(response.status).toBe(200);
+  // SAFETY: a 200 from the Reminders endpoint is a ReminderStatus, checked just above.
+  return (await response.json()) as ReminderStatus;
+}
+
 /** What a device is sent about one change, as the only one or the latest of `count`. */
 function activity(
   trip: TripWithParticipants,
@@ -251,6 +279,7 @@ function activity(
   count = 1,
 ) {
   return {
+    kind: 'activity',
     tripId: trip.id,
     tripName: trip.name,
     currency: trip.currency,
@@ -841,6 +870,69 @@ describeApi('Trip API', () => {
         return pushService.payloadsOf(devices.ania).length - tried!;
       })
       .toBe(0);
+  });
+
+  it('lets only the creditor of a current suggestion remind, sending it to the debtor', async () => {
+    const { trip, token, kasia, ania, ola, devices } = await subscribedTrip();
+    // 24.50 EUR paid by Kasia for herself and Ania: Ania pays Kasia 12.25.
+    await push(trip.id, token, change(plainExpense(kasia, [kasia, ania])));
+
+    // Ania owes, Ola is not in it, and nobody owes Ola.
+    expect((await remind(trip.id, token, ania, kasia)).status).toBe(403);
+    expect((await remind(trip.id, token, ola, ania)).status).toBe(403);
+    expect((await remind(trip.id, token, kasia, ola)).status).toBe(403);
+    expect((await remind(trip.id, newToken(), kasia, ania)).status).toBe(401);
+    expect((await remind(trip.id, token, kasia, ania)).status).toBe(204);
+
+    await expect
+      .poll(() => remindersOf(devices.ania))
+      .toEqual([
+        {
+          kind: 'reminder',
+          tripId: trip.id,
+          tripName: trip.name,
+          currency: trip.currency,
+          from: { id: kasia.id, name: 'Kasia' },
+          to: ania.id,
+          amount: '12.25',
+        },
+      ]);
+    expect(remindersOf(devices.kasia)).toEqual([]);
+    expect(remindersOf(devices.ola)).toEqual([]);
+  });
+
+  it('refuses a second Reminder for the same pair on the same day, and says so in the status', async () => {
+    const { trip, token, kasia, ania, ola, devices } = await subscribedTrip();
+    // Kasia paid 36.75 EUR for all three: Ania and Ola each pay her 12.25.
+    const expense = plainExpense(kasia, [kasia, ania, ola]);
+    const lidl = { ...expense, lineItems: [{ ...expense.lineItems[0]!, unitPrice: 3675 }] };
+    await push(trip.id, token, change(lidl));
+
+    expect((await remind(trip.id, token, kasia, ania)).status).toBe(204);
+    expect((await remind(trip.id, token, kasia, ania)).status).toBe(429);
+    // Another pair is not held back.
+    expect((await remind(trip.id, token, kasia, ola)).status).toBe(204);
+
+    await expect.poll(() => remindersOf(devices.ola)).toHaveLength(1);
+    expect(remindersOf(devices.ania)).toHaveLength(1);
+    expect(await reminderStatus(trip.id, token)).toEqual({
+      reachable: expect.arrayContaining([kasia.id, ania.id, ola.id]),
+      remindedToday: expect.arrayContaining([
+        { from: kasia.id, to: ania.id },
+        { from: kasia.id, to: ola.id },
+      ]),
+    });
+  });
+
+  it('refuses a Reminder to a debtor no device of whom can be notified, so the creditor shares it instead', async () => {
+    const { trip, token, kasia, ania } = await tripWithKasiaAndAnia();
+    await push(trip.id, token, change(plainExpense(kasia, [kasia, ania])));
+
+    expect(await reminderStatus(trip.id, token)).toEqual({ reachable: [], remindedToday: [] });
+    expect((await remind(trip.id, token, kasia, ania)).status).toBe(409);
+    // Refused, it holds nothing back for later that day.
+    await subscribe(trip.id, token, uuidv7(), ania.id);
+    expect((await remind(trip.id, token, kasia, ania)).status).toBe(204);
   });
 
   it('refuses a push with a malformed Expense', async () => {

@@ -275,6 +275,20 @@
     "allSettled": "All settled",
     "allSettledHelp": "Everyone's balance is zero."
   },
+  "reminder": {
+    "remind": "Remind",
+    "remindedToday": "Reminded today",
+    "pushLabel": "Remind {name} with a notification",
+    "shareLabel": "Remind {name} with a message you share",
+    "copyLabel": "Remind {name} with a message you copy",
+    "byShare": "Can't be notified: you'll share a message",
+    "byCopy": "Can't be notified: you'll copy a message",
+    "sent": "Reminder sent to {name}",
+    "notSuggested": "This Repayment isn't suggested anymore. Pull to refresh and try again.",
+    "message": "Hi {name}, a quick reminder: you owe me {amount} for {trip}.",
+    "copied": "Reminder copied. Paste it into a message.",
+    "copyFailed": "The reminder couldn't be copied. Try again."
+  },
   "breakdown": {
     "title": "{name}'s share",
     "paid": "Paid",
@@ -438,6 +452,7 @@
     "someone": "Someone",
     "share": "Your share {amount}",
     "paid": "You paid {amount}",
-    "collapsed": "{count} changes in {trip}"
+    "collapsed": "{count} changes in {trip}",
+    "reminder": "{name} reminds you to pay them back {amount}"
   }
 }

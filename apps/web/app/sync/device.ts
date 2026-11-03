@@ -10,6 +10,8 @@ import {
   type PushRequest,
   type PushResponse,
   type RateEntry,
+  type ReminderRequest,
+  type ReminderStatus,
   type Revision,
   type SubscriptionRequest,
   type SyncChange,
@@ -53,7 +55,17 @@ export type Transport = {
    * the token, as then there is nothing to remove.
    */
   unsubscribe(tripId: string, token: string, deviceId: string): Promise<void>;
+  /** Whom a Reminder can reach in the Trip, and the pairs reminded today. */
+  reminderStatus(tripId: string, token: string): Promise<ReminderStatus>;
+  /** Sends a Reminder, never through the outbox, resolving to how the server answered. */
+  remind(tripId: string, token: string, request: ReminderRequest): Promise<Reminded>;
 };
+
+/**
+ * How the server answered a Reminder: sent, or refused, as it doesn't suggest that
+ * Repayment now, no device of the debtor's can be notified, or the pair was reminded today.
+ */
+export type Reminded = 'sent' | 'notSuggested' | 'unreachable' | 'remindedToday';
 
 /** A Trip opened on this device, as it shows it. */
 export type DeviceTripView = {
@@ -423,6 +435,24 @@ export function createDevice(db: DeviceDb, transport: Transport, deviceId: strin
     return transport.revisions(tripId, device.token, expenseId);
   }
 
+  /** Whom a Reminder can reach in the Trip, and who was reminded today. Rejects offline. */
+  async function reminderStatus(tripId: string): Promise<ReminderStatus> {
+    const device = await db.trips.get(tripId);
+    if (!device) throw new Error(`Trip ${tripId} is not on this device`);
+    return transport.reminderStatus(tripId, device.token);
+  }
+
+  /**
+   * Reminds `to` of the Repayment they owe this device's Claim (#42): a call of its own, never
+   * queued. Rejects offline, as the creditor then shares a message instead.
+   */
+  async function remind(tripId: string, to: string): Promise<Reminded> {
+    const device = await db.trips.get(tripId);
+    if (!device) throw new Error(`Trip ${tripId} is not on this device`);
+    if (!device.claim) return 'notSuggested';
+    return transport.remind(tripId, device.token, { from: device.claim.id, to });
+  }
+
   /**
    * Pushes the Trip's outbox and pulls the Trip. Calls for a Trip already syncing run once
    * more after it. Never rejects: whatever doesn't get through waits for the next sync.
@@ -618,6 +648,8 @@ export function createDevice(db: DeviceDb, transport: Transport, deviceId: strin
     keepMine,
     discardChanges,
     revisions,
+    reminderStatus,
+    remind,
     sync,
     syncForgotten,
   };

@@ -1,5 +1,6 @@
 import { randomBytes } from 'node:crypto';
 import {
+  pullResponseSchema,
   SYNC_SCHEMA_HEADER,
   SYNC_SCHEMA_VERSION,
   TRIP_TOKEN_HEADER,
@@ -273,6 +274,70 @@ test('notifications are offered once after a Claim, and turned on and off from t
   await page.getByRole('button', { name: 'Turn off' }).click();
   await page.getByRole('button', { name: 'Back' }).click();
   await expect(row).toContainText('Off');
+});
+
+test('Remind shares a message while the debtor cannot be notified, then sends one Reminder a day; a tapped one highlights its suggestion', async ({
+  page,
+  request,
+}) => {
+  // Kasia paid 24.50 for herself and Ania: Ania pays Kasia 12.25.
+  const tripLink = await tripWithExpenses(
+    request,
+    'Hel 2026',
+    ['Kasia', 'Ania'],
+    [{ title: 'Lidl', amount: 2450 }],
+  );
+  // Its Participants' ids, from the Trip as the server has it.
+  const { pathname: path, hash } = new URL(tripLink, 'http://localhost');
+  const headers = {
+    [TRIP_TOKEN_HEADER]: hash.slice(1),
+    [SYNC_SCHEMA_HEADER]: String(SYNC_SCHEMA_VERSION),
+  };
+  const pulled = pullResponseSchema.parse(
+    await (await request.get(`/api${path}`, { headers })).json(),
+  );
+  const { trip } = pulled;
+  const [kasia, ania] = trip?.participants ?? [];
+  if (!trip || !kasia || !ania) throw new Error('The Trip has no Kasia and Ania');
+  const tripId = trip.id;
+
+  await page.goto(tripLink);
+  await page.getByRole('dialog').getByRole('button', { name: 'Kasia' }).click();
+  await page.getByRole('link', { name: 'Balances' }).click();
+  const row = page.getByRole('region', { name: 'To settle' }).getByRole('listitem');
+  await expect(row).toContainText(/Ania pays you\s*€12.25/);
+
+  // No device of Ania's can be notified: Remind says so, and shares a message instead.
+  await expect(row).toContainText("Can't be notified: you'll share a message");
+  await row.getByRole('button', { name: 'Remind Ania with a message you share' }).click();
+  const shared = await page.evaluate(() => window.shared?.text);
+  expect(shared).toBe(
+    `Hi Ania, a quick reminder: you owe me €12.25 for Hel 2026.\n${new URL(tripLink, page.url()).href}`,
+  );
+
+  // Once her phone has notifications on, Remind notifies her, once a day.
+  const subscribed = await request.put(`/api/trips/${tripId}/subscriptions/${uuidv7()}`, {
+    headers,
+    data: {
+      endpoint: 'https://push.example.com/ui-e2e-ania',
+      keys: { p256dh: 'p256dh', auth: 'auth' },
+      claimId: ania.id,
+    },
+  });
+  expect(subscribed.ok()).toBe(true);
+  await page.reload();
+  await expect(row).not.toContainText("Can't be notified");
+  await row.getByRole('button', { name: 'Remind Ania with a notification' }).click();
+  await expect(page.getByText('Reminder sent to Ania', { exact: true })).toBeVisible();
+  await expect(row.getByRole('button', { name: 'Reminded today' })).toBeDisabled();
+  await page.reload();
+  await expect(row.getByRole('button', { name: 'Reminded today' })).toBeDisabled();
+
+  // A tapped Reminder opens Balances with its suggestion marked, Record one tap away.
+  await page.goto(`${path}/balances?payer=${ania.id}&recipient=${kasia.id}`);
+  await expect(row).toHaveAttribute('aria-current', 'true');
+  await expect(row.getByRole('link', { name: /Record Repayment/ })).toBeVisible();
+  await expect(page).toHaveURL(new RegExp(`${path}/balances$`));
 });
 
 test('system back closes an open sheet before it leaves the Trip', async ({ page, request }) => {

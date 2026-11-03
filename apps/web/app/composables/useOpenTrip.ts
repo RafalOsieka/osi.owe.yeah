@@ -3,11 +3,13 @@ import type {
   Expense,
   ExpenseProblem,
   Participant,
+  ReminderStatus,
   Revision,
   Trip,
 } from '@osi/owe-yeah-domain';
 import type { InjectionKey } from 'vue';
 import type { BrowserSubscription, DeviceNotifications, ExpenseBase, Notice } from '~/sync/db';
+import type { Reminded } from '~/sync/device';
 import type { LocalTrip } from '~/sync/local-trip';
 
 /**
@@ -78,6 +80,15 @@ export interface OpenTrip {
   askWhoYouAre(): void;
   /** Opens Invite, which passes on the Trip link once the Trip has synced. */
   invite(): void;
+  /** The Trip link to pass on, once the Trip has synced; `null` before. */
+  link: Readonly<Ref<string | null>>;
+  /** Whom a Reminder can reach and who was reminded today (#42). Rejects offline. */
+  reminderStatus(): Promise<ReminderStatus>;
+  /**
+   * Reminds `to` of the Repayment they owe the claimed Participant, by push (#42). Rejects
+   * offline.
+   */
+  remind(to: string): Promise<Reminded>;
 }
 
 const openTripKey: InjectionKey<OpenTrip> = Symbol('open-trip');
