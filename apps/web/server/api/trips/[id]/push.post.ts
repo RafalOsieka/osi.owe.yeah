@@ -18,6 +18,7 @@ import { defineEventHandler, readValidatedBody } from 'nuxt/server';
 import { getDb } from '../../../db';
 import type { Transaction } from '../../../db/client';
 import { changes, expenses, participants, revisions, trips } from '../../../db/schema';
+import { notifyAffected, type AppliedExpenseChange } from '../../../utils/push';
 import { createTripIfMissing, requireTrip } from '../../../utils/trip-access';
 import {
   loadParticipants,
@@ -35,7 +36,8 @@ import {
  * then kept as a Revision. It brings back any removed
  * Participant it references. Deletes and restores are Expense changes like edits. A change
  * applied before is answered as the first time and not applied again. A malformed push is
- * refused as a whole with 400.
+ * refused as a whole with 400. Once it has answered, the devices of the Participants the
+ * applied Expense changes affect are notified (`notifyAffected`).
  */
 export default defineEventHandler(async (event): Promise<PushResponse> => {
   const { changes: pushed } = await readValidatedBody(event, pushRequestSchema);
@@ -44,30 +46,42 @@ export default defineEventHandler(async (event): Promise<PushResponse> => {
   const { id: tripId } = await requireTrip(event);
 
   const results: ChangeResult[] = [];
-  for (const change of pushed) results.push(await applyOnce(change, tripId));
+  const applied: AppliedExpenseChange[] = [];
+  for (const change of pushed) {
+    const { result, fresh } = await applyOnce(change, tripId);
+    results.push(result);
+    if (fresh && change.kind === 'expense' && result.status === 'accepted' && result.version) {
+      applied.push({ change, version: result.version });
+    }
+  }
+  // Fire-and-forget: the device doesn't wait for anyone to be notified.
+  void notifyAffected(tripId, applied);
   return { results };
 });
 
 /**
  * Applies one change unless it was applied before, in a transaction of its own that locks
- * the Trip first (`lockTrip`).
+ * the Trip first (`lockTrip`). `fresh` says whether this push applied it, not an earlier one.
  */
-async function applyOnce(change: SyncChange, tripId: string): Promise<ChangeResult> {
+async function applyOnce(
+  change: SyncChange,
+  tripId: string,
+): Promise<{ result: ChangeResult; fresh: boolean }> {
   const before = await appliedBefore(change, tripId);
-  if (before) return before;
+  if (before) return { result: before, fresh: false };
 
   switch (change.kind) {
     case 'trip':
-      return applyTripChange(change, tripId);
+      return { result: await applyTripChange(change, tripId), fresh: true };
     case 'participant':
-      return applyParticipantChange(change, tripId);
-    case 'expense':
-      return (
-        (await applyExpenseChange(change, tripId)) ??
-        // Not applied, unless a retry of the same change racing this one applied it.
-        (await appliedBefore(change, tripId)) ??
-        (await refusal(change, tripId))
-      );
+      return { result: await applyParticipantChange(change, tripId), fresh: true };
+    case 'expense': {
+      const applied = await applyExpenseChange(change, tripId);
+      if (applied) return { result: applied, fresh: true };
+      // Not applied, unless a retry of the same change racing this one applied it.
+      const result = (await appliedBefore(change, tripId)) ?? (await refusal(change, tripId));
+      return { result, fresh: false };
+    }
   }
 }
 

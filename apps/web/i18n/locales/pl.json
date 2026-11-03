@@ -407,5 +407,37 @@
   "notices": {
     "participantRestored": "Uczestnika {name} usunięto, zanim zsynchronizował się twój wydatek „{title}”. Wydatek go przywrócił.",
     "removalRefused": "Uczestnik {name} nie został usunięty: jest teraz w wydatku."
+  },
+  "notifications": {
+    "title": "Powiadomienia",
+    "on": "Włączone",
+    "off": "Wyłączone",
+    "pickFirst": "Najpierw wskaż, kim jesteś",
+    "pickFirstHelp": "Powiadomienia dotyczą zmian, które dotyczą ciebie, więc najpierw wskaż, kim jesteś w tej podróży.",
+    "blocked": "Zablokowane w tej przeglądarce",
+    "homeScreen": "Dodaj Owe Yeah do ekranu początkowego, aby dostawać powiadomienia",
+    "homeScreenHelp": "Na iPhonie i iPadzie powiadomienia dostaje tylko zainstalowana aplikacja: stuknij Udostępnij, potem Do ekranu początkowego, i otwórz Owe Yeah stamtąd.",
+    "unsupported": "Ta przeglądarka nie pokazuje powiadomień.",
+    "what": "Dostaniesz powiadomienie, gdy ktoś inny doda, zmieni lub usunie wydatek, który cię dotyczy. Nic więcej.",
+    "where": "Tylko dla podróży {name}, tylko na tym urządzeniu.",
+    "isOn": "Dostajesz na tym urządzeniu powiadomienia o zmianach w podróży {name}, które cię dotyczą.",
+    "turnOn": "Włącz",
+    "notNow": "Nie teraz",
+    "turnOff": "Wyłącz",
+    "failed": "Nie udało się włączyć powiadomień. Sprawdź połączenie i spróbuj ponownie.",
+    "blockedHelp": "Powiadomienia Owe Yeah są zablokowane w tej przeglądarce. Aby je odblokować:",
+    "blockedStep1": "Otwórz ustawienia tej strony: stuknij ikonę obok adresu albo znajdź Owe Yeah w ustawieniach witryn w ustawieniach przeglądarki.",
+    "blockedStep2": "Zezwól na powiadomienia.",
+    "blockedStep3": "Wróć tutaj i stuknij Włącz."
+  },
+  "push": {
+    "added": "Nowy wydatek: „{title}” ({author})",
+    "changed": "Zmieniony wydatek: „{title}” ({author})",
+    "deleted": "Usunięty wydatek: „{title}” ({author})",
+    "restored": "Przywrócony wydatek: „{title}” ({author})",
+    "someone": "ktoś",
+    "share": "Twój udział {amount}",
+    "paid": "Twoja płatność {amount}",
+    "collapsed": "Zmiany w podróży {trip}: {count}"
   }
 }

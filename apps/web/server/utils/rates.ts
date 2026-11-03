@@ -38,28 +38,39 @@ export async function loadTripRates(trip: Trip): Promise<RateEntry[]> {
     .select({ state: expenses.state })
     .from(expenses)
     .where(and(eq(expenses.tripId, trip.id), not(expenses.deleted)));
-  const needed = neededRates(
+  return loadRates(
     rows.map(({ state }) => state),
     trip.currency,
   );
+}
+
+/**
+ * The rate entries `states` need to be converted into the Trip currency, filling the rate
+ * table as `loadTripRates` does: e.g. for an Expense as it was before a change.
+ */
+export async function loadRates(
+  states: Parameters<typeof neededRates>[0],
+  currency: Trip['currency'],
+): Promise<RateEntry[]> {
+  const needed = neededRates(states, currency);
   if (needed.length === 0) return [];
 
-  const stored = await selectRates(needed, trip.currency);
+  const stored = await selectRates(needed, currency);
   const now = Date.now();
   const stale = needed.filter(({ date, from }) => {
-    const entry = key(date, from, trip.currency);
+    const entry = key(date, from, currency);
     return !stored.get(entry)?.fixed && (retryAt.get(entry) ?? 0) <= now;
   });
   if (stale.length === 0) return [...stored.values()];
 
   for (const [from, entries] of Map.groupBy(stale, ({ from }) => from)) {
     const dates = entries.map(({ date }) => date);
-    const fetched = await fetchRates(from, trip.currency, dates);
+    const fetched = await fetchRates(from, currency, dates);
     const wait = fetched ? RETRY_AFTER_MS : UNREACHABLE_RETRY_MS;
-    for (const date of dates) retryAt.set(key(date, from, trip.currency), now + wait);
+    for (const date of dates) retryAt.set(key(date, from, currency), now + wait);
     if (!fetched?.length) continue;
     for (const { date, fixed } of fetched) {
-      if (fixed) retryAt.delete(key(date, from, trip.currency));
+      if (fixed) retryAt.delete(key(date, from, currency));
     }
     await getDb()
       .insert(rates)
@@ -71,7 +82,7 @@ export async function loadTripRates(trip: Trip): Promise<RateEntry[]> {
         setWhere: not(rates.fixed),
       });
   }
-  return [...(await selectRates(needed, trip.currency)).values()];
+  return [...(await selectRates(needed, currency)).values()];
 }
 
 /** The table's entries among `needed`, by `key`. */

@@ -407,5 +407,37 @@
   "notices": {
     "participantRestored": "{name} was removed while you were offline. Your Expense \"{title}\" brought them back.",
     "removalRefused": "{name} wasn't removed: they're on an Expense now."
+  },
+  "notifications": {
+    "title": "Notifications",
+    "on": "On",
+    "off": "Off",
+    "pickFirst": "Pick who you are first",
+    "pickFirstHelp": "Notifications are about changes that involve you, so pick who you are in this Trip first.",
+    "blocked": "Blocked in this browser",
+    "homeScreen": "Add Owe Yeah to your Home Screen to get notifications",
+    "homeScreenHelp": "On iPhone and iPad, only the installed app gets notifications: tap Share, then Add to Home Screen, and open Owe Yeah from there.",
+    "unsupported": "This browser can't show notifications.",
+    "what": "Get notified when someone else adds, changes or deletes an Expense that involves you. Nothing else.",
+    "where": "Only for {name}, only on this device.",
+    "isOn": "You're notified about changes in {name} that involve you, on this device.",
+    "turnOn": "Turn on",
+    "notNow": "Not now",
+    "turnOff": "Turn off",
+    "failed": "Notifications couldn't be turned on. Check your connection and try again.",
+    "blockedHelp": "Notifications for Owe Yeah are blocked in this browser. To unblock them:",
+    "blockedStep1": "Open this site's settings: tap the icon next to the address, or find Owe Yeah under Site settings in the browser's settings.",
+    "blockedStep2": "Allow notifications.",
+    "blockedStep3": "Come back here and tap Turn on."
+  },
+  "push": {
+    "added": "{author} added “{title}”",
+    "changed": "{author} changed “{title}”",
+    "deleted": "{author} deleted “{title}”",
+    "restored": "{author} restored “{title}”",
+    "someone": "Someone",
+    "share": "Your share {amount}",
+    "paid": "You paid {amount}",
+    "collapsed": "{count} changes in {trip}"
   }
 }

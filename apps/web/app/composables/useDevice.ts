@@ -2,29 +2,15 @@ import {
   pullResponseSchema,
   pushResponseSchema,
   revisionsResponseSchema,
-  SYNC_SCHEMA_HEADER,
-  SYNC_SCHEMA_VERSION,
   TRIP_TOKEN_HEADER,
 } from '@osi/owe-yeah-domain';
 import { DeviceDb } from '~/sync/db';
 import { createDevice, type Device, type Transport } from '~/sync/device';
 
-/**
- * `$fetch` for the sync API: says which sync schema this app speaks, and notes when the server
- * answers "update needed" (426) as it speaks a newer one (`useUpdateNeeded`). The request
- * fails all the same, so the outbox waits for the new version.
- */
-const api = $fetch.create({
-  headers: { [SYNC_SCHEMA_HEADER]: String(SYNC_SCHEMA_VERSION) },
-  onResponse({ response }) {
-    if (response.status === 426) useUpdateNeeded().value = true;
-  },
-});
-
-/** The sync API over `api`. Answers are checked before they reach the device store. */
+/** The sync API over `syncApi`. Answers are checked before they reach the device store. */
 const transport: Transport = {
   async push(tripId, token, request) {
-    const response = await api(`/api/trips/${tripId}/push`, {
+    const response = await syncApi(`/api/trips/${tripId}/push`, {
       method: 'POST',
       headers: { [TRIP_TOKEN_HEADER]: token },
       body: request,
@@ -32,7 +18,7 @@ const transport: Transport = {
     return pushResponseSchema.parse(response);
   },
   async pull(tripId, token, since) {
-    const response = await api.raw(`/api/trips/${tripId}`, {
+    const response = await syncApi.raw(`/api/trips/${tripId}`, {
       headers: { [TRIP_TOKEN_HEADER]: token },
       query: since === undefined ? {} : { since },
       ignoreResponseError: true,
@@ -42,10 +28,27 @@ const transport: Transport = {
     return pullResponseSchema.parse(response._data);
   },
   async revisions(tripId, token, expenseId) {
-    const response = await api(`/api/trips/${tripId}/expenses/${expenseId}/revisions`, {
+    const response = await syncApi(`/api/trips/${tripId}/expenses/${expenseId}/revisions`, {
       headers: { [TRIP_TOKEN_HEADER]: token },
     });
     return revisionsResponseSchema.parse(response).revisions;
+  },
+  async subscribe(tripId, token, deviceId, request) {
+    await syncApi(`/api/trips/${tripId}/subscriptions/${deviceId}`, {
+      method: 'PUT',
+      headers: { [TRIP_TOKEN_HEADER]: token },
+      body: request,
+    });
+  },
+  async unsubscribe(tripId, token, deviceId) {
+    const response = await syncApi.raw(`/api/trips/${tripId}/subscriptions/${deviceId}`, {
+      method: 'DELETE',
+      headers: { [TRIP_TOKEN_HEADER]: token },
+      ignoreResponseError: true,
+    });
+    if (!response.ok && response.status !== 401) {
+      throw new Error(`Unsubscribe failed with ${response.status}`);
+    }
   },
 };
 

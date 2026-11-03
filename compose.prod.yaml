@@ -49,6 +49,11 @@ services:
       DATABASE_URL: postgres://${POSTGRES_USER:-postgres}:${POSTGRES_PASSWORD:?POSTGRES_PASSWORD is required}@db:5432/${POSTGRES_DB:-owe_yeah}
       # Where exchange rates come from (ADR 0003): the public Frankfurter, or a self-hosted one.
       NUXT_FRANKFURTER_URL: ${FRANKFURTER_URL:-https://api.frankfurter.dev}
+      # Push notifications (#41): the VAPID key pair they are sent with, and the contact the
+      # push services see. Without the keys, notifications can't be turned on.
+      NUXT_VAPID_PUBLIC_KEY: ${VAPID_PUBLIC_KEY:-}
+      NUXT_VAPID_PRIVATE_KEY: ${VAPID_PRIVATE_KEY:-}
+      NUXT_VAPID_SUBJECT: ${VAPID_SUBJECT:-}
     depends_on:
       migrate:
         condition: service_completed_successfully

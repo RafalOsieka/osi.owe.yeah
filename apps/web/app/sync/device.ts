@@ -11,19 +11,24 @@ import {
   type PushResponse,
   type RateEntry,
   type Revision,
+  type SubscriptionRequest,
   type SyncChange,
   type Trip,
   type TripWithParticipants,
 } from '@osi/owe-yeah-domain';
 import { v7 as uuidv7 } from 'uuid';
-import type {
-  DeviceDb,
-  DeviceTrip,
-  ExpenseBase,
-  Held,
-  Notice,
-  OutboxEntry,
-  QueuedChange,
+import {
+  NOTIFICATIONS_OFF,
+  type BrowserSubscription,
+  type DeviceDb,
+  type DeviceNotifications,
+  type DeviceTrip,
+  type ExpenseBase,
+  type ForgottenTrip,
+  type Held,
+  type Notice,
+  type OutboxEntry,
+  type QueuedChange,
 } from './db';
 import { findExpense, localTrip, withAccepted, withExpense, type LocalTrip } from './local-trip';
 
@@ -36,6 +41,18 @@ export type Transport = {
   pull(tripId: string, token: string, since?: number): Promise<PullResponse | 'invalidLink'>;
   /** An Expense's Revisions, newest first. */
   revisions(tripId: string, token: string, expenseId: string): Promise<Revision[]>;
+  /** Registers, or replaces, the device's push subscription to a Trip. */
+  subscribe(
+    tripId: string,
+    token: string,
+    deviceId: string,
+    request: SubscriptionRequest,
+  ): Promise<void>;
+  /**
+   * Removes the device's push subscription to a Trip; also resolves when the server refuses
+   * the token, as then there is nothing to remove.
+   */
+  unsubscribe(tripId: string, token: string, deviceId: string): Promise<void>;
 };
 
 /** A Trip opened on this device, as it shows it. */
@@ -76,6 +93,8 @@ export function createDevice(db: DeviceDb, transport: Transport, deviceId: strin
   // The sync running for each Trip, and whether another was asked for meanwhile.
   const running = new Map<string, Promise<void>>();
   const again = new Set<string>();
+  // The Trips whose push subscription the server took during this run of the app.
+  const subscribedThisRun = new Set<string>();
 
   async function entriesOf(tripId: string): Promise<OutboxEntry[]> {
     return db.outbox.where('tripId').equals(tripId).sortBy('seq');
@@ -139,6 +158,7 @@ export function createDevice(db: DeviceDb, transport: Transport, deviceId: strin
         rates: [],
         lastCurrency: null,
         notices: [],
+        notifications: NOTIFICATIONS_OFF,
       });
       await enqueue(id, { kind: 'trip', trip: { name, currency } });
       for (const participant of participants)
@@ -169,6 +189,7 @@ export function createDevice(db: DeviceDb, transport: Transport, deviceId: strin
         rates: cachedRates(known?.rates ?? [], rates),
         lastCurrency: known?.lastCurrency ?? null,
         notices: known?.notices ?? [],
+        notifications: known?.notifications ?? NOTIFICATIONS_OFF,
       });
     });
     return 'joined';
@@ -176,10 +197,16 @@ export function createDevice(db: DeviceDb, transport: Transport, deviceId: strin
 
   /**
    * Forgets a Trip on this device, with its Claim and every change not synced yet: those are
-   * lost. The Trip and its Participants stay on the server; the Trip link opens it again.
+   * lost. The Trip and its Participants stay on the server; the Trip link opens it again. A
+   * push subscription the server may have goes on a later sync (`syncForgotten`).
    */
   async function forgetTrip(tripId: string): Promise<void> {
-    await db.transaction('rw', db.trips, db.outbox, async () => {
+    await db.transaction('rw', db.trips, db.outbox, db.forgotten, async () => {
+      const device = await db.trips.get(tripId);
+      const { subscription, registered } = device?.notifications ?? NOTIFICATIONS_OFF;
+      if (device && (subscription || registered)) {
+        await db.forgotten.put({ tripId, token: device.token });
+      }
       await db.outbox.where('tripId').equals(tripId).delete();
       await db.trips.delete(tripId);
     });
@@ -188,6 +215,52 @@ export function createDevice(db: DeviceDb, transport: Transport, deviceId: strin
   /** Records that a Trip on this device was opened now, for My Trips' order. */
   async function open(tripId: string): Promise<void> {
     await db.trips.update(tripId, { openedAt: new Date().toISOString() });
+  }
+
+  /** Changes a Trip's push notifications on this device; the server hears on sync. */
+  async function setNotifications(
+    tripId: string,
+    change: Partial<DeviceNotifications>,
+  ): Promise<void> {
+    await db.transaction('rw', db.trips, async () => {
+      const device = await db.trips.get(tripId);
+      if (!device) return;
+      await db.trips.update(tripId, { notifications: { ...device.notifications, ...change } });
+    });
+  }
+
+  /**
+   * Turns push notifications on for a Trip on this device, with the browser's subscription.
+   * The server gets it on sync, for the device's Claim, as long as it has one.
+   */
+  function turnOnNotifications(tripId: string, subscription: BrowserSubscription): Promise<void> {
+    return setNotifications(tripId, { subscription, offered: true });
+  }
+
+  /** Turns push notifications off for a Trip on this device; the server hears on sync. */
+  function turnOffNotifications(tripId: string): Promise<void> {
+    return setNotifications(tripId, { subscription: null, offered: true });
+  }
+
+  /**
+   * Takes the browser's push subscription as it is now, e.g. renewed by the browser, for every
+   * Trip with notifications on; the server gets it on sync.
+   */
+  async function renewSubscription(subscription: BrowserSubscription): Promise<void> {
+    await db.transaction('rw', db.trips, async () => {
+      for (const device of await db.trips.toArray()) {
+        const kept = device.notifications.subscription;
+        if (!kept || kept.endpoint === subscription.endpoint) continue;
+        await db.trips.update(device.id, {
+          notifications: { ...device.notifications, subscription },
+        });
+      }
+    });
+  }
+
+  /** "Not now" to the offer of notifications after a Claim: never offered again by itself. */
+  function declineNotifications(tripId: string): Promise<void> {
+    return setNotifications(tripId, { offered: true });
   }
 
   /** Sets which Participant this device is in a Trip. */
@@ -388,14 +461,58 @@ export function createDevice(db: DeviceDb, transport: Transport, deviceId: strin
     if (pulled === 'invalidLink') return;
     const { trip: snapshot } = pulled;
     const rates = cachedRates(device.rates, pulled.rates);
-    if (!snapshot) {
+    if (snapshot) {
+      await db.transaction('rw', db.trips, db.outbox, async () => {
+        await db.trips.update(tripId, { snapshot, rates });
+        await dropRemovedClaim(tripId);
+      });
+    } else {
       await db.trips.update(tripId, { rates });
-      return;
     }
-    await db.transaction('rw', db.trips, db.outbox, async () => {
-      await db.trips.update(tripId, { snapshot, rates });
-      await dropRemovedClaim(tripId);
-    });
+    await syncSubscription(tripId);
+  }
+
+  /**
+   * Gives the server the push subscription the Trip should have on this device, if it has
+   * not got it: the browser's, for the device's Claim, while notifications are on and the
+   * device has a Claim; otherwise none. Sent again once per run of the app, as the server
+   * drops a subscription whose push service says it is gone. A subscription left from when the
+   * Trip was forgotten goes first, so it can't remove the new one later.
+   */
+  async function syncSubscription(tripId: string): Promise<void> {
+    const left = await db.forgotten.get(tripId);
+    if (left) await removeForgotten(left);
+    const device = await db.trips.get(tripId);
+    if (!device) return;
+    const { subscription, registered } = device.notifications;
+    const claimId = device.claim?.id;
+    const wanted = subscription && claimId ? { endpoint: subscription.endpoint, claimId } : null;
+    const same =
+      wanted?.endpoint === registered?.endpoint && wanted?.claimId === registered?.claimId;
+    if (same && (!wanted || subscribedThisRun.has(tripId))) return;
+    if (subscription && wanted) {
+      await transport.subscribe(tripId, device.token, deviceId, { ...subscription, ...wanted });
+      subscribedThisRun.add(tripId);
+    } else {
+      await transport.unsubscribe(tripId, device.token, deviceId);
+    }
+    // What the server has now: a change made meanwhile is sent on the next sync.
+    await setNotifications(tripId, { registered: wanted });
+  }
+
+  async function removeForgotten({ tripId, token }: ForgottenTrip): Promise<void> {
+    await transport.unsubscribe(tripId, token, deviceId);
+    await db.forgotten.delete(tripId);
+  }
+
+  /**
+   * Removes the push subscriptions of Trips forgotten on this device that the server may
+   * still have. Never rejects: whatever doesn't get through waits for the next time.
+   */
+  async function syncForgotten(): Promise<void> {
+    for (const forgotten of await db.forgotten.toArray()) {
+      await removeForgotten(forgotten).catch(() => {});
+    }
   }
 
   /**
@@ -488,6 +605,10 @@ export function createDevice(db: DeviceDb, transport: Transport, deviceId: strin
     forgetTrip,
     open,
     claim,
+    turnOnNotifications,
+    turnOffNotifications,
+    declineNotifications,
+    renewSubscription,
     addParticipant,
     removeParticipant,
     saveTripDetails,
@@ -498,6 +619,7 @@ export function createDevice(db: DeviceDb, transport: Transport, deviceId: strin
     discardChanges,
     revisions,
     sync,
+    syncForgotten,
   };
 }
 

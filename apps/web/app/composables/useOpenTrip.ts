@@ -7,7 +7,7 @@ import type {
   Trip,
 } from '@osi/owe-yeah-domain';
 import type { InjectionKey } from 'vue';
-import type { ExpenseBase, Notice } from '~/sync/db';
+import type { BrowserSubscription, DeviceNotifications, ExpenseBase, Notice } from '~/sync/db';
 import type { LocalTrip } from '~/sync/local-trip';
 
 /**
@@ -65,6 +65,15 @@ export interface OpenTrip {
    * discards a rejected change.
    */
   discardChanges(expenseId: string): Promise<void>;
+  /** Push notifications for the Trip on this device (#41). */
+  notifications: Readonly<Ref<DeviceNotifications>>;
+  /**
+   * Turns push notifications on with the browser's subscription; the server gets it on sync,
+   * for the Claim.
+   */
+  turnOnNotifications(subscription: BrowserSubscription): Promise<void>;
+  /** Turns push notifications off; the server hears on sync. */
+  turnOffNotifications(): Promise<void>;
   /** Opens the "Who are you?" sheet. */
   askWhoYouAre(): void;
   /** Opens Invite, which passes on the Trip link once the Trip has synced. */
