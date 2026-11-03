@@ -35,10 +35,10 @@ Status: `todo`, `grilling`, `decided`, `done`, `dropped`.
   - There are no unit tests for any of it.
 - **Direction:** A small interface: Expense to draft, and draft to either an Expense or per-field reasons. It covers the plain, Income, Receipt, Contribution, Manual rate and Repayment variants. Components keep layout and i18n.
 
-### 4. The device syncs by itself after a change, and OpenTrip stops being a pass-through (Strong). Status: todo
+### 4. The device syncs by itself after a change, and OpenTrip stops being a pass-through (Strong). Status: decided
 
 - **Files:** `composables/useOpenTrip.ts:20-92`, `pages/trips/[id].vue:84-190` (10× `void device.sync(tripId)`), 19 imports of `~/sync/*` outside `app/sync`
-- **Problem:** The "sync after a local change" policy (ADR 0002) lives in a page. Each mutation has to remember to call sync, each with its own condition. Outbox details (`ExpenseBase`, `{ after: changeId }`, `NOTIFICATIONS_OFF`) leak into pages and forms.
+- **Problem:** The "sync after a local change" policy (ADR 0002) lives in a page. Each mutation has to remember to call sync, each with its own condition. Outbox details (`ExpenseBase`, `{ after: changeId }`, `NOTIFICATIONS_OFF`) leak into pages and forms. (Revised: the other `~/sync/*` imports are types that are part of the interface, plus pure functions over `LocalTrip`; only `ExpenseBase` is a leak.)
 - **Direction:** The device schedules sync on every enqueue and offers a handle per Trip with `tripId` bound. Base is hidden behind "the Expense as it was read".
 
 ### 5. Notification subscriptions as their own module next to sync (Worth exploring). Status: todo
@@ -172,3 +172,13 @@ Round 2:
 Round 3:
 
 - **The sync schema version goes up from 1 to 2 with the new Manual rate rules.** The client parses `problems` as an enum, so an older app would break on a code it doesn't know. The outbox keeps its shape, so the client store needs no new migration link. Having the client tolerate unknown problem codes is YAGNI while there is no production.
+
+### #4: the device syncs by itself after a change
+
+- **The device syncs after a change.** Every device mutation the server must hear about (outbox changes, Keep mine, creating a Trip) starts a sync of the Trip on its own, once its transaction commits, from a single internal place. It doesn't wait for that sync. Mutations still resolve after the local write. Tests settle with `await device.sync(tripId)`, which joins the sync already running. This is not a Dexie hook on the outbox, because not every change goes through the outbox.
+- **The same rule applies to subscriptions.** Changing the Claim while notifications are on, and turning notifications on or off, also start a sync. The device knows whether a subscription exists; the page does not.
+- **Every `void device.sync(...)` in pages goes away.** An explicit `sync()` stays only for pull-to-refresh and for the sync plugin (on app open, focus, going online, and every 30 s).
+- **A handle per Trip.** `device.trip(tripId)` exposes the mutations with `tripId` bound. `OpenTrip` is derived from that handle's type, plus the reactive view (`trip`, `claim`, `everyone`, `notices`, `unsynced`, `link`) and the UI actions ("Who are you?", Invite). Each mutation is documented once, on the device.
+- **Base is hidden behind "the Expense as it was read".** `saveExpense` and `deleteExpense` take the `LocalExpense` as it was read, or `null` for a new one, instead of an `ExpenseBase`. A Conflict still fires on a pull made during an edit. `ExpenseBase` is no longer visible outside `app/sync`.
+- **The other `~/sync/*` imports stay.** Types and pure functions over `LocalTrip` (`findExpense`, `toExpense`, `NOTIFICATIONS_OFF`) are part of the interface.
+- **Order and scope.** Blocked by #80 (ADR 0004), so the new device tests are written against the real Trip sync. #5 stays separate.
