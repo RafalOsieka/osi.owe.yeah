@@ -284,7 +284,7 @@
     "byShare": "Can't be notified: you'll share a message",
     "byCopy": "Can't be notified: you'll copy a message",
     "sent": "Reminder sent to {name}",
-    "notSuggested": "This Repayment isn't suggested anymore. Pull to refresh and try again.",
+    "notSuggested": "This isn't a Suggested Repayment anymore. Pull to refresh and try again.",
     "message": "Hi {name}, a quick reminder: you owe me {amount} for {trip}.",
     "copied": "Reminder copied. Paste it into a message.",
     "copyFailed": "The reminder couldn't be copied. Try again."

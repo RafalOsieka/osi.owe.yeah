@@ -25,7 +25,7 @@ definePageMeta({ scrollToTop: false });
 useKeptScroll();
 
 const { trip, claim } = useOpenTrip();
-const { locale } = useI18n();
+const { t, locale } = useI18n();
 const route = useRoute();
 const router = useRouter();
 const reminders = useReminders();
@@ -80,8 +80,22 @@ const suggestions = computed(() => {
   return { own: all.filter(own), others: all.filter((suggestion) => !own(suggestion)) };
 });
 
-const nameOf = (participantId: string) =>
-  trip.value.participants.find(({ id }) => id === participantId)?.name ?? '?';
+// The claimed Participant's debtors, Remind on their suggestions: how it reminds each, and the
+// line saying beforehand when it passes on a message instead of notifying them.
+const remindable = computed(
+  () =>
+    new Map(
+      suggestions.value.own
+        .filter(({ recipientId }) => recipientId === claim.value?.id)
+        .map(({ payerId }) => {
+          const by = reminders.by(payerId);
+          const hints = { share: t('reminder.byShare'), copy: t('reminder.byCopy') };
+          const hint = by === 'share' || by === 'copy' ? hints[by] : null;
+          const debtor = trip.value.participants.find(({ id }) => id === payerId)?.name ?? '?';
+          return [payerId, { by, hint, debtor }];
+        }),
+    ),
+);
 </script>
 
 <template>
@@ -115,25 +129,15 @@ const nameOf = (participantId: string) =>
           :highlight="highlight"
         >
           <template #detail="{ suggestion }">
-            <span
-              v-if="
-                suggestion.recipientId === claim?.id &&
-                ['share', 'copy'].includes(reminders.by(suggestion.payerId))
-              "
-              class="block text-xs text-muted"
-            >
-              {{
-                reminders.by(suggestion.payerId) === 'share'
-                  ? $t('reminder.byShare')
-                  : $t('reminder.byCopy')
-              }}
+            <span v-if="remindable.get(suggestion.payerId)?.hint" class="block text-xs text-muted">
+              {{ remindable.get(suggestion.payerId)?.hint }}
             </span>
           </template>
           <template #action="{ suggestion }">
             <RemindButton
-              v-if="suggestion.recipientId === claim?.id"
-              :by="reminders.by(suggestion.payerId)"
-              :debtor="nameOf(suggestion.payerId)"
+              v-if="remindable.has(suggestion.payerId)"
+              :by="remindable.get(suggestion.payerId)!.by"
+              :debtor="remindable.get(suggestion.payerId)!.debtor"
               :sending="reminders.sending.value === suggestion.payerId"
               @remind="reminders.remind(suggestion)"
             />

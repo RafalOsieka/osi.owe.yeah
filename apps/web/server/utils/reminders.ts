@@ -2,6 +2,7 @@ import {
   balances,
   roundMoney,
   suggestedRepayments,
+  type Participant,
   type ReminderMessage,
   type ReminderRequest,
   type ReminderStatus,
@@ -76,7 +77,7 @@ export async function sendReminder(trip: Trip, { from, to }: ReminderRequest): P
  */
 async function currentSuggestion(
   trip: Trip,
-  participants: Awaited<ReturnType<typeof loadParticipants>>,
+  participants: Participant[],
   { from, to }: ReminderRequest,
 ) {
   const rows = await getDb()

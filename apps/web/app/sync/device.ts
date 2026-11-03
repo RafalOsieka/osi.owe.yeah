@@ -428,27 +428,31 @@ export function createDevice(db: DeviceDb, transport: Transport, deviceId: strin
     });
   }
 
-  /** An Expense's Revisions from the server, newest first. Rejects without a connection. */
-  async function revisions(tripId: string, expenseId: string): Promise<Revision[]> {
+  /** The Trip as this device keeps it, for a call to the server; rejects if it is not here. */
+  async function tripOnDevice(tripId: string): Promise<DeviceTrip> {
     const device = await db.trips.get(tripId);
     if (!device) throw new Error(`Trip ${tripId} is not on this device`);
+    return device;
+  }
+
+  /** An Expense's Revisions from the server, newest first. Rejects without a connection. */
+  async function revisions(tripId: string, expenseId: string): Promise<Revision[]> {
+    const device = await tripOnDevice(tripId);
     return transport.revisions(tripId, device.token, expenseId);
   }
 
   /** Whom a Reminder can reach in the Trip, and who was reminded today. Rejects offline. */
   async function reminderStatus(tripId: string): Promise<ReminderStatus> {
-    const device = await db.trips.get(tripId);
-    if (!device) throw new Error(`Trip ${tripId} is not on this device`);
+    const device = await tripOnDevice(tripId);
     return transport.reminderStatus(tripId, device.token);
   }
 
   /**
-   * Reminds `to` of the Repayment they owe this device's Claim (#42): a call of its own, never
-   * queued. Rejects offline, as the creditor then shares a message instead.
+   * Reminds `to` of the Suggested Repayment they owe this device's Claim (#42): a call of its
+   * own, never queued. Rejects offline, as the creditor then shares a message instead.
    */
   async function remind(tripId: string, to: string): Promise<Reminded> {
-    const device = await db.trips.get(tripId);
-    if (!device) throw new Error(`Trip ${tripId} is not on this device`);
+    const device = await tripOnDevice(tripId);
     if (!device.claim) return 'notSuggested';
     return transport.remind(tripId, device.token, { from: device.claim.id, to });
   }

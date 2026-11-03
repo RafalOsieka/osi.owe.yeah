@@ -284,8 +284,8 @@
     "byShare": "Bez powiadomień: udostępnisz wiadomość",
     "byCopy": "Bez powiadomień: skopiujesz wiadomość",
     "sent": "Wysłano przypomnienie: {name}",
-    "notSuggested": "Ta spłata nie jest już sugerowana. Odśwież i spróbuj ponownie.",
-    "message": "Cześć {name}, przypominam o spłacie {amount} za podróż „{trip}”.",
+    "notSuggested": "To nie jest już sugerowana spłata. Odśwież i spróbuj ponownie.",
+    "message": "Cześć {name}, przypominam: do oddania {amount} za podróż „{trip}”.",
     "copied": "Skopiowano przypomnienie. Wklej je do wiadomości.",
     "copyFailed": "Nie udało się skopiować przypomnienia. Spróbuj ponownie."
   },
@@ -453,6 +453,6 @@
     "share": "Twój udział {amount}",
     "paid": "Twoja płatność {amount}",
     "collapsed": "Zmiany w podróży {trip}: {count}",
-    "reminder": "{name} przypomina o spłacie {amount}"
+    "reminder": "{name} przypomina: do oddania {amount}"
   }
 }

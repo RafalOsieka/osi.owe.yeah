@@ -83,7 +83,7 @@ describe('notificationFor a Reminder', () => {
   it("writes it in Polish, never collapsing into the Trip's activity", () => {
     const shown = notificationFor(reminder, 4, 'pl');
 
-    expect(shown.options.body).toBe(`Kasia przypomina o spłacie 123,45${nbsp}zł`);
+    expect(shown.options.body).toBe(`Kasia przypomina: do oddania 123,45${nbsp}zł`);
     expect(shown.options.data.count).toBe(1);
   });
 });
