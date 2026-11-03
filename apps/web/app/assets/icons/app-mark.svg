@@ -11,6 +11,7 @@
 
   Derived assets (regenerate all of them when this file changes):
     app/components/AppBrandMark.vue    inline copy, text-primary
+    docs/design/layout.html            inline copy in the My Trips mock (from the repo root)
     public/favicon.svg                 tab icon: 32x32 tile, rx 8, fill #10b981, glyph at 88%
     public/icon.svg                    the same tile with the glyph at 75%; source of the rasters
   Rasters, cut from those two by scripts/cut-icons.ts (run from apps/web):
