@@ -44,6 +44,13 @@ vp run db:migrate    # apply committed migrations to DATABASE_URL (see .env.exam
 - `apps/migrator` (`@osi/owe-yeah-migrator`): one-shot step that applies the committed SQL migrations in `apps/migrator/migrations` and exits. `vp run build` bundles it for the migrator image.
 - `packages/domain` (`@osi/owe-yeah-domain`): pure TypeScript domain rules on exact rationals.
 - `tools/oxlint/anti-slop`: custom Oxlint rules, frozen copy from `osi.time.tracker`.
+- `tools/tricount-import` (`@osi/owe-yeah-tricount-import`): throwaway admin tool that moves each Tricount into a new Trip once, run from the operator's machine with an explicit `DATABASE_URL`. It is in no image, and it is deleted after the migration (with its workspace and root-script entries). Usage:
+
+  ```sh
+  DATABASE_URL=… pnpm --filter @osi/owe-yeah-tricount-import import -- <share link> --zone Europe/Warsaw --origin https://<app>
+  ```
+
+  Each fetch saves the response, without the share token, to `tools/tricount-import/responses/` (git-ignored); `--from-file <file>` imports a saved one instead.
 
 ## Deployment
 
