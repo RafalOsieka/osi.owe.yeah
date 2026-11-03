@@ -583,6 +583,26 @@ describe('the device', () => {
     expect(server.subscribeCalls).toBe(2);
   });
 
+  it('sends its push subscription again once per run of the app, and a renewed one at once', async () => {
+    const server = new FakeServer();
+    const db = new DeviceDb(uuidv7());
+    const device = createDevice(db, server, deviceId);
+    await device.createTrip(trip, token);
+    await device.turnOnNotifications(trip.id, browserSubscription);
+    await device.sync(trip.id);
+
+    // Opened again: the server may have dropped it meanwhile, as its push service said gone.
+    const reopened = createDevice(db, server, deviceId);
+    await reopened.sync(trip.id);
+    await reopened.sync(trip.id);
+    expect(server.subscribeCalls).toBe(2);
+
+    const renewed = { ...browserSubscription, endpoint: 'https://push.example.com/renewed' };
+    await reopened.renewSubscription(renewed);
+    await reopened.sync(trip.id);
+    expect(server.subscriptions.get(trip.id)).toEqual({ ...renewed, claimId: kasia.id });
+  });
+
   it('removes its push subscription once notifications are off, after being offline', async () => {
     const { server, device } = setUp();
     await device.createTrip(trip, token);

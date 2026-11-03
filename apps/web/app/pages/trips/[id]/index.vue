@@ -1,13 +1,25 @@
 <script setup lang="ts">
 // The Expenses tab: the Trip's Expenses, each opening its detail page, and "+ Expense".
 // While there are none, it offers the first Expense and Invite. Opened from a notification,
-// `?highlight=<id>` marks the Expense it was about (#41).
+// `?highlight=<id>` marks the Expense it was about (#41), until the tab is opened again: the
+// address loses it at once, so a reload doesn't mark it again.
 definePageMeta({ scrollToTop: false });
 useKeptScroll();
 
 const { trip, claim, invite } = useOpenTrip();
 const route = useRoute();
-const highlight = computed(() => String(route.query.highlight ?? '') || null);
+const router = useRouter();
+const highlight = ref<string | null>(null);
+watch(
+  () => route.query.highlight,
+  (id) => {
+    if (!id) return;
+    highlight.value = String(id);
+    const { highlight: _, ...query } = route.query;
+    void router.replace({ query, hash: route.hash });
+  },
+  { immediate: true },
+);
 
 const canAdd = computed(() => trip.value.participants.length > 0);
 const newExpense = computed(() => `/trips/${trip.value.id}/expenses/new`);

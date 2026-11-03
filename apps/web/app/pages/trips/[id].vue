@@ -78,12 +78,15 @@ onMounted(async () => {
   );
 });
 
-// Offered once: shown, it counts as "Not now" until turned on.
+// Offered once where it can be turned on, and on iOS outside the installed app with the Home
+// Screen hint; not where the person blocked notifications (the Trip tab says how to unblock
+// them). Shown, it counts as "Not now" until turned on.
 async function claimParticipant(participant: Participant): Promise<void> {
   await device.claim(tripId, participant);
-  void device.sync(tripId);
+  // The server's push subscription follows the Claim.
+  if (notifications.value.subscription) void device.sync(tripId);
   removedClaim.value = null;
-  if (!notifications.value.offered && support.value === 'available') {
+  if (!notifications.value.offered && (support.value === 'available' || support.value === 'homeScreen')) {
     offering.value = true;
     await device.declineNotifications(tripId);
   } else {

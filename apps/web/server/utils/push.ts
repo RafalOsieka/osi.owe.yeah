@@ -2,9 +2,11 @@ import {
   balanceChanges,
   roundMoney,
   tripSchema,
+  type BalanceChange,
   type Expense,
   type ExpenseChange,
   type PushMessage,
+  type Trip,
 } from '@osi/owe-yeah-domain';
 import { and, eq, inArray, or } from 'drizzle-orm';
 import { createError, getRouterParam, useRuntimeConfig, type RequestEvent } from 'nuxt/server';
@@ -66,29 +68,7 @@ async function notify(tripId: string, applied: readonly AppliedExpenseChange[]):
     .where(eq(trips.id, tripId));
   // Narrows the stored currency to a Trip currency.
   const trip = tripSchema.parse(row);
-  const participants = await loadParticipants(tripId);
-  const names = new Map(participants.map(({ id, name }) => [id, name]));
-  const before = await expensesBefore(applied);
-  const after = applied.map(({ change }) => (change.deleted ? null : change.expense));
-  const rates = await loadRates(
-    [...before.values(), ...after].filter((expense) => expense !== null),
-    trip.currency,
-  );
-
-  const activities = applied.map(({ change, version }) => {
-    const was = before.get(change.id) ?? null;
-    const now = change.deleted ? null : change.expense;
-    return {
-      change,
-      action: actionOf(change, version, was),
-      affected: new Map(
-        balanceChanges({ currency: trip.currency, participants, rates }, was, now).map((moved) => [
-          moved.participantId,
-          moved,
-        ]),
-      ),
-    };
-  });
+  const activities = await activitiesOf(trip, applied);
 
   const vapidDetails = {
     subject: vapidSubject,
@@ -97,32 +77,9 @@ async function notify(tripId: string, applied: readonly AppliedExpenseChange[]):
   };
   const gone = new Set<string>();
   await Promise.allSettled(
-    subscriptions.map(async (subscription) => {
-      const news = activities.filter(
-        ({ change, affected }) =>
-          change.deviceId !== subscription.deviceId &&
-          change.claimId !== subscription.claimId &&
-          affected.has(subscription.claimId),
-      );
-      const latest = news.at(-1);
-      if (!latest) return;
-      const moved = latest.affected.get(subscription.claimId)!;
-      const { expense } = latest.change;
-      const message: PushMessage = {
-        tripId,
-        tripName: trip.name,
-        currency: trip.currency,
-        count: news.length,
-        latest: {
-          expenseId: expense.id,
-          title: expense.title,
-          author: latest.change.claimId ? (names.get(latest.change.claimId) ?? null) : null,
-          action: latest.action,
-          paid: roundMoney(moved.paid, trip.currency).decimal,
-          share: roundMoney(moved.share, trip.currency).decimal,
-        },
-      };
-      const { endpoint, p256dh, auth } = subscription;
+    subscriptions.map(async ({ deviceId, claimId, endpoint, p256dh, auth }) => {
+      const message = messageFor(trip, activities, { deviceId, claimId });
+      if (!message) return;
       const status = await send({ endpoint, keys: { p256dh, auth } }, message, vapidDetails);
       if (status === 404 || status === 410) gone.add(endpoint);
     }),
@@ -130,6 +87,82 @@ async function notify(tripId: string, applied: readonly AppliedExpenseChange[]):
   if (gone.size > 0) {
     await db.delete(pushSubscriptions).where(inArray(pushSubscriptions.endpoint, [...gone]));
   }
+}
+
+/** One applied change as notifications tell it: what it did, who made it, whom it moved. */
+type Activity = {
+  change: ExpenseChange;
+  action: PushMessage['latest']['action'];
+  author: string | null;
+  affected: ReadonlyMap<string, BalanceChange>;
+};
+
+/**
+ * Each applied change with whom it affects (`balanceChanges`), from the Expense as its
+ * Revision before showed it and as the change left it, converted at the Trip's rates.
+ */
+async function activitiesOf(
+  trip: Trip,
+  applied: readonly AppliedExpenseChange[],
+): Promise<Activity[]> {
+  const participants = await loadParticipants(trip.id);
+  const names = new Map(participants.map(({ id, name }) => [id, name]));
+  const before = await expensesBefore(applied);
+  const changed = applied.map(({ change, version }) => ({
+    change,
+    version,
+    was: before.get(change.id) ?? null,
+    now: change.deleted ? null : change.expense,
+  }));
+  const rates = await loadRates(
+    changed.flatMap(({ was, now }) => [was, now]).filter((expense) => expense !== null),
+    trip.currency,
+  );
+  return changed.map(({ change, version, was, now }) => ({
+    change,
+    action: actionOf(change, version, was),
+    author: change.claimId ? (names.get(change.claimId) ?? null) : null,
+    affected: new Map(
+      balanceChanges({ currency: trip.currency, participants, rates }, was, now).map((moved) => [
+        moved.participantId,
+        moved,
+      ]),
+    ),
+  }));
+}
+
+/**
+ * What one subscribed device is told: the changes that affect the Participant it claims,
+ * made under another Claim on another device, as one message about the latest of them;
+ * `null` when there are none.
+ */
+function messageFor(
+  trip: Trip,
+  activities: readonly Activity[],
+  device: { deviceId: string; claimId: string },
+): PushMessage | null {
+  const news = activities.flatMap(({ change, action, author, affected }) => {
+    const moved = affected.get(device.claimId);
+    const others = change.deviceId !== device.deviceId && change.claimId !== device.claimId;
+    return moved && others ? [{ expense: change.expense, action, author, moved }] : [];
+  });
+  const latest = news.at(-1);
+  if (!latest) return null;
+  const { expense, action, author, moved } = latest;
+  return {
+    tripId: trip.id,
+    tripName: trip.name,
+    currency: trip.currency,
+    count: news.length,
+    latest: {
+      expenseId: expense.id,
+      title: expense.title,
+      author,
+      action,
+      paid: roundMoney(moved.paid, trip.currency).decimal,
+      share: roundMoney(moved.share, trip.currency).decimal,
+    },
+  };
 }
 
 /** What a change did to its Expense, as a notification says. */

@@ -115,8 +115,9 @@ export type OutboxEntry = {
 /**
  * The device store (Dexie on IndexedDB). Version 1 is the first; each link of the migration
  * chain (`migrations`) is a version after it, which adds the tables the link names and whose
- * `upgrade()` runs the link on every Trip and outbox entry. A device coming back after any number of releases runs every link it missed,
- * in order, and then sends its migrated outbox (ADR 0002).
+ * `upgrade()` runs the link on every Trip and outbox entry. A device coming back after any
+ * number of releases runs every link it missed, in order, and then sends its migrated outbox
+ * (ADR 0002).
  */
 export class DeviceDb extends Dexie {
   trips!: EntityTable<DeviceTrip, 'id'>;

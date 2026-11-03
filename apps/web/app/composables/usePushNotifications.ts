@@ -44,11 +44,35 @@ const sameKey = (a: ArrayBuffer | null, b: Uint8Array) =>
   new Uint8Array(a).every((byte, i) => byte === b[i]);
 
 /**
+ * The browser's push subscription with the server's VAPID key, made if it has none. Needs the
+ * notification permission granted already. Rejects when the app has no service worker yet or
+ * the server can't be reached.
+ */
+export async function browserSubscription(): Promise<BrowserSubscription> {
+  const registration = await navigator.serviceWorker.getRegistration();
+  if (!registration) throw new Error('The app has no service worker yet');
+  const { publicKey } = pushKeyResponseSchema.parse(await syncApi('/api/push-key'));
+  const applicationServerKey = keyBytes(publicKey);
+  let subscription = await registration.pushManager.getSubscription();
+  // Subscribed with an older key of the server's: only a new subscription takes the new one.
+  if (subscription && !sameKey(subscription.options.applicationServerKey, applicationServerKey)) {
+    await subscription.unsubscribe();
+    subscription = null;
+  }
+  subscription ??= await registration.pushManager.subscribe({
+    userVisibleOnly: true,
+    applicationServerKey,
+  });
+  const { endpoint, keys } = subscription.toJSON();
+  return subscriptionRequestSchema.omit({ claimId: true }).parse({ endpoint, keys });
+}
+
+/**
  * The browser's side of push notifications (#41): whether it can get them (`support`), and
- * `subscribe`, which asks the browser's permission and then its push subscription with the
- * server's VAPID key. Only ask from a tap: browsers refuse to prompt otherwise. The browser
- * has one subscription for the whole app, so every Trip shares it, and turning one Trip off
- * keeps it.
+ * `subscribe`, which asks the browser's permission and then its push subscription
+ * (`browserSubscription`). Only ask from a tap: browsers refuse to prompt otherwise. The
+ * browser has one subscription for the whole app, so every Trip shares it, and turning one
+ * Trip off keeps it.
  */
 export function usePushNotifications() {
   const { $pwa } = useNuxtApp();
@@ -62,27 +86,7 @@ export function usePushNotifications() {
       if (permission !== 'granted') {
         return { status: permission === 'denied' ? 'denied' : 'dismissed' };
       }
-
-      const registration = await navigator.serviceWorker.getRegistration();
-      if (!registration) return { status: 'failed' };
-      const { publicKey } = pushKeyResponseSchema.parse(await syncApi('/api/push-key'));
-      const applicationServerKey = keyBytes(publicKey);
-      let subscription = await registration.pushManager.getSubscription();
-      // Subscribed with an older key of the server's: only a new subscription takes the new one.
-      if (
-        subscription &&
-        !sameKey(subscription.options.applicationServerKey, applicationServerKey)
-      ) {
-        await subscription.unsubscribe();
-        subscription = null;
-      }
-      subscription ??= await registration.pushManager.subscribe({
-        userVisibleOnly: true,
-        applicationServerKey,
-      });
-      const { endpoint, keys } = subscription.toJSON();
-      const parsed = subscriptionRequestSchema.omit({ claimId: true }).parse({ endpoint, keys });
-      return { status: 'subscribed', subscription: parsed };
+      return { status: 'subscribed', subscription: await browserSubscription() };
     } catch (error) {
       console.warn('Push notifications could not be turned on', error);
       return { status: 'failed' };

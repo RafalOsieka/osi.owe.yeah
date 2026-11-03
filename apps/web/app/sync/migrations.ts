@@ -9,9 +9,10 @@ import type { DeviceTrip, Held, Notice, OutboxEntry } from './db';
 
 /**
  * One link of the device store's migration chain: how a Trip and an outbox entry kept by the
- * version before are kept by this one, and the tables it adds (Dexie `stores()` syntax). Pure, so each link is tested on its own; `DeviceDb`
- * runs them in order in Dexie `upgrade()` hooks. Links are typed as the store keeps things
- * now, though what a link adds is missing before it runs.
+ * version before are kept by this one, and the tables it adds (Dexie `stores()` syntax).
+ * Pure, so each link is tested on its own; `DeviceDb` runs them in order in Dexie `upgrade()`
+ * hooks. Links are typed as the store keeps things now, though what a link adds is missing
+ * before it runs.
  */
 export type Migration = {
   trip: (trip: DeviceTrip) => DeviceTrip;

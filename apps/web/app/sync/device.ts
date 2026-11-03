@@ -24,6 +24,7 @@ import {
   type DeviceNotifications,
   type DeviceTrip,
   type ExpenseBase,
+  type ForgottenTrip,
   type Held,
   type Notice,
   type OutboxEntry,
@@ -92,6 +93,8 @@ export function createDevice(db: DeviceDb, transport: Transport, deviceId: strin
   // The sync running for each Trip, and whether another was asked for meanwhile.
   const running = new Map<string, Promise<void>>();
   const again = new Set<string>();
+  // The Trips whose push subscription the server took during this run of the app.
+  const subscribedThisRun = new Set<string>();
 
   async function entriesOf(tripId: string): Promise<OutboxEntry[]> {
     return db.outbox.where('tripId').equals(tripId).sortBy('seq');
@@ -237,6 +240,22 @@ export function createDevice(db: DeviceDb, transport: Transport, deviceId: strin
   /** Turns push notifications off for a Trip on this device; the server hears on sync. */
   function turnOffNotifications(tripId: string): Promise<void> {
     return setNotifications(tripId, { subscription: null, offered: true });
+  }
+
+  /**
+   * Takes the browser's push subscription as it is now, e.g. renewed by the browser, for every
+   * Trip with notifications on; the server gets it on sync.
+   */
+  async function renewSubscription(subscription: BrowserSubscription): Promise<void> {
+    await db.transaction('rw', db.trips, async () => {
+      for (const device of await db.trips.toArray()) {
+        const kept = device.notifications.subscription;
+        if (!kept || kept.endpoint === subscription.endpoint) continue;
+        await db.trips.update(device.id, {
+          notifications: { ...device.notifications, subscription },
+        });
+      }
+    });
   }
 
   /** "Not now" to the offer of notifications after a Claim: never offered again by itself. */
@@ -456,8 +475,9 @@ export function createDevice(db: DeviceDb, transport: Transport, deviceId: strin
   /**
    * Gives the server the push subscription the Trip should have on this device, if it has
    * not got it: the browser's, for the device's Claim, while notifications are on and the
-   * device has a Claim; otherwise none. A subscription left from when the Trip was forgotten
-   * goes first, so it can't remove the new one later.
+   * device has a Claim; otherwise none. Sent again once per run of the app, as the server
+   * drops a subscription whose push service says it is gone. A subscription left from when the
+   * Trip was forgotten goes first, so it can't remove the new one later.
    */
   async function syncSubscription(tripId: string): Promise<void> {
     const left = await db.forgotten.get(tripId);
@@ -467,11 +487,12 @@ export function createDevice(db: DeviceDb, transport: Transport, deviceId: strin
     const { subscription, registered } = device.notifications;
     const claimId = device.claim?.id;
     const wanted = subscription && claimId ? { endpoint: subscription.endpoint, claimId } : null;
-    if (wanted?.endpoint === registered?.endpoint && wanted?.claimId === registered?.claimId) {
-      return;
-    }
+    const same =
+      wanted?.endpoint === registered?.endpoint && wanted?.claimId === registered?.claimId;
+    if (same && (!wanted || subscribedThisRun.has(tripId))) return;
     if (subscription && wanted) {
       await transport.subscribe(tripId, device.token, deviceId, { ...subscription, ...wanted });
+      subscribedThisRun.add(tripId);
     } else {
       await transport.unsubscribe(tripId, device.token, deviceId);
     }
@@ -479,7 +500,7 @@ export function createDevice(db: DeviceDb, transport: Transport, deviceId: strin
     await setNotifications(tripId, { registered: wanted });
   }
 
-  async function removeForgotten({ tripId, token }: { tripId: string; token: string }) {
+  async function removeForgotten({ tripId, token }: ForgottenTrip): Promise<void> {
     await transport.unsubscribe(tripId, token, deviceId);
     await db.forgotten.delete(tripId);
   }
@@ -587,6 +608,7 @@ export function createDevice(db: DeviceDb, transport: Transport, deviceId: strin
     turnOnNotifications,
     turnOffNotifications,
     declineNotifications,
+    renewSubscription,
     addParticipant,
     removeParticipant,
     saveTripDetails,
