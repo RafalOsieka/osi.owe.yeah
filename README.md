@@ -40,7 +40,7 @@ vp run db:generate   # write a SQL migration from the Drizzle schema
 vp run db:migrate    # apply committed migrations to DATABASE_URL (see .env.example)
 ```
 
-When the committed migrations are rewritten rather than added to (as when they were flattened into `0000_init`), an existing dev database no longer migrates. Rebuild it:
+When the committed migrations are rewritten rather than added to, an existing dev database no longer migrates. Rebuild it:
 
 ```sh
 docker compose -f compose.dev.yml down -v   # deletes the dev database
