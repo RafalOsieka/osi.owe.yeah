@@ -40,6 +40,14 @@ vp run db:generate   # write a SQL migration from the Drizzle schema
 vp run db:migrate    # apply committed migrations to DATABASE_URL (see .env.example)
 ```
 
+When the committed migrations are rewritten rather than added to, an existing dev database no longer migrates. Rebuild it:
+
+```sh
+docker compose -f compose.dev.yml down -v   # deletes the dev database
+docker compose -f compose.dev.yml up -d
+vp run db:migrate
+```
+
 - `apps/web` (`@osi/owe-yeah-web`): Nuxt SPA with Nuxt UI, `en`/`pl` i18n and dark mode. Its server holds the Drizzle schema (`server/db/schema`) for PostgreSQL 18.
 - `apps/migrator` (`@osi/owe-yeah-migrator`): one-shot step that applies the committed SQL migrations in `apps/migrator/migrations` and exits. `vp run build` bundles it for the migrator image.
 - `packages/domain` (`@osi/owe-yeah-domain`): pure TypeScript domain rules on exact rationals.
