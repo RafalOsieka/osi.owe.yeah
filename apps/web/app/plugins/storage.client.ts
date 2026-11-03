@@ -11,5 +11,6 @@ export default defineNuxtPlugin(() => {
     if ((await device.readAll()).length > 0) await navigator.storage.persist();
   }
 
+  // Best effort: storage that isn't persisted still works, the browser may only clear it.
   void persist().catch(() => {});
 });

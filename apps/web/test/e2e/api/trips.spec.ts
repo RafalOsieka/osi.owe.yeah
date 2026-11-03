@@ -341,6 +341,16 @@ describeApi('Trip API', () => {
     expect(await pulled(trip.id, token)).toEqual(before);
   });
 
+  it('refuses an app newer than the server without telling it to update', async () => {
+    const { trip, token, kasia } = await tripWithKasiaAndAnia();
+    const newer = SYNC_SCHEMA_VERSION + 1;
+
+    const pushed = await pushResponse(trip.id, [change(plainExpense(kasia))], token, newer);
+
+    expect(pushed.status).toBe(409);
+    expect((await pulled(trip.id, token)).expenses).toEqual([]);
+  });
+
   it("refuses to create a Trip under an id that is taken, keeping the first Trip's token", async () => {
     const trip = newTrip();
     const token = await createdToken(trip);

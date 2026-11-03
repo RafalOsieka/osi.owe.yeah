@@ -12,9 +12,11 @@ import { tripSchema } from './trip.ts';
 
 /**
  * The sync schema: the shape of pushes, pulls and Revisions. The server speaks only the
- * newest one and answers any request to `/api` without it with 426 "update needed" (ADR
- * 0002). Bump it whenever an older app could no longer talk to the server; the device store
- * then needs a migration (`DeviceDb`) for the local data and queued changes it keeps.
+ * newest one and answers an older app's requests to `/api` with 426 "update needed" (ADR
+ * 0002). Bump it whenever an older app could no longer talk to the server. It counts apart
+ * from the device store's version: not every store change touches the wire. A bump that
+ * changes what the outbox has to send also appends a link to the store's migration chain
+ * (`migrations` in the web app), so queued changes go out in the new schema.
  */
 export const SYNC_SCHEMA_VERSION = 1;
 

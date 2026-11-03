@@ -23,14 +23,15 @@ export function useAppUpdatePrompt(): void {
     if (needed) void $pwa?.getSWRegistration()?.update();
   });
 
+  // Shown again, or told that changes wait, as either becomes so; even if dismissed before.
   watch(
-    () => !!$pwa?.needRefresh || updateNeeded.value,
-    (show) => {
-      if (!show) return;
+    () => [!!$pwa?.needRefresh, updateNeeded.value] as const,
+    ([waiting, needed]) => {
+      if (!waiting && !needed) return;
       toast.add({
         id: 'app-update',
         title: t('appUpdate.title'),
-        description: updateNeeded.value ? t('appUpdate.syncWaits') : undefined,
+        description: needed ? t('appUpdate.syncWaits') : undefined,
         icon: 'i-lucide-sparkles',
         duration: Infinity,
         actions: [{ label: t('appUpdate.reload'), onClick: reload }],
@@ -40,9 +41,12 @@ export function useAppUpdatePrompt(): void {
   );
 
   async function reload(): Promise<void> {
-    // A waiting service worker takes over and reloads the page. Without one (not installed
-    // yet, or no service worker at all) a plain reload gets the new version from the network.
-    if ($pwa?.needRefresh) await $pwa.updateServiceWorker(true);
-    else location.reload();
+    // A waiting service worker takes over and reloads the page.
+    if ($pwa?.needRefresh) return $pwa.updateServiceWorker(true);
+    // Only the server knows of the new version yet (the 426 is online): without the old
+    // service worker, which would serve the old app again, the reload comes from the network
+    // and registers the new one.
+    await $pwa?.getSWRegistration()?.unregister();
+    location.reload();
   }
 }
