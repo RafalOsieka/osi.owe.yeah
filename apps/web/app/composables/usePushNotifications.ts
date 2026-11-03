@@ -51,7 +51,7 @@ const sameKey = (a: ArrayBuffer | null, b: Uint8Array) =>
 export async function browserSubscription(): Promise<BrowserSubscription> {
   const registration = await navigator.serviceWorker.getRegistration();
   if (!registration) throw new Error('The app has no service worker yet');
-  const { publicKey } = pushKeyResponseSchema.parse(await syncApi('/api/push-key'));
+  const { publicKey } = pushKeyResponseSchema.parse(await syncApi('/api/vapid-key'));
   const applicationServerKey = keyBytes(publicKey);
   let subscription = await registration.pushManager.getSubscription();
   // Subscribed with an older key of the server's: only a new subscription takes the new one.

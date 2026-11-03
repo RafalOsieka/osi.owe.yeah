@@ -18,7 +18,7 @@ import { defineEventHandler, readValidatedBody } from 'nuxt/server';
 import { getDb } from '../../../db';
 import type { Transaction } from '../../../db/client';
 import { changes, expenses, participants, revisions, trips } from '../../../db/schema';
-import { notifyAffected, type AppliedExpenseChange } from '../../../utils/push';
+import { notifyAffected, type AppliedExpenseChange } from '../../../notifications/activity';
 import { createTripIfMissing, requireTrip } from '../../../utils/trip-access';
 import {
   loadParticipants,
