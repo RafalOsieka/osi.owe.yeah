@@ -2,7 +2,7 @@ import type { PushMessage } from '@osi/owe-yeah-domain';
 import { inArray } from 'drizzle-orm';
 import { useRuntimeConfig } from 'nuxt/server';
 import webpush from 'web-push';
-import { getDb } from '../db';
+import type { Database } from '../db/client';
 import { notificationSubscriptions } from '../db/schema';
 
 // How long a push service keeps a notification for a device that is offline. The next pull
@@ -23,10 +23,11 @@ type NotificationSubscriptionRow = typeof notificationSubscriptions.$inferSelect
 
 /**
  * Sends each subscription the message `messageOf` writes for it (`null`: none), all at once,
- * then deletes those whose push service answers 404 or 410, as gone. Nothing is retried.
- * Never rejects.
+ * then deletes from `db` those whose push service answers 404 or 410, as gone. Nothing is
+ * retried. Never rejects.
  */
 export async function deliver(
+  db: Database,
   subscriptions: readonly NotificationSubscriptionRow[],
   messageOf: (subscription: NotificationSubscriptionRow) => PushMessage | null,
   vapid: VapidDetails,
@@ -43,7 +44,7 @@ export async function deliver(
   );
   if (gone.size === 0) return;
   try {
-    await getDb()
+    await db
       .delete(notificationSubscriptions)
       .where(inArray(notificationSubscriptions.endpoint, [...gone]));
   } catch (error) {

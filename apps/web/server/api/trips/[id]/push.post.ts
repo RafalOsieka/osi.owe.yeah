@@ -3,28 +3,33 @@ import {
   expensesReferencing,
   pushRequestSchema,
   referencedParticipantIds,
-  tripSchema,
+  TRIP_TOKEN_HEADER,
+  tripIdSchema,
+  tripTokenSchema,
   type ChangeResult,
-  type Expense,
   type ExpenseChange,
   type ParticipantChange,
   type PushResponse,
   type SyncChange,
-  type Trip,
   type TripChange,
 } from '@osi/owe-yeah-domain';
-import { and, eq, inArray, not, sql } from 'drizzle-orm';
-import { defineEventHandler, readValidatedBody } from 'nuxt/server';
+import { and, eq, inArray, sql } from 'drizzle-orm';
+import {
+  createError,
+  defineEventHandler,
+  getRequestHeader,
+  getRouterParam,
+  readValidatedBody,
+  type RequestEvent,
+} from 'nuxt/server';
 import { getDb } from '../../../db';
 import type { Transaction } from '../../../db/client';
 import { changes, expenses, participants, revisions, trips } from '../../../db/schema';
-import { notifyAffected, type AppliedExpenseChange } from '../../../notifications/activity';
-import { createTripIfMissing, requireTrip } from '../../../utils/trip-access';
-import {
-  loadParticipants,
-  selectStoredExpenses,
-  toStoredExpense,
-} from '../../../utils/trip-snapshot';
+import type { AppliedExpenseChange } from '../../../notifications/activity';
+import { notifications, tripStore } from '../../../trip';
+import { createTripStore, type WholeTrip } from '../../../trip/store';
+import { requireTrip } from '../../../utils/trip-access';
+import { hashTripToken } from '../../../utils/trip-token';
 
 /**
  * The sync push (ADR 0002): applies a device's outbox changes in order and answers with a
@@ -55,7 +60,7 @@ export default defineEventHandler(async (event): Promise<PushResponse> => {
     }
   }
   // Fire-and-forget: the device doesn't wait for anyone to be notified.
-  void notifyAffected(tripId, applied);
+  void notifications().notifyAffected(tripId, applied);
   return { results };
 });
 
@@ -95,27 +100,16 @@ async function appliedBefore(change: SyncChange, tripId: string): Promise<Change
 }
 
 /**
- * Locks the Trip until the transaction ends and reads its details. Changes to one Trip are
- * then applied one at a time, so no check races another change: e.g. an Expense referencing
- * a Participant that is being removed.
+ * Locks the Trip until the transaction ends and reads it whole, through the Trip store.
+ * Changes to one Trip are then applied one at a time, so no check races another change: e.g.
+ * an Expense referencing a Participant that is being removed.
  */
-async function lockTrip(tx: Transaction, tripId: string): Promise<Trip> {
-  const [trip] = await tx
-    .select({ id: trips.id, name: trips.name, currency: trips.currency })
-    .from(trips)
-    .where(eq(trips.id, tripId))
-    .for('update');
-  // Narrows the stored currency to a Trip currency.
-  return tripSchema.parse(trip);
-}
-
-/** A Trip's Expenses as they are now, deleted ones aside. */
-async function tripExpenses(tx: Transaction, tripId: string): Promise<Expense[]> {
-  const rows = await tx
-    .select({ id: expenses.id, state: expenses.state })
-    .from(expenses)
-    .where(and(eq(expenses.tripId, tripId), not(expenses.deleted)));
-  return rows.map(({ id, state }) => ({ ...state, id }));
+async function lockTrip(tx: Transaction, tripId: string): Promise<WholeTrip> {
+  await tx.select({ id: trips.id }).from(trips).where(eq(trips.id, tripId)).for('update');
+  const trip = await createTripStore(tx).readTrip(tripId);
+  // The Trip link was checked before, and a Trip is never deleted.
+  if (!trip) throw new Error(`Trip ${tripId} is gone`);
+  return trip;
 }
 
 /**
@@ -165,9 +159,9 @@ async function applyParticipantChange(
 ): Promise<ChangeResult> {
   const { id: changeId, participant, removed } = change;
   return getDb().transaction(async (tx): Promise<ChangeResult> => {
-    await lockTrip(tx, tripId);
-    const referenced =
-      removed && expensesReferencing(await tripExpenses(tx, tripId), participant.id) > 0;
+    const trip = await lockTrip(tx, tripId);
+    const live = trip.expenses.filter(({ deleted }) => !deleted);
+    const referenced = removed && expensesReferencing(live, participant.id) > 0;
     if (referenced) return { changeId, status: 'rejected', problems: ['participantReferenced'] };
 
     // An id another Trip uses is left alone: the update is limited to this Trip's row.
@@ -202,8 +196,7 @@ async function applyExpenseChange(
   const { id: changeId, deleted } = change;
   return getDb().transaction(async (tx): Promise<ChangeResult | null> => {
     const trip = await lockTrip(tx, tripId);
-    const known = await loadParticipants(tripId, tx);
-    const problems = expenseProblems(change.expense, { ...trip, participants: known });
+    const problems = expenseProblems(change.expense, trip);
     if (problems.length > 0) return { changeId, status: 'rejected', problems };
 
     const [stored] =
@@ -238,7 +231,7 @@ async function applyExpenseChange(
     const referenced = referencedParticipantIds(change.expense);
     const restored = deleted
       ? []
-      : known.filter((p) => p.removed && referenced.has(p.id)).map((p) => p.id);
+      : trip.participants.filter((p) => p.removed && referenced.has(p.id)).map((p) => p.id);
     if (restored.length > 0) {
       await tx
         .update(participants)
@@ -258,12 +251,42 @@ async function applyExpenseChange(
  */
 async function refusal(change: ExpenseChange, tripId: string): Promise<ChangeResult> {
   const changeId = change.id;
-  const [existing] = await selectStoredExpenses().where(eq(expenses.id, change.expense.id));
-
-  if (!existing) return { changeId, status: 'rejected', problems: ['unknownExpense'] };
-  if (existing.tripId !== tripId) {
-    return { changeId, status: 'rejected', problems: ['expenseIdTaken'] };
+  const current = (await tripStore().readTrip(tripId))?.expenses.find(
+    ({ id }) => id === change.expense.id,
+  );
+  if (current) {
+    return { changeId, status: 'conflict', current, currentClaimId: current.edited?.by ?? null };
   }
-  const current = toStoredExpense(existing);
-  return { changeId, status: 'conflict', current, currentClaimId: current.edited?.by ?? null };
+  const [elsewhere] = await getDb()
+    .select({ id: expenses.id })
+    .from(expenses)
+    .where(eq(expenses.id, change.expense.id));
+  return {
+    changeId,
+    status: 'rejected',
+    problems: [elsewhere ? 'expenseIdTaken' : 'unknownExpense'],
+  };
+}
+
+/**
+ * Creates the Trip addressed by the `id` route param under the request's token, unless a
+ * Trip with that id (or token) exists already: how a Trip created on a device, maybe
+ * offline, reaches the server. A token too weak to be a Trip link is refused; whether the
+ * request may then use the Trip is still for `requireTrip` to say.
+ */
+async function createTripIfMissing(
+  event: RequestEvent,
+  details: TripChange['trip'],
+): Promise<void> {
+  const id = tripIdSchema.safeParse(getRouterParam(event, 'id'));
+  if (!id.success) return;
+  const token = tripTokenSchema.safeParse(getRequestHeader(event, TRIP_TOKEN_HEADER));
+  if (!token.success) {
+    throw createError({ status: 400, statusText: 'A Trip link token is 256 random bits' });
+  }
+
+  await getDb()
+    .insert(trips)
+    .values({ id: id.data, ...details, tokenHash: hashTripToken(token.data) })
+    .onConflictDoNothing();
 }

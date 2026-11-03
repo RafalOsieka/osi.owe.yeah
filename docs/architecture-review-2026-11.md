@@ -151,7 +151,7 @@ They found no reason to reopen ADR 0001–0003, and 121 of the 126 stories are d
 
 Update #19 to say:
 
-- Units and Amounts cover *at most* the whole, not *exactly* the whole.
+- Units and Amounts cover _at most_ the whole, not _exactly_ the whole.
 - Income also has a negative Line item. Read this with the narrowed Income in `GLOSSARY.md`.
 - Settled needs at least one Expense.
 - Balances are diverging bars (#53), not a table.

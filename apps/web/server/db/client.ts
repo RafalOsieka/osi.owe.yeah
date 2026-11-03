@@ -31,7 +31,7 @@ export type DatabaseClient = {
 /**
  * Creates a Drizzle client backed by its own postgres.js pool. Columns are
  * camelCase in TypeScript and snake_case in Postgres, matching `drizzle.config.ts`.
- * Exposed for tests; server code uses the shared `getDb()` from `./index`.
+ * Exposed for tests; the server uses the shared `getDb()` from `./index`.
  */
 export function createDatabaseClient(
   connectionString: string = resolveDatabaseUrl(),

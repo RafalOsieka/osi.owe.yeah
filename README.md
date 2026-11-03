@@ -33,6 +33,7 @@ vp run format:check  # Oxfmt (`vp run format` to fix)
 vp run type-check
 vp run test:unit
 vp run test:nuxt     # web component tests
+vp run test:db      # server modules on a fresh database per file; needs Docker
 vp run test:e2e:db   # database tests; needs Docker (starts postgres:18-alpine)
 vp run test:e2e:api  # API tests against the built app; needs Docker
 vp run test:e2e:ui   # Playwright journeys; needs Docker and `vp exec playwright install chromium` in apps/web
