@@ -68,7 +68,7 @@ export function createNotifications(db: Database, store: TripStore, rates: Rates
       was: before.get(change.id) ?? null,
       now: change.deleted ? null : change.expense,
     }));
-    const entries = await rates.ratesFor(
+    const entries = await rates.forExpenses(
       changed.flatMap(({ was, now }) => [was, now]).filter((expense) => expense !== null),
       trip.currency,
     );

@@ -28,7 +28,7 @@ export function createReminders(db: Database, store: TripStore, rates: Rates) {
       currency: trip.currency,
       participants: trip.participants,
       expenses: trip.expenses.filter(({ deleted }) => !deleted),
-      rates: await rates.tripRates(trip),
+      rates: await rates.forTrip(trip),
     });
     return suggestedRepayments(everyone).find(
       ({ payerId, recipientId }) => payerId === to && recipientId === from,

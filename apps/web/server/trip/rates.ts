@@ -66,7 +66,7 @@ export function createRates(db: Database, frankfurterUrl: string) {
    * The rate entries `expenses` need to be converted into the Trip currency, filling the
    * rate table as they go: e.g. for an Expense as it was before a change.
    */
-  async function ratesFor(
+  async function forExpenses(
     expenses: Parameters<typeof neededRates>[0],
     currency: Trip['currency'],
   ): Promise<RateEntry[]> {
@@ -104,14 +104,14 @@ export function createRates(db: Database, frankfurterUrl: string) {
   }
 
   return {
-    ratesFor,
+    forExpenses,
 
     /**
      * The rate entries a Trip's Expenses (deleted ones aside) need, as the whole-Trip pull
      * brings them (ADR 0003).
      */
-    tripRates(trip: WholeTrip): Promise<RateEntry[]> {
-      return ratesFor(
+    forTrip(trip: WholeTrip): Promise<RateEntry[]> {
+      return forExpenses(
         trip.expenses.filter(({ deleted }) => !deleted),
         trip.currency,
       );

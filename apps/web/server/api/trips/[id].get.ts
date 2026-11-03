@@ -21,7 +21,7 @@ export default defineEventHandler(async (event): Promise<PullResponse> => {
   if (!trip) throw invalidTripLink();
   return {
     trip: since === trip.version ? null : pulled(trip),
-    rates: await tripRates().tripRates(trip),
+    rates: await tripRates().forTrip(trip),
   };
 });
 
