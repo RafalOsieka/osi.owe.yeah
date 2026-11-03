@@ -11,6 +11,7 @@
     "type-check": "nuxt typecheck && tsc -p app/service-worker/tsconfig.json",
     "test:unit": "vp test run --project unit",
     "test:nuxt": "vp test run --project nuxt",
+    "test:db": "vp test run --project db",
     "test:e2e:db": "vp test run --project e2e-db",
     "test:e2e:api": "vp test run --project e2e-api",
     "test:e2e:ui": "playwright test",

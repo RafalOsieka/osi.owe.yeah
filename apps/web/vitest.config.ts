@@ -23,6 +23,17 @@ export default defineConfig({
       },
       {
         test: {
+          // Server modules on a fresh, migrated database per test file (`useMigratedDatabase`).
+          name: 'db',
+          include: ['test/db/**/*.{test,spec}.ts'],
+          environment: 'node',
+          globalSetup: ['test/e2e/harness/global-setup-db.ts'],
+          hookTimeout: 120_000,
+          testTimeout: 60_000,
+        },
+      },
+      {
+        test: {
           name: 'e2e-api',
           include: ['test/e2e/api/**/*.{test,spec}.ts'],
           environment: 'node',

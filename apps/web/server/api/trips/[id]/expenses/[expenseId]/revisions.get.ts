@@ -1,8 +1,6 @@
 import { expenseIdSchema, type RevisionsResponse } from '@osi/owe-yeah-domain';
-import { and, desc, eq } from 'drizzle-orm';
 import { defineEventHandler, getRouterParam } from 'nuxt/server';
-import { getDb } from '../../../../../db';
-import { revisions } from '../../../../../db/schema';
+import { tripStore } from '../../../../../trip';
 import { requireTrip } from '../../../../../utils/trip-access';
 
 /**
@@ -13,17 +11,5 @@ export default defineEventHandler(async (event): Promise<RevisionsResponse> => {
   const trip = await requireTrip(event);
   const expenseId = expenseIdSchema.safeParse(getRouterParam(event, 'expenseId')).data;
   if (!expenseId) return { revisions: [] };
-  const rows = await getDb()
-    .select()
-    .from(revisions)
-    .where(and(eq(revisions.tripId, trip.id), eq(revisions.expenseId, expenseId)))
-    .orderBy(desc(revisions.version));
-  return {
-    revisions: rows.map(({ version, state, deleted, claimId, createdAt }) => ({
-      version,
-      expense: { ...state, id: expenseId },
-      deleted,
-      edited: { by: claimId, at: createdAt.toISOString() },
-    })),
-  };
+  return { revisions: await tripStore().revisions(trip.id, expenseId) };
 });
