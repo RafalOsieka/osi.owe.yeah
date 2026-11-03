@@ -1,0 +1,17 @@
+<!--
+  Owe Yeah tab icon. The glyph is scaled up for legibility at 16x16; icon.svg is the source of
+  the larger icons.
+  Canvas: 32x32. Rounded square rx=8, fill #10b981 (emerald-500).
+  Glyph: app/assets/icons/app-mark.svg, white, at 88% of the tile. Regenerate from that file when
+  it changes.
+-->
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 32 32">
+  <rect width="32" height="32" rx="8" fill="#10b981" />
+  <svg x="2" y="2" width="28" height="28" viewBox="0 0 24 24">
+    <g fill="none" stroke="#fff" stroke-linecap="round" stroke-linejoin="round">
+      <path d="M12 22.2C12 22.2 3.8 15.6 3.8 10A8.2 8.2 0 0 1 20.2 10" stroke-width="2" />
+      <path d="M8.9 6.5L12 10.2L15.1 6.5" stroke-width="2.5" />
+    </g>
+    <path d="M10.85 10.2H13.15L12.4 17.6H11.6Z" fill="#fff" stroke="#fff" stroke-width="0.4" stroke-linejoin="round" />
+  </svg>
+</svg>

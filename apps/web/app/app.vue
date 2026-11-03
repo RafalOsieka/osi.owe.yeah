@@ -11,6 +11,13 @@ useHead({
     lang: locale,
     dir: computed(() => uiLocale.value.dir),
   },
+  // The logo's tab and home-screen icons (`app/assets/icons/app-mark.svg` lists them). Browsers
+  // without SVG favicons take the `.ico`; its `sizes` keeps Chrome from preferring it.
+  link: [
+    { rel: 'icon', href: '/favicon.svg', type: 'image/svg+xml' },
+    { rel: 'icon', href: '/favicon.ico', sizes: '32x32' },
+    { rel: 'apple-touch-icon', href: '/apple-touch-icon.png' },
+  ],
   titleTemplate: (pageTitle) => (pageTitle ? `${pageTitle} | ${t('app.title')}` : t('app.title')),
 });
 

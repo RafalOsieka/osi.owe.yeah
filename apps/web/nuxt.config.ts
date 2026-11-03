@@ -15,8 +15,7 @@ export default defineNuxtConfig({
   // `icon`). API responses are never cached by it: the device store holds the data (ADR 0002).
   // The first visit is taken over right away, so it works offline without a reload; a new
   // version waits until every tab of the app is closed, or the "New version" toast reloads
-  // (`useAppUpdatePrompt`). It also shows push notifications (#41). App icons come with the
-  // logo (#54).
+  // (`useAppUpdatePrompt`). It also shows push notifications (#41).
   pwa: {
     // Off under Vitest, whose Nuxt environment can't load the service worker's virtual
     // modules; the ui e2e suite builds outside Vitest and gets the real thing.
@@ -39,6 +38,18 @@ export default defineNuxtConfig({
       theme_color: '#10b981',
       background_color: '#ffffff',
       display: 'standalone',
+      // Cut from `public/icon.svg`; the maskable one is a full-bleed square with the glyph
+      // inside the safe zone (`app/assets/icons/app-mark.svg` says how to regenerate them).
+      icons: [
+        { src: '/pwa-192x192.png', sizes: '192x192', type: 'image/png', purpose: 'any' },
+        { src: '/pwa-512x512.png', sizes: '512x512', type: 'image/png', purpose: 'any' },
+        {
+          src: '/maskable-icon-512x512.png',
+          sizes: '512x512',
+          type: 'image/png',
+          purpose: 'maskable',
+        },
+      ],
     },
     injectManifest: {
       globPatterns: ['**/*.{js,css,html,json,svg,png,ico,woff,woff2}'],

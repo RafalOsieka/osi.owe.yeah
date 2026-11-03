@@ -1,7 +1,7 @@
 <script setup lang="ts">
 import type { DropdownMenuItem } from '@nuxt/ui';
 
-// App pages (My Trips): the app's name, and a "⋯" menu holding the color mode. An optional
+// App pages (My Trips): the app mark and name, and a "⋯" menu holding the color mode. An optional
 // `#action` floats at the bottom right.
 const { t } = useI18n();
 const colorMode = useColorMode();
@@ -27,8 +27,9 @@ const menu = computed<DropdownMenuItem[]>(() => [
 <template>
   <header class="sticky top-0 z-10 bg-default pt-[env(safe-area-inset-top)]">
     <div class="flex h-14 items-center gap-2 ps-4 pe-2">
-      <NuxtLink to="/" class="min-w-0 flex-1 truncate text-xl font-bold">
-        {{ $t('app.title') }}
+      <NuxtLink to="/" class="flex min-w-0 flex-1 items-center gap-2 text-xl font-bold">
+        <AppBrandMark />
+        <span class="truncate">{{ $t('app.title') }}</span>
       </NuxtLink>
       <UDropdownMenu :items="menu" :content="{ align: 'end' }">
         <UButton

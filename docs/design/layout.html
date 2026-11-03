@@ -910,10 +910,9 @@
         border: 0;
       }
       .logo {
-        width: 26px;
-        height: 26px;
-        border-radius: 8px;
-        border: 1.5px dashed var(--later);
+        width: 24px;
+        height: 24px;
+        color: var(--primary);
         flex: none;
         margin-left: 6px;
       }
@@ -1899,7 +1898,22 @@
               <span>●●● 5G</span>
             </div>
             <div class="bar">
-              <span class="logo later" data-t="logo" aria-hidden="true"></span>
+              <svg class="logo" viewBox="0 0 24 24" aria-hidden="true">
+                <g fill="none" stroke="currentColor" stroke-linecap="round" stroke-linejoin="round">
+                  <path
+                    d="M12 22.2C12 22.2 3.8 15.6 3.8 10A8.2 8.2 0 0 1 20.2 10"
+                    stroke-width="2"
+                  />
+                  <path d="M8.9 6.5L12 10.2L15.1 6.5" stroke-width="2.5" />
+                </g>
+                <path
+                  d="M10.85 10.2H13.15L12.4 17.6H11.6Z"
+                  fill="currentColor"
+                  stroke="currentColor"
+                  stroke-width="0.4"
+                  stroke-linejoin="round"
+                />
+              </svg>
               <div class="ttl" style="padding-left: 6px">
                 <b style="font-size: 20px">Owe Yeah</b>
               </div>
@@ -1966,7 +1980,7 @@
             <ul>
               <li>
                 <code>default</code>
-                layout: the app mark (logo ticket), "Owe Yeah", and a "⋯" menu holding color mode.
+                layout: the app mark, "Owe Yeah", and a "⋯" menu holding color mode.
               </li>
               <li>
                 Rows: Trip name and "You are Ania" or "Who are you?", most recently opened first. "+

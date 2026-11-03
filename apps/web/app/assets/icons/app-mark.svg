@@ -1,0 +1,32 @@
+<!--
+  Owe Yeah app mark: the only drawing of the logo (#54). Single colour via currentColor; the
+  derived tiles substitute #fff for it. In the app the glyph is inlined by AppBrandMark.vue,
+  which copies this geometry.
+
+  Grid: 24x24, centre (12,12).
+  Open pin: one stroke (width 2) from the pin's tip at (12,22.2), up the left side, over the top
+  (arc r=8.2 round (12,10)) and down to 3 o'clock at (20.2,10); the lower-right edge stays open.
+  Y: arms (width 2.5) from (8.9,6.5) and (15.1,6.5) meeting at (12,10.2), and a stem tapering
+  from 2.3 to 0.8 that ends at y 17.6, pointing at the pin's tip without touching it.
+
+  Derived assets (regenerate all of them when this file changes):
+    app/components/AppBrandMark.vue    inline copy, text-primary
+    docs/design/layout.html            inline copy in the My Trips mock (from the repo root)
+    public/favicon.svg                 tab icon: 32x32 tile, rx 8, fill #10b981, glyph at 88%
+    public/icon.svg                    the same tile with the glyph at 75%; source of the rasters
+  Rasters, cut from those two by scripts/cut-icons.ts (run from apps/web):
+    public/favicon.ico                 16 and 32 px of favicon.svg
+    public/apple-touch-icon.png        180 px, opaque full-bleed square
+    public/pwa-192x192.png             192 px, purpose any
+    public/pwa-512x512.png             512 px, purpose any
+    public/maskable-icon-512x512.png   512 px, opaque full-bleed square, purpose maskable
+  Command:
+    node scripts/cut-icons.ts
+-->
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24">
+  <g fill="none" stroke="currentColor" stroke-linecap="round" stroke-linejoin="round">
+    <path d="M12 22.2C12 22.2 3.8 15.6 3.8 10A8.2 8.2 0 0 1 20.2 10" stroke-width="2" />
+    <path d="M8.9 6.5L12 10.2L15.1 6.5" stroke-width="2.5" />
+  </g>
+  <path d="M10.85 10.2H13.15L12.4 17.6H11.6Z" fill="currentColor" stroke="currentColor" stroke-width="0.4" stroke-linejoin="round" />
+</svg>

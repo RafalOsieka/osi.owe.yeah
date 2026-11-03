@@ -1302,3 +1302,31 @@ test('a Participant on an Expense is not removed, one on none is; and the Trip i
   await page.getByRole('link', { name: /Name and Trip currency/ }).click();
   await expect(page.getByRole('main')).toContainText('Last changed by Kasia');
 });
+
+test('the tab, the home screen and the installed app all get the Owe Yeah icons', async ({
+  page,
+  request,
+}) => {
+  await page.goto('/');
+  // The mark is decorative: the header link is named by the title alone.
+  await expect(
+    page.getByRole('banner').getByRole('link', { name: 'Owe Yeah', exact: true }),
+  ).toBeVisible();
+  const head = await page
+    .locator('link[rel="icon"], link[rel="apple-touch-icon"]')
+    .evaluateAll((links) => links.map((link) => link.getAttribute('href') ?? ''));
+  const manifestHref = await page.locator('link[rel="manifest"]').getAttribute('href');
+  const manifest: { icons: { src: string; sizes: string; purpose: string }[] } = await (
+    await request.get(manifestHref!)
+  ).json();
+
+  expect(head).toEqual(['/favicon.svg', '/favicon.ico', '/apple-touch-icon.png']);
+  expect(manifest.icons.map(({ sizes, purpose }) => `${sizes} ${purpose}`)).toEqual([
+    '192x192 any',
+    '512x512 any',
+    '512x512 maskable',
+  ]);
+  for (const href of [...head, ...manifest.icons.map(({ src }) => src)]) {
+    expect((await request.get(href)).ok(), href).toBe(true);
+  }
+});
