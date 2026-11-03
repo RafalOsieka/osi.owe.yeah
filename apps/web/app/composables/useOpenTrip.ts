@@ -67,6 +67,8 @@ export interface OpenTrip {
   discardChanges(expenseId: string): Promise<void>;
   /** Opens the "Who are you?" sheet. */
   askWhoYouAre(): void;
+  /** Opens Invite, which passes on the Trip link once the Trip has synced. */
+  invite(): void;
 }
 
 const openTripKey: InjectionKey<OpenTrip> = Symbol('open-trip');

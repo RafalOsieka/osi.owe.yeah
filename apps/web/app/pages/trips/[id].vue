@@ -5,7 +5,8 @@ import type { ExpenseBase } from '~/sync/db';
 
 // Opens a Trip for its tabs and Expense pages from the device, joins it from a Trip link,
 // saves changes on the device and syncs them, and asks "Who are you?" when needed: also
-// when sync finds this device's Participant removed by someone else.
+// when sync finds this device's Participant removed by someone else. Holds Invite, opened
+// from the Trip header, the Trip tab and the empty Expenses tab.
 const route = useRoute();
 const router = useRouter();
 const { t } = useI18n();
@@ -38,6 +39,16 @@ const nothingToShow = computed(() => !onDevice || view.value?.local === null);
 
 const whoAreYouOpen = ref(false);
 useCloseOnBack(whoAreYouOpen);
+
+const inviteOpen = ref(false);
+useCloseOnBack(inviteOpen);
+// The Trip link to pass on, once the server has the Trip (it has a snapshot): before that,
+// the link would open nothing.
+const tripLink = computed(() => {
+  const deviceTrip = view.value?.deviceTrip;
+  if (!deviceTrip?.snapshot) return null;
+  return new URL(`/trips/${tripId}#${deviceTrip.token}`, location.origin).href;
+});
 // Who this device was before someone else removed them, while it is asked again.
 const removedClaim = ref<Participant | null>(null);
 
@@ -133,6 +144,7 @@ provideOpenTrip({
   keepMine,
   discardChanges: (expenseId) => device.discardChanges(tripId, expenseId),
   askWhoYouAre: () => (whoAreYouOpen.value = true),
+  invite: () => (inviteOpen.value = true),
 });
 
 useHead({ title: () => trip.value?.name ?? t('trip.invalidLink') });
@@ -150,6 +162,7 @@ useHead({ title: () => trip.value?.name ?? t('trip.invalidLink') });
         @claim="claimParticipant"
         @add-me="addMe"
       />
+      <InviteSheet v-model:open="inviteOpen" :trip-name="trip.name" :link="tripLink" />
     </template>
     <NuxtLayout v-else-if="nothingToShow" name="default">
       <UEmpty

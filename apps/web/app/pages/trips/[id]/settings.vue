@@ -2,13 +2,13 @@
 import { expensesReferencing, type Participant } from '@osi/owe-yeah-domain';
 import { v7 as uuidv7 } from 'uuid';
 
-// The Trip tab: everything about the Trip that is not money. Its Participants (tap one to
+// The Trip tab: everything about the Trip that is not money. Invite on top, its Participants (tap one to
 // remove them, refused while an Expense references them), who this device says it is, the
 // Trip's name and Trip currency, Recently deleted, and forgetting the Trip on this device.
 definePageMeta({ scrollToTop: false });
 useKeptScroll();
 
-const { trip, claim, unsynced, addParticipant, removeParticipant, askWhoYouAre, forget } =
+const { trip, claim, unsynced, addParticipant, removeParticipant, askWhoYouAre, invite, forget } =
   useOpenTrip();
 
 const adding = ref(false);
@@ -50,10 +50,12 @@ async function forgetTrip(): Promise<void> {
 
 <template>
   <NuxtLayout name="trip">
-    <section aria-labelledby="participants-heading">
+    <UButton block icon="i-lucide-share-2" :label="$t('invite.action')" @click="invite" />
+
+    <section aria-labelledby="participants-heading" class="mt-6">
       <h2
         id="participants-heading"
-        class="mt-2 text-xs font-semibold tracking-wide text-muted uppercase"
+        class="text-xs font-semibold tracking-wide text-muted uppercase"
       >
         {{ $t('participants.title') }}
       </h2>

@@ -1,9 +1,9 @@
 <script setup lang="ts">
-// The Trip's tabs (Expenses · Balances · Trip): the Trip header on top with the sync status,
-// what sync has to tell (`TripNotices`) above the tab, the tab bar at the bottom and an
+// The Trip's tabs (Expenses · Balances · Trip): the Trip header on top with the sync status
+// and Invite, what sync has to tell (`TripNotices`) above the tab, the tab bar at the bottom and an
 // optional `#action` floating just above it. Pulling a tab down syncs the Trip. Only for
 // pages under `pages/trips/[id].vue`, which provides the open Trip.
-const { trip, claim, unsynced, sync, askWhoYouAre } = useOpenTrip();
+const { trip, claim, unsynced, sync, askWhoYouAre, invite } = useOpenTrip();
 const { t } = useI18n();
 const back = useBack();
 const { pulled, ready, refreshing } = usePullToRefresh(sync);
@@ -65,6 +65,13 @@ const tabs = computed(() => {
           </div>
         </template>
       </UPopover>
+      <UButton
+        icon="i-lucide-share-2"
+        color="neutral"
+        variant="ghost"
+        :aria-label="$t('invite.action')"
+        @click="invite"
+      />
     </div>
   </header>
   <div

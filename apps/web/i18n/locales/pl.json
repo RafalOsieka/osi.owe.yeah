@@ -77,6 +77,18 @@
     "nobody": "Jeszcze nie wskazano",
     "removed": "Uczestnik {name}, wskazany na tym urządzeniu jako ty, został usunięty z podróży. Kim jesteś teraz?"
   },
+  "invite": {
+    "action": "Zaproś",
+    "title": "Zaproś do podróży {name}",
+    "help": "Kto ma link do podróży, może zobaczyć i edytować wszystko w podróży.",
+    "qr": "Kod QR linku do podróży",
+    "qrHelp": "Pozwól komuś obok zeskanować go aparatem telefonu.",
+    "share": "Udostępnij link do podróży",
+    "copy": "Skopiuj link do podróży",
+    "copied": "Skopiowano link do podróży",
+    "notSynced": "Podróż nie jest jeszcze zsynchronizowana",
+    "notSyncedHelp": "Link do podróży zadziała, gdy podróż trafi na serwer. Stanie się to samo, gdy będziesz online."
+  },
   "expense": {
     "list": "Wydatki",
     "empty": "Nie ma jeszcze żadnych wydatków",

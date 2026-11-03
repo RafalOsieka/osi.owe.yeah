@@ -70,25 +70,30 @@ function tripLinkFor(
   return tripWithExpenses(request, name, participants);
 }
 
-/**
- * The Trip link of the only Trip on this device, read from its device store, as there is no
- * Invite to show it yet (#39).
- */
-function tripLinkOnDevice(page: Page): Promise<string> {
-  return page.evaluate(
-    () =>
-      new Promise<string>((resolve, reject) => {
-        const opened = indexedDB.open('owe-yeah');
-        opened.onerror = () => reject(opened.error);
-        opened.onsuccess = () => {
-          const read = opened.result.transaction('trips').objectStore('trips').getAll();
-          read.onsuccess = () => {
-            const [trip] = read.result;
-            resolve(`/trips/${trip.id}#${trip.token}`);
-          };
-        };
-      }),
-  );
+declare global {
+  interface Window {
+    /** What the app last passed to the share sheet, which tests stand in for. */
+    shared?: ShareData;
+  }
+}
+
+// The share sheet is the OS's: tests stand in for it, so each run sees one whatever the host.
+test.beforeEach(async ({ page }) => {
+  await page.addInitScript(() => {
+    navigator.share = async (data) => {
+      window.shared = data;
+    };
+  });
+});
+
+/** The open Trip's Trip link, shared from Invite in the Trip header. */
+async function tripLinkFromInvite(page: Page): Promise<string> {
+  await page.getByRole('banner').getByRole('button', { name: 'Invite' }).click();
+  await page.getByRole('dialog').getByRole('button', { name: 'Share the Trip link' }).click();
+  const url = await page.evaluate(() => window.shared?.url);
+  await page.keyboard.press('Escape');
+  if (!url) throw new Error('Invite shared no Trip link');
+  return url;
 }
 
 /** Creates a Trip through New Trip, as `me`, and lands on it. */
@@ -328,7 +333,7 @@ test('a Trip and an Expense made offline reach a second device once back online'
 
   const other = await browser.newContext();
   const otherPage = await other.newPage();
-  await otherPage.goto(await tripLinkOnDevice(page));
+  await otherPage.goto(await tripLinkFromInvite(page));
   await otherPage.getByRole('dialog').getByRole('button', { name: 'Ania' }).click();
   await expect(otherPage.getByRole('link', { name: /Ferry tickets/ })).toContainText(
     'Kasia paid · for all 2',
@@ -399,7 +404,7 @@ test('a Receipt entered offline at the till, Line item by Line item, reaches a s
 
   const other = await browser.newContext();
   const otherPage = await other.newPage();
-  await otherPage.goto(await tripLinkOnDevice(page));
+  await otherPage.goto(await tripLinkFromInvite(page));
   await otherPage.getByRole('dialog').getByRole('button', { name: 'Ania' }).click();
   const otherRow = otherPage.getByRole('link', { name: /Lidl Rovinj/ });
   // A third of the bread and three waters: 0.83 + 0.87.
@@ -458,7 +463,7 @@ test('a Line discount follows the Units and a Receipt discount is shared by what
 
   const other = await browser.newContext();
   const otherPage = await other.newPage();
-  await otherPage.goto(await tripLinkOnDevice(page));
+  await otherPage.goto(await tripLinkFromInvite(page));
   await otherPage.getByRole('dialog').getByRole('button', { name: 'Ania' }).click();
   const otherRow = otherPage.getByRole('link', { name: /Konoba/ });
   // Two beers at 1.80 after the Line discount, less 10 %.
@@ -514,7 +519,7 @@ test('a Deposit is never discounted, and a Deposit refund comes off the Receipt 
 
   const other = await browser.newContext();
   const otherPage = await other.newPage();
-  await otherPage.goto(await tripLinkOnDevice(page));
+  await otherPage.goto(await tripLinkFromInvite(page));
   await otherPage.getByRole('dialog').getByRole('button', { name: 'Ania' }).click();
   const otherRow = otherPage.getByRole('link', { name: /Lidl Rovinj/ });
   // Water, Deposit and the refund are all split Even, so a third of 6.27 each.
@@ -1046,6 +1051,54 @@ test('forgetting a Trip is blocked while its changes have not synced, unless you
 
   await expect(page).toHaveURL('/');
   await expect(page.getByRole('link', { name: /Hel 2026/ })).toHaveCount(0);
+});
+
+test('Invite waits until the Trip has synced, then passes on its Trip link by QR code, share sheet or copy', async ({
+  page,
+  context,
+  browser,
+}) => {
+  // Opened once online, the app installs its service worker and then works offline.
+  await page.goto('/');
+  await page.waitForFunction(() => navigator.serviceWorker.controller !== null);
+  await context.setOffline(true);
+  await createTrip(page, 'Krk 2026', 'Ania', ['Kasia']);
+
+  // Until the server has the Trip, its link would open nothing.
+  await page.getByRole('main').getByRole('button', { name: 'Invite' }).click();
+  const sheet = page.getByRole('dialog', { name: 'Invite to Krk 2026' });
+  await expect(sheet).toContainText("The Trip hasn't synced yet");
+  await expect(sheet.getByRole('img', { name: 'QR code of the Trip link' })).toHaveCount(0);
+  await expect(sheet.getByRole('button', { name: 'Share the Trip link' })).toHaveCount(0);
+
+  // It syncs while the sheet is open; the QR code is made on this device.
+  await context.setOffline(false);
+  await expect(sheet.getByRole('img', { name: 'QR code of the Trip link' })).toBeVisible();
+  await sheet.getByRole('button', { name: 'Share the Trip link' }).click();
+  const shared = await page.evaluate(() => window.shared);
+  expect(shared?.title).toBe('Krk 2026');
+  expect(shared?.url).toMatch(/^http:\/\/localhost:\d+\/trips\/[\w-]+#[\w-]{43}$/);
+  await page.keyboard.press('Escape');
+
+  // The Trip tab offers it too. Without a share sheet, the link is copied instead.
+  await page.addInitScript(() => {
+    Reflect.deleteProperty(navigator, 'share');
+    Reflect.deleteProperty(Navigator.prototype, 'share');
+  });
+  await page.reload();
+  await context.grantPermissions(['clipboard-read', 'clipboard-write']);
+  await page.getByRole('link', { name: 'Trip', exact: true }).click();
+  await page.getByRole('main').getByRole('button', { name: 'Invite' }).click();
+  await sheet.getByRole('button', { name: 'Copy the Trip link' }).click();
+  await expect(page.getByText('Trip link copied', { exact: true })).toBeVisible();
+  const copied = await page.evaluate(() => navigator.clipboard.readText());
+  expect(copied).toBe(shared?.url);
+
+  const other = await browser.newContext();
+  const otherPage = await other.newPage();
+  await otherPage.goto(copied);
+  await expect(otherPage.getByRole('dialog')).toContainText('Who are you?');
+  await other.close();
 });
 
 test('a Participant on an Expense is not removed, one on none is; and the Trip is renamed', async ({
