@@ -86,7 +86,10 @@ async function claimParticipant(participant: Participant): Promise<void> {
   // The server's push subscription follows the Claim.
   if (notifications.value.subscription) void device.sync(tripId);
   removedClaim.value = null;
-  if (!notifications.value.offered && (support.value === 'available' || support.value === 'homeScreen')) {
+  if (
+    !notifications.value.offered &&
+    (support.value === 'available' || support.value === 'homeScreen')
+  ) {
     offering.value = true;
     await device.declineNotifications(tripId);
   } else {
