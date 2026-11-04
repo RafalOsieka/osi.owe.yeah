@@ -27,7 +27,7 @@ RUN vp run --filter @osi/owe-yeah-migrator build \
 # ── slim-node ─────────────────────────────────────────────────────────────────
 # Node on the same major as `devEngines.runtime`. The official image ships npm,
 # corepack and yarn; the final images need only `node`.
-FROM node:24-alpine AS slim-node
+FROM node:26-alpine AS slim-node
 RUN rm -rf /usr/local/lib/node_modules /opt/yarn-* \
   /usr/local/bin/npm /usr/local/bin/npx /usr/local/bin/corepack \
   /usr/local/bin/yarn /usr/local/bin/yarnpkg
