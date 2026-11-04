@@ -424,14 +424,15 @@ test('the longest texts never make a page scroll sideways at 360 px', async ({ p
   expect(await scrollsSideways()).toBe(false);
 });
 
-test('the licenses of the bundled dependencies open in the browser, past the service worker', async ({
+test('the terms link the licenses of the bundled dependencies, which open past the service worker', async ({
   page,
 }) => {
-  await page.goto('/');
+  await page.goto('/terms');
   await page.waitForFunction(() => navigator.serviceWorker.controller !== null);
 
-  await page.goto('/licenses.txt');
+  await page.getByRole('main').getByRole('link', { name: '/licenses.txt' }).click();
 
+  await expect(page).toHaveURL('/licenses.txt');
   await expect(page.locator('body')).toContainText('## dexie - ');
 });
 
@@ -1439,10 +1440,6 @@ test('the terms name who provides the app and where to report illegal content, i
   await expect(main).toContainText('NIP');
   await expect(main.getByRole('heading', { name: 'Reporting illegal content' })).toBeVisible();
   await expect(page.getByRole('link', { name: 'owe-yeah@osieka.dev' }).first()).toBeVisible();
-  await expect(main.getByRole('link', { name: '/licenses.txt' })).toHaveAttribute(
-    'href',
-    '/licenses.txt',
-  );
 
   const context = await browser.newContext({ locale: 'pl-PL' });
   const polish = await context.newPage();
