@@ -37,6 +37,9 @@ const frankfurter = await startFrankfurter();
 const pushService = await startPushService();
 const vapid = webpush.generateVAPIDKeys();
 
+// The commit the server under test is started with, as an image built with `COMMIT_SHA` has it.
+const commit = '0123456789abcdef0123456789abcdef01234567';
+
 // Every change in these tests comes from one device, without a Claim unless given.
 const deviceId = uuidv7();
 
@@ -302,12 +305,20 @@ describeApi('Trip API', () => {
       NUXT_VAPID_SUBJECT: 'mailto:test@example.com',
       // The stand-in push service is plain http; real ones are https only.
       NUXT_NOTIFICATIONS_ALLOW_HTTP: 'true',
+      NUXT_COMMIT_SHA: commit,
     },
   });
   beforeAll(server.beforeAll, server.ctx.options.setupTimeout);
   afterAll(server.afterAll, server.ctx.options.teardownTimeout);
   afterAll(frankfurter.close);
   afterAll(pushService.close);
+
+  it('reports its health and the commit it runs, outside the sync schema', async () => {
+    const response = await fetch('/healthz');
+
+    expect(response.status).toBe(200);
+    expect(await response.json()).toEqual({ commit });
+  });
 
   it('accepts a Trip created offline on its first push, with Expenses in the same push', async () => {
     const kasia = participant('Kasia');
