@@ -4,25 +4,24 @@ import {
   fromMinor,
   lineItemProblems,
   lineItemShares,
-  parseMoney,
-  splitFromScratch,
   type Participant,
   type Rational,
   type SplitMode,
 } from '@osi/owe-yeah-domain';
 import {
-  depositFromDraft,
-  discountFromDraft,
-  lineItemFromDraft,
+  chooseSplitMode,
+  readLineItem,
   type DraftLineItem,
-} from '~/utils/receipt-draft';
+  type LineItemField,
+} from '~/utils/expense-draft';
 
 // One Line item of the Till list. Collapsed, it reads as on the paper Receipt: name, quantity
 // × unit price, how it is split, its Line discount, its Deposit, its total after that
-// discount, and what is not assigned yet. Open, it is edited in place: name, unit price,
-// quantity, Line discount, Deposit per unit, Split mode and that mode's inputs, moving it up
-// or down, and removing it. A Deposit refund has only a name, an amount and a split, and
-// reads as a negative amount. Switching the Split mode starts that mode from scratch.
+// discount, and what is not assigned yet, or what of it can't be read (`readLineItem`). Open,
+// it is edited in place: name, unit price, quantity, Line discount, Deposit per unit, Split
+// mode and that mode's inputs, moving it up or down, and removing it. A Deposit refund has
+// only a name, an amount and a split, and reads as a negative amount. Switching the Split mode
+// starts that mode from scratch (`chooseSplitMode`).
 const { participants, currency, position, first, last } = defineProps<{
   participants: readonly Participant[];
   currency: string;
@@ -37,24 +36,20 @@ const emit = defineEmits<{ move: [by: -1 | 1]; remove: [] }>();
 
 const { t, locale } = useI18n();
 const splitText = useSplitText();
+const { lineItemReason } = useDraftReasons();
 const editorId = useId();
 
 const money = (amount: Rational) => formatMoney(amount, currency, locale.value);
 const bare = (amount: Rational) => formatMoney(amount, currency, locale.value, 'number');
 
-const item = computed(() => lineItemFromDraft(line.value, currency));
+const reading = computed(() => readLineItem(line.value, currency));
+const item = computed(() => reading.value.lineItem);
 const shares = computed(() => item.value && lineItemShares(item.value, currency));
 const problems = computed(() => (item.value ? lineItemProblems(item.value) : []));
-const priceReadable = computed(() => parseMoney(line.value.price, currency) !== null);
-const discountReadable = computed(() => discountFromDraft(line.value.discount, currency) !== null);
-const depositReadable = computed(() => depositFromDraft(line.value.deposit, currency) !== null);
-// Why the line can't be read yet, while it can't.
-const unreadable = computed(() => {
-  if (item.value) return null;
-  if (line.value.refund) return t('receipt.checkAmount');
-  if (!priceReadable.value) return t('receipt.checkPrice');
-  return discountReadable.value ? t('receipt.depositUnreadable') : t('receipt.discountUnreadable');
-});
+// What of the line can't be read, while anything can't.
+const unreadable = computed(() => reading.value.reasons.map(lineItemReason));
+const readable = (field: LineItemField) =>
+  !reading.value.reasons.some((reason) => reason.field === field);
 const depositText = computed(() =>
   shares.value && shares.value.deposit.numerator !== 0n ? money(shares.value.deposit) : null,
 );
@@ -65,7 +60,7 @@ const discountText = computed(
     formatDiscount(item.value.discount, shares.value.discountOff, currency, locale.value),
 );
 const discountError = computed(() => {
-  if (!discountReadable.value) return t('receipt.discountUnreadable');
+  if (!readable('discount')) return t('receipt.discountUnreadable');
   return problems.value.includes('lineDiscountExceedsLineTotal')
     ? t('receipt.problem.lineDiscountExceedsLineTotal')
     : undefined;
@@ -87,13 +82,8 @@ function update(change: Partial<DraftLineItem>): void {
 }
 
 function chooseMode(mode: SplitMode): void {
-  if (mode === line.value.split.mode) return;
-  update({
-    split: splitFromScratch(
-      mode,
-      participants.map(({ id }) => id),
-    ),
-  });
+  const chosen = chooseSplitMode(line.value, mode, participants);
+  if (chosen !== line.value) line.value = chosen;
 }
 
 // The Participants in the Trip's order, each with what the split gives them.
@@ -183,7 +173,9 @@ const modes: readonly SplitMode[] = ['even', 'units', 'amounts'];
         <span v-if="depositText" class="block truncate text-xs text-muted">
           {{ $t('receipt.depositFact', { deposit: depositText }) }}
         </span>
-        <span v-if="unreadable" class="block text-xs text-warning">{{ unreadable }}</span>
+        <span v-for="text in unreadable" :key="text" class="block text-xs text-warning">
+          {{ text }}
+        </span>
         <span v-for="problem in problems" :key="problem" class="block text-xs text-warning">
           {{ $t(`receipt.problem.${problem}`) }}
         </span>
@@ -214,7 +206,7 @@ const modes: readonly SplitMode[] = ['even', 'units', 'amounts'];
             :model-value="line.price"
             inputmode="decimal"
             class="w-full"
-            :color="priceReadable ? undefined : 'error'"
+            :color="readable(line.refund ? 'amount' : 'price') ? undefined : 'error'"
             @update:model-value="update({ price: String($event) })"
           >
             <template #trailing>
@@ -249,7 +241,7 @@ const modes: readonly SplitMode[] = ['even', 'units', 'amounts'];
         <UFormField
           :label="$t('receipt.depositPerUnit')"
           :help="$t('receipt.depositHelp')"
-          :error="depositReadable ? undefined : $t('receipt.depositUnreadable')"
+          :error="readable('deposit') ? undefined : $t('receipt.depositUnreadable')"
         >
           <UInput
             :model-value="line.deposit"

@@ -222,6 +222,7 @@
     "depositPerUnit": "Deposit per unit",
     "depositHelp": "Charged per unit for returnable packaging. It follows the split and is never discounted.",
     "depositUnreadable": "Check the Deposit.",
+    "amountsUnreadable": "Check the Amounts.",
     "depositFact": "Deposit {deposit}",
     "deposits": "Deposits",
     "depositsFact": "Deposits {amount}",

@@ -1,25 +1,19 @@
 <script setup lang="ts">
-import {
-  add,
-  fromMinor,
-  negate,
-  parseMoney,
-  type Participant,
-  type Rational,
-} from '@osi/owe-yeah-domain';
+import type { Participant, Rational } from '@osi/owe-yeah-domain';
 import type { DropdownMenuItem } from '@nuxt/ui';
-import type { DraftContribution } from '~/utils/contribution-draft';
+import type { DraftContribution } from '~/utils/expense-draft';
 
 // The Contributions of an Expense on its form, under "Paid by": one row per Participant who
 // paid a fixed amount towards it, with the amount as typed and a remove button, and "Add a
 // Contribution" to pick someone else who hasn't made one and isn't the Main payer. Below the
-// rows, what the Main payer covers once the Contributions are taken off `total` (`null` while
-// the total can't be read), or a warning when they come to more than it.
-const { participants, mainPayerId, currency, total } = defineProps<{
+// rows, what the Main payer covers once the Contributions are taken off the total (`rest`,
+// `null` while it can't be read). Contributions that come to more than the total are a Trip
+// rule broken, which the form shows at the field.
+const { participants, mainPayerId, currency, rest } = defineProps<{
   participants: readonly Participant[];
   mainPayerId: string;
   currency: string;
-  total: Rational | null;
+  rest: Rational | null;
 }>();
 const contributions = defineModel<DraftContribution[]>({ required: true });
 
@@ -33,18 +27,6 @@ const rows = computed(() =>
     return participant ? [{ participant, amount: contribution.amount }] : [];
   }),
 );
-
-// What the Main payer covers: `null` while the total or an amount can't be read.
-const rest = computed(() => {
-  if (!total) return null;
-  let left = total;
-  for (const { amount } of contributions.value) {
-    const minor = parseMoney(amount, currency);
-    if (minor === null) return null;
-    left = add(left, negate(fromMinor(minor, currency)));
-  }
-  return left;
-});
 
 const payerName = computed(() => participants.find(({ id }) => id === mainPayerId)?.name ?? '?');
 
@@ -125,10 +107,7 @@ const addable = computed<DropdownMenuItem[]>(() =>
           />
         </li>
       </ul>
-      <p v-if="rest && rest.numerator < 0n" class="mt-1.5 text-sm text-error">
-        {{ $t('contribution.exceeds') }}
-      </p>
-      <p v-else-if="rest" class="mt-1.5 text-sm text-muted">
+      <p v-if="rest && rest.numerator >= 0n" class="mt-1.5 text-sm text-muted">
         {{
           $t('contribution.rest', {
             name: payerName,

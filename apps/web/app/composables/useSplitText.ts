@@ -1,5 +1,5 @@
 import { splitParticipantIds, type Participant, type Split } from '@osi/owe-yeah-domain';
-import type { DraftSplit } from '~/utils/receipt-draft';
+import type { DraftSplit } from '~/utils/expense-draft';
 
 /**
  * How a Line item's split reads in one line: its Split mode and who it names, with their

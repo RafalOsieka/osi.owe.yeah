@@ -1,31 +1,19 @@
 <script setup lang="ts">
-import {
-  deviceTimeZone,
-  expenseTimeFromLocal,
-  expenseTitleSchema,
-  fromMinor,
-  localDateTime,
-  minorUnits,
-  parseMoney,
-  roundMoney,
-  type Currency,
-  type Repayment,
-} from '@osi/owe-yeah-domain';
-import type { FormError } from '@nuxt/ui';
+import { deviceTimeZone, type Repayment } from '@osi/owe-yeah-domain';
 import type { RouteLocationRaw } from 'vue-router';
-import { v7 as uuidv7 } from 'uuid';
 import type { LocalExpense } from '~/sync/local-trip';
 import {
-  draftFromManualRate,
-  manualRateToSave,
-  type DraftManualRate,
-} from '~/utils/manual-rate-draft';
+  draftFromExpense,
+  newRepaymentDraft,
+  readDraft,
+  type RepaymentDraft,
+} from '~/utils/expense-draft';
 
 // The full-screen Repayment form, for a new Repayment or to edit one: amount, its currency
 // with a Manual rate if needed (`ExpenseCurrency`), who paid, who got the money, a title and
 // when. A new one is in the Trip currency until another is picked, and may start from a
 // Suggested Repayment (`suggested`), its amount still editable for a partial Repayment;
-// otherwise who paid defaults to the Claim. Saving works like the Expense form's.
+// otherwise who paid defaults to the Claim. Reading and saving work like the Expense form's.
 const {
   repayment = null,
   suggested = null,
@@ -41,100 +29,35 @@ const {
 const { trip, claim, saveExpense } = useOpenTrip();
 const { t } = useI18n();
 const back = useBack();
-const manualRateErrors = useManualRateErrors();
-
-type RepaymentFormState = {
-  title: string;
-  amount: string;
-  /** The currency the amount is in. */
-  currency: Currency;
-  /** The Manual rate, as typed; empty for none. */
-  manualRate: DraftManualRate;
-  mainPayerId: string;
-  recipientId: string;
-  /** Local date and time (`YYYY-MM-DDTHH:mm`) in `zone`. */
-  local: string;
-  zone: string;
-};
+const { formErrors, problemAt } = useDraftReasons();
 
 // Read once: the form is mounted afresh each time it opens.
-function initialState(): RepaymentFormState {
-  if (repayment) {
-    return {
-      title: repayment.title,
-      amount: roundMoney(fromMinor(repayment.amount, repayment.currency), repayment.currency)
-        .decimal,
-      currency: repayment.currency,
-      manualRate: draftFromManualRate(repayment.manualRate, trip.value.currency),
-      mainPayerId: repayment.mainPayerId,
-      recipientId: repayment.recipientId,
-      local: localDateTime(repayment.time),
-      zone: repayment.time.zone,
-    };
-  }
-  const known = (id: string | undefined) =>
-    trip.value.participants.find((participant) => participant.id === id)?.id;
-  const zone = deviceTimeZone();
-  return {
-    title: t('repayment.title'),
-    amount: suggested?.amount ?? '',
-    currency: trip.value.currency,
-    manualRate: draftFromManualRate(undefined, trip.value.currency),
-    mainPayerId: known(suggested?.payerId) ?? known(claim.value?.id) ?? '',
-    recipientId: known(suggested?.recipientId) ?? '',
-    local: localDateTime({ instant: new Date().toISOString(), zone }),
-    zone,
-  };
-}
+const state = reactive<RepaymentDraft>(
+  repayment
+    ? draftFromExpense(repayment, trip.value)
+    : newRepaymentDraft(trip.value, {
+        now: new Date(),
+        zone: deviceTimeZone(),
+        claimId: claim.value?.id ?? null,
+        title: t('repayment.title'),
+        suggested,
+      }),
+);
 
-const state = reactive(initialState());
-const id = repayment?.id ?? uuidv7();
-
-// The amount and when, as typed so far; `null` while unreadable or not set.
-const total = computed(() => {
-  const amount = parseMoney(state.amount, state.currency);
-  return amount === null ? null : fromMinor(amount, state.currency);
-});
-const time = computed(() => (state.local ? expenseTimeFromLocal(state.local, state.zone) : null));
-
-function validate(form: Partial<RepaymentFormState>): FormError[] {
-  const errors: FormError[] = [];
-  if (parseMoney(form.amount ?? '', state.currency) === null) {
-    const decimals = minorUnits(state.currency);
-    errors.push({ name: 'amount', message: t('expense.amountInvalid', { decimals }, decimals) });
-  }
-  errors.push(...manualRateErrors(state.manualRate, state.currency, total.value));
-  if (!form.mainPayerId) errors.push({ name: 'mainPayerId', message: t('expense.payerMissing') });
-  if (!form.recipientId) {
-    errors.push({ name: 'recipientId', message: t('repayment.recipientMissing') });
-  } else if (form.recipientId === form.mainPayerId) {
-    errors.push({ name: 'recipientId', message: t('repayment.sameParticipant') });
-  }
-  if (!expenseTitleSchema.safeParse(form.title).success) {
-    errors.push({ name: 'title', message: t('expense.titleInvalid') });
-  }
-  if (!form.local) errors.push({ name: 'local', message: t('expense.timeMissing') });
-  return errors;
-}
+// What is typed, read live and when saving.
+const reading = computed(() => readDraft(state, trip.value));
 
 // Which Trip rules the last save broke; the Repayment itself stays as it was.
 const refusals = ref<string[]>([]);
 const saving = ref(false);
 
 async function submit(): Promise<void> {
+  // Complete by now: the form's validation passed.
+  const { expense: read } = reading.value;
+  if (!read) return;
   saving.value = true;
-  const manualRate = manualRateToSave(state.manualRate, state.currency);
   const refused = await saveExpense(
-    {
-      id,
-      title: state.title.trim(),
-      currency: state.currency,
-      time: expenseTimeFromLocal(state.local, state.zone),
-      mainPayerId: state.mainPayerId,
-      recipientId: state.recipientId,
-      amount: parseMoney(state.amount, state.currency)!,
-      ...(manualRate && { manualRate }),
-    },
+    read,
     // Based on the Repayment as the form read it when it opened.
     repayment?.base ?? { version: null },
   ).finally(() => (saving.value = false));
@@ -154,7 +77,7 @@ async function submit(): Promise<void> {
     <UForm
       id="repayment-form"
       :state="state"
-      :validate="validate"
+      :validate="() => formErrors(reading.reasons, state)"
       class="space-y-5"
       @submit="submit"
     >
@@ -164,12 +87,12 @@ async function submit(): Promise<void> {
       <ExpenseCurrency
         v-model:currency="state.currency"
         v-model:manual-rate="state.manualRate"
-        :total="total"
-        :time="time"
+        :reading="reading"
+        :error="problemAt(reading.reasons, 'manualRate')"
         class="-mt-3"
       />
 
-      <UFormField name="mainPayerId">
+      <UFormField name="mainPayerId" :error="problemAt(reading.reasons, 'mainPayerId')">
         <ParticipantPicker
           v-model="state.mainPayerId"
           :participants="trip.participants"
@@ -178,7 +101,7 @@ async function submit(): Promise<void> {
         />
       </UFormField>
 
-      <UFormField name="recipientId">
+      <UFormField name="recipientId" :error="problemAt(reading.reasons, 'recipientId')">
         <ParticipantPicker
           v-model="state.recipientId"
           :participants="trip.participants"

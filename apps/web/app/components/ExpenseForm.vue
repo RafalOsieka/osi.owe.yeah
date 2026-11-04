@@ -1,44 +1,15 @@
 <script setup lang="ts">
-import {
-  deviceTimeZone,
-  expenseKind,
-  expenseTimeFromLocal,
-  expenseTitleSchema,
-  fromMinor,
-  localDateTime,
-  minorUnits,
-  parseMoney,
-  receiptDiscountExceeds,
-  receiptShares,
-  roundMoney,
-  type Currency,
-  type LineItem,
-  type SplitExpense,
-} from '@osi/owe-yeah-domain';
-import type { FormError } from '@nuxt/ui';
+import { deviceTimeZone, type SplitExpense } from '@osi/owe-yeah-domain';
 import type { RouteLocationRaw } from 'vue-router';
-import { v7 as uuidv7 } from 'uuid';
 import type { LocalExpense } from '~/sync/local-trip';
 import {
-  contributionsFromDraft,
-  draftFromContributions,
-  type DraftContribution,
-} from '~/utils/contribution-draft';
-import {
-  draftFromManualRate,
-  manualRateToSave,
-  type DraftManualRate,
-} from '~/utils/manual-rate-draft';
-import {
-  discountFromDraft,
-  draftFromDiscount,
-  draftFromLineItem,
-  draftLineItem,
-  lineItemFromDraft,
-  noDiscount,
-  type DraftDiscount,
-  type DraftLineItem,
-} from '~/utils/receipt-draft';
+  draftFromExpense,
+  itemise,
+  newExpenseDraft,
+  pickMainPayer,
+  readDraft,
+  type SplitDraft,
+} from '~/utils/expense-draft';
 
 // The full-screen Expense form, for a new plain Expense or Income or to edit one: amount,
 // whether it is money received (Income, saved with a negative amount so nobody types a minus),
@@ -55,9 +26,11 @@ import {
 // circulation, picked from the pill under the amount: a new one starts in the currency of the
 // Expense saved last on this device, or else the Trip currency. Every amount is entered in it,
 // and the pill says what the total comes to in the Trip currency, at a Manual rate if one is
-// typed next to it (`ExpenseCurrency`). Saving keeps the Expense's full new state on the
-// device, to sync later, and returns to `parent`'s screen, or wherever the form was opened
-// from. An Expense that breaks a Trip rule is not saved; why shows above Save.
+// typed next to it (`ExpenseCurrency`). What is typed is read as an Expense draft
+// (`readDraft`): a Trip rule the Expense would break shows at its field while the form is
+// filled in. Saving keeps the Expense's full new state on the device, to sync later, and
+// returns to `parent`'s screen, or wherever the form was opened from. A refusal the form
+// couldn't foresee shows above Save.
 const { expense = null, parent } = defineProps<{
   expense?: Extract<LocalExpense, SplitExpense> | null;
   /** The screen above the form, for back when it was opened from a link. */
@@ -67,87 +40,22 @@ const { expense = null, parent } = defineProps<{
 const { trip, claim, lastCurrency, saveExpense } = useOpenTrip();
 const { t, locale } = useI18n();
 const back = useBack();
-const manualRateErrors = useManualRateErrors();
-
-type ExpenseFormState = {
-  title: string;
-  /** The currency every amount is entered in. */
-  currency: Currency;
-  /** The Manual rate, as typed; empty for none. */
-  manualRate: DraftManualRate;
-  /** The amount as typed, never negative. */
-  amount: string;
-  /** Income: money received rather than paid. */
-  received: boolean;
-  mainPayerId: string;
-  participantIds: string[];
-  /** Local date and time (`YYYY-MM-DDTHH:mm`) in `zone`. */
-  local: string;
-  zone: string;
-  /** The Till list's Line items once itemised as a Receipt; `null` for a plain Expense. */
-  lineItems: DraftLineItem[] | null;
-  /** The Receipt discount, used once itemised. */
-  discount: DraftDiscount;
-  /** Contributions from Participants other than the Main payer, in the order added. */
-  contributions: DraftContribution[];
-};
+const { draftReason, formErrors, problemAt } = useDraftReasons();
 
 // Read once: the form is mounted afresh each time it opens.
-function initialState(): ExpenseFormState {
-  const { participants } = trip.value;
-  const everyone = participants.map(({ id }) => id);
-  if (expense) {
-    const kinded = expenseKind(expense);
-    const time = { local: localDateTime(expense.time), zone: expense.time.zone };
-    const shared = {
-      title: expense.title,
-      currency: expense.currency,
-      manualRate: draftFromManualRate(expense.manualRate, trip.value.currency),
-      mainPayerId: expense.mainPayerId,
-      contributions: draftFromContributions(expense.contributions, expense.currency),
-      ...time,
-    };
-    if (kinded.kind === 'receipt') {
-      return {
-        ...shared,
-        amount: '',
-        received: false,
-        participantIds: everyone,
-        lineItems: expense.lineItems.map((item) => draftFromLineItem(item, expense.currency)),
-        discount: draftFromDiscount(expense.discount, expense.currency),
-      };
-    }
-    const [{ unitPrice, split }] = kinded.expense.lineItems;
-    return {
-      ...shared,
-      amount: roundMoney(fromMinor(Math.abs(unitPrice), expense.currency), expense.currency)
-        .decimal,
-      received: kinded.kind === 'income',
-      participantIds: split.mode === 'even' ? [...split.participantIds] : [],
-      lineItems: null,
-      discount: noDiscount(),
-    };
-  }
-  const zone = deviceTimeZone();
-  const claimed = participants.find(({ id }) => id === claim.value?.id);
-  return {
-    title: '',
-    currency: lastCurrency.value ?? trip.value.currency,
-    manualRate: draftFromManualRate(undefined, trip.value.currency),
-    amount: '',
-    received: false,
-    mainPayerId: claimed?.id ?? participants[0]?.id ?? '',
-    participantIds: everyone,
-    local: localDateTime({ instant: new Date().toISOString(), zone }),
-    zone,
-    lineItems: null,
-    discount: noDiscount(),
-    contributions: [],
-  };
-}
+const state = reactive<SplitDraft>(
+  expense
+    ? draftFromExpense(expense, trip.value)
+    : newExpenseDraft(trip.value, {
+        now: new Date(),
+        zone: deviceTimeZone(),
+        claimId: claim.value?.id ?? null,
+        lastCurrency: lastCurrency.value,
+      }),
+);
 
-const state = reactive(initialState());
-const id = expense?.id ?? uuidv7();
+// What is typed, read live and when saving.
+const reading = computed(() => readDraft(state, trip.value));
 
 const allTicked = computed(() => state.participantIds.length === trip.value.participants.length);
 
@@ -162,57 +70,9 @@ function toggleAll(): void {
   state.participantIds = allTicked.value ? [] : trip.value.participants.map(({ id }) => id);
 }
 
-// Ticked Participants in the Trip's order, whatever order they were ticked in.
-function tickedInTripOrder(): string[] {
-  const ticked = new Set(state.participantIds);
-  return trip.value.participants.map(({ id }) => id).filter((id) => ticked.has(id));
-}
-
-// The amount typed so far becomes the Receipt's first Line item, split as ticked.
-function itemise(): void {
-  state.lineItems =
-    parseMoney(state.amount, state.currency) === null
-      ? []
-      : [
-          draftLineItem({
-            name: '',
-            price: state.amount,
-            quantity: 1,
-            split: { mode: 'even', participantIds: tickedInTripOrder() },
-          }),
-        ];
-}
-
-// The Receipt as typed so far: its Line items (`null` where one can't be read yet), its
-// Receipt discount (`null` while it can't be read), and what the readable ones come to: the
-// computed total, what the discount takes off, the Deposits, and the value not assigned to
-// anyone yet.
-const receipt = computed(() => {
-  if (!state.lineItems) return null;
-  const { currency } = state;
-  const items = state.lineItems.map((draft) => lineItemFromDraft(draft, currency));
-  const discount = discountFromDraft(state.discount, currency);
-  // What can be read so far, as the domain sees a Receipt.
-  const readable = {
-    lineItems: items.flatMap((item) => (item ? [item] : [])),
-    discount: discount ?? undefined,
-    currency,
-  };
-  const shares = receiptShares(readable);
-  return {
-    items,
-    discount,
-    total: shares.total,
-    off: shares.discountOff,
-    deposits: shares.deposits,
-    unassigned: shares.unassigned,
-    discountExceeds: receiptDiscountExceeds(readable),
-  };
-});
-
 const discountError = computed(() => {
-  if (receipt.value?.discount === null) return t('receipt.discountUnreadable');
-  return receipt.value?.discountExceeds ? t('receipt.receiptDiscountExceeds') : undefined;
+  const reason = reading.value.reasons.find(({ field }) => field === 'discount');
+  return reason && draftReason(reason, state);
 });
 
 // Who was refused as Main payer for having a Contribution; the reason shows while it stands.
@@ -224,25 +84,20 @@ const payerRefusal = computed(() => {
   return contributes ? t('contribution.payerRefused', { name: refused.name }) : undefined;
 });
 
-function pickMainPayer(participantId: string): void {
-  if (state.contributions.some((contribution) => contribution.participantId === participantId)) {
+function pickPayer(participantId: string): void {
+  const picked = pickMainPayer(state, participantId);
+  if (picked === 'contributes') {
     refusedPayerId.value = participantId;
     return;
   }
   refusedPayerId.value = undefined;
-  state.mainPayerId = participantId;
+  Object.assign(state, picked);
 }
 
-// What the Expense comes to so far, which the Contributions come off; `null` while unreadable.
-const total = computed(() => {
-  if (receipt.value) return receipt.value.total;
-  const { currency } = state;
-  const amount = parseMoney(state.amount, currency);
-  return amount === null ? null : fromMinor(state.received ? -amount : amount, currency);
-});
-
-// When the Expense happened, as typed so far; `null` while it is not set.
-const time = computed(() => (state.local ? expenseTimeFromLocal(state.local, state.zone) : null));
+// The amount typed so far becomes the Receipt's first Line item.
+function itemiseReceipt(): void {
+  Object.assign(state, itemise(state, trip.value));
+}
 
 const payerName = computed(
   () => trip.value.participants.find(({ id }) => id === state.mainPayerId)?.name ?? '?',
@@ -259,76 +114,17 @@ const texts = computed(() => {
   return { heading: expense ? t('expense.edit') : t('expense.new'), save: t('expense.save') };
 });
 
-function validate(form: Partial<ExpenseFormState>): FormError[] {
-  const errors: FormError[] = [];
-  if (!expenseTitleSchema.safeParse(form.title).success) {
-    errors.push({ name: 'title', message: t('expense.titleInvalid') });
-  }
-  if (receipt.value) {
-    if (receipt.value.items.length === 0) {
-      errors.push({ name: 'lineItems', message: t('receipt.lineItemsMissing') });
-    } else if (receipt.value.items.includes(null)) {
-      errors.push({ name: 'lineItems', message: t('receipt.lineItemsUnreadable') });
-    }
-    if (receipt.value.discount === null) {
-      errors.push({ name: 'discount', message: t('receipt.discountUnreadable') });
-    }
-  } else {
-    if (parseMoney(form.amount ?? '', state.currency) === null) {
-      const decimals = minorUnits(state.currency);
-      errors.push({ name: 'amount', message: t('expense.amountInvalid', { decimals }, decimals) });
-    }
-    if (!form.participantIds?.length) {
-      errors.push({ name: 'participantIds', message: t('expense.participantsMissing') });
-    }
-  }
-  errors.push(...manualRateErrors(state.manualRate, state.currency, total.value));
-  if (contributionsFromDraft(state.contributions, state.currency) === null) {
-    errors.push({ name: 'contributions', message: t('contribution.unreadable') });
-  }
-  if (!form.mainPayerId) {
-    const message = form.received ? t('expense.receiverMissing') : t('expense.payerMissing');
-    errors.push({ name: 'mainPayerId', message });
-  }
-  if (!form.local) errors.push({ name: 'local', message: t('expense.timeMissing') });
-  return errors;
-}
-
-// The Line items to save: the Receipt's, or the plain Expense's one.
-function lineItems(): LineItem[] {
-  if (receipt.value) return receipt.value.items.flatMap((item) => (item ? [item] : []));
-  return [
-    {
-      name: '',
-      unitPrice: (state.received ? -1 : 1) * parseMoney(state.amount, state.currency)!,
-      quantity: 1,
-      split: { mode: 'even', participantIds: tickedInTripOrder() },
-    },
-  ];
-}
-
 // Which Trip rules the last save broke; the Expense itself stays as it was.
 const refusals = ref<string[]>([]);
 const saving = ref(false);
 
 async function submit(): Promise<void> {
+  // Complete by now: the form's validation passed.
+  const { expense: read } = reading.value;
+  if (!read) return;
   saving.value = true;
-  // Readable by now: `validate` passed.
-  const contributions = contributionsFromDraft(state.contributions, state.currency)!;
-  const manualRate = manualRateToSave(state.manualRate, state.currency);
   const refused = await saveExpense(
-    {
-      id,
-      title: state.title.trim(),
-      currency: state.currency,
-      time: expenseTimeFromLocal(state.local, state.zone),
-      mainPayerId: state.mainPayerId,
-      lineItems: lineItems(),
-      ...(manualRate && { manualRate }),
-      // Left out when there is none, as the device store and the server keep it.
-      ...(receipt.value?.discount && { discount: receipt.value.discount }),
-      ...(contributions.length > 0 && { contributions }),
-    },
+    read,
     // Based on the Expense as the form read it when it opened.
     expense?.base ?? { version: null },
   ).finally(() => (saving.value = false));
@@ -340,37 +136,48 @@ async function submit(): Promise<void> {
 
 <template>
   <NuxtLayout name="form" :title="texts.heading" :parent="parent" :close="!expense">
-    <UForm id="expense-form" :state="state" :validate="validate" class="space-y-5" @submit="submit">
-      <div v-if="receipt" class="text-center">
+    <UForm
+      id="expense-form"
+      :state="state"
+      :validate="() => formErrors(reading.reasons, state)"
+      class="space-y-5"
+      @submit="submit"
+    >
+      <div v-if="reading.receipt" class="text-center">
         <p id="receipt-total-label" class="text-sm text-muted">{{ $t('receipt.total') }}</p>
         <output aria-labelledby="receipt-total-label" class="block text-4xl font-bold tabular-nums">
-          {{ formatMoney(receipt.total, state.currency, locale) }}
+          {{ formatMoney(reading.receipt.total, state.currency, locale) }}
         </output>
         <ExpenseCurrency
           v-model:currency="state.currency"
           v-model:manual-rate="state.manualRate"
-          :total="total"
-          :time="time"
+          :reading="reading"
+          :error="problemAt(reading.reasons, 'manualRate')"
           class="mt-2 text-start"
         />
-        <p v-if="receipt.discount" class="mt-1 text-sm text-muted">
+        <p v-if="reading.receipt.discount" class="mt-1 text-sm text-muted">
           {{
             $t('receipt.receiptDiscountFact', {
-              discount: formatDiscount(receipt.discount, receipt.off, state.currency, locale),
+              discount: formatDiscount(
+                reading.receipt.discount,
+                reading.receipt.discountOff,
+                state.currency,
+                locale,
+              ),
             })
           }}
         </p>
-        <p v-if="receipt.deposits.numerator !== 0n" class="mt-1 text-sm text-muted">
+        <p v-if="reading.receipt.deposits.numerator !== 0n" class="mt-1 text-sm text-muted">
           {{
             $t('receipt.depositsFact', {
-              amount: formatMoney(receipt.deposits, state.currency, locale),
+              amount: formatMoney(reading.receipt.deposits, state.currency, locale),
             })
           }}
         </p>
-        <p v-if="receipt.unassigned.numerator !== 0n" class="mt-1 text-sm text-warning">
+        <p v-if="reading.receipt.unassigned.numerator !== 0n" class="mt-1 text-sm text-warning">
           {{
             $t('receipt.unassignedTotal', {
-              amount: formatMoney(receipt.unassigned, state.currency, locale),
+              amount: formatMoney(reading.receipt.unassigned, state.currency, locale),
               name: payerName,
             })
           }}
@@ -384,8 +191,8 @@ async function submit(): Promise<void> {
         <ExpenseCurrency
           v-model:currency="state.currency"
           v-model:manual-rate="state.manualRate"
-          :total="total"
-          :time="time"
+          :reading="reading"
+          :error="problemAt(reading.reasons, 'manualRate')"
           class="-mt-3"
         />
 
@@ -413,23 +220,30 @@ async function submit(): Promise<void> {
         />
       </UFormField>
 
-      <UFormField name="mainPayerId" :error="payerRefusal">
+      <UFormField
+        name="mainPayerId"
+        :error="payerRefusal ?? problemAt(reading.reasons, 'mainPayerId')"
+      >
         <ParticipantPicker
           :model-value="state.mainPayerId"
           :participants="trip.participants"
           :label="state.received ? $t('expense.receivedBy') : $t('expense.paidBy')"
           name="mainPayerId"
-          @update:model-value="pickMainPayer"
+          @update:model-value="pickPayer"
         />
       </UFormField>
 
-      <UFormField v-if="!state.received" name="contributions">
+      <UFormField
+        v-if="!state.received"
+        name="contributions"
+        :error="problemAt(reading.reasons, 'contributions')"
+      >
         <ContributionList
           v-model="state.contributions"
           :participants="trip.participants"
           :main-payer-id="state.mainPayerId"
           :currency="state.currency"
-          :total="total"
+          :rest="reading.mainPayerPart"
         />
       </UFormField>
 
@@ -441,7 +255,11 @@ async function submit(): Promise<void> {
         :error="discountError"
       />
 
-      <UFormField v-if="!state.lineItems" name="participantIds">
+      <UFormField
+        v-if="!state.lineItems"
+        name="participantIds"
+        :error="problemAt(reading.reasons, 'participantIds')"
+      >
         <div role="group" aria-labelledby="for-whom-label">
           <div class="mb-1.5 flex items-center justify-between gap-2">
             <p id="for-whom-label" class="text-sm font-medium">{{ $t('expense.forWhom') }}</p>
@@ -476,7 +294,7 @@ async function submit(): Promise<void> {
         :label="$t('receipt.itemise')"
         variant="soft"
         block
-        @click="itemise"
+        @click="itemiseReceipt"
       />
     </UForm>
 

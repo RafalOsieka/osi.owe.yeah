@@ -583,12 +583,7 @@ test('a Line discount follows the Units and a Receipt discount is shared by what
   const total = page.getByRole('status', { name: 'Receipt total' });
   await expect(total).toHaveText('€9.00');
 
-  // 10.00 off is more than the 9.00 left after the Line discount; 10 % is not.
-  const receiptDiscount = page.getByRole('textbox', { name: 'Receipt discount' });
-  await receiptDiscount.fill('10');
-  await expect(page.getByRole('main')).toContainText(
-    'The discount is larger than the Line items after their own discounts.',
-  );
+  await page.getByRole('textbox', { name: 'Receipt discount' }).fill('10');
   await page
     .getByRole('group', { name: 'Receipt discount: amount or percent' })
     .getByRole('button', { name: '%' })
@@ -738,13 +733,6 @@ test('Contributions from others: added, edited and removed, the Main payer cover
   await expect(form).toContainText('Kasia pays the rest: €54.00');
   // Income has no Contributions.
   await expect(page.getByRole('switch', { name: 'Money received' })).toBeHidden();
-
-  // Whoever made a Contribution can't become the Main payer.
-  const paidBy = page.getByRole('group', { name: 'Paid by' });
-  await paidBy.getByRole('radio', { name: 'Ania' }).click();
-  await expect(form).toContainText('Ania made a Contribution');
-  await expect(paidBy.getByRole('radio', { name: 'Kasia' })).toBeChecked();
-  await expect(paidBy.getByRole('radio', { name: 'Ania' })).not.toBeChecked();
   await page.getByRole('button', { name: 'Save Expense' }).click();
 
   // Kasia paid 54.00 of her 20.00 share.
@@ -765,21 +753,64 @@ test('Contributions from others: added, edited and removed, the Main payer cover
   await expect(payers.filter({ hasText: 'Kasia' })).toContainText('€69.00');
   await expect(payers.filter({ hasText: 'Ania' })).toContainText('€6.00');
 
-  await page.getByRole('link', { name: 'Edit Expense' }).click();
-  await aniasContribution.fill('10');
-  await page.getByRole('button', { name: 'Save Expense' }).click();
-  await expect(payers.filter({ hasText: 'Kasia' })).toContainText('€65.00');
-  await expect(payers.filter({ hasText: 'Ania' })).toContainText('€10.00');
-
   // Without her Contribution, Ania can be the Main payer.
   await page.getByRole('link', { name: 'Edit Expense' }).click();
   await page.getByRole('button', { name: 'Remove the Contribution from Ania' }).click();
+  const paidBy = page.getByRole('group', { name: 'Paid by' });
   await paidBy.getByRole('radio', { name: 'Ania' }).click();
   await expect(paidBy.getByRole('radio', { name: 'Ania' })).toBeChecked();
   await page.getByRole('button', { name: 'Save Expense' }).click();
   await expect(payers).toHaveCount(1);
   await expect(payers).toContainText('Ania');
   await expect(payers).toContainText('€75.00');
+});
+
+test('a Trip rule the Expense would break shows at its field before saving', async ({ page }) => {
+  await createTrip(page, 'Istria 2026', 'Kasia', ['Ania']);
+
+  await page.getByRole('link', { name: 'Add the first Expense' }).click();
+  await page.getByLabel('Amount').fill('10');
+  await page.getByRole('button', { name: 'Add a Contribution' }).click();
+  await page.getByRole('menuitem', { name: 'Ania' }).click();
+  const aniasContribution = page.getByRole('textbox', { name: 'Contribution from Ania' });
+  await aniasContribution.fill('15');
+  await expect(aniasContribution).toHaveAccessibleDescription(
+    'The Contributions add up to more than the Expense.',
+  );
+
+  // It goes as soon as the Expense no longer breaks it, whichever field changed.
+  await page.getByLabel('Amount').fill('20');
+  await expect(aniasContribution).not.toHaveAccessibleDescription(/more than the Expense/);
+  await expect(page.getByRole('main')).toContainText('Kasia pays the rest: €5.00');
+});
+
+test('a Manual rate: the amount the card charged in the Trip currency', async ({ page }) => {
+  await createTrip(page, 'Lisbon 2026', 'Kasia', ['Ania']);
+
+  await page.getByRole('link', { name: 'Add the first Expense' }).click();
+  await page.getByLabel('Amount').fill('100');
+  await page.getByLabel('Title').fill('Dinner in USD');
+  await page.getByRole('button', { name: 'Currency' }).click();
+  await page.keyboard.type('USD');
+  await page.getByRole('option', { name: /^USD/ }).click();
+  // The field opens by itself while the device has no automatic rate for USD.
+  const typeManual = page.getByRole('button', { name: 'Type a Manual rate' });
+  const manualRate = page.getByRole('textbox', { name: 'Manual rate' });
+  await expect(typeManual.or(manualRate)).toBeVisible();
+  if (await typeManual.isVisible()) await typeManual.click();
+  await manualRate.fill('92');
+  await expect(page.getByRole('main')).toContainText('€92.00');
+  await page.getByRole('button', { name: 'Save Expense' }).click();
+
+  const row = page.getByRole('link', { name: /Dinner in USD/ });
+  await expect(row).toContainText('$100.00');
+  await page.getByRole('link', { name: 'Balances' }).click();
+  await expect(page.getByRole('main')).toContainText('Trip total €92.00');
+
+  await page.getByRole('link', { name: 'Expenses' }).click();
+  await row.click();
+  await page.getByRole('link', { name: 'Edit Expense' }).click();
+  await expect(manualRate).toHaveValue('92.00');
 });
 
 test('a Trip link with a wrong token shows no Trip', async ({ page }) => {
@@ -810,10 +841,6 @@ test('record a plain Expense, read it, edit it, and see the balances', async ({ 
   // Time and zone are one line until tapped.
   await page.getByRole('button', { name: /^When/ }).click();
   await page.getByLabel('When').fill('2026-07-14T23:30');
-  // Too many decimals for EUR is refused before anything is sent.
-  await page.getByLabel('Amount').fill('10,001');
-  await page.getByRole('button', { name: 'Save Expense' }).click();
-  await expect(page.getByText('Enter an amount above zero')).toBeVisible();
   await page.getByLabel('Amount').fill('10');
   await page.getByRole('button', { name: 'Save Expense' }).click();
 

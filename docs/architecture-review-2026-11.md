@@ -30,7 +30,7 @@ Two reviews feed this file:
 - **Note:** With no production and a fresh dev db, the pre-#61 bug (`BigInt(undefined)`) is theoretical. The structural risk stays: the next schema default will only work in the pull.
 - **Direction:** One server Trip-store module for reads (Trip, Participants, live and deleted Expenses, Revisions), always through the domain schemas. Writes stay in Trip sync (#1). This fits naturally with #1.
 
-### 3. One "Expense draft" module instead of logic in the forms (Strong). Status: grilling (together with #7)
+### 3. One "Expense draft" module instead of logic in the forms (Strong). Status: done (together with #7; #82, #83)
 
 - **Files:** `ExpenseForm.vue` (about 260 lines of logic), `RepaymentForm.vue`, `TillLine.vue:42-56`, `TillList.vue`, `utils/{receipt,contribution,manual-rate}-draft.ts`, `useManualRateErrors.ts`, `ExpenseCurrency.vue`
 - **Problem:** Converting between a draft and an Expense is spread over about 8 modules, mostly in components.
@@ -60,7 +60,7 @@ Two reviews feed this file:
   - "Validate with removed Participants included."
 - **Direction:** The domain exports the rule ("the Trip's Participants after this Expense change"), not just its ingredients. Don't go as far as a shared reducer; the SQL update stays the arbiter.
 
-### 7. Expense kind named in the domain (Worth exploring, small). Status: grilling (together with #3)
+### 7. Expense kind named in the domain (Worth exploring, small). Status: done (together with #3; #82)
 
 - **Files:** `ExpenseList.vue:74-83`, `ExpenseDetails.vue:43,72,138`, `ExpenseVersion.vue:27`, `packages/domain/src/expense.ts:132`
 - **Problem:** The kind is decided ad hoc in three components. For a Receipt where the Deposit refund exceeds the goods, the list says Receipt while the details and the version say Income. `isReceipt` is not a type guard.
@@ -71,7 +71,7 @@ Two reviews feed this file:
 - [ ] **Lost update across tabs.** In `device.ts:104,393-397`, `acceptedVersions` lives in memory. If another tab accepted the change, `resolveBase` takes `current.version` and can overwrite someone else's version without a Conflict.
 - [x] **A retry loses `restored`.** In `push.post.ts:84-91`, `appliedBefore` returns no restored Participants, so after a lost response the Notice does not show. Done in #79: the `changes` row keeps them.
 - [ ] **The Conflict screen gets the wrong list of people.** `conflict.vue:49,56` uses `trip.participants` instead of `everyone`, so a removed Participant shows as "?".
-- [ ] **A Manual rate rule exists only in the UI.** "Charged with a zero total" is checked only in `useManualRateErrors.ts:22`. The domain and server accept it, `conversionRate` returns `null`, and the Expense drops out of balances without a word. A Manual rate in the Expense's own currency is likewise stripped only by the UI.
+- [x] **A Manual rate rule exists only in the UI.** "Charged with a zero total" is checked only in `useManualRateErrors.ts:22`. The domain and server accept it, `conversionRate` returns `null`, and the Expense drops out of balances without a word. A Manual rate in the Expense's own currency is likewise stripped only by the UI. Done in #82 (the domain refuses both) and #83 (`useManualRateErrors` is gone).
 - [ ] **The Web Push payload is not validated.** `service-worker/sw.ts:35` casts `as PushMessage` even though `pushMessageSchema` exists. The payload has no schema version, and `notification.ts` has a third amount formatter.
 - [ ] **Rename the domain type `TripSnapshot`.** The glossary says "Avoid: snapshot". It is used in `PullResponse` and on the client.
 - [ ] **"Notice" is not in the glossary.** It covers in-app messages, such as "Participant restored" or a rejected change.

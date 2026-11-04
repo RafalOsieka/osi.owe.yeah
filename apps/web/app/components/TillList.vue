@@ -1,12 +1,11 @@
 <script setup lang="ts">
+import { MAX_UNITS, minorUnits, newLineItemSplit, type Participant } from '@osi/owe-yeah-domain';
 import {
-  MAX_UNITS,
-  minorUnits,
-  newLineItemSplit,
-  parseMoney,
-  type Participant,
-} from '@osi/owe-yeah-domain';
-import { depositFromDraft, draftLineItem, type DraftLineItem } from '~/utils/receipt-draft';
+  draftLineItem,
+  readLineItem,
+  type DraftLineItem,
+  type LineItemReason,
+} from '~/utils/expense-draft';
 
 // A Receipt's Line items as the Till list enters them, at the till: one line after the
 // other, each opened in place to edit it (one at a time), with the add forms at the end: one
@@ -20,43 +19,43 @@ const { participants, currency } = defineProps<{
 const lineItems = defineModel<DraftLineItem[]>({ required: true });
 
 const { t } = useI18n();
+const { lineItemReason } = useDraftReasons();
 
 const openKey = ref<string | null>(null);
 
 const everyone = () => participants.map(({ id }) => id);
-const amountInvalid = () => {
+
+/**
+ * Why a Line item about to be added can't be (`readLineItem`), as the add forms say it: an
+ * amount it can't read asks for one in the currency's decimals; `null` when it can be added.
+ */
+function addRefusal(line: DraftLineItem): string | null {
+  const [reason]: LineItemReason[] = readLineItem(line, currency).reasons;
+  if (!reason) return null;
+  if (reason.field !== 'price' && reason.field !== 'amount') return lineItemReason(reason);
   const decimals = minorUnits(currency);
   return t('expense.amountInvalid', { decimals }, decimals);
-};
+}
 
 const adding = reactive({ name: '', price: '', quantity: 1, deposit: '' });
 const addError = ref<string | null>(null);
 const priceInput = useTemplateRef('price');
 
 function add(): void {
-  if (parseMoney(adding.price, currency) === null) {
-    addError.value = amountInvalid();
-    return;
-  }
-  if (depositFromDraft(adding.deposit, currency) === null) {
-    addError.value = t('receipt.depositUnreadable');
-    return;
-  }
-  lineItems.value = [
-    ...lineItems.value,
-    draftLineItem({
-      name: adding.name.trim(),
-      price: adding.price,
-      quantity: adding.quantity,
-      deposit: adding.deposit.trim(),
-      split: newLineItemSplit(
-        lineItems.value.filter(({ refund }) => !refund),
-        everyone(),
-      ),
-    }),
-  ];
+  const line = draftLineItem({
+    name: adding.name.trim(),
+    price: adding.price,
+    quantity: adding.quantity,
+    deposit: adding.deposit.trim(),
+    split: newLineItemSplit(
+      lineItems.value.filter(({ refund }) => !refund),
+      everyone(),
+    ),
+  });
+  addError.value = addRefusal(line);
+  if (addError.value) return;
+  lineItems.value = [...lineItems.value, line];
   Object.assign(adding, { name: '', price: '', quantity: 1, deposit: '' });
-  addError.value = null;
   priceInput.value?.inputRef?.focus();
 }
 
@@ -64,22 +63,17 @@ const refundAmount = ref('');
 const refundError = ref<string | null>(null);
 
 function addRefund(): void {
-  if (parseMoney(refundAmount.value, currency) === null) {
-    refundError.value = amountInvalid();
-    return;
-  }
-  lineItems.value = [
-    ...lineItems.value,
-    draftLineItem({
-      name: '',
-      price: refundAmount.value,
-      quantity: 1,
-      refund: true,
-      split: { mode: 'even', participantIds: everyone() },
-    }),
-  ];
+  const line = draftLineItem({
+    name: '',
+    price: refundAmount.value,
+    quantity: 1,
+    refund: true,
+    split: { mode: 'even', participantIds: everyone() },
+  });
+  refundError.value = addRefusal(line);
+  if (refundError.value) return;
+  lineItems.value = [...lineItems.value, line];
   refundAmount.value = '';
-  refundError.value = null;
 }
 
 function replace(index: number, line: DraftLineItem): void {
