@@ -54,6 +54,10 @@ Only once the privacy notice and terms are live in the deployed build, `owe-yeah
 - **Logs:** the containers' logs on the host, rotated at 10 MB × 3 per container. Nothing is shipped.
 - **Rollback:** fix forward. In an emergency, revert the latest commit on `deploy`; the stack picks it up at its next poll. If the older build breaks on the newer schema, wipe test's database volume and redeploy.
 - **Wiping test:** allowed at any time, as the test banner tells its users.
+- **Pausing test:** [`pause-worker.js`](pause-worker.js) is a Cloudflare Worker that answers every request with a `503` page, in English and Polish, saying test is unavailable for now and giving `owe-yeah@osieka.dev`. Nothing reaches the tunnel while it runs, so it works with the host down too.
+  - **Set up once:** in the Cloudflare dashboard, **Workers & Pages → Create → Worker**, start from Hello World, name it `owe-yeah-test-paused` and deploy. Then **Edit code**, replace it with the file's and deploy again. It runs on no route yet, so test is unaffected.
+  - **Pause:** on the Worker, **Settings → Domains & Routes → Add → Route**, zone `osieka.dev`, route `owe-yeah-test.osieka.dev/*`. **Resume:** delete that route. Either takes effect within seconds.
+  - **While paused:** an installed app still opens from its cache. Its syncs fail, so its changes wait on the device and sync once test is back. `verify-deploy` fails, as `/healthz` answers the page.
 
 ## Requests
 
