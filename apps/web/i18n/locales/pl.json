@@ -454,5 +454,74 @@
     "paid": "Twoja płatność {amount}",
     "collapsed": "Zmiany w podróży {trip}: {count}",
     "reminder": "{name} przypomina: do oddania {amount}"
+  },
+  "legal": {
+    "title": "Informacje prawne"
+  },
+  "privacy": {
+    "link": "Polityka prywatności",
+    "title": "Polityka prywatności",
+    "updated": "Ostatnia aktualizacja: 4 listopada 2026 r.",
+    "intro": "Owe Yeah zapisuje, ile kilka osób wydaje wspólnie, i wylicza, kto komu ile oddaje. Tu opisujemy, jakie dane osobowe przetwarza, po co, jak długo i jakie masz prawa. To środowisko testowe: nie wpisuj niczego wrażliwego.",
+    "controller": {
+      "title": "Kto odpowiada za dane",
+      "who": "Administratorem Twoich danych osobowych jest {name} ({business}), NIP {nip}.",
+      "contact": "We wszystkich sprawach z tej polityki pisz na {email}. Nie wyznaczyliśmy inspektora ochrony danych."
+    },
+    "data": {
+      "title": "Jakie dane przetwarzamy",
+      "intro": "Nie ma kont: Owe Yeah nigdy nie pyta o adres e-mail, numer telefonu ani hasło. Przetwarza:",
+      "trips": "Podróże: ich nazwę i walutę podróży, imiona ich uczestników, ich wydatki i spłaty (tytuły, kwoty, daty i godziny, kto płacił i jak każdy jest podzielony) oraz każdą wersję każdego wydatku.",
+      "device": "Losowy identyfikator, który każde urządzenie nadaje sobie samo, oraz to, którym uczestnikiem jesteś na tym urządzeniu. Oba są wysyłane z każdą Twoją zmianą, żeby podróż pokazywała, kto co zmienił.",
+      "notifications": "Jeśli włączysz powiadomienia: subskrypcję powiadomień Twojej przeglądarki (jej adres w usłudze powiadomień przeglądarki i klucze, którymi szyfrowane są wiadomości dla niej) oraz to, którym uczestnikiem jesteś.",
+      "reminders": "Kiedy jeden uczestnik ostatnio wysłał przypomnienie drugiemu.",
+      "ip": "Twój adres IP, który niesie każde zapytanie do serwera.",
+      "none": "Nie ma analityki, reklam ani profilowania, a żadna decyzja w Twojej sprawie nie zapada automatycznie."
+    },
+    "namedByOthers": {
+      "title": "Jeśli ktoś inny dodał Cię do podróży",
+      "body": "Uczestników zwykle dodaje ktoś inny z podróży, a oni sami mogą nigdy nie otworzyć aplikacji. Wtedy Twoje imię oraz wydatki i spłaty, w których bierzesz udział, pochodzą od pozostałych uczestników tej podróży. Nic więcej o Tobie nie wiemy i nie mamy jak się z Tobą skontaktować, dlatego informujemy Cię tą publiczną polityką (art. 14 ust. 5 lit. b RODO)."
+    },
+    "purposes": {
+      "title": "Po co i na jakiej podstawie",
+      "sync": "Żeby przechowywać podróże i synchronizować je między urządzeniami osób, które je współdzielą, wyliczać salda oraz wysyłać powiadomienia i przypomnienia, o które proszą. Podstawą jest prawnie uzasadniony interes (art. 6 ust. 1 lit. f RODO): uczestników, którzy chcą prowadzić jeden wspólny zapis swoich wydatków, i nasz, w udostępnianiu im go.",
+      "security": "Żeby usługa była bezpieczna i dostępna: serwer ogranicza, ile zapytań może wysłać jeden adres IP, a Cloudflare chroni go przed atakami. Podstawą jest nasz prawnie uzasadniony interes w bezpieczeństwie usługi (art. 6 ust. 1 lit. f RODO).",
+      "voluntary": "Podanie danych jest dobrowolne, ale bez imion i wydatków nie ma czego współdzielić."
+    },
+    "recipients": {
+      "title": "Kto jeszcze je widzi",
+      "tripLink": "Każdy, kto ma link do podróży, widzi wszystko w tej podróży i może to zmienić. Udostępniaj go tylko osobom z podróży.",
+      "cloudflare": "Cloudflare, Inc. przekazuje każde zapytanie do serwera, więc widzi Twój adres IP i to, co wysyła aplikacja, łącznie z zawartością podróży. Działa jako nasz podmiot przetwarzający na podstawie swojej {dpa}. Gdy Cloudflare przekazuje dane do Stanów Zjednoczonych, opiera się na ramach ochrony danych UE–USA (EU–US Data Privacy Framework), a awaryjnie na standardowych klauzulach umownych.",
+      "dpa": "umowy powierzenia przetwarzania danych",
+      "push": "Jeśli włączysz powiadomienia, dostarcza je usługa powiadomień Twojej przeglądarki (na przykład Google dla Chrome, Mozilla dla Firefoksa, Apple dla Safari, Microsoft dla Edge), którą wybiera przeglądarka, nie my. Wiadomości są szyfrowane dla Twojej przeglądarki: usługa widzi, dokąd i kiedy idzie wiadomość, ale nie jej treść. Może działać poza Europejskim Obszarem Gospodarczym.",
+      "server": "Serwer prowadzimy sami, w Unii Europejskiej, bez firmy hostingowej. Kursy walut serwer pobiera z publicznej usługi kursów, wysyłając do niej tylko waluty i daty."
+    },
+    "retention": {
+      "title": "Jak długo je przechowujemy",
+      "test": "To środowisko testowe: jego dane mogą zostać usunięte w dowolnej chwili bez uprzedzenia, a cała testowa baza danych jest czyszczona co najmniej raz na 12 miesięcy. Do tego czasu podróże są przechowywane z każdą wersją.",
+      "notifications": "Subskrypcję powiadomień usuwamy, gdy wyłączysz powiadomienia, zapomnisz podróż albo usługa powiadomień przeglądarki zgłosi, że subskrypcja już nie istnieje.",
+      "ip": "Adresy IP do ograniczania zapytań serwer trzyma tylko w pamięci, przez kilka minut. Cloudflare przechowuje swoje logi zgodnie z własnymi zasadami.",
+      "device": "Na Twoim urządzeniu podróż zostaje, dopóki jej nie zapomnisz, nie wyczyścisz danych strony albo nie odinstalujesz aplikacji."
+    },
+    "rights": {
+      "title": "Twoje prawa",
+      "list": "Masz prawo dostępu do swoich danych i otrzymania ich kopii, ich sprostowania lub usunięcia, ograniczenia ich przetwarzania, wniesienia sprzeciwu (art. 21 RODO) oraz przenoszenia danych.",
+      "how": "Nie ma kont, więc podróż znajdujemy tylko po jej linku do podróży. Napisz na {email}, wyślij link do podróży i napisz, czego chcesz: posiadanie linku pokazuje, że możesz pytać o tę podróż. Odpowiadamy w ciągu miesiąca.",
+      "noLink": "Jeśli ktoś dodał Cię do podróży, ale nie masz jej linku, poproś o niego kogoś z podróży: bez niego możemy nie być w stanie znaleźć Twoich danych (art. 11 RODO).",
+      "inApp": "Wydatki możesz samodzielnie zmieniać i usuwać w aplikacji, ale każda wersja zostaje: żeby ją usunąć, napisz do nas.",
+      "complaint": "Możesz złożyć skargę do Prezesa Urzędu Ochrony Danych Osobowych (ul. Stawki 2, 00-193 Warszawa, {uodo}) albo do organu ochrony danych tam, gdzie mieszkasz lub pracujesz."
+    },
+    "storage": {
+      "title": "Co aplikacja zapisuje na Twoim urządzeniu",
+      "intro": "Owe Yeah nie ustawia plików cookie i nie używa analityki. Zapisuje na Twoim urządzeniu tylko to, czego potrzebuje do działania, więc nie prosi o zgodę:",
+      "indexedDb": "IndexedDB: podróże na tym urządzeniu z ich linkami do podróży, to, którym uczestnikiem jesteś w każdej z nich, jeszcze niezsynchronizowane zmiany i kursy walut, żeby aplikacja działała offline.",
+      "localStorage": "Pamięć lokalna (local storage): losowy identyfikator tego urządzenia, tryb jasny lub ciemny, jeśli go wybierzesz, oraz to, że odrzucono propozycję instalacji aplikacji.",
+      "serviceWorker": "Service worker i jego pamięć podręczna: pliki samej aplikacji, żeby otwierała się offline, oraz kod, który pokazuje powiadomienia.",
+      "remove": "Żeby usunąć podróż z tego urządzenia, zapomnij ją na jej karcie Podróż. Żeby usunąć wszystko, wyczyść dane tej strony w ustawieniach przeglądarki albo odinstaluj aplikację."
+    },
+    "changes": {
+      "title": "Zmiany",
+      "body": "Jeśli ta polityka się zmieni, nowa wersja pojawi się tutaj razem z datą."
+    }
   }
 }

@@ -3,7 +3,7 @@ import { balances, isSettled } from '@osi/owe-yeah-domain';
 
 // My Trips: every Trip on this device, most recently opened first and Settled ones below the
 // rest, with its Claim, your balance there (or a Settled badge), and how many of your
-// changes haven't synced yet. Above them, the install nudge.
+// changes haven't synced yet. Above them, the install nudge; below, the privacy notice.
 const { t, locale } = useI18n();
 const device = useDevice();
 const trips = useLiveQuery(() => device.readAll());
@@ -92,6 +92,7 @@ useHead({ title: () => t('myTrips.title') });
       :actions="[{ label: $t('myTrips.create'), icon: 'i-lucide-plus', to: '/trips/new' }]"
       class="pt-16"
     />
+    <LegalLinks class="mt-8" />
 
     <template v-if="rows.length > 0" #action>
       <UButton
