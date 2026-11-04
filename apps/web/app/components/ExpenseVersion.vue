@@ -1,5 +1,5 @@
 <script setup lang="ts">
-import { expenseShares, type Expense, type Participant } from '@osi/owe-yeah-domain';
+import { expenseKind, expenseShares, type Expense, type Participant } from '@osi/owe-yeah-domain';
 
 // One version of an Expense on the Conflict screen, as a card under `heading`: who made it
 // (`authorId`, the Claim sent with the change, when known), whether it deletes the Expense,
@@ -24,7 +24,7 @@ const shown = computed(() => {
     total: formatMoney(total, expense.currency, locale.value),
     when: formatExpenseTime(expense.time, locale.value),
     payer: nameOf(expense.mainPayerId) ?? '?',
-    income: total.numerator < 0n,
+    income: expenseKind(expense).kind === 'income',
     // In the Trip's order.
     forWhom: new Intl.ListFormat(locale.value).format(
       participants.filter(({ id }) => shares.has(id)).map(({ name }) => name),

@@ -18,7 +18,7 @@ import { tripSchema } from './trip.ts';
  * changes what the outbox has to send also appends a link to the store's migration chain
  * (`migrations` in the web app), so queued changes go out in the new schema.
  */
-export const SYNC_SCHEMA_VERSION = 1;
+export const SYNC_SCHEMA_VERSION = 2;
 
 /** The request header that carries the sync schema version the app speaks. */
 export const SYNC_SCHEMA_HEADER = 'x-sync-schema';

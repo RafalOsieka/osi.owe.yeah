@@ -1,11 +1,10 @@
 <script setup lang="ts">
 import {
+  expenseKind,
   expenseRate,
   expenseShares,
   fromMinor,
   isDepositRefund,
-  isReceipt,
-  isRepayment,
   decimal,
   multiply,
   roundMoney,
@@ -38,19 +37,22 @@ const splitText = useSplitText();
 
 const money = (amount: Rational) => formatMoney(amount, expense.currency, locale.value);
 
+const kinded = computed(() => expenseKind(expense));
+
 const details = computed(() => {
   const { total, discountOff, deposits, paid, shares, unassigned, lineItems } =
     expenseShares(expense);
-  const receipt = isReceipt(expense) && !isRepayment(expense);
+  const { kind, expense: narrowed } = kinded.value;
+  const receipt = kind === 'receipt' ? narrowed : null;
   const discountText = (entered: Discount | undefined, off: Rational) =>
     entered && formatDiscount(entered, off, expense.currency, locale.value);
   return {
     total,
     unassigned: unassigned.numerator === 0n ? null : unassigned,
-    discount: receipt ? discountText(expense.discount, discountOff) : undefined,
+    discount: receipt ? discountText(receipt.discount, discountOff) : undefined,
     deposits: deposits.numerator === 0n ? null : deposits,
     lineItems: receipt
-      ? expense.lineItems.map((item, index) => ({
+      ? receipt.lineItems.map((item, index) => ({
           discountText: discountText(item.discount, lineItems[index]!.discountOff),
           name:
             item.name ||
@@ -68,8 +70,8 @@ const details = computed(() => {
           ...lineItems[index]!,
         }))
       : null,
-    repayment: isRepayment(expense),
-    income: total.numerator < 0n,
+    repayment: kind === 'repayment',
+    income: kind === 'income',
     when: formatExpenseTime(expense.time, locale.value),
     payer: everyone.value.find(({ id }) => id === expense.mainPayerId),
     // The Main payer first, then the Contributions in the order they were added.
@@ -135,7 +137,7 @@ function manualRateText(): string | null {
 
 // Every share's breakdown, on a Receipt; the open sheet shows the one tapped.
 const breakdowns = computed(() =>
-  isReceipt(expense) && !isRepayment(expense) ? shareBreakdown(expense) : null,
+  kinded.value.kind === 'receipt' ? shareBreakdown(kinded.value.expense) : null,
 );
 const breakdownOpen = ref(false);
 const breakdownOf = ref<string | null>(null);

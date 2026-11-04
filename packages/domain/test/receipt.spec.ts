@@ -1,9 +1,9 @@
 import { describe, expect, it } from 'vite-plus/test';
 import {
   balances,
+  expenseKind,
   expenseProblems,
   expenseShares,
-  isReceipt,
   newLineItemSplit,
   rational,
   splitFromScratch,
@@ -559,18 +559,20 @@ describe('Receipt walkthroughs', () => {
   });
 });
 
-describe('isReceipt', () => {
+describe('expenseKind of a Receipt', () => {
   it('tells a Receipt from a plain Expense, whose one Line item is unnamed, single and Even', () => {
     const plain = { name: '', unitPrice: 6290, quantity: 1, split: even(everyone) };
 
-    expect(isReceipt(receipt(plain))).toBe(false);
-    expect(isReceipt(receipt(plain, plain))).toBe(true);
-    expect(isReceipt(receipt({ ...plain, name: 'Fuel' }))).toBe(true);
-    expect(isReceipt(receipt({ ...plain, quantity: 2 }))).toBe(true);
-    expect(isReceipt(receipt({ ...plain, split: splitFromScratch('units', everyone) }))).toBe(true);
+    expect(expenseKind(receipt(plain)).kind).toBe('plain');
+    expect(expenseKind(receipt(plain, plain)).kind).toBe('receipt');
+    expect(expenseKind(receipt({ ...plain, name: 'Fuel' })).kind).toBe('receipt');
+    expect(expenseKind(receipt({ ...plain, quantity: 2 })).kind).toBe('receipt');
+    expect(
+      expenseKind(receipt({ ...plain, split: splitFromScratch('units', everyone) })).kind,
+    ).toBe('receipt');
     const discount = { kind: 'amount' as const, amount: 500 };
-    expect(isReceipt(receipt({ ...plain, discount }))).toBe(true);
-    expect(isReceipt({ ...receipt(plain), discount })).toBe(true);
-    expect(isReceipt(receipt({ ...plain, depositPerUnit: 25 }))).toBe(true);
+    expect(expenseKind(receipt({ ...plain, discount })).kind).toBe('receipt');
+    expect(expenseKind({ ...receipt(plain), discount }).kind).toBe('receipt');
+    expect(expenseKind(receipt({ ...plain, depositPerUnit: 25 })).kind).toBe('receipt');
   });
 });

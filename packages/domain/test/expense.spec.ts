@@ -1,5 +1,6 @@
-import { describe, expect, it } from 'vite-plus/test';
+import { describe, expect, expectTypeOf, it } from 'vite-plus/test';
 import {
+  expenseKind,
   expenseProblems,
   expenseSchema,
   expenseTimeFromLocal,
@@ -7,6 +8,9 @@ import {
   localDateTime,
   localDay,
   type Expense,
+  type LineItem,
+  type Repayment,
+  type SplitExpense,
   type TripWithParticipants,
 } from '@osi/owe-yeah-domain';
 
@@ -18,6 +22,8 @@ const trip: TripWithParticipants = {
   currency: 'EUR',
   participants: [kasia, ania],
 };
+
+const both = { mode: 'even' as const, participantIds: [kasia.id, ania.id] };
 
 const lidl: Expense = {
   id: '019a2b3c-4d5e-7f00-8a1b-0000000000e1',
@@ -109,6 +115,53 @@ describe('expenseSchema', () => {
   });
 });
 
+describe('expenseKind', () => {
+  const income: Expense = { ...lidl, lineItems: [{ ...lidl.lineItems[0]!, unitPrice: -480 }] };
+  const shopping: Expense = {
+    ...lidl,
+    lineItems: [
+      { name: 'Water 1.5l', unitPrice: 29, quantity: 6, split: both },
+      { name: 'Bread', unitPrice: 250, quantity: 1, split: both },
+    ],
+  };
+  const refunds: Expense = {
+    ...lidl,
+    lineItems: [
+      { name: 'Water 1.5l', unitPrice: 29, quantity: 1, split: both },
+      { name: '', unitPrice: -500, quantity: 1, split: both },
+    ],
+  };
+
+  it.each([
+    ['a plain Expense', lidl, 'plain'],
+    ['Income: one Line item of negative amount', income, 'income'],
+    ['a Receipt', shopping, 'receipt'],
+    ['a Receipt whose Deposit refunds outweigh its goods', refunds, 'receipt'],
+    ['a Repayment', repayment, 'repayment'],
+  ])('names %s', (_, expense, kind) => {
+    expect(expenseKind(expense).kind).toBe(kind);
+  });
+
+  it('narrows the Expense to its kind, keeping what else it carries', () => {
+    type Read = Expense & { deleted: boolean };
+    const narrowed = (read: Read) => {
+      const kinded = expenseKind(read);
+      if (kinded.kind === 'repayment') {
+        expectTypeOf(kinded.expense).toExtend<Repayment & { deleted: boolean }>();
+      } else if (kinded.kind === 'receipt') {
+        expectTypeOf(kinded.expense).toExtend<SplitExpense & { deleted: boolean }>();
+      } else {
+        expectTypeOf(kinded.expense).toExtend<{ lineItems: [LineItem]; deleted: boolean }>();
+      }
+      return kinded;
+    };
+    expect(narrowed({ ...repayment, deleted: true })).toEqual({
+      kind: 'repayment',
+      expense: { ...repayment, deleted: true },
+    });
+  });
+});
+
 describe('expenseProblems', () => {
   it('finds nothing wrong with an Expense that fits the Trip', () => {
     expect(expenseProblems(lidl, trip)).toEqual([]);
@@ -140,6 +193,39 @@ describe('expenseProblems', () => {
     expect(expenseProblems({ ...repayment, recipientId: ania.id }, trip)).toEqual([
       'repaymentToSelf',
     ]);
+  });
+
+  describe('a Manual rate no rate can make', () => {
+    const inDollars: Expense = { ...lidl, currency: 'USD' };
+    const charged = { kind: 'charged' as const, amount: 2100, currency: 'EUR' as const };
+
+    it('is fine targeting the Trip currency on a foreign Expense', () => {
+      expect(expenseProblems({ ...inDollars, manualRate: charged }, trip)).toEqual([]);
+      const rate = { kind: 'rate' as const, rate: '0.86', currency: 'EUR' as const };
+      expect(expenseProblems({ ...inDollars, manualRate: rate }, trip)).toEqual([]);
+    });
+
+    it('refuses an amount charged when the total is zero', () => {
+      const evenedOut: Expense = {
+        ...inDollars,
+        manualRate: charged,
+        lineItems: [
+          { name: 'Water', unitPrice: 500, quantity: 1, split: both },
+          { name: '', unitPrice: -500, quantity: 1, split: both },
+        ],
+      };
+      expect(expenseProblems(evenedOut, trip)).toEqual(['chargedWithoutTotal']);
+    });
+
+    it("refuses one targeting the Expense's own currency", () => {
+      const rate = { kind: 'rate' as const, rate: '1.1', currency: 'EUR' as const };
+      expect(expenseProblems({ ...lidl, manualRate: rate }, trip)).toEqual([
+        'manualRateToOwnCurrency',
+      ]);
+      expect(expenseProblems({ ...repayment, manualRate: charged }, trip)).toEqual([
+        'manualRateToOwnCurrency',
+      ]);
+    });
   });
 });
 

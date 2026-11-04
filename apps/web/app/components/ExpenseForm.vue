@@ -1,10 +1,10 @@
 <script setup lang="ts">
 import {
   deviceTimeZone,
+  expenseKind,
   expenseTimeFromLocal,
   expenseTitleSchema,
   fromMinor,
-  isReceipt,
   localDateTime,
   minorUnits,
   parseMoney,
@@ -97,8 +97,7 @@ function initialState(): ExpenseFormState {
   const { participants } = trip.value;
   const everyone = participants.map(({ id }) => id);
   if (expense) {
-    const [lineItem] = expense.lineItems;
-    const price = lineItem!.unitPrice;
+    const kinded = expenseKind(expense);
     const time = { local: localDateTime(expense.time), zone: expense.time.zone };
     const shared = {
       title: expense.title,
@@ -108,7 +107,7 @@ function initialState(): ExpenseFormState {
       contributions: draftFromContributions(expense.contributions, expense.currency),
       ...time,
     };
-    if (isReceipt(expense)) {
+    if (kinded.kind === 'receipt') {
       return {
         ...shared,
         amount: '',
@@ -118,11 +117,13 @@ function initialState(): ExpenseFormState {
         discount: draftFromDiscount(expense.discount, expense.currency),
       };
     }
+    const [{ unitPrice, split }] = kinded.expense.lineItems;
     return {
       ...shared,
-      amount: roundMoney(fromMinor(Math.abs(price), expense.currency), expense.currency).decimal,
-      received: price < 0,
-      participantIds: lineItem!.split.mode === 'even' ? [...lineItem!.split.participantIds] : [],
+      amount: roundMoney(fromMinor(Math.abs(unitPrice), expense.currency), expense.currency)
+        .decimal,
+      received: kinded.kind === 'income',
+      participantIds: split.mode === 'even' ? [...split.participantIds] : [],
       lineItems: null,
       discount: noDiscount(),
     };

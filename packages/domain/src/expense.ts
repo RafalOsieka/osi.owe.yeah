@@ -3,12 +3,14 @@ import { z } from 'zod';
 import { discountExceeds, discountSchema } from './discount.ts';
 import {
   LINE_ITEM_PROBLEMS,
+  isDepositRefund,
   goodsMinor,
   lineItemProblems,
   lineItemSchema,
   minorAmountSchema,
   receiptTotalMinor,
   splitParticipantIds,
+  type LineItem,
 } from './line-item.ts';
 import { currencySchema } from './currency.ts';
 import { manualRateSchema } from './manual-rate.ts';
@@ -125,22 +127,42 @@ export function isRepayment<E extends Expense>(expense: E): expense is Extract<E
 }
 
 /**
- * Whether an Expense is a Receipt, entered Line item by Line item, rather than a plain
- * Expense (or Income), whose one Line item is unnamed, a single unit, undiscounted, without a
- * Deposit and split Even, with no Receipt discount.
+ * An Expense named by its kind, with its type narrowed to match (see `expenseKind`). Whatever
+ * else `E` carries, e.g. a device's sync state, stays on it.
  */
-export function isReceipt(expense: Expense): boolean {
-  if (isRepayment(expense)) return false;
-  const [only, ...more] = expense.lineItems;
-  return (
+export type KindedExpense<E extends Expense = Expense> =
+  | { kind: 'repayment'; expense: Extract<E, Repayment> }
+  | { kind: 'receipt'; expense: Exclude<E, Repayment> }
+  | { kind: 'plain' | 'income'; expense: Exclude<E, Repayment> & { lineItems: [LineItem] } };
+
+/**
+ * An Expense's kind, the one place that decides it:
+ * - `repayment`: it has a recipient;
+ * - `plain` (a plain Expense) or `income`: its one Line item is unnamed, a single unit,
+ *   undiscounted, without a Deposit and split Even, with no Receipt discount; Income when that
+ *   Line item is negative;
+ * - `receipt`: entered Line item by Line item, otherwise. A Receipt whose Deposit refunds
+ *   outweigh its goods stays a Receipt.
+ */
+export function expenseKind<E extends Expense>(expense: E): KindedExpense<E> {
+  if (isRepayment(expense)) return { kind: 'repayment', expense };
+  // SAFETY: an Expense without a recipient is a split one; TS can't narrow a generic `E` on
+  // the false branch of `isRepayment`.
+  const split = expense as Exclude<E, Repayment>;
+  const { lineItems, discount } = split;
+  const [only, ...more] = lineItems;
+  const receipt =
     more.length > 0 ||
     only!.name !== '' ||
     only!.quantity > 1 ||
     only!.split.mode !== 'even' ||
     only!.discount !== undefined ||
     only!.depositPerUnit !== undefined ||
-    expense.discount !== undefined
-  );
+    discount !== undefined;
+  if (receipt) return { kind: 'receipt', expense: split };
+  // SAFETY: not a Receipt means `more` is empty, so its one Line item is `only`.
+  const single = split as Exclude<E, Repayment> & { lineItems: [LineItem] };
+  return { kind: isDepositRefund(only!) ? 'income' : 'plain', expense: single };
 }
 
 /** An Expense without its id, as the server keeps its state; one type per kind of Expense. */
@@ -159,6 +181,8 @@ export const expenseProblemSchema = z.enum([
   'receiptDiscountExceedsLineItems',
   'contributionFromMainPayer',
   'contributionsExceedTotal',
+  'chargedWithoutTotal',
+  'manualRateToOwnCurrency',
 ]);
 
 export type ExpenseProblem = z.infer<typeof expenseProblemSchema>;
@@ -193,7 +217,9 @@ export function expensesReferencing(expenses: readonly Expense[], participantId:
  * must fit together (`lineItemProblems`), and the Receipt discount may not take off more than
  * the goods come to after their Line discounts. The total may be negative. The Main payer
  * makes no Contribution, and Contributions may cover the whole total but not more, so the
- * Main payer's part is never negative and Income has none.
+ * Main payer's part is never negative and Income has none. A Manual rate must be one a rate
+ * can be made of: an amount charged needs a total other than zero, and it targets a currency
+ * other than the Expense's own (see `conversionRate`).
  */
 export function expenseProblems(expense: Expense, trip: TripWithParticipants): ExpenseProblem[] {
   const known = new Set(trip.participants.map(({ id }) => id));
@@ -215,7 +241,12 @@ export function expenseProblems(expense: Expense, trip: TripWithParticipants): E
       problems.push('contributionFromMainPayer');
     }
     if (contributionsExceed(expense)) problems.push('contributionsExceedTotal');
+    const total = receiptTotalMinor(lineItems, expense.discount);
+    if (expense.manualRate?.kind === 'charged' && total.numerator === 0n) {
+      problems.push('chargedWithoutTotal');
+    }
   }
+  if (expense.manualRate?.currency === expense.currency) problems.push('manualRateToOwnCurrency');
   return problems;
 }
 

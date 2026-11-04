@@ -141,7 +141,9 @@
       "lineDiscountExceedsLineTotal": "A Line item has a discount larger than its total.",
       "receiptDiscountExceedsLineItems": "The Receipt discount is larger than the Line items after their own discounts.",
       "contributionFromMainPayer": "The Main payer can't also make a Contribution.",
-      "contributionsExceedTotal": "The Contributions add up to more than the Expense."
+      "contributionsExceedTotal": "The Contributions add up to more than the Expense.",
+      "chargedWithoutTotal": "The amount charged needs a total other than zero.",
+      "manualRateToOwnCurrency": "The Manual rate must convert into a currency other than the Expense's own."
     },
     "emptyHelp": "Whoever pays for something adds it here.",
     "addFirst": "Add the first Expense",
@@ -361,7 +363,9 @@
       "lineDiscountExceedsLineTotal": "a Line item's discount is larger than its total.",
       "receiptDiscountExceedsLineItems": "the Receipt discount is larger than the Line items after their own discounts.",
       "contributionFromMainPayer": "the Main payer can't also make a Contribution.",
-      "contributionsExceedTotal": "the Contributions add up to more than the Expense."
+      "contributionsExceedTotal": "the Contributions add up to more than the Expense.",
+      "chargedWithoutTotal": "the amount charged needs a total other than zero.",
+      "manualRateToOwnCurrency": "the Manual rate must convert into a currency other than the Expense's own."
     },
     "pullToRefresh": "Pull to sync",
     "releaseToRefresh": "Release to sync"
