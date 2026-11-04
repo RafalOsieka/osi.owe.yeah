@@ -63,22 +63,9 @@ vp run db:migrate
 
 ## Deployment
 
-`Dockerfile` builds two images: `runtime` (the default target, the Nitro server for the SPA and API) and `migrator`. `compose.prod.yaml` runs `db` (PostgreSQL 18), `migrate` (runs to completion before `app` starts) and `app`, published on `127.0.0.1:3000` for the existing reverse proxy, which terminates HTTPS.
-
-```sh
-cp .env.example .env   # fill in POSTGRES_PASSWORD, and the VAPID keys for push notifications
-docker compose -f compose.prod.yaml up -d --build
-```
+`Dockerfile` builds two images: `runtime` (the default target, the Nitro server for the SPA and API) and `migrator`, which applies the migrations and exits. The osieka.dev instance runs them from GHCR behind Cloudflare Tunnel: [`deploy/osieka-dev/`](deploy/osieka-dev/README.md) holds its compose file, how a build reaches it and how it is set up and operated. To run your own, copy and adapt it.
 
 Both images carry the notices their contents' licenses ask for, in `/app/notices`: the repo's `LICENSE`, `THIRD-PARTY-NOTICES.md` with the npm packages they bundle or ship and the full text of each license, and `SOURCE-OFFER.md` with the Alpine packages and a written offer of their source (`docker/` builds them; the offer is osieka.dev's, so replace it before publishing images of your own). The app serves its browser bundle's licenses at `/licenses.txt`.
-
-Push notifications need a VAPID key pair. Make it once, on any machine with the repo installed, and put the printed keys into `.env` as `VAPID_PUBLIC_KEY` and `VAPID_PRIVATE_KEY`, with a contact for the push services as `VAPID_SUBJECT` (e.g. `mailto:you@example.com`):
-
-```sh
-pnpm --filter @osi/owe-yeah-web exec web-push generate-vapid-keys
-```
-
-Keep the pair once it is in use: a new one cuts off every subscribed device until it turns notifications on again. Without the keys the app still runs, but notifications can't be turned on.
 
 The rate limiter (nuxt-security) keys clients by the `CF-Connecting-IP` header, which Cloudflare sets to the real client IP and clients can't forge. It never reads `X-Forwarded-For`, which a client can fill with a new address per request. Without Cloudflare in front the header is missing, so every client shares one limit for the whole app: a limit that still holds, but that one busy group can use up for everyone. A proxy of your own can set `CF-Connecting-IP` to the client address it sees (nginx: `proxy_set_header CF-Connecting-IP $remote_addr;`), as long as it overwrites any value the client sent.
 

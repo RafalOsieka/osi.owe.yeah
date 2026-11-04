@@ -94,8 +94,8 @@ They found no reason to reopen ADR 0001–0003, and 121 of the 126 stories are d
 ### P1: before the first real Trip
 
 - [ ] **S1. No Postgres backups** (system H1, spec story 121, missing).
-  - **What's at risk:** `compose.prod.yaml` keeps everything on one volume on one host: the Revisions kept forever, the fixed rates ADR 0003 forbids changing, and the token hashes. The VAPID keys live only in the host's `.env`.
-  - **Fix:** a nightly `pg_dump` with 30-day retention, copied off the host together with `.env`, and one restore drill. No ticket covers this yet.
+  - **What's at risk:** the production compose (now `deploy/osieka-dev/compose.yaml`) keeps everything on one volume on one host: the Revisions kept forever, the fixed rates ADR 0003 forbids changing, and the token hashes. The VAPID keys live only on the host.
+  - **Fix:** a nightly `pg_dump` with 30-day retention, copied off the host together with the stack's secrets, and one restore drill. No ticket covers this yet.
 - [ ] **S2. One malformed change blocks the whole Trip's sync, with no message** (system H2).
   - **Server:** the sync push validates the whole body and answers 400 for all of it.
   - **Device:** queuing a change parses nothing, the shape is guarded only by forms, sync swallows the error, and the outbox resends the same first 100 changes forever. The user's only way out is "Forget anyway", which loses data.

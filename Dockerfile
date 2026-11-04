@@ -2,7 +2,7 @@
 
 # Two images come out of this file:
 #   docker build .                   -> the web app (the last stage, `runtime`)
-#   docker build --target migrator . -> the one-shot migrator used by the prod compose
+#   docker build --target migrator . -> the one-shot migrator the deployed compose runs before the app
 # Both final images hold only Node and their own output: no package manager, no
 # toolchain and no workspace tools (the Tricount importer never enters the build context).
 # Both carry their license notices in /app/notices: the repo's LICENSE, the npm packages'

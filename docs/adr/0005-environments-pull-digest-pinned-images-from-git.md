@@ -12,5 +12,5 @@ We chose this over a self-hosted Actions runner, which GitHub advises against fo
 - Migrations stay forward-only. An older build after a rollback runs against the newer schema; if that breaks on test, its database is wiped.
 - Each environment has its own remotely-managed tunnel, whose `cloudflared` runs in the same compose project and reaches the app over the compose network, so the app publishes no port. Only Cloudflare reaches the app, which is what lets the rate limiter trust `CF-Connecting-IP`.
 - The GHCR packages are public, so the host needs no registry credential. They go public only once the images carry their license notices.
-- `deploy/osieka-dev/` holds this instance's compose template and operator runbook, and replaces `compose.prod.yaml`. Anyone else running Owe Yeah copies and adapts it.
+- `deploy/osieka-dev/` holds this instance's compose template and operator runbook, and replaces the root production compose. Anyone else running Owe Yeah copies and adapts it.
 - Promoting to prod adds a second file on `deploy`, changed only by a manual workflow behind a GitHub Environment with required reviewers.
