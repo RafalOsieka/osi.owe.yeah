@@ -123,11 +123,8 @@ async function submit(): Promise<void> {
   const { expense: read } = reading.value;
   if (!read) return;
   saving.value = true;
-  const refused = await saveExpense(
-    read,
-    // Based on the Expense as the form read it when it opened.
-    expense?.base ?? { version: null },
-  ).finally(() => (saving.value = false));
+  // Based on the Expense as the form read it when it opened.
+  const refused = await saveExpense(read, expense).finally(() => (saving.value = false));
 
   refusals.value = refused.map((problem) => t(`expense.refused.${problem}`));
   if (refused.length === 0) await back(parent);

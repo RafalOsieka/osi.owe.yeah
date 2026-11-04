@@ -42,7 +42,7 @@ const rows = computed(() => {
 });
 
 async function restore(expense: LocalExpense): Promise<void> {
-  const refused = await saveExpense(toExpense(expense), expense.base);
+  const refused = await saveExpense(toExpense(expense), expense);
   if (refused.length === 0) return;
   toast.add({
     title: t('history.restoreRefused'),

@@ -40,7 +40,7 @@ Two reviews feed this file:
   - There are no unit tests for any of it.
 - **Direction:** A small interface: Expense to draft, and draft to either an Expense or per-field reasons. It covers the plain, Income, Receipt, Contribution, Manual rate and Repayment variants. Components keep layout and i18n.
 
-### 4. The device syncs by itself after a change, and OpenTrip stops being a pass-through (Strong). Status: decided
+### 4. The device syncs by itself after a change, and OpenTrip stops being a pass-through (Strong). Status: done (#85)
 
 - **Files:** `composables/useOpenTrip.ts:20-92`, `pages/trips/[id].vue:84-190` (10× `void device.sync(tripId)`), 19 imports of `~/sync/*` outside `app/sync`
 - **Problem:** The "sync after a local change" policy (ADR 0002) lives in a page. Each mutation has to remember to call sync, each with its own condition. Outbox details (`ExpenseBase`, `{ after: changeId }`, `NOTIFICATIONS_OFF`) leak into pages and forms. (Revised: the other `~/sync/*` imports are types that are part of the interface, plus pure functions over `LocalTrip`; only `ExpenseBase` is a leak.)
@@ -269,6 +269,7 @@ Round 3:
 - **Base is hidden behind "the Expense as it was read".** `saveExpense` and `deleteExpense` take the `LocalExpense` as it was read, or `null` for a new one, instead of an `ExpenseBase`. A Conflict still fires on a pull made during an edit. `ExpenseBase` is no longer visible outside `app/sync`.
 - **The other `~/sync/*` imports stay.** Types and pure functions over `LocalTrip` (`findExpense`, `toExpense`, `NOTIFICATIONS_OFF`) are part of the interface.
 - **Order and scope.** Blocked by #80 (ADR 0004), so the new device tests are written against the real Trip sync. #5 stays separate.
+- **As built (#85).** `sync(tripId)` joins the sync already running without asking for another; only a change made meanwhile runs it once more. Opening a Trip (`open()` on its handle) still syncs it, as the page did, and a renewed browser subscription syncs the Trips it changed.
 
 ### #5: notification subscriptions (paused; resume once #75–#85 are done)
 

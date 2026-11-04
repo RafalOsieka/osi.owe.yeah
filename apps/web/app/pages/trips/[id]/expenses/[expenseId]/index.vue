@@ -43,7 +43,7 @@ const refusals = ref<string[]>([]);
 async function remove(): Promise<void> {
   if (!expense.value) return;
   const deleted = toExpense(expense.value);
-  const refused = await deleteExpense(deleted, expense.value.base);
+  const refused = await deleteExpense(deleted, expense.value);
   refusals.value = refused.map((problem) => t(`expense.refused.${problem}`));
   if (refused.length > 0) return;
   toast.add({
@@ -55,7 +55,7 @@ async function remove(): Promise<void> {
 // Undo: the deleted Expense saved again, on top of its deletion.
 async function restore(deletedId: string): Promise<void> {
   const deleted = trip.value.deletedExpenses.find(({ id }) => id === deletedId);
-  if (deleted) await saveExpense(toExpense(deleted), deleted.base);
+  if (deleted) await saveExpense(toExpense(deleted), deleted);
 }
 
 // Why the Expense as shown hasn't reached the others yet, and what can be done about it.

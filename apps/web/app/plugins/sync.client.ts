@@ -1,7 +1,7 @@
 // Syncs on its own (ADR 0002): every Trip on app open; on focus, on reconnect and about every
 // 30 s while visible, the open Trip and any Trip with changes not synced yet, and the push
-// subscriptions of forgotten Trips. Pages sync a Trip after a local change and on
-// pull-to-refresh.
+// subscriptions of forgotten Trips. A change syncs its Trip by itself, and so does opening a
+// Trip (the device); pages sync only on pull-to-refresh.
 export default defineNuxtPlugin(() => {
   const device = useDevice();
   const router = useRouter();

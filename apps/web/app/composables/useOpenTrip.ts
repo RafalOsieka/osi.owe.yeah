@@ -1,23 +1,16 @@
-import type {
-  Currency,
-  Expense,
-  ExpenseProblem,
-  Participant,
-  ReminderStatus,
-  Revision,
-  Trip,
-} from '@osi/owe-yeah-domain';
+import type { Currency, Participant } from '@osi/owe-yeah-domain';
 import type { InjectionKey } from 'vue';
-import type { BrowserSubscription, DeviceNotifications, ExpenseBase, Notice } from '~/sync/db';
-import type { Reminded } from '~/sync/device';
+import type { DeviceNotifications, Notice } from '~/sync/db';
+import type { TripHandle } from '~/sync/device';
 import type { LocalTrip } from '~/sync/local-trip';
 
 /**
- * The Trip open on screen, as `pages/trips/[id].vue` reads it from the device for its pages
- * and for the Trip layout. Every change is saved on the device first and synced later
- * (ADR 0002), so none of them waits for the network.
+ * The Trip open on screen, as `pages/trips/[id].vue` offers it to its pages and to the Trip
+ * layout: the device's handle for the Trip (`TripHandle`, where each call is documented), the
+ * Trip as the device reads it, kept live, and what only the screen does. Every change is saved
+ * on the device first and syncs by itself (ADR 0002), so none of them waits for the network.
  */
-export interface OpenTrip {
+export interface OpenTrip extends Omit<TripHandle, 'claim' | 'forget'> {
   /** The Trip as this device shows it, its changes not synced yet included. */
   trip: Readonly<Ref<LocalTrip>>;
   /** The Participant this device says it is in the Trip, if it has said. */
@@ -33,62 +26,16 @@ export interface OpenTrip {
   everyone: Readonly<Ref<Participant[]>>;
   /** What sync has to tell about this device's changes, until dismissed. */
   notices: Readonly<Ref<Notice[]>>;
-  dismissNotice(noticeId: string): Promise<void>;
-  /** Syncs the Trip now, e.g. on pull-to-refresh. */
-  sync(): Promise<void>;
-  /** Adds a Participant on the device. */
-  addParticipant(participant: Participant): Promise<void>;
-  /**
-   * Removes a Participant softly on the device, unless an Expense references them. Resolves
-   * to how many do: 0 when they were removed.
-   */
-  removeParticipant(participant: Participant): Promise<number>;
-  /**
-   * Saves the Trip's name and Trip currency on the device, last write wins; a new Trip
-   * currency rewrites no Expense.
-   */
-  saveTripDetails(details: Omit<Trip, 'id'>): Promise<void>;
-  /** Forgets the Trip on this device, losing changes not synced yet, and opens My Trips. */
-  forget(): Promise<void>;
-  /**
-   * Saves an Expense's full new state on the device, based on the Expense the user edited
-   * (its `base`; `{ version: null }` for a new one). Resolves to the Trip rules it breaks,
-   * empty when it was saved. Saving a deleted Expense, or an older Revision, restores it.
-   */
-  saveExpense(expense: Expense, base: ExpenseBase): Promise<ExpenseProblem[]>;
-  /** Deletes an Expense on the device, to Recently deleted; otherwise like `saveExpense`. */
-  deleteExpense(expense: Expense, base: ExpenseBase): Promise<ExpenseProblem[]>;
-  /** An Expense's Revisions from the server, newest first. Rejects without a connection. */
-  revisions(expenseId: string): Promise<Revision[]>;
-  /** Resolves an Expense's Conflict with this device's version, sending it again. */
-  keepMine(expenseId: string): Promise<void>;
-  /**
-   * Drops this device's changes of an Expense not synced yet: keeps theirs in a Conflict, or
-   * discards a rejected change.
-   */
-  discardChanges(expenseId: string): Promise<void>;
   /** Push notifications for the Trip on this device (#41). */
   notifications: Readonly<Ref<DeviceNotifications>>;
-  /**
-   * Turns push notifications on with the browser's subscription; the server gets it on sync,
-   * for the Claim.
-   */
-  turnOnNotifications(subscription: BrowserSubscription): Promise<void>;
-  /** Turns push notifications off; the server hears on sync. */
-  turnOffNotifications(): Promise<void>;
+  /** Opens My Trips, then forgets the Trip on this device, losing changes not synced yet. */
+  forget(): Promise<void>;
   /** Opens the "Who are you?" sheet. */
   askWhoYouAre(): void;
   /** Opens Invite, which passes on the Trip link once the Trip has synced. */
   invite(): void;
   /** The Trip link to pass on, once the Trip has synced; `null` before. */
   link: Readonly<Ref<string | null>>;
-  /** Whom a Reminder can reach and who was reminded today (#42). Rejects offline. */
-  reminderStatus(): Promise<ReminderStatus>;
-  /**
-   * Reminds `to` of the Repayment they owe the claimed Participant, by push (#42). Rejects
-   * offline.
-   */
-  remind(to: string): Promise<Reminded>;
 }
 
 const openTripKey: InjectionKey<OpenTrip> = Symbol('open-trip');

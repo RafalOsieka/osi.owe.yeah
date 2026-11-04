@@ -33,7 +33,14 @@ import {
   type OutboxEntry,
   type QueuedChange,
 } from './db';
-import { findExpense, localTrip, withAccepted, withExpense, type LocalTrip } from './local-trip';
+import {
+  findExpense,
+  localTrip,
+  withAccepted,
+  withExpense,
+  type LocalExpense,
+  type LocalTrip,
+} from './local-trip';
 
 /**
  * How the device reaches the sync API. Every call rejects when no answer comes back (e.g. no
@@ -99,14 +106,15 @@ const PUSH_LIMIT = 100;
 
 /**
  * The device's Trips and sync (ADR 0002): every change is written to the device store first
- * and queued in the outbox; `sync` pushes the outbox in order and pulls the Trip. Reads go
+ * and queued in the outbox, and then syncs its Trip by itself; `sync` pushes the outbox in
+ * order and pulls the Trip. Changes of a Trip go through its handle, `trip(tripId)`. Reads go
  * through `read`, which shows the outbox on top of the pulled Trip.
  */
 export function createDevice(db: DeviceDb, transport: Transport, deviceId: string) {
   // Versions this session's accepted changes gave their Expenses, for an edit started
   // while the change it was based on was still in the outbox.
   const acceptedVersions = new Map<string, number>();
-  // The sync running for each Trip, and whether another was asked for meanwhile.
+  // The sync running for each Trip, and whether a change was made meanwhile.
   const running = new Map<string, Promise<void>>();
   const again = new Set<string>();
   // The Trips whose push subscription the server took during this run of the app.
@@ -159,8 +167,18 @@ export function createDevice(db: DeviceDb, transport: Transport, deviceId: strin
   }
 
   /**
+   * Starts a sync of a Trip after a change of it the server must hear about was written, without
+   * waiting for it (ADR 0002); a sync of the Trip running already goes once more after it, as it
+   * may have read the outbox before the change. The one place a change starts a sync.
+   */
+  function changed(tripId: string): void {
+    if (running.has(tripId)) again.add(tripId);
+    else void start(tripId);
+  }
+
+  /**
    * Creates a Trip on this device, maybe offline, with `token` as its Trip link's token. The
-   * first Participant is the creator and becomes the Claim. It reaches the server on sync.
+   * first Participant is the creator and becomes the Claim. It syncs by itself.
    */
   async function createTrip(trip: TripWithParticipants, token: string): Promise<void> {
     const { id, name, currency, participants } = trip;
@@ -180,6 +198,7 @@ export function createDevice(db: DeviceDb, transport: Transport, deviceId: strin
       for (const participant of participants)
         await enqueue(id, { kind: 'participant', participant, removed: false });
     });
+    changed(id);
   }
 
   /**
@@ -211,29 +230,7 @@ export function createDevice(db: DeviceDb, transport: Transport, deviceId: strin
     return 'joined';
   }
 
-  /**
-   * Forgets a Trip on this device, with its Claim and every change not synced yet: those are
-   * lost. The Trip and its Participants stay on the server; the Trip link opens it again. A
-   * push subscription the server may have goes on a later sync (`syncForgotten`).
-   */
-  async function forgetTrip(tripId: string): Promise<void> {
-    await db.transaction('rw', db.trips, db.outbox, db.forgotten, async () => {
-      const device = await db.trips.get(tripId);
-      const { subscription, registered } = device?.notifications ?? NOTIFICATIONS_OFF;
-      if (device && (subscription || registered)) {
-        await db.forgotten.put({ tripId, token: device.token });
-      }
-      await db.outbox.where('tripId').equals(tripId).delete();
-      await db.trips.delete(tripId);
-    });
-  }
-
-  /** Records that a Trip on this device was opened now, for My Trips' order. */
-  async function open(tripId: string): Promise<void> {
-    await db.trips.update(tripId, { openedAt: new Date().toISOString() });
-  }
-
-  /** Changes a Trip's push notifications on this device; the server hears on sync. */
+  /** Changes a Trip's push notifications on this device. */
   async function setNotifications(
     tripId: string,
     change: Partial<DeviceNotifications>,
@@ -246,70 +243,23 @@ export function createDevice(db: DeviceDb, transport: Transport, deviceId: strin
   }
 
   /**
-   * Turns push notifications on for a Trip on this device, with the browser's subscription.
-   * The server gets it on sync, for the device's Claim, as long as it has one.
-   */
-  function turnOnNotifications(tripId: string, subscription: BrowserSubscription): Promise<void> {
-    return setNotifications(tripId, { subscription, offered: true });
-  }
-
-  /** Turns push notifications off for a Trip on this device; the server hears on sync. */
-  function turnOffNotifications(tripId: string): Promise<void> {
-    return setNotifications(tripId, { subscription: null, offered: true });
-  }
-
-  /**
    * Takes the browser's push subscription as it is now, e.g. renewed by the browser, for every
-   * Trip with notifications on; the server gets it on sync.
+   * Trip with notifications on; each of those syncs by itself.
    */
   async function renewSubscription(subscription: BrowserSubscription): Promise<void> {
-    await db.transaction('rw', db.trips, async () => {
+    const renewed = await db.transaction('rw', db.trips, async () => {
+      const ids: string[] = [];
       for (const device of await db.trips.toArray()) {
         const kept = device.notifications.subscription;
         if (!kept || kept.endpoint === subscription.endpoint) continue;
         await db.trips.update(device.id, {
           notifications: { ...device.notifications, subscription },
         });
+        ids.push(device.id);
       }
+      return ids;
     });
-  }
-
-  /** "Not now" to the offer of notifications after a Claim: never offered again by itself. */
-  function declineNotifications(tripId: string): Promise<void> {
-    return setNotifications(tripId, { offered: true });
-  }
-
-  /** Sets which Participant this device is in a Trip. */
-  async function claim(tripId: string, participant: Participant): Promise<void> {
-    await db.trips.update(tripId, { claim: participant });
-  }
-
-  /** Adds or renames a Participant on this device; it reaches the server on sync. */
-  async function addParticipant(tripId: string, participant: Participant): Promise<void> {
-    await enqueue(tripId, { kind: 'participant', participant, removed: false });
-  }
-
-  /**
-   * Removes a Participant softly on this device, unless an Expense (deleted ones aside)
-   * references them. Resolves to how many do: 0 when the removal was queued.
-   */
-  async function removeParticipant(tripId: string, participant: Participant): Promise<number> {
-    return db.transaction('rw', db.trips, db.outbox, async () => {
-      const local = await readLocal(tripId);
-      const referencing = expensesReferencing(local.expenses, participant.id);
-      if (referencing === 0) {
-        await enqueue(tripId, { kind: 'participant', participant, removed: true });
-      }
-      return referencing;
-    });
-  }
-
-  /**
-   * Saves the Trip's name and Trip currency on this device, last write wins. A new Trip
-   * currency rewrites no Expense: each is converted at the rate for the new pair (ADR 0003).
-   */
-  async function saveTripDetails(tripId: string, details: Omit<Trip, 'id'>): Promise<void> {
-    await enqueue(tripId, { kind: 'trip', trip: details });
+    for (const tripId of renewed) changed(tripId);
   }
 
   /** Keeps Notices for the Trip until they are dismissed. */
@@ -321,52 +271,15 @@ export function createDevice(db: DeviceDb, transport: Transport, deviceId: strin
     await db.trips.update(tripId, { notices: [...device.notices, ...added] });
   }
 
-  /** Dismisses one of the Trip's Notices. */
-  async function dismissNotice(tripId: string, noticeId: string): Promise<void> {
-    await db.transaction('rw', db.trips, async () => {
-      const device = await db.trips.get(tripId);
-      if (!device) return;
-      const notices = device.notices.filter(({ id }) => id !== noticeId);
-      await db.trips.update(tripId, { notices });
-    });
-  }
-
   /**
-   * Saves an Expense's full new state on this device, based on what the user edited (the
-   * Expense's `base` as `read` showed it). Resolves to the Trip rules it breaks, in which case
-   * nothing is saved; it reaches the server on sync. An Expense in Conflict keeps the edit on
-   * this device's version; one with a rejected change takes the edit as its fix, sent in
-   * place of the rejected changes. Saving a deleted Expense restores it. A new Expense on this
-   * device starts in the currency of the one saved last (`lastCurrency`), Repayments aside.
+   * Queues an Expense's full new state, on the base the Expense had as the user read it
+   * (`asRead`, `null` for a new one), unless it breaks a Trip rule. See the handle's
+   * `saveExpense`.
    */
-  async function saveExpense(
-    tripId: string,
-    expense: Expense,
-    base: ExpenseBase,
-  ): Promise<ExpenseProblem[]> {
-    const problems = await queueExpense(tripId, expense, base, false);
-    if (problems.length === 0 && !isRepayment(expense)) {
-      await db.trips.update(tripId, { lastCurrency: expense.currency });
-    }
-    return problems;
-  }
-
-  /**
-   * Deletes an Expense on this device, softly: it moves to Recently deleted, keeping its
-   * state, and saving it again restores it. Otherwise like `saveExpense`.
-   */
-  function deleteExpense(
-    tripId: string,
-    expense: Expense,
-    base: ExpenseBase,
-  ): Promise<ExpenseProblem[]> {
-    return queueExpense(tripId, expense, base, true);
-  }
-
   async function queueExpense(
     tripId: string,
     expense: Expense,
-    base: ExpenseBase,
+    asRead: LocalExpense | null,
     deleted: boolean,
   ): Promise<ExpenseProblem[]> {
     return db.transaction('rw', db.trips, db.outbox, async () => {
@@ -381,7 +294,9 @@ export function createDevice(db: DeviceDb, transport: Transport, deviceId: strin
       if (rejected) await db.outbox.bulkDelete(entries.map(({ seq }) => seq));
       await enqueue(tripId, {
         kind: 'expense',
-        base: rejected ? rejected.change.base : resolveBase(local, expense.id, base),
+        base: rejected
+          ? rejected.change.base
+          : resolveBase(local, expense.id, asRead?.base ?? { version: null }),
         expense,
         deleted,
       });
@@ -401,37 +316,6 @@ export function createDevice(db: DeviceDb, transport: Transport, deviceId: strin
     return base;
   }
 
-  /**
-   * Resolves an Expense's Conflict with this device's version: its changes go again on top
-   * of the version the Conflict showed, on the next sync.
-   */
-  async function keepMine(tripId: string, expenseId: string): Promise<void> {
-    await db.transaction('rw', db.outbox, async () => {
-      const [first] = await expenseEntries(tripId, expenseId);
-      if (first?.held?.status !== 'conflict') return;
-      const base = { version: first.held.current.version };
-      await db.outbox.update(first.seq, { change: { ...first.change, base }, held: null });
-    });
-  }
-
-  /**
-   * Drops every change of an Expense this device has not synced: "keep theirs" for a
-   * Conflict, whose version shows at once, or "discard" for a rejected change.
-   */
-  async function discardChanges(tripId: string, expenseId: string): Promise<void> {
-    await db.transaction('rw', db.trips, db.outbox, async () => {
-      const entries = await expenseEntries(tripId, expenseId);
-      await db.outbox.bulkDelete(entries.map(({ seq }) => seq));
-      const held = entries[0]?.held;
-      const device = await db.trips.get(tripId);
-      if (held?.status !== 'conflict' || !device?.snapshot) return;
-      const shown = device.snapshot.expenses.find(({ id }) => id === expenseId);
-      // A pull may have brought a newer version already.
-      if (shown && shown.version >= held.current.version) return;
-      await db.trips.update(tripId, { snapshot: withExpense(device.snapshot, held.current) });
-    });
-  }
-
   /** The Trip as this device keeps it, for a call to the server; rejects if it is not here. */
   async function tripOnDevice(tripId: string): Promise<DeviceTrip> {
     const device = await db.trips.get(tripId);
@@ -439,44 +323,225 @@ export function createDevice(db: DeviceDb, transport: Transport, deviceId: strin
     return device;
   }
 
-  /** An Expense's Revisions from the server, newest first. Rejects without a connection. */
-  async function revisions(tripId: string, expenseId: string): Promise<Revision[]> {
-    const device = await tripOnDevice(tripId);
-    return transport.revisions(tripId, device.token, expenseId);
-  }
-
-  /** Whom a Reminder can reach in the Trip, and who was reminded today. Rejects offline. */
-  async function reminderStatus(tripId: string): Promise<ReminderStatus> {
-    const device = await tripOnDevice(tripId);
-    return transport.reminderStatus(tripId, device.token);
-  }
-
   /**
-   * Reminds `to` of the Suggested Repayment they owe this device's Claim (#42): a call of its
-   * own, never queued. Rejects offline, as the creditor then shares a message instead.
+   * One Trip on this device, its id bound: what the open Trip offers its pages. Every change
+   * the server must hear about syncs the Trip by itself once it is written, and resolves
+   * without waiting for that sync.
    */
-  async function remind(tripId: string, to: string): Promise<Reminded> {
-    const device = await tripOnDevice(tripId);
-    if (!device.claim) return 'notSuggested';
-    return transport.remind(tripId, device.token, { from: device.claim.id, to });
+  function trip(tripId: string) {
+    // `change`, after which the Trip syncs, unless its result says nothing was written.
+    const syncing =
+      <A extends unknown[], R>(
+        change: (...args: A) => Promise<R>,
+        written: (result: R) => boolean = () => true,
+      ) =>
+      async (...args: A): Promise<R> => {
+        const result = await change(...args);
+        if (written(result)) changed(tripId);
+        return result;
+      };
+    const refusedNothing = (problems: ExpenseProblem[]) => problems.length === 0;
+
+    return {
+      /** Records that the Trip was opened now, for My Trips' order, and syncs it. */
+      async open(): Promise<void> {
+        await db.trips.update(tripId, { openedAt: new Date().toISOString() });
+        void sync(tripId);
+      },
+
+      /**
+       * Forgets the Trip on this device, with its Claim and every change not synced yet: those
+       * are lost. The Trip and its Participants stay on the server; the Trip link opens it
+       * again. A push subscription the server may have goes on a later `syncForgotten`.
+       */
+      async forget(): Promise<void> {
+        await db.transaction('rw', db.trips, db.outbox, db.forgotten, async () => {
+          const device = await db.trips.get(tripId);
+          const { subscription, registered } = device?.notifications ?? NOTIFICATIONS_OFF;
+          if (device && (subscription || registered)) {
+            await db.forgotten.put({ tripId, token: device.token });
+          }
+          await db.outbox.where('tripId').equals(tripId).delete();
+          await db.trips.delete(tripId);
+        });
+      },
+
+      /**
+       * Sets which Participant this device is in the Trip. The server's push subscription
+       * follows it while notifications are on, so then the Trip syncs.
+       */
+      async claim(participant: Participant): Promise<void> {
+        const device = await db.transaction('rw', db.trips, async () => {
+          await db.trips.update(tripId, { claim: participant });
+          return db.trips.get(tripId);
+        });
+        if (device?.notifications.subscription) changed(tripId);
+      },
+
+      /**
+       * Turns push notifications on for the Trip with the browser's subscription. The server
+       * gets it for the device's Claim, as long as it has one.
+       */
+      turnOnNotifications: syncing((subscription: BrowserSubscription) =>
+        setNotifications(tripId, { subscription, offered: true }),
+      ),
+
+      /** Turns push notifications off for the Trip. */
+      turnOffNotifications: syncing(() =>
+        setNotifications(tripId, { subscription: null, offered: true }),
+      ),
+
+      /** "Not now" to the offer of notifications after a Claim: never offered again by itself. */
+      declineNotifications: (): Promise<void> => setNotifications(tripId, { offered: true }),
+
+      /** Adds or renames a Participant. */
+      addParticipant: syncing((participant: Participant) =>
+        enqueue(tripId, { kind: 'participant', participant, removed: false }),
+      ),
+
+      /**
+       * Removes a Participant softly, unless an Expense (deleted ones aside) references them.
+       * Resolves to how many do: 0 when they were removed.
+       */
+      removeParticipant: syncing(
+        (participant: Participant) =>
+          db.transaction('rw', db.trips, db.outbox, async () => {
+            const local = await readLocal(tripId);
+            const referencing = expensesReferencing(local.expenses, participant.id);
+            if (referencing === 0) {
+              await enqueue(tripId, { kind: 'participant', participant, removed: true });
+            }
+            return referencing;
+          }),
+        (referencing) => referencing === 0,
+      ),
+
+      /**
+       * Saves the Trip's name and Trip currency, last write wins. A new Trip currency rewrites
+       * no Expense: each is converted at the rate for the new pair (ADR 0003).
+       */
+      saveTripDetails: syncing((details: Omit<Trip, 'id'>) =>
+        enqueue(tripId, { kind: 'trip', trip: details }),
+      ),
+
+      /** Dismisses one of the Trip's Notices. */
+      async dismissNotice(noticeId: string): Promise<void> {
+        await db.transaction('rw', db.trips, async () => {
+          const device = await db.trips.get(tripId);
+          if (!device) return;
+          const notices = device.notices.filter(({ id }) => id !== noticeId);
+          await db.trips.update(tripId, { notices });
+        });
+      },
+
+      /**
+       * Saves an Expense's full new state, based on the Expense as the user read it before
+       * editing (`asRead`, `null` for a new one): a version someone else made meanwhile ends in
+       * a Conflict, even once pulled. Resolves to the Trip rules it breaks, in which case
+       * nothing is saved. An Expense in Conflict keeps the edit on this device's version; one
+       * with a rejected change takes the edit as its fix, sent in place of the rejected
+       * changes. Saving a deleted Expense, or an older Revision, restores it. A new Expense on
+       * this device starts in the currency of the one saved last (`lastCurrency`), Repayments
+       * aside.
+       */
+      saveExpense: syncing(
+        async (expense: Expense, asRead: LocalExpense | null): Promise<ExpenseProblem[]> => {
+          const problems = await queueExpense(tripId, expense, asRead, false);
+          if (problems.length === 0 && !isRepayment(expense)) {
+            await db.trips.update(tripId, { lastCurrency: expense.currency });
+          }
+          return problems;
+        },
+        refusedNothing,
+      ),
+
+      /**
+       * Deletes an Expense softly: it moves to Recently deleted, keeping its state, and saving
+       * it again restores it. Otherwise like `saveExpense`.
+       */
+      deleteExpense: syncing(
+        (expense: Expense, asRead: LocalExpense | null) =>
+          queueExpense(tripId, expense, asRead, true),
+        refusedNothing,
+      ),
+
+      /**
+       * Resolves an Expense's Conflict with this device's version: its changes go again on top
+       * of the version the Conflict showed.
+       */
+      keepMine: syncing(async (expenseId: string): Promise<void> => {
+        await db.transaction('rw', db.outbox, async () => {
+          const [first] = await expenseEntries(tripId, expenseId);
+          if (first?.held?.status !== 'conflict') return;
+          const base = { version: first.held.current.version };
+          await db.outbox.update(first.seq, { change: { ...first.change, base }, held: null });
+        });
+      }),
+
+      /**
+       * Drops every change of an Expense this device has not synced: "keep theirs" for a
+       * Conflict, whose version shows at once, or "discard" for a rejected change.
+       */
+      async discardChanges(expenseId: string): Promise<void> {
+        await db.transaction('rw', db.trips, db.outbox, async () => {
+          const entries = await expenseEntries(tripId, expenseId);
+          await db.outbox.bulkDelete(entries.map(({ seq }) => seq));
+          const held = entries[0]?.held;
+          const device = await db.trips.get(tripId);
+          if (held?.status !== 'conflict' || !device?.snapshot) return;
+          const shown = device.snapshot.expenses.find(({ id }) => id === expenseId);
+          // A pull may have brought a newer version already.
+          if (shown && shown.version >= held.current.version) return;
+          await db.trips.update(tripId, { snapshot: withExpense(device.snapshot, held.current) });
+        });
+      },
+
+      /** An Expense's Revisions from the server, newest first. Rejects without a connection. */
+      async revisions(expenseId: string): Promise<Revision[]> {
+        const device = await tripOnDevice(tripId);
+        return transport.revisions(tripId, device.token, expenseId);
+      },
+
+      /** Whom a Reminder can reach in the Trip, and who was reminded today. Rejects offline. */
+      async reminderStatus(): Promise<ReminderStatus> {
+        const device = await tripOnDevice(tripId);
+        return transport.reminderStatus(tripId, device.token);
+      },
+
+      /**
+       * Reminds `to` of the Suggested Repayment they owe this device's Claim (#42): a call of
+       * its own, never queued. Rejects offline, as the creditor then shares a message instead.
+       */
+      async remind(to: string): Promise<Reminded> {
+        const device = await tripOnDevice(tripId);
+        if (!device.claim) return 'notSuggested';
+        return transport.remind(tripId, device.token, { from: device.claim.id, to });
+      },
+
+      /** Syncs the Trip now, e.g. on pull-to-refresh, as `sync` does. */
+      sync: (): Promise<void> => sync(tripId),
+    };
   }
 
   /**
-   * Pushes the Trip's outbox and pulls the Trip. Calls for a Trip already syncing run once
-   * more after it. Never rejects: whatever doesn't get through waits for the next sync.
+   * Pushes the Trip's outbox and pulls the Trip, or joins the sync of it running already. A
+   * change needs no call: it syncs by itself. Never rejects: whatever doesn't get through
+   * waits for the next sync.
    */
   function sync(tripId: string): Promise<void> {
-    const inFlight = running.get(tripId);
-    if (inFlight) {
-      again.add(tripId);
-      return inFlight;
-    }
+    return running.get(tripId) ?? start(tripId);
+  }
+
+  /** Starts a sync of the Trip, run once more for every change made meanwhile (`changed`). */
+  function start(tripId: string): Promise<void> {
     const run = (async () => {
       do {
         again.delete(tripId);
         await syncOnce(tripId).catch(() => {});
       } while (again.has(tripId));
-    })().finally(() => running.delete(tripId));
+      // Right after the last check, so a change made from now on starts a sync of its own.
+      running.delete(tripId);
+    })();
     running.set(tripId, run);
     return run;
   }
@@ -640,30 +705,17 @@ export function createDevice(db: DeviceDb, transport: Transport, deviceId: strin
     readAll,
     createTrip,
     joinTrip,
-    forgetTrip,
-    open,
-    claim,
-    turnOnNotifications,
-    turnOffNotifications,
-    declineNotifications,
     renewSubscription,
-    addParticipant,
-    removeParticipant,
-    saveTripDetails,
-    dismissNotice,
-    saveExpense,
-    deleteExpense,
-    keepMine,
-    discardChanges,
-    revisions,
-    reminderStatus,
-    remind,
+    trip,
     sync,
     syncForgotten,
   };
 }
 
 export type Device = ReturnType<typeof createDevice>;
+
+/** One Trip on this device, its id bound (`device.trip(tripId)`). */
+export type TripHandle = ReturnType<Device['trip']>;
 
 /**
  * The device's cached rate entries with those a pull brought: each of those replaces the one

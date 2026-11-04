@@ -55,11 +55,9 @@ describe('the device', () => {
     const device = setUp();
     await device.createTrip(trip, 'x'.repeat(43));
 
-    const problems = await device.saveExpense(
-      trip.id,
-      { ...plainExpense('Pizza'), mainPayerId: uuidv7() },
-      { version: null },
-    );
+    const problems = await device
+      .trip(trip.id)
+      .saveExpense({ ...plainExpense('Pizza'), mainPayerId: uuidv7() }, null);
 
     expect(problems).toEqual(['unknownMainPayer']);
     expect((await device.read(trip.id))?.local?.expenses).toEqual([]);
@@ -70,11 +68,7 @@ describe('the device', () => {
     await device.createTrip(trip, 'x'.repeat(43));
     expect((await device.read(trip.id))?.deviceTrip.lastCurrency).toBe(null);
 
-    await device.saveExpense(
-      trip.id,
-      { ...plainExpense('Langos'), currency: 'HUF' },
-      { version: null },
-    );
+    await device.trip(trip.id).saveExpense({ ...plainExpense('Langos'), currency: 'HUF' }, null);
 
     expect((await device.read(trip.id))?.deviceTrip.lastCurrency).toBe('HUF');
   });
