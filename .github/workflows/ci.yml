@@ -386,7 +386,9 @@ jobs:
         env:
           TEST_URL: ${{ vars.TEST_URL }}
         run: |
-          for _ in $(seq 30); do
+          deadline=$((SECONDS + 15 * 60))
+          while [ "$SECONDS" -lt "$deadline" ]; do
+            # An answer that isn't JSON, such as Cloudflare's error page, fails `jq`: not yet.
             commit=$(curl -fsS --max-time 10 "$TEST_URL/healthz" | jq -r .commit) || commit=
             if [ "$commit" = "$GITHUB_SHA" ]; then
               exit 0
