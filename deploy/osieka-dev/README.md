@@ -21,9 +21,15 @@ These files are built for one instance: Owe Yeah run by osieka.dev at `owe-yeah-
 
    The stack refuses to start without `POSTGRES_PASSWORD` or `TUNNEL_TOKEN`.
 
-3. **Packages.** After the first `publish`, set both GHCR packages to public in their settings, so the host pulls them without a credential. Their images carry the license notices public distribution asks for (`/app/notices`).
-4. **Stack.** Create a stack from this repo, branch `deploy`, file `test/compose.yaml`, polling every ~5 minutes. Redeploying it by hand is the fallback.
-5. Check that `cloudflared` and `app` turn healthy: `cloudflared` once the tunnel holds a connection to Cloudflare, `app` once `/healthz` answers.
+3. **Packages**, once, before the first `publish`. The images build in this instance's operator details and aren't distributed, so both GHCR packages stay private. A package CI creates would take the repository's visibility, public from its first push, so create them by hand:
+   1. Build both images from `main` and push them, tagged by its commit SHA, to `ghcr.io/rafalosieka/owe-yeah-migrator` and `ghcr.io/rafalosieka/owe-yeah` from your machine, logged in to `ghcr.io` with a classic token with `write:packages`. A package pushed this way starts private.
+   2. In each package's settings, untick **Inherit access from repository**, give `osi.owe.yeah` the **Write** role under **Manage Actions access**, and invite the bot account (below) with the **Read** role.
+
+   `publish` refuses to push to a package it can't read or that anyone can pull.
+
+4. **Registry credential.** The host pulls as a bot GitHub account that can read only these two packages. Give the stack a registry credential for `ghcr.io`: the bot's username and a classic token with only `read:packages`, expiring in a year. GitHub emails the bot's address a week before it expires, so that address must reach the operator.
+5. **Stack.** Create a stack from this repo, branch `deploy`, file `test/compose.yaml`, polling every ~5 minutes. Redeploying it by hand is the fallback.
+6. Check that `cloudflared` and `app` turn healthy: `cloudflared` once the tunnel holds a connection to Cloudflare, `app` once `/healthz` answers.
 
 ## Opening test to the public
 
@@ -43,7 +49,7 @@ Only once the privacy notice and terms are live in the deployed build, `owe-yeah
 
 ## Operating test
 
-- **Did the deploy land?** A failed `verify-deploy` job emails, as any failed run does.
+- **Did the deploy land?** A failed `verify-deploy` job emails, as any failed run does. If `publish` passed but test still runs the old commit, look at the host's pulls first: once the bot's token expires, they fail as unauthorized. Make it a new token and update the stack's registry credential.
 - **Is it down?** Cloudflare emails when the tunnel goes unhealthy. An app that crashes behind a healthy tunnel shows at the next deploy check.
 - **Logs:** the containers' logs on the host, rotated at 10 MB × 3 per container. Nothing is shipped.
 - **Rollback:** fix forward. In an emergency, revert the latest commit on `deploy`; the stack picks it up at its next poll. If the older build breaks on the newer schema, wipe test's database volume and redeploy.

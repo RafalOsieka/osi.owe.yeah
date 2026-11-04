@@ -329,6 +329,28 @@ jobs:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
         run: echo "$GITHUB_TOKEN" | docker login ghcr.io --username "$GITHUB_ACTOR" --password-stdin
 
+      # The images aren't distributed (ADR 0005). A package this push creates would take the
+      # repository's visibility, public from its first push, so both are created private by hand
+      # (see deploy/osieka-dev/README.md).
+      - name: Check the packages exist and are private
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        run: |
+          for repository in "$MIGRATOR_REPOSITORY" "$APP_REPOSITORY"; do
+            scope="repository:${repository#ghcr.io/}:pull"
+            # GHCR hands an anonymous pull token out only for a public package.
+            if curl -fsS "https://ghcr.io/token?scope=$scope" > /dev/null 2>&1; then
+              echo "$repository is public"
+              exit 1
+            fi
+            # As this run, the package must already exist and let this repository in.
+            token=$(curl -fsS -u "$GITHUB_ACTOR:$GITHUB_TOKEN" "https://ghcr.io/token?scope=$scope" | jq -r .token)
+            if ! curl -fsS -H "Authorization: Bearer $token" "https://ghcr.io/v2/${repository#ghcr.io/}/tags/list" > /dev/null; then
+              echo "$repository is missing, or this repository has no Actions access to it"
+              exit 1
+            fi
+          done
+
       - name: Build and push images
         run: |
           docker build --target migrator --build-arg COMMIT_SHA="$GITHUB_SHA" \
