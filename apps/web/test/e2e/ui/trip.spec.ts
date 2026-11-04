@@ -1330,3 +1330,28 @@ test('the tab, the home screen and the installed app all get the Owe Yeah icons'
     expect((await request.get(href)).ok(), href).toBe(true);
   }
 });
+
+test('opening the app leaves no cookies, so it needs no consent banner', async ({
+  page,
+  context,
+}) => {
+  await page.goto('/');
+  await expect(page.getByRole('heading', { name: 'My Trips' })).toBeVisible();
+
+  expect(await context.cookies()).toEqual([]);
+});
+
+test('a Polish browser gets the app in Polish, each time it opens it', async ({ browser }) => {
+  const context = await browser.newContext({ locale: 'pl-PL' });
+  const page = await context.newPage();
+  const myTrips = page.getByRole('heading', { name: 'Moje podróże' });
+
+  await page.goto('/');
+  await expect(myTrips).toBeVisible();
+  // Nothing remembers the language: it is the browser's again on the next visit.
+  await page.reload();
+  await expect(myTrips).toBeVisible();
+  await expect(page.locator('html')).toHaveAttribute('lang', 'pl');
+  expect(await context.cookies()).toEqual([]);
+  await context.close();
+});
