@@ -424,6 +424,17 @@ test('the longest texts never make a page scroll sideways at 360 px', async ({ p
   expect(await scrollsSideways()).toBe(false);
 });
 
+test('the licenses of the bundled dependencies open in the browser, past the service worker', async ({
+  page,
+}) => {
+  await page.goto('/');
+  await page.waitForFunction(() => navigator.serviceWorker.controller !== null);
+
+  await page.goto('/licenses.txt');
+
+  await expect(page.locator('body')).toContainText('## dexie - ');
+});
+
 test('a Trip and an Expense made offline reach a second device once back online', async ({
   page,
   context,

@@ -7,6 +7,9 @@ export default defineConfig({
   pack: {
     entry: ['src/cli.ts'],
     platform: 'node',
+    // The image's third-party notices find the packages inlined into the bundle through its
+    // source map (`docker/third-party-notices.ts`).
+    sourcemap: true,
     deps: {
       // Patterns, not names: subpath imports such as `drizzle-orm/postgres-js`
       // must be inlined too.
