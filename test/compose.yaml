@@ -33,7 +33,7 @@ services:
 
   # Runs to completion before `app` starts; a failed migration keeps the app down.
   migrate:
-    image: ghcr.io/rafalosieka/owe-yeah-migrator@sha256:a39965e9212ad7687a383d7fdedac9bb34518a7bf4ca9243ce7d74e74c609253
+    image: ghcr.io/rafalosieka/owe-yeah-migrator@sha256:2bef134aaacdf03007324ed149e6f9a4442639b02434494b519b473c212d53ce
     restart: 'no'
     logging: *logging
     environment:
@@ -43,7 +43,7 @@ services:
         condition: service_healthy
 
   app:
-    image: ghcr.io/rafalosieka/owe-yeah@sha256:51fbf9e4ebb8bb0dd7b072b916dab6b926fc72245a601123ca0757d89581e7a0
+    image: ghcr.io/rafalosieka/owe-yeah@sha256:fa295a872f47004817b547d9dbab35dc73fcd9487763865e57133c929023450f
     restart: unless-stopped
     logging: *logging
     environment:
