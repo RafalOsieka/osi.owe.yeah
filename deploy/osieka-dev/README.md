@@ -4,10 +4,10 @@ These files are built for one instance: Owe Yeah run by osieka.dev at `owe-yeah-
 
 ## How a build reaches test
 
-1. A push to `main` runs CI. Once every job is green, `publish` pushes `ghcr.io/rafalosieka/owe-yeah` (the app) and `ghcr.io/rafalosieka/owe-yeah-migrator`, tagged by commit SHA.
-2. It renders [`compose.yaml`](compose.yaml) with both images pinned by digest (`MIGRATOR_IMAGE` and `APP_IMAGE`, the only variables it fills in) and commits it to the `deploy` branch as `test/compose.yaml`.
+1. A push to `main` runs CI. Once every job is green, `publish` pushes `ghcr.io/rafalosieka/owe-yeah` (the app) and `ghcr.io/rafalosieka/owe-yeah-migrator`, tagged by commit SHA. Pull requests run every job but `publish` and `verify-deploy`.
+2. It renders [`compose.yaml`](compose.yaml) with both images pinned by digest (`MIGRATOR_IMAGE` and `APP_IMAGE`, the only variables it fills in, and it fails if anything else changed) and commits it to the `deploy` branch as `test/compose.yaml`, creating the branch if it's missing. Each commit is named `Deploy <commit> to test`. A newer push to `main` cancels an older run still in progress, so deploys land in order.
 3. The host's stack polls `deploy` every ~5 minutes and redeploys on a change: `db`, then `migrate` to completion, then `app`, with `cloudflared` alongside.
-4. `verify-deploy` polls `https://owe-yeah-test.osieka.dev/healthz` until it reports the new commit, or fails the run after ~15 minutes.
+4. `verify-deploy` polls `$TEST_URL/healthz` every 30 seconds until it reports the new commit, or fails the run after ~15 minutes. It's skipped while the repository variable `TEST_URL` is unset (see [Opening test to the public](#opening-test-to-the-public)).
 
 ## Setting up an environment
 
