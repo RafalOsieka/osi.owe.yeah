@@ -456,7 +456,8 @@
     "reminder": "{name} reminds you to pay them back {amount}"
   },
   "legal": {
-    "title": "Legal"
+    "title": "Legal",
+    "privacyLink": "privacy notice"
   },
   "privacy": {
     "title": "Privacy notice",
@@ -521,6 +522,97 @@
     "changes": {
       "title": "Changes",
       "body": "If this notice changes, the new version is published here with its date."
+    }
+  },
+  "terms": {
+    "title": "Terms of service",
+    "updated": "Last updated on 4 November 2026.",
+    "intro": "These terms set the rules for using Owe Yeah at this address, a service provided by electronic means. Read them before you create or join a Trip. This is a test environment: don't enter anything sensitive.",
+    "provider": {
+      "title": "Who provides the service",
+      "who": "Owe Yeah is provided by {name} ({business}), a sole trader entered in the Polish Central Register and Information on Economic Activity (CEIDG), NIP {nip}.",
+      "register": "The full entry, address included, is public in the CEIDG company search at {ceidg}: search by the NIP.",
+      "contact": "Write to {email} about anything in these terms."
+    },
+    "service": {
+      "title": "The service",
+      "intro": "Owe Yeah keeps track of what a group of people spends together and works out who owes whom. It lets you:",
+      "trips": "create Trips, add their Participants, and record Expenses and Repayments, in the Trip currency or any other;",
+      "share": "share a Trip by its Trip link, and sync it between the devices of everyone who has the link;",
+      "balances": "see everyone's balance, and the Suggested Repayments that even them out;",
+      "notifications": "get Notifications about other Participants' changes, and send Reminders;",
+      "offline": "use it offline, and install it as an app.",
+      "free": "The service is free. There are no accounts: whoever has a Trip link can see and change everything in that Trip."
+    },
+    "requirements": {
+      "title": "Technical requirements",
+      "intro": "To use Owe Yeah, you need:",
+      "browser": "a current version of a web browser such as Chrome, Edge, Firefox or Safari, with JavaScript on and site data allowed;",
+      "connection": "an internet connection to open it the first time and to sync; after that, it works offline too;",
+      "notifications": "for Notifications, a browser that supports web push; on iPhone and iPad, the app added to the Home Screen.",
+      "cookies": "Owe Yeah sets no cookies. What it keeps on your device is described in the {privacy}."
+    },
+    "agreement": {
+      "title": "Starting and ending the agreement",
+      "start": "The agreement to provide the service is concluded, for an indefinite period, when you first create a Trip or open a Trip link.",
+      "endYou": "You can end it at any time, without giving a reason, by no longer using Owe Yeah and forgetting your Trips on your device. How to have your data removed from the server is described in the {privacy}.",
+      "endUs": "As this is a test environment, we may stop providing the service at any time; when we can, we say so in the app beforehand. We may also block access to a Trip whose content breaks the law or these terms (see below)."
+    },
+    "content": {
+      "title": "Content rules",
+      "intro": "You are responsible for what you enter into Owe Yeah. Don't enter or share through it:",
+      "unlawful": "content that is illegal, or that infringes other people's rights, such as their personal rights or privacy;",
+      "offensive": "insults, threats or hate speech, names and titles included;",
+      "sensitive": "special categories of personal data (about health, beliefs, sex life and the like), or numbers of identity documents or payment cards;",
+      "misuse": "anything that disrupts the service: don't try to break into it or overload it, or open Trips nobody gave you the Trip link to.",
+      "others": "Add to a Trip only the people who take part in it."
+    },
+    "moderation": {
+      "title": "How the rules are enforced",
+      "notMonitored": "We don't read or monitor Trips, and no automated tools moderate them. We act on notices of illegal content (below), on orders of authorities, and on what we learn otherwise.",
+      "actions": "If, after a person has reviewed it, we find that content is illegal or breaks these terms, we may delete it, or block access to the Trip it's in. We act diligently, objectively and in proportion, with due regard to the rights of everyone involved, freedom of expression included.",
+      "reasons": "We have no way to reach the people in a Trip, so we can't tell them about a decision ourselves. Whoever writes to {email} with the Trip link gets the reasons for a decision about that Trip, and can contest it by a complaint (below) or in court."
+    },
+    "report": {
+      "title": "Reporting illegal content",
+      "how": "If you think something in Owe Yeah is illegal, report it to {email}. Your notice should hold:",
+      "reasons": "a sufficiently substantiated explanation of why you think it is illegal;",
+      "location": "exactly where it is: the Trip link, and which Expense, Repayment or Participant (its title or name, and date);",
+      "contact": "your name and email address, unless the content concerns the sexual abuse or exploitation of children (Art. 3 to 7 of Directive 2011/93/EU);",
+      "goodFaith": "a statement that you believe, in good faith, that the information and allegations in it are accurate and complete.",
+      "after": "We confirm we've received your notice, review it without undue delay, and tell you our decision and how to contest it. No automated means process notices or decide on them."
+    },
+    "contact": {
+      "title": "Points of contact",
+      "authorities": "Authorities of EU Member States, the European Commission and the European Board for Digital Services can contact us at {email}, our single point of contact under Art. 11 of the Digital Services Act (Regulation (EU) 2022/2065).",
+      "users": "Anyone who uses Owe Yeah can contact us at the same address, our single point of contact under Art. 12. A person reads and answers every message.",
+      "languages": "Write to us in English or Polish."
+    },
+    "complaints": {
+      "title": "Complaints",
+      "how": "If Owe Yeah doesn't work as these terms say, or you disagree with our decision about content, write to {email}. Say what happened and when, and what you ask for; if it's about a Trip, send its Trip link.",
+      "answer": "We answer within 14 days, to the email address you wrote from."
+    },
+    "test": {
+      "title": "A test environment",
+      "body": "This instance of Owe Yeah is a test environment: its data may be wiped at any time without notice, and it may be unavailable, change or stop at any time. Don't rely on it as your only record of who owes whom.",
+      "liability": "Owe Yeah is provided free of charge, as it is. We do our best to keep it working, but don't promise it will be available, or that its calculations will be free of errors. Nothing in these terms limits the rights a consumer has under mandatory law."
+    },
+    "data": {
+      "title": "Personal data",
+      "body": "How we process personal data is described in the {privacy}."
+    },
+    "licenses": {
+      "title": "Software and licenses",
+      "body": "Owe Yeah is open-source software under the MIT License. The licenses of the third-party software it includes are at {licenses}."
+    },
+    "changes": {
+      "title": "Changes to these terms",
+      "body": "We may change these terms for an important reason, such as a change in the law or in the service. The new version is published here with its date, at least 7 days before it takes effect, unless the law or security calls for a change sooner. If you don't accept it, stop using Owe Yeah."
+    },
+    "law": {
+      "title": "Governing law",
+      "body": "These terms are governed by Polish law. If you are a consumer, you keep the protection the mandatory law of the country you live in gives you."
     }
   }
 }

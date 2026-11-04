@@ -3,7 +3,8 @@ import { balances, isSettled } from '@osi/owe-yeah-domain';
 
 // My Trips: every Trip on this device, most recently opened first and Settled ones below the
 // rest, with its Claim, your balance there (or a Settled badge), and how many of your
-// changes haven't synced yet. Above them, the install nudge; below, the privacy notice.
+// changes haven't synced yet. Above them, the install nudge; below, the privacy notice and the
+// terms.
 const { t, locale } = useI18n();
 const device = useDevice();
 const trips = useLiveQuery(() => device.readAll());

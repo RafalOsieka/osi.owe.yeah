@@ -456,7 +456,8 @@
     "reminder": "{name} przypomina: do oddania {amount}"
   },
   "legal": {
-    "title": "Informacje prawne"
+    "title": "Informacje prawne",
+    "privacyLink": "polityka prywatności"
   },
   "privacy": {
     "title": "Polityka prywatności",
@@ -521,6 +522,97 @@
     "changes": {
       "title": "Zmiany",
       "body": "Jeśli ta polityka się zmieni, nowa wersja pojawi się tutaj razem z datą."
+    }
+  },
+  "terms": {
+    "title": "Regulamin",
+    "updated": "Ostatnia aktualizacja: 4 listopada 2026 r.",
+    "intro": "Ten regulamin określa zasady korzystania z Owe Yeah pod tym adresem, usługi świadczonej drogą elektroniczną. Przeczytaj go, zanim utworzysz podróż albo do niej dołączysz. To środowisko testowe: nie wpisuj niczego wrażliwego.",
+    "provider": {
+      "title": "Kto świadczy usługę",
+      "who": "Usługę świadczy {name} ({business}), przedsiębiorca wpisany do Centralnej Ewidencji i Informacji o Działalności Gospodarczej (CEIDG), NIP {nip}.",
+      "register": "Pełny wpis, razem z adresem, jest publicznie dostępny w wyszukiwarce firm CEIDG na {ceidg}: wyszukaj po numerze NIP.",
+      "contact": "We wszystkich sprawach z tego regulaminu pisz na {email}."
+    },
+    "service": {
+      "title": "Usługa",
+      "intro": "Owe Yeah zapisuje, ile kilka osób wydaje wspólnie, i wylicza, kto komu ile oddaje. Pozwala:",
+      "trips": "tworzyć podróże, dodawać ich uczestników oraz zapisywać wydatki i spłaty, w walucie podróży albo w innej;",
+      "share": "udostępniać podróż linkiem do podróży i synchronizować ją między urządzeniami wszystkich, którzy go mają;",
+      "balances": "widzieć salda wszystkich i sugerowane spłaty, które je wyrównują;",
+      "notifications": "dostawać powiadomienia o zmianach wprowadzonych przez innych uczestników i wysyłać przypomnienia;",
+      "offline": "korzystać z aplikacji offline i zainstalować ją jak zwykłą aplikację.",
+      "free": "Usługa jest bezpłatna. Nie ma kont: każdy, kto ma link do podróży, widzi wszystko w tej podróży i może to zmienić."
+    },
+    "requirements": {
+      "title": "Wymagania techniczne",
+      "intro": "Do korzystania z Owe Yeah potrzebujesz:",
+      "browser": "aktualnej wersji przeglądarki, takiej jak Chrome, Edge, Firefox czy Safari, z włączonym JavaScriptem i zgodą na zapisywanie danych stron;",
+      "connection": "połączenia z internetem przy pierwszym otwarciu i do synchronizacji; potem aplikacja działa też offline;",
+      "notifications": "do powiadomień: przeglądarki obsługującej powiadomienia push, a na iPhonie i iPadzie aplikacji dodanej do ekranu początkowego.",
+      "cookies": "Owe Yeah nie ustawia plików cookie. Co zapisuje na Twoim urządzeniu, opisuje {privacy}."
+    },
+    "agreement": {
+      "title": "Zawarcie i rozwiązanie umowy",
+      "start": "Umowa o świadczenie usługi zostaje zawarta na czas nieokreślony, gdy po raz pierwszy tworzysz podróż albo otwierasz link do podróży.",
+      "endYou": "Możesz ją rozwiązać w każdej chwili, bez podawania przyczyny: przestań korzystać z Owe Yeah i zapomnij swoje podróże na urządzeniu. Jak usunąć swoje dane z serwera, opisuje {privacy}.",
+      "endUs": "Ponieważ to środowisko testowe, możemy w każdej chwili przestać świadczyć usługę; gdy to możliwe, uprzedzamy o tym w aplikacji. Możemy też zablokować dostęp do podróży, której treść narusza prawo albo ten regulamin (zobacz niżej)."
+    },
+    "content": {
+      "title": "Zasady dotyczące treści",
+      "intro": "Odpowiadasz za to, co wpisujesz do Owe Yeah. Nie wpisuj ani nie udostępniaj przez nią:",
+      "unlawful": "treści o charakterze bezprawnym ani naruszających prawa innych osób, na przykład ich dobra osobiste lub prywatność;",
+      "offensive": "obelg, gróźb ani mowy nienawiści, również w imionach i tytułach;",
+      "sensitive": "szczególnych kategorii danych osobowych (o zdrowiu, przekonaniach, życiu seksualnym i podobnych) ani numerów dokumentów tożsamości czy kart płatniczych;",
+      "misuse": "niczego, co zakłóca działanie usługi: nie próbuj się do niej włamać ani jej przeciążyć i nie otwieraj podróży, do których nikt nie dał Ci linku do podróży.",
+      "others": "Dodawaj do podróży tylko osoby, które biorą w niej udział."
+    },
+    "moderation": {
+      "title": "Jak egzekwujemy zasady",
+      "notMonitored": "Nie czytamy ani nie monitorujemy podróży i nie moderujemy ich żadnymi automatycznymi narzędziami. Działamy na podstawie zgłoszeń nielegalnych treści (niżej), nakazów organów i tego, czego dowiemy się w inny sposób.",
+      "actions": "Jeśli po sprawdzeniu przez człowieka uznamy, że treść jest nielegalna albo narusza ten regulamin, możemy ją usunąć albo zablokować dostęp do podróży, w której się znajduje. Działamy starannie, obiektywnie i proporcjonalnie, z należytym uwzględnieniem praw wszystkich zainteresowanych, w tym wolności wypowiedzi.",
+      "reasons": "Nie mamy jak skontaktować się z osobami z podróży, więc nie możemy sami powiadomić ich o decyzji. Kto napisze na {email} i poda link do podróży, dostanie uzasadnienie decyzji w sprawie tej podróży i może ją zakwestionować reklamacją (niżej) albo w sądzie."
+    },
+    "report": {
+      "title": "Zgłaszanie nielegalnych treści",
+      "how": "Jeśli uważasz, że coś w Owe Yeah jest nielegalne, zgłoś to na {email}. Zgłoszenie powinno zawierać:",
+      "reasons": "wystarczająco uzasadnione wyjaśnienie, dlaczego uważasz tę treść za nielegalną;",
+      "location": "dokładne wskazanie, gdzie ona jest: link do podróży i który wydatek, spłata albo uczestnik (tytuł lub imię oraz data);",
+      "contact": "Twoje imię i nazwisko oraz adres e-mail, chyba że treść dotyczy niegodziwego traktowania lub wykorzystywania seksualnego dzieci (art. 3–7 dyrektywy 2011/93/UE);",
+      "goodFaith": "oświadczenie, że w dobrej wierze uważasz zawarte w nim informacje i twierdzenia za prawidłowe i kompletne.",
+      "after": "Potwierdzamy otrzymanie zgłoszenia, rozpatrujemy je bez zbędnej zwłoki i informujemy Cię o decyzji oraz o tym, jak możesz ją zakwestionować. Zgłoszeń nie przetwarzamy ani nie rozstrzygamy automatycznie."
+    },
+    "contact": {
+      "title": "Punkty kontaktowe",
+      "authorities": "Organy państw członkowskich UE, Komisja Europejska i Europejska Rada ds. Usług Cyfrowych mogą kontaktować się z nami pod adresem {email}, naszym punktem kontaktowym z art. 11 aktu o usługach cyfrowych (rozporządzenie (UE) 2022/2065).",
+      "users": "Pod tym samym adresem może się z nami kontaktować każdy, kto korzysta z Owe Yeah: to nasz punkt kontaktowy z art. 12. Każdą wiadomość czyta i odpowiada na nią człowiek.",
+      "languages": "Pisz do nas po polsku albo po angielsku."
+    },
+    "complaints": {
+      "title": "Reklamacje",
+      "how": "Jeśli Owe Yeah nie działa tak, jak opisuje ten regulamin, albo nie zgadzasz się z naszą decyzją w sprawie treści, napisz na {email}. Opisz, co się stało i kiedy oraz czego oczekujesz, a jeśli sprawa dotyczy podróży, podaj jej link do podróży.",
+      "answer": "Odpowiadamy w ciągu 14 dni na adres e-mail, z którego napisano."
+    },
+    "test": {
+      "title": "Środowisko testowe",
+      "body": "Ta instancja Owe Yeah to środowisko testowe: jej dane mogą zostać usunięte w dowolnej chwili bez uprzedzenia, a ona sama może w każdej chwili być niedostępna, zmienić się albo przestać działać. Nie traktuj jej jako jedynego zapisu tego, kto komu ile oddaje.",
+      "liability": "Owe Yeah jest udostępniana bezpłatnie, w takim stanie, w jakim jest. Staramy się, żeby działała, ale nie gwarantujemy, że będzie dostępna ani że jej wyliczenia będą wolne od błędów. Nic w tym regulaminie nie ogranicza praw, które konsumentowi dają bezwzględnie obowiązujące przepisy."
+    },
+    "data": {
+      "title": "Dane osobowe",
+      "body": "Jak przetwarzamy dane osobowe, opisuje {privacy}."
+    },
+    "licenses": {
+      "title": "Oprogramowanie i licencje",
+      "body": "Owe Yeah to oprogramowanie open source na licencji MIT. Licencje oprogramowania innych autorów, które zawiera, są pod adresem {licenses}."
+    },
+    "changes": {
+      "title": "Zmiany regulaminu",
+      "body": "Możemy zmienić ten regulamin z ważnej przyczyny, na przykład z powodu zmiany prawa albo usługi. Nowa wersja pojawi się tutaj razem z datą, co najmniej 7 dni przed wejściem w życie, chyba że prawo albo bezpieczeństwo wymaga zmiany wcześniej. Jeśli jej nie akceptujesz, przestań korzystać z Owe Yeah."
+    },
+    "law": {
+      "title": "Prawo właściwe",
+      "body": "Regulamin podlega prawu polskiemu. Jeśli jesteś konsumentem, zachowujesz ochronę, którą dają Ci bezwzględnie obowiązujące przepisy kraju, w którym mieszkasz."
     }
   }
 }
