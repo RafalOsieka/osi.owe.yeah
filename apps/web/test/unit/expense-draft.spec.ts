@@ -68,7 +68,12 @@ describe('an Expense made a draft reads back as the same Expense', () => {
       {
         ...base,
         lineItems: [
-          { name: '', unitPrice: -600, quantity: 1, split: { mode: 'even', participantIds: [ania] } },
+          {
+            name: '',
+            unitPrice: -600,
+            quantity: 1,
+            split: { mode: 'even', participantIds: [ania] },
+          },
         ],
       },
     ],
@@ -103,7 +108,12 @@ describe('an Expense made a draft reads back as the same Expense', () => {
               ],
             },
           },
-          { name: 'Bread', unitPrice: 249, quantity: 1, split: { mode: 'even', participantIds: [] } },
+          {
+            name: 'Bread',
+            unitPrice: 249,
+            quantity: 1,
+            split: { mode: 'even', participantIds: [] },
+          },
         ],
         discount: { kind: 'percent', basisPoints: 1000 },
       },
@@ -135,7 +145,12 @@ describe('an Expense made a draft reads back as the same Expense', () => {
       {
         ...base,
         lineItems: [
-          { name: '', unitPrice: 6000, quantity: 1, split: { mode: 'even', participantIds: [kasia, ania] } },
+          {
+            name: '',
+            unitPrice: 6000,
+            quantity: 1,
+            split: { mode: 'even', participantIds: [kasia, ania] },
+          },
         ],
         contributions: [
           { participantId: ola, amount: 600 },
@@ -150,7 +165,12 @@ describe('an Expense made a draft reads back as the same Expense', () => {
         currency: 'USD',
         manualRate: { kind: 'rate', rate: '0.87593', currency: 'EUR' },
         lineItems: [
-          { name: '', unitPrice: 2000, quantity: 1, split: { mode: 'even', participantIds: [ola] } },
+          {
+            name: '',
+            unitPrice: 2000,
+            quantity: 1,
+            split: { mode: 'even', participantIds: [ola] },
+          },
         ],
       },
     ],
@@ -161,7 +181,12 @@ describe('an Expense made a draft reads back as the same Expense', () => {
         currency: 'HUF',
         manualRate: { kind: 'charged', amount: 4321, currency: 'PLN' },
         lineItems: [
-          { name: '', unitPrice: 1500000, quantity: 1, split: { mode: 'even', participantIds: [ola] } },
+          {
+            name: '',
+            unitPrice: 1500000,
+            quantity: 1,
+            split: { mode: 'even', participantIds: [ola] },
+          },
         ],
       },
     ],
@@ -244,7 +269,11 @@ describe('a new draft', () => {
     const draft = newRepaymentDraft(trip, {
       ...start,
       title: 'Repayment',
-      suggested: { payerId: ola, recipientId: '019a2b3c-4d5e-7f00-8a1b-000000000009', amount: '14.00' },
+      suggested: {
+        payerId: ola,
+        recipientId: '019a2b3c-4d5e-7f00-8a1b-000000000009',
+        amount: '14.00',
+      },
     });
 
     expect(draft).toMatchObject({ mainPayerId: ola, recipientId: '', amount: '14.00' });
@@ -448,6 +477,17 @@ describe('the Trip rules a draft would break', () => {
       { field: 'mainPayerId', code: 'missing' },
     ]);
   });
+
+  it('a Receipt discount larger than the goods read so far shows while a Line item cannot be read', () => {
+    const draft = receipt({ price: '1' }, { price: '?' });
+    draft.discount = { kind: 'amount', value: '2' };
+    const [, unreadable] = draft.lineItems!;
+
+    expect(readDraft(draft, trip).reasons).toEqual([
+      { field: 'lineItems', code: 'unreadable', line: unreadable!.key },
+      { field: 'discount', code: 'receiptDiscountExceedsLineItems' },
+    ]);
+  });
 });
 
 describe('a Manual rate', () => {
@@ -517,7 +557,10 @@ describe('transitions with a rule', () => {
       mode: 'even',
       participantIds: [kasia, ania, ola],
     });
-    expect(chooseSplitMode(line!, 'amounts', trip.participants).split).toEqual({ mode: 'amounts', parts: [] });
+    expect(chooseSplitMode(line!, 'amounts', trip.participants).split).toEqual({
+      mode: 'amounts',
+      parts: [],
+    });
     expect(chooseSplitMode(line!, 'units', trip.participants)).toBe(line);
   });
 });

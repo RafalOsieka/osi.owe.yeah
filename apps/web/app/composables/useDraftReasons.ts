@@ -1,18 +1,12 @@
 import { minorUnits, type ExpenseProblem } from '@osi/owe-yeah-domain';
 import type { FormError } from '@nuxt/ui';
-import type {
-  DraftField,
-  DraftReason,
-  ExpenseDraft,
-  LineItemReason,
+import {
+  isProblem,
+  type DraftField,
+  type DraftReason,
+  type ExpenseDraft,
+  type LineItemReason,
 } from '~/utils/expense-draft';
-
-const UNREAD_CODES: readonly DraftReason['code'][] = ['missing', 'unreadable', 'tooLong'];
-
-/** Whether a reason is a Trip rule the Expense would break, which shows as soon as it stands. */
-export function isProblem(reason: DraftReason): reason is DraftReason & { code: ExpenseProblem } {
-  return !UNREAD_CODES.includes(reason.code);
-}
 
 /**
  * Words the reasons an Expense draft can't be saved (`readDraft`, `readLineItem`), with the
@@ -27,7 +21,11 @@ export function useDraftReasons() {
     return t('expense.amountInvalid', { decimals }, decimals);
   };
 
-  function unread(field: DraftField, code: DraftReason['code'], draft: ExpenseDraft): string {
+  function unreadMessage(
+    field: DraftField,
+    code: DraftReason['code'],
+    draft: ExpenseDraft,
+  ): string {
     switch (field) {
       case 'title':
         return t('expense.titleInvalid');
@@ -48,7 +46,9 @@ export function useDraftReasons() {
       case 'local':
         return t('expense.timeMissing');
       case 'lineItems':
-        return code === 'missing' ? t('receipt.lineItemsMissing') : t('receipt.lineItemsUnreadable');
+        return code === 'missing'
+          ? t('receipt.lineItemsMissing')
+          : t('receipt.lineItemsUnreadable');
       case 'discount':
         return t('receipt.discountUnreadable');
       case 'contributions':
@@ -73,7 +73,9 @@ export function useDraftReasons() {
 
   /** Why a field of `draft` keeps it from being saved. */
   function draftReason(reason: DraftReason, draft: ExpenseDraft): string {
-    return isProblem(reason) ? problem(reason.code) : unread(reason.field, reason.code, draft);
+    return isProblem(reason)
+      ? problem(reason.code)
+      : unreadMessage(reason.field, reason.code, draft);
   }
 
   /** What a Line item says it can't read. */
@@ -100,8 +102,9 @@ export function useDraftReasons() {
     }));
     return errors.filter(
       (error, index) =>
-        errors.findIndex(({ name, message }) => name === error.name && message === error.message) ===
-        index,
+        errors.findIndex(
+          ({ name, message }) => name === error.name && message === error.message,
+        ) === index,
     );
   }
 
@@ -109,10 +112,7 @@ export function useDraftReasons() {
    * The Trip rule a draft would break at `field`, in words, shown while the form is filled
    * in rather than once the field is checked; `undefined` when none.
    */
-  function problemAt(
-    reasons: readonly DraftReason[],
-    field: DraftField,
-  ): string | undefined {
+  function problemAt(reasons: readonly DraftReason[], field: DraftField): string | undefined {
     const found = reasons.filter(isProblem).find((reason) => reason.field === field);
     return found && problem(found.code);
   }

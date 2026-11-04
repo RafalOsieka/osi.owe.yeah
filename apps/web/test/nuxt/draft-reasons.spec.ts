@@ -69,7 +69,7 @@ describe('the reasons an Expense draft gives', () => {
     await useNuxtApp().$i18n.setLocale('en');
   });
 
-  it.each(['en', 'pl'])('all have words in %s', async (locale) => {
+  it.each(['en', 'pl'] as const)('all have words in %s', async (locale) => {
     const { draftReason, lineItemReason } = await draftReasons();
     await useNuxtApp().$i18n.setLocale(locale);
     const draft = newExpenseDraft(trip, {

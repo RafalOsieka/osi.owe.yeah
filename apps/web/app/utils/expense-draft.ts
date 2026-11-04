@@ -11,6 +11,7 @@ import {
   parseMoney,
   parsePercent,
   parseRate,
+  receiptDiscountExceeds,
   receiptShares,
   roundMoney,
   splitFromScratch,
@@ -23,6 +24,7 @@ import {
   type LineItem,
   type ManualRate,
   type Rational,
+  type ReceiptShares,
   type Repayment,
   type Split,
   type SplitExpense,
@@ -134,9 +136,16 @@ export type DraftField =
  */
 export type DraftReason = {
   field: DraftField;
-  code: 'missing' | 'unreadable' | 'tooLong' | ExpenseProblem;
+  code: (typeof UNREAD_CODES)[number] | ExpenseProblem;
   line?: string;
 };
+
+const UNREAD_CODES = ['missing', 'unreadable', 'tooLong'] as const;
+
+/** Whether a reason is a Trip rule the Expense would break, which shows as soon as it stands. */
+export function isProblem(reason: DraftReason): reason is DraftReason & { code: ExpenseProblem } {
+  return !UNREAD_CODES.some((code) => code === reason.code);
+}
 
 /** A Line item's field that can't be read: a refund's amount is `amount`, not `price`. */
 export type LineItemField = 'price' | 'amount' | 'discount' | 'deposit' | 'amounts';
@@ -149,16 +158,12 @@ export type LineItemReading =
   | { lineItem: null; reasons: [LineItemReason, ...LineItemReason[]] };
 
 /** A Receipt as far as it can be read: its readable Line items and Receipt discount. */
-export type ReceiptReading = {
+export type ReceiptReading = Pick<
+  ReceiptShares,
+  'total' | 'discountOff' | 'deposits' | 'unassigned'
+> & {
   /** The Receipt discount, while it can be read. */
   discount: Discount | undefined;
-  /** The computed total, which may be negative. */
-  total: Rational;
-  /** What the Receipt discount takes off. */
-  discountOff: Rational;
-  deposits: Rational;
-  /** The value not assigned to anyone yet, which counts as the Main payer's. */
-  unassigned: Rational;
 };
 
 /** What every draft reads as. */
@@ -382,7 +387,7 @@ function readMoney(text: string, currency: string): number | Unread {
   return parseMoney(text, currency) ?? 'unreadable';
 }
 
-const unread = (read: number | Unread): read is Unread =>
+const isUnread = (read: number | Unread): read is Unread =>
   read === 'missing' || read === 'unreadable';
 
 function readDiscount(draft: DraftDiscount, currency: string): Discount | undefined | 'unreadable' {
@@ -581,17 +586,17 @@ export function readDraft(
 function readRepayment(draft: RepaymentDraft, trip: TripWithParticipants): RepaymentReading {
   const reasons: DraftReason[] = [];
   const amount = readMoney(draft.amount, draft.currency);
-  if (unread(amount)) reasons.push({ field: 'amount', code: amount });
+  if (isUnread(amount)) reasons.push({ field: 'amount', code: amount });
   const { base, manualRate, time } = readBase(draft, reasons);
   if (!draft.recipientId) reasons.push({ field: 'recipientId', code: 'missing' });
 
   const candidate =
-    !unread(amount) && manualRate !== 'unreadable'
+    !isUnread(amount) && manualRate !== 'unreadable'
       ? { ...base, recipientId: draft.recipientId, amount }
       : null;
   return {
     expense: checked<Repayment>(candidate, time, draft, trip, reasons),
-    total: !unread(amount) ? fromMinor(amount, draft.currency) : null,
+    total: !isUnread(amount) ? fromMinor(amount, draft.currency) : null,
     time,
     manualRate,
     reasons,
@@ -615,14 +620,23 @@ function readLines(
   const { currency } = draft;
   if (!draft.lineItems) {
     const price = readMoney(draft.amount, currency);
-    if (unread(price)) reasons.push({ field: 'amount', code: price });
+    if (isUnread(price)) reasons.push({ field: 'amount', code: price });
     const participantIds = inTripOrder(draft.participantIds, trip);
     if (participantIds.length === 0) reasons.push({ field: 'participantIds', code: 'missing' });
-    if (unread(price)) return { complete: null, total: null, receipt: null };
+    if (isUnread(price)) return { complete: null, total: null, receipt: null };
     // Income is saved with a negative amount, so nobody types a minus.
     const unitPrice = draft.received ? -price : price;
-    const only: LineItem = { name: '', unitPrice, quantity: 1, split: { mode: 'even', participantIds } };
-    return { complete: { lineItems: [only] }, total: fromMinor(unitPrice, currency), receipt: null };
+    const only: LineItem = {
+      name: '',
+      unitPrice,
+      quantity: 1,
+      split: { mode: 'even', participantIds },
+    };
+    return {
+      complete: { lineItems: [only] },
+      total: fromMinor(unitPrice, currency),
+      receipt: null,
+    };
   }
 
   if (draft.lineItems.length === 0) reasons.push({ field: 'lineItems', code: 'missing' });
@@ -639,6 +653,10 @@ function readLines(
     lineItems.length > 0 && lineItems.length === draft.lineItems.length && typed !== 'unreadable'
       ? { lineItems, ...(discount && { discount }) }
       : null;
+  // The Trip's rules run once the Expense is complete; this one shows on the goods read so far.
+  if (!complete && receiptDiscountExceeds({ lineItems, discount })) {
+    reasons.push({ field: 'discount', code: 'receiptDiscountExceedsLineItems' });
+  }
   return {
     complete,
     total: shares.total,
@@ -711,7 +729,10 @@ export function itemise(draft: SplitDraft, trip: TripWithParticipants): SplitDra
  * The draft with a new Main payer, or `contributes` when they have a Contribution: a Main
  * payer can't have one, so it has to be removed first.
  */
-export function pickMainPayer(draft: SplitDraft, participantId: string): SplitDraft | 'contributes' {
+export function pickMainPayer(
+  draft: SplitDraft,
+  participantId: string,
+): SplitDraft | 'contributes' {
   if (draft.contributions.some((contribution) => contribution.participantId === participantId)) {
     return 'contributes';
   }
