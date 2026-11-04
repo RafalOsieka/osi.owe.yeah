@@ -307,10 +307,10 @@ async function lockTrip(tx: Transaction, tripId: string): Promise<WholeTrip> {
 function accepted(
   changeId: string,
   version: number | null,
-  restored: readonly string[],
+  restored: string[],
 ): ChangeResult {
   const result = { changeId, status: 'accepted', version } as const;
-  return restored.length > 0 ? { ...result, restored: [...restored] } : result;
+  return restored.length > 0 ? { ...result, restored } : result;
 }
 
 /**
@@ -324,7 +324,7 @@ async function recordChange(
   tripId: string,
   subjectId: string,
   version: number | null,
-  restored: readonly string[] = [],
+  restored: string[] = [],
 ): Promise<void> {
   const { id, claimId, deviceId } = change;
   await tx
@@ -334,7 +334,7 @@ async function recordChange(
       tripId,
       subjectId,
       version,
-      restored: restored.length > 0 ? [...restored] : null,
+      restored: restored.length > 0 ? restored : null,
       claimId,
       deviceId,
     })
