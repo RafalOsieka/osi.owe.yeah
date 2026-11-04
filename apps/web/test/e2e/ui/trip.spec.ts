@@ -1386,21 +1386,21 @@ test('the privacy notice names who runs the app, in English and in Polish', asyn
   await context.close();
 });
 
-test('the privacy notice opens offline after the first visit', async ({ page, context }) => {
-  await page.goto('/');
-  await page.waitForFunction(() => navigator.serviceWorker.controller !== null);
-  await context.setOffline(true);
-
-  await page.goto('/privacy');
-
-  await expect(page.getByRole('heading', { name: 'Privacy notice', level: 1 })).toBeVisible();
-  await context.setOffline(false);
-});
-
-for (const [doc, title] of [
-  ['privacy notice', 'Privacy notice'],
-  ['terms', 'Terms of service'],
+for (const [doc, path, title] of [
+  ['privacy notice', '/privacy', 'Privacy notice'],
+  ['terms', '/terms', 'Terms of service'],
 ] as const) {
+  test(`the app opens the ${doc} offline after the first visit`, async ({ page, context }) => {
+    await page.goto('/');
+    await page.waitForFunction(() => navigator.serviceWorker.controller !== null);
+    await context.setOffline(true);
+
+    await page.goto(path);
+
+    await expect(page.getByRole('heading', { name: title, level: 1 })).toBeVisible();
+    await context.setOffline(false);
+  });
+
   test(`My Trips, New Trip, joining a Trip and the Trip tab link the ${doc}`, async ({
     page,
     request,
@@ -1452,15 +1452,4 @@ test('the terms name who provides the app and where to report illegal content, i
     polish.getByRole('main').getByRole('heading', { name: 'Zgłaszanie nielegalnych treści' }),
   ).toBeVisible();
   await context.close();
-});
-
-test('the terms open offline after the first visit', async ({ page, context }) => {
-  await page.goto('/');
-  await page.waitForFunction(() => navigator.serviceWorker.controller !== null);
-  await context.setOffline(true);
-
-  await page.goto('/terms');
-
-  await expect(page.getByRole('heading', { name: 'Terms of service', level: 1 })).toBeVisible();
-  await context.setOffline(false);
 });
