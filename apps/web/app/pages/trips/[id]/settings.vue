@@ -4,9 +4,9 @@ import { v7 as uuidv7 } from 'uuid';
 
 // The Trip tab: everything about the Trip that is not money. Invite on top, its Participants (tap one to
 // remove them, refused while an Expense references them), who this device says it is and its
-// notifications, the Trip's name and Trip currency, Recently deleted, and forgetting the Trip
-// on this device, and the privacy notice. Notifications need a Claim first; on iOS outside the installed app, the row
-// says to add the app to the Home Screen instead.
+// notifications, the Trip's name and Trip currency, Recently deleted, forgetting the Trip on
+// this device, and the privacy notice. Notifications need a Claim first; on iOS outside the
+// installed app, the row says to add the app to the Home Screen instead.
 definePageMeta({ scrollToTop: false });
 useKeptScroll();
 

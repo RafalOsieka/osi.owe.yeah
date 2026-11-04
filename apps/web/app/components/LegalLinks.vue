@@ -3,7 +3,7 @@
 <template>
   <nav :aria-label="$t('legal.title')" class="flex justify-center gap-3 text-sm text-muted">
     <NuxtLink to="/privacy" class="underline-offset-2 hover:text-default hover:underline">
-      {{ $t('privacy.link') }}
+      {{ $t('privacy.title') }}
     </NuxtLink>
   </nav>
 </template>
