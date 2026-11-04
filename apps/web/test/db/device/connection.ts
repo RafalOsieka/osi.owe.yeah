@@ -48,30 +48,37 @@ export class Connection implements Transport {
     private readonly store: TripStore,
   ) {}
 
-  private reach(): void {
+  private throwIfOffline(): void {
     if (this.offline) throw new Error('offline');
   }
 
+  /** Throws for an answer lost on the way back, using up one of `counter`'s. */
+  private throwIfLost(counter: 'losePushResponses' | 'losePullResponses'): void {
+    if (this[counter] === 0) return;
+    this[counter]--;
+    throw new Error('response lost');
+  }
+
   async push(tripId: string, token: string, request: PushRequest): Promise<PushResponse> {
-    this.reach();
+    this.throwIfOffline();
     const sent = overTheWire(pushRequestSchema, request);
     this.pushes.push(sent);
     const response = await this.sync.push(tripId, token, sent);
-    if (this.losePushResponses-- > 0) throw new Error('response lost');
+    this.throwIfLost('losePushResponses');
     if (response === 'invalidLink') throw new Error('The Trip link was refused');
     return overTheWire(pushResponseSchema, response);
   }
 
   async pull(tripId: string, token: string, since?: number): Promise<PullResponse | 'invalidLink'> {
-    this.reach();
+    this.throwIfOffline();
     const response = await this.sync.pull(tripId, token, since);
-    if (this.losePullResponses-- > 0) throw new Error('response lost');
+    this.throwIfLost('losePullResponses');
     if (response === 'invalidLink') return response;
     return overTheWire(pullResponseSchema, response);
   }
 
   async revisions(tripId: string, token: string, expenseId: string): Promise<Revision[]> {
-    this.reach();
+    this.throwIfOffline();
     const trip = await this.store.tripByLink(tripId, token);
     if (!trip) throw new Error('The Trip link was refused');
     const revisions = await this.store.revisions(trip.id, expenseId);
@@ -84,23 +91,23 @@ export class Connection implements Transport {
     _deviceId: string,
     request: SubscriptionRequest,
   ): Promise<void> {
-    this.reach();
+    this.throwIfOffline();
     this.subscribeCalls++;
     this.subscriptions.set(tripId, request);
   }
 
   async unsubscribe(tripId: string): Promise<void> {
-    this.reach();
+    this.throwIfOffline();
     this.subscriptions.delete(tripId);
   }
 
   async reminderStatus(): Promise<ReminderStatus> {
-    this.reach();
+    this.throwIfOffline();
     return { reachable: [], remindedToday: [] };
   }
 
   async remind(): Promise<Reminded> {
-    this.reach();
+    this.throwIfOffline();
     return 'sent';
   }
 }
