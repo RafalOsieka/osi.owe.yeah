@@ -43,7 +43,7 @@ function validate(trip: Partial<TripForm>): FormError[] {
   return errors;
 }
 
-// Created on the device, so it works offline; the Trip reaches the server on sync. The ids
+// Created on the device, so it works offline; the Trip syncs by itself. The ids
 // and the Trip link's token are generated here; the token is kept on the device with the
 // Trip and never shown in the URL.
 async function create(): Promise<void> {
@@ -59,7 +59,6 @@ async function create(): Promise<void> {
     participants: [me, ...others],
   });
   await device.createTrip(trip, newTripToken());
-  void device.sync(trip.id);
   // Replaced, so back from the Trip goes to My Trips rather than to this finished form.
   await navigateTo(`/trips/${trip.id}`, { replace: true });
 }

@@ -42,7 +42,7 @@ const restoring = ref(false);
 async function restore(): Promise<void> {
   if (!revision.value || !current.value) return;
   restoring.value = true;
-  const refused = await saveExpense(revision.value.expense, current.value.base).finally(
+  const refused = await saveExpense(revision.value.expense, current.value).finally(
     () => (restoring.value = false),
   );
   refusals.value = refused.map((problem) => t(`expense.refused.${problem}`));

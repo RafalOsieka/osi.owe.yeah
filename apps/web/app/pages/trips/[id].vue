@@ -1,13 +1,13 @@
 <script setup lang="ts">
-import type { Expense, Participant, Trip } from '@osi/owe-yeah-domain';
+import type { Participant } from '@osi/owe-yeah-domain';
 import { v7 as uuidv7 } from 'uuid';
-import { NOTIFICATIONS_OFF, type BrowserSubscription, type ExpenseBase } from '~/sync/db';
+import { NOTIFICATIONS_OFF, type BrowserSubscription } from '~/sync/db';
 
 // Opens a Trip for its tabs and Expense pages from the device, joins it from a Trip link,
-// saves changes on the device and syncs them, and asks "Who are you?" when needed: also
-// when sync finds this device's Participant removed by someone else. A Claim made there is
-// followed by the offer of notifications, once per Trip (#41). Holds Invite, opened from the
-// Trip header, the Trip tab and the empty Expenses tab.
+// offers them the device's handle for the Trip (changes sync by themselves), and asks "Who
+// are you?" when needed: also when sync finds this device's Participant removed by someone
+// else. A Claim made there is followed by the offer of notifications, once per Trip (#41).
+// Holds Invite, opened from the Trip header, the Trip tab and the empty Expenses tab.
 const route = useRoute();
 const router = useRouter();
 const { t } = useI18n();
@@ -17,6 +17,7 @@ const device = useDevice();
 // with the Trip on this device and the URL loses it. A device that doesn't know the Trip
 // can't open it without the link.
 const tripId = String(route.params.id);
+const handle = device.trip(tripId);
 const linkToken = route.hash.slice(1);
 const known = await device.read(tripId);
 // A link with a token the device doesn't have yet joins, or rejoins, the Trip.
@@ -24,10 +25,7 @@ const joined =
   linkToken && linkToken !== known?.deviceTrip.token
     ? await device.joinTrip(tripId, linkToken)
     : null;
-if (known) {
-  void device.open(tripId);
-  void device.sync(tripId);
-}
+if (known) void handle.open();
 
 const view = useLiveQuery(() => device.read(tripId));
 const trip = computed(() => view.value?.local);
@@ -72,7 +70,7 @@ onMounted(async () => {
       if (notice?.kind !== 'claimRemoved') return;
       removedClaim.value = notice.participant;
       whoAreYouOpen.value = true;
-      void device.dismissNotice(tripId, notice.id);
+      void handle.dismissNotice(notice.id);
     },
     { immediate: true },
   );
@@ -82,82 +80,32 @@ onMounted(async () => {
 // Screen hint; not where the person blocked notifications (the Trip tab says how to unblock
 // them). Shown, it counts as "Not now" until turned on.
 async function claimParticipant(participant: Participant): Promise<void> {
-  await device.claim(tripId, participant);
-  // The server's push subscription follows the Claim.
-  if (notifications.value.subscription) void device.sync(tripId);
+  await handle.claim(participant);
   removedClaim.value = null;
   if (
     !notifications.value.offered &&
     (support.value === 'available' || support.value === 'homeScreen')
   ) {
     offering.value = true;
-    await device.declineNotifications(tripId);
+    await handle.declineNotifications();
   } else {
     whoAreYouOpen.value = false;
   }
 }
 
-async function turnOnNotifications(subscription: BrowserSubscription): Promise<void> {
-  await device.turnOnNotifications(tripId, subscription);
-  void device.sync(tripId);
-}
-
-async function turnOffNotifications(): Promise<void> {
-  await device.turnOffNotifications(tripId);
-  void device.sync(tripId);
-}
-
 async function subscribedFromOffer(subscription: BrowserSubscription): Promise<void> {
-  await turnOnNotifications(subscription);
+  await handle.turnOnNotifications(subscription);
   whoAreYouOpen.value = false;
-}
-
-async function addParticipant(participant: Participant): Promise<void> {
-  await device.addParticipant(tripId, participant);
-  void device.sync(tripId);
 }
 
 async function addMe(name: string): Promise<void> {
   const participant: Participant = { id: uuidv7(), name };
-  await addParticipant(participant);
+  await handle.addParticipant(participant);
   await claimParticipant(participant);
 }
 
-async function saveExpense(expense: Expense, base: ExpenseBase) {
-  const problems = await device.saveExpense(tripId, expense, base);
-  if (problems.length === 0) void device.sync(tripId);
-  return problems;
-}
-
-async function deleteExpense(expense: Expense, base: ExpenseBase) {
-  const problems = await device.deleteExpense(tripId, expense, base);
-  if (problems.length === 0) void device.sync(tripId);
-  return problems;
-}
-
-async function removeParticipant(participant: Participant): Promise<number> {
-  const referencing = await device.removeParticipant(tripId, participant);
-  if (referencing === 0) void device.sync(tripId);
-  return referencing;
-}
-
-async function saveTripDetails(details: Omit<Trip, 'id'>): Promise<void> {
-  await device.saveTripDetails(tripId, details);
-  void device.sync(tripId);
-}
-
-// My Trips first, so nothing on screen still reads the Trip as it goes.
-async function forget(): Promise<void> {
-  await navigateTo('/', { replace: true });
-  await device.forgetTrip(tripId);
-}
-
-async function keepMine(expenseId: string): Promise<void> {
-  await device.keepMine(tripId, expenseId);
-  void device.sync(tripId);
-}
-
 provideOpenTrip({
+  ...handle,
   // Only read by the pages under it, which render once there is a Trip to show.
   trip: computed(() => trip.value!),
   claim,
@@ -168,25 +116,15 @@ provideOpenTrip({
     ...(trip.value?.removedParticipants ?? []),
   ]),
   notices: computed(() => view.value?.deviceTrip.notices ?? []),
-  dismissNotice: (noticeId) => device.dismissNotice(tripId, noticeId),
-  sync: () => device.sync(tripId),
-  addParticipant,
-  removeParticipant,
-  saveTripDetails,
-  forget,
-  saveExpense,
-  deleteExpense,
-  revisions: (expenseId) => device.revisions(tripId, expenseId),
-  keepMine,
-  discardChanges: (expenseId) => device.discardChanges(tripId, expenseId),
   notifications,
-  turnOnNotifications,
-  turnOffNotifications,
+  // My Trips first, so nothing on screen still reads the Trip as it goes.
+  async forget() {
+    await navigateTo('/', { replace: true });
+    await handle.forget();
+  },
   askWhoYouAre: () => (whoAreYouOpen.value = true),
   invite: () => (inviteOpen.value = true),
   link: tripLink,
-  reminderStatus: () => device.reminderStatus(tripId),
-  remind: (to) => device.remind(tripId, to),
 });
 
 useHead({ title: () => trip.value?.name ?? t('trip.invalidLink') });
