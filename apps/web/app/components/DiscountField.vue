@@ -1,6 +1,6 @@
 <script setup lang="ts">
 import type { Discount } from '@osi/owe-yeah-domain';
-import type { DraftDiscount } from '~/utils/receipt-draft';
+import type { DraftDiscount } from '~/utils/expense-draft';
 
 // A Line or Receipt discount as typed: its value, and whether that is an amount in the
 // currency or a percentage. Empty means no discount. `error` says why it can't be used, if

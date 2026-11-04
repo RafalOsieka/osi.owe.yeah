@@ -4,11 +4,9 @@ import {
   multiply,
   rational,
   type Currency,
-  type ExpenseTime,
   type ManualRate,
-  type Rational,
 } from '@osi/owe-yeah-domain';
-import { manualRateFromDraft, type DraftManualRate } from '~/utils/manual-rate-draft';
+import type { DraftManualRate, RepaymentReading } from '~/utils/expense-draft';
 
 // The currency under the amount of the Expense and Repayment forms: the pill to pick it, what
 // `total` comes to in the Trip currency ("≈" at a Provisional rate), and, in another currency
@@ -17,12 +15,11 @@ import { manualRateFromDraft, type DraftManualRate } from '~/utils/manual-rate-d
 // when it was saved before the Trip currency changed. It opens by itself when one is saved, and
 // asks for one while there is no automatic rate. A Manual rate is for one currency, so picking
 // another clears it and points it at the Trip currency again. The form reads and checks the
-// Manual rate (`name` `manualRate`).
-const { total, time } = defineProps<{
-  /** What the Expense comes to so far in its own currency; `null` while unreadable. */
-  total: Rational | null;
-  /** When the Expense happened; `null` while it is not set. */
-  time: ExpenseTime | null;
+// Manual rate (`name` `manualRate`); a Trip rule it breaks shows as `error` while it stands.
+const { reading, error = undefined } = defineProps<{
+  /** The form's draft as read so far (`readDraft`): its total, time and Manual rate. */
+  reading: Pick<RepaymentReading, 'total' | 'time' | 'manualRate'>;
+  error?: string;
 }>();
 const currency = defineModel<Currency>('currency', { required: true });
 const manualRate = defineModel<DraftManualRate>('manualRate', { required: true });
@@ -40,8 +37,11 @@ const foreign = computed(() => currency.value !== trip.value.currency);
 const missing = computed(
   () =>
     foreign.value &&
-    time !== null &&
-    conversionRate({ currency: currency.value, time, total: rational(1n) }, trip.value) === null,
+    reading.time !== null &&
+    conversionRate(
+      { currency: currency.value, time: reading.time, total: rational(1n) },
+      trip.value,
+    ) === null,
 );
 
 const opened = ref(false);
@@ -51,9 +51,8 @@ const shown = computed(
 
 // The total in the Trip currency, or why there is none; `null` when there is nothing to say.
 const converted = computed(() => {
-  if (!foreign.value || time === null) return null;
-  const typed = manualRateFromDraft(manualRate.value);
-  if (typed === null) return null;
+  const { time, total, manualRate: typed } = reading;
+  if (!foreign.value || time === null || typed === 'unreadable') return null;
   if (total === null) return typed === undefined && missing.value ? t('rate.noRate') : null;
   const found = conversionRate(
     { currency: currency.value, time, manualRate: typed, total },
@@ -96,7 +95,13 @@ const kinds: readonly ManualRate['kind'][] = ['charged', 'rate'];
       />
     </div>
 
-    <UFormField v-if="shown" name="manualRate" :label="$t('rate.manual')" :description="help">
+    <UFormField
+      v-if="shown"
+      name="manualRate"
+      :label="$t('rate.manual')"
+      :description="help"
+      :error="error"
+    >
       <div class="flex items-center gap-2">
         <span v-if="manualRate.kind === 'rate'" class="shrink-0 text-sm text-muted">
           {{ $t('rate.ratePrefix', { from: currency }) }}

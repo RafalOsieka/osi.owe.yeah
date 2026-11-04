@@ -222,6 +222,7 @@
     "depositPerUnit": "Kaucja za sztukę",
     "depositHelp": "Doliczana za sztukę opakowania zwrotnego. Dzielona tak jak pozycja, nigdy nie rabatowana.",
     "depositUnreadable": "Sprawdź kaucję.",
+    "amountsUnreadable": "Sprawdź kwoty.",
     "depositFact": "Kaucja {deposit}",
     "deposits": "Kaucje",
     "depositsFact": "Kaucje {amount}",

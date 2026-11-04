@@ -1,7 +1,7 @@
 <script setup lang="ts">
 // The large amount field that opens the Expense and Repayment forms: centred, with the
 // currency after it and a decimal keypad on phones. What is typed is read leniently
-// (`parseMoney`) by the form.
+// (`parseMoney`) by the Expense draft the form reads (`readDraft`).
 const { currency } = defineProps<{ currency: string }>();
 const amount = defineModel<string>({ required: true });
 </script>
