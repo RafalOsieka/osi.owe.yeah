@@ -12,10 +12,8 @@ import type { Database } from '../db/client';
 import { notificationSubscriptions } from '../db/schema';
 import type { Rates } from '../trip/rates';
 import type { TripStore, WholeTrip } from '../trip/store';
-import { deliver, vapidDetails } from './delivery';
-
-/** An Expense change the sync push has just applied (not a retry), with the version it made. */
-export type AppliedExpenseChange = { change: ExpenseChange; version: number };
+import type { AppliedExpenseChange, Notifier } from '../trip/sync';
+import { deliver, type VapidDetails } from './delivery';
 
 /** One applied change as Notifications tell it: what it did, who made it, whom it moved. */
 type Activity = {
@@ -26,10 +24,16 @@ type Activity = {
 };
 
 /**
- * Notifications about Expense changes (#41), reading the Trip through `store` and converting
- * at `rates`; subscriptions are kept in `db`.
+ * Notifications about Expense changes (#41), the Trip sync's `Notifier` in production: reading
+ * the Trip through `store` and converting at `rates`, with subscriptions kept in `db`. Sent
+ * signed with `vapid`; nothing is sent without it.
  */
-export function createNotifications(db: Database, store: TripStore, rates: Rates) {
+export function createNotifications(
+  db: Database,
+  store: TripStore,
+  rates: Rates,
+  vapid: VapidDetails | null,
+): Notifier {
   /**
    * What each changed Expense was before its change, by change id: the Revision before the
    * one it made, or `null` when it was new or deleted.
@@ -85,7 +89,6 @@ export function createNotifications(db: Database, store: TripStore, rates: Rates
   }
 
   async function notify(tripId: string, applied: readonly AppliedExpenseChange[]): Promise<void> {
-    const vapid = vapidDetails();
     if (applied.length === 0 || !vapid) return;
     const subscriptions = await db
       .select()

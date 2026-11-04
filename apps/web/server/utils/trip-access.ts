@@ -4,13 +4,22 @@ import { tripStore } from '../trip';
 import type { StoredTrip } from '../trip/store';
 
 /**
- * The Trip addressed by the `id` route param, if the Trip link's token in the
- * `x-trip-token` header matches (`TripStore.tripByLink`); refused with 401 otherwise.
+ * The Trip link a request carries: the Trip id in the `id` route param and its token in the
+ * `x-trip-token` header; `null` when either is missing.
  */
-export async function requireTrip(event: RequestEvent): Promise<StoredTrip> {
+export function tripLinkOf(event: RequestEvent): { id: string; token: string } | null {
   const id = getRouterParam(event, 'id');
   const token = getRequestHeader(event, TRIP_TOKEN_HEADER);
-  const trip = id && token ? await tripStore().tripByLink(id, token) : null;
+  return id && token ? { id, token } : null;
+}
+
+/**
+ * The Trip the request's Trip link (`tripLinkOf`) opens (`TripStore.tripByLink`); refused with
+ * 401 otherwise.
+ */
+export async function requireTrip(event: RequestEvent): Promise<StoredTrip> {
+  const link = tripLinkOf(event);
+  const trip = link && (await tripStore().tripByLink(link.id, link.token));
   if (!trip) throw invalidTripLink();
   return trip;
 }

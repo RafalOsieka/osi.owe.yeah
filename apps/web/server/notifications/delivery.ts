@@ -1,6 +1,5 @@
 import type { PushMessage } from '@osi/owe-yeah-domain';
 import { inArray } from 'drizzle-orm';
-import { useRuntimeConfig } from 'nuxt/server';
 import webpush from 'web-push';
 import type { Database } from '../db/client';
 import { notificationSubscriptions } from '../db/schema';
@@ -11,13 +10,6 @@ const TTL_SECONDS = 24 * 60 * 60;
 
 /** The server's VAPID keys and subject, which every notification is signed with. */
 export type VapidDetails = webpush.VapidKeys & { subject: string };
-
-/** The VAPID keys notifications are sent with; `null` when none are set, so nothing is sent. */
-export function vapidDetails(): VapidDetails | null {
-  const { vapidPublicKey, vapidPrivateKey, vapidSubject } = useRuntimeConfig();
-  if (!vapidPublicKey || !vapidPrivateKey) return null;
-  return { subject: vapidSubject, publicKey: vapidPublicKey, privateKey: vapidPrivateKey };
-}
 
 type NotificationSubscriptionRow = typeof notificationSubscriptions.$inferSelect;
 
