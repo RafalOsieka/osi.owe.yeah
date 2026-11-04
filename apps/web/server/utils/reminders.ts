@@ -10,15 +10,23 @@ import {
 import { and, eq, gte, sql } from 'drizzle-orm';
 import type { Database } from '../db/client';
 import { notificationSubscriptions, reminders } from '../db/schema';
-import { deliver, vapidDetails } from '../notifications/delivery';
+import { deliver, type VapidDetails } from '../notifications/delivery';
 import type { Rates } from '../trip/rates';
 import type { TripStore, WholeTrip } from '../trip/store';
 
 // A pair is reminded at most once per calendar day, in UTC: the Trip has no time zone of its own.
 const startOfToday = sql`date_trunc('day', now(), 'UTC')`;
 
-/** Reminders (#42), reading the Trip through `store` and converting at `rates`. */
-export function createReminders(db: Database, store: TripStore, rates: Rates) {
+/**
+ * Reminders (#42), reading the Trip through `store` and converting at `rates`, sent signed with
+ * `vapid`: nobody can be reminded without it.
+ */
+export function createReminders(
+  db: Database,
+  store: TripStore,
+  rates: Rates,
+  vapid: VapidDetails | null,
+) {
   /**
    * The Repayment `to` owes `from` as the server's balances suggest it now (`suggestedRepayments`),
    * or `undefined` when they suggest none between them.
@@ -54,7 +62,6 @@ export function createReminders(db: Database, store: TripStore, rates: Rates) {
       const creditor = trip?.participants.find(({ id }) => id === from);
       if (!trip || !suggestion || !creditor) return { refused: 'notSuggested' };
 
-      const vapid = vapidDetails();
       const devices = vapid
         ? await db
             .select()
@@ -99,7 +106,7 @@ export function createReminders(db: Database, store: TripStore, rates: Rates) {
      */
     async status(tripId: string): Promise<ReminderStatus> {
       const [subscribed, today] = await Promise.all([
-        vapidDetails()
+        vapid
           ? db
               .selectDistinct({ claimId: notificationSubscriptions.claimId })
               .from(notificationSubscriptions)
