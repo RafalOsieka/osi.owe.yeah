@@ -134,7 +134,35 @@ jobs:
         run: docker build --target migrator --tag owe-yeah-migrator .
 
       - name: Build runtime image
-        run: docker build --target runtime --tag owe-yeah-runtime .
+        run: docker build --target runtime --build-arg COMMIT_SHA="$GITHUB_SHA" --tag owe-yeah-runtime .
+
+      # Cached but for the commit, which falls back to `dev`.
+      - name: Build runtime image without a commit
+        run: docker build --target runtime --tag owe-yeah-runtime-dev .
+
+      # Each image's `/healthz`, served against an empty database, reports the commit it was built with.
+      - name: Check images report their commit
+        run: |
+          docker network create healthz
+          docker run -d --name db --network healthz -e POSTGRES_PASSWORD=postgres postgres:18-alpine
+          check() {
+            image=$1 expected=$2
+            docker run -d --name app --network healthz -p 3000:3000 \
+              -e DATABASE_URL=postgres://postgres:postgres@db:5432/postgres "$image"
+            for _ in $(seq 60); do
+              health=$(curl -fsS http://localhost:3000/healthz) && break
+              sleep 1
+            done
+            commit=$(echo "$health" | jq -r .commit)
+            if [ "$commit" != "$expected" ]; then
+              docker logs app
+              echo "$image reports '$commit', expected '$expected'"
+              exit 1
+            fi
+            docker rm -f app
+          }
+          check owe-yeah-runtime "$GITHUB_SHA"
+          check owe-yeah-runtime-dev dev
 
       # The final images carry only `node`: no package manager or toolchain.
       - name: Check images hold no dev tooling

@@ -111,6 +111,10 @@ export default defineNuxtConfig({
     // `NUXT_NOTIFICATIONS_ALLOW_HTTP` lets the api e2e suite's stand-in push service be
     // plain http.
     notificationsAllowHttp: false,
+    // The Git commit the server was built from, which `/healthz` reports. The runtime image
+    // bakes it in as `NUXT_COMMIT_SHA` from its `COMMIT_SHA` build arg; the prerendered app
+    // can't carry it.
+    commitSha: 'dev',
   },
   compatibilityDate: '2025-07-15',
   // Nitro defaults to es2019, which lacks the BigInt literals the domain package's exact

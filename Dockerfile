@@ -69,6 +69,11 @@ FROM slim-node AS runtime
 
 COPY --from=web-build /app/apps/web/.output .
 
+# The Git commit `/healthz` reports (`docker build --build-arg COMMIT_SHA=<sha>`); `dev`
+# without one. Declared after the copy, so a new commit reuses the cached build.
+ARG COMMIT_SHA=dev
+ENV NUXT_COMMIT_SHA=$COMMIT_SHA
+
 USER node
 
 EXPOSE 3000
