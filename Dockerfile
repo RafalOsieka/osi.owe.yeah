@@ -12,7 +12,7 @@
 # Bundles the migrator CLI (`vp pack`) into a single file with its dependencies
 # inlined. The official Vite+ image ships `vp` and resolves Node.js and pnpm from
 # `devEngines`. Keep the tag in sync with the `vite-plus` catalog entry.
-FROM ghcr.io/voidzero-dev/vite-plus:1.3.0 AS migrator-build
+FROM ghcr.io/voidzero-dev/vite-plus:1.5.0 AS migrator-build
 WORKDIR /app
 
 COPY --chown=vp:vp package.json pnpm-lock.yaml pnpm-workspace.yaml ./
@@ -62,7 +62,7 @@ USER node
 CMD ["node", "dist/cli.mjs"]
 
 # ── web-build ─────────────────────────────────────────────────────────────────
-FROM ghcr.io/voidzero-dev/vite-plus:1.3.0 AS web-build
+FROM ghcr.io/voidzero-dev/vite-plus:1.5.0 AS web-build
 WORKDIR /app
 
 # Manifests first for layer caching. The image runs as the non-root `vp` user, so
