@@ -304,11 +304,7 @@ async function lockTrip(tx: Transaction, tripId: string): Promise<WholeTrip> {
 }
 
 /** An accepted change's result, naming the Participants it brought back only if there are any. */
-function accepted(
-  changeId: string,
-  version: number | null,
-  restored: string[],
-): ChangeResult {
+function accepted(changeId: string, version: number | null, restored: string[]): ChangeResult {
   const result = { changeId, status: 'accepted', version } as const;
   return restored.length > 0 ? { ...result, restored } : result;
 }
