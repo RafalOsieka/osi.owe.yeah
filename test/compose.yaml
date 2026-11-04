@@ -1,0 +1,96 @@
+# The osieka.dev instance (ADR 0005): PostgreSQL, the one-shot migrator, the app and the
+# Cloudflare Tunnel that is its only way in. The app publishes no port.
+#
+# A template: CI fills in MIGRATOR_IMAGE and APP_IMAGE, pinned by digest, and commits the
+# result to the `deploy` branch. Every other variable stays as written and is a secret or
+# setting the host supplies; the README next to this file lists them. POSTGRES_PASSWORD and
+# TUNNEL_TOKEN are required: the stack refuses to start without them.
+
+# Every container's logs stay on the host, rotated at 10 MB × 3.
+x-logging: &logging
+  driver: json-file
+  options:
+    max-size: 10m
+    max-file: '3'
+
+services:
+  # A new Postgres major can't open the old one's volume: it needs a dump and restore.
+  db:
+    image: postgres:18-alpine
+    restart: unless-stopped
+    logging: *logging
+    environment:
+      POSTGRES_USER: postgres
+      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD:?POSTGRES_PASSWORD is required}
+      POSTGRES_DB: owe_yeah
+    volumes:
+      - pg-owe-yeah:/var/lib/postgresql
+    healthcheck:
+      test: ['CMD-SHELL', 'pg_isready -U postgres -d owe_yeah']
+      interval: 10s
+      timeout: 5s
+      retries: 5
+
+  # Runs to completion before `app` starts; a failed migration keeps the app down.
+  migrate:
+    image: ghcr.io/rafalosieka/owe-yeah-migrator@sha256:c2d21c2c5fd6d507d91255202470f8075cfbbc25598185d1042bf545c9e0b3ae
+    restart: 'no'
+    logging: *logging
+    environment:
+      DATABASE_URL: postgres://postgres:${POSTGRES_PASSWORD:?POSTGRES_PASSWORD is required}@db:5432/owe_yeah
+    depends_on:
+      db:
+        condition: service_healthy
+
+  app:
+    image: ghcr.io/rafalosieka/owe-yeah@sha256:868bd77994a91334bebd0f551c99482d0d2b2a954dce8ba929dbe19214d7ed61
+    restart: unless-stopped
+    logging: *logging
+    environment:
+      DATABASE_URL: postgres://postgres:${POSTGRES_PASSWORD:?POSTGRES_PASSWORD is required}@db:5432/owe_yeah
+      # Push notifications (#41): the VAPID key pair they are sent with, and the contact the
+      # push services see. Without the keys, notifications can't be turned on.
+      NUXT_VAPID_PUBLIC_KEY: ${VAPID_PUBLIC_KEY:-}
+      NUXT_VAPID_PRIVATE_KEY: ${VAPID_PRIVATE_KEY:-}
+      NUXT_VAPID_SUBJECT: ${VAPID_SUBJECT:-}
+      # A test environment, whose data may be wiped, says so in a banner on every screen (#105).
+      NUXT_TEST_ENVIRONMENT: ${TEST_ENVIRONMENT:-false}
+    # Healthy once `/healthz` answers, which takes the database answering too. The image
+    # holds only Node, so Node's own fetch asks.
+    healthcheck:
+      test:
+        - CMD
+        - node
+        - -e
+        - "fetch('http://127.0.0.1:3000/healthz').then((r) => process.exit(r.ok ? 0 : 1), () => process.exit(1))"
+      interval: 30s
+      timeout: 5s
+      retries: 3
+      start_period: 30s
+      start_interval: 2s
+    depends_on:
+      migrate:
+        condition: service_completed_successfully
+
+  # Connects out to Cloudflare and forwards the tunnel's public hostname to `http://app:3000`
+  # over the compose network. The tunnel is remotely managed: its routes live in Cloudflare.
+  cloudflared:
+    image: cloudflare/cloudflared:2026.10.7
+    restart: unless-stopped
+    logging: *logging
+    command: ['tunnel', '--no-autoupdate', 'run']
+    environment:
+      # Read from the environment, so the token never shows in the process list.
+      TUNNEL_TOKEN: ${TUNNEL_TOKEN:?TUNNEL_TOKEN is required}
+      # The metrics server, local to the container, answers the healthcheck's `/ready`.
+      TUNNEL_METRICS: 127.0.0.1:2000
+    # Healthy while the tunnel holds at least one connection to Cloudflare.
+    healthcheck:
+      test: ['CMD', 'cloudflared', 'tunnel', 'ready']
+      interval: 30s
+      timeout: 5s
+      retries: 3
+      start_period: 30s
+
+volumes:
+  pg-owe-yeah:
