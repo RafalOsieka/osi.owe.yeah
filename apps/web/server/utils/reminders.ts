@@ -3,11 +3,11 @@ import {
   roundMoney,
   suggestedRepayments,
   type ReminderMessage,
+  type ReminderRefusal,
   type ReminderRequest,
   type ReminderStatus,
 } from '@osi/owe-yeah-domain';
 import { and, eq, gte, sql } from 'drizzle-orm';
-import { createError } from 'nuxt/server';
 import type { Database } from '../db/client';
 import { notificationSubscriptions, reminders } from '../db/schema';
 import { deliver, vapidDetails } from '../notifications/delivery';
@@ -38,19 +38,21 @@ export function createReminders(db: Database, store: TripStore, rates: Rates) {
   return {
     /**
      * Sends a Reminder: `from` reminds `to` of the Repayment `to` owes them, on every device
-     * claiming `to`. Refused with 403 unless the server's balances suggest exactly that
-     * Repayment now; with 409 when no device of `to`'s can be notified, as the creditor then
-     * shares a message instead; and with 429 when the pair was reminded today already. Only a
-     * Reminder sent moves the pair's row on. Sent fire-and-forget once it is allowed.
+     * claiming `to`. Resolves to its refusal instead (`ReminderRefusal`) unless the server's
+     * balances suggest exactly that Repayment now (`notSuggested`); when no device of `to`'s can
+     * be notified, as the creditor then shares a message instead (`unreachable`); and when the
+     * pair was reminded today already (`remindedToday`). Only a Reminder sent moves the pair's
+     * row on. Sent fire-and-forget once it is allowed.
      */
-    async send(tripId: string, { from, to }: ReminderRequest): Promise<void> {
+    async send(
+      tripId: string,
+      { from, to }: ReminderRequest,
+    ): Promise<ReminderRefusal | undefined> {
       const trip = await store.readTrip(tripId);
       const suggestion = trip && (await currentSuggestion(trip, { from, to }));
       // Always found with a suggestion: its creditor has a balance in the Trip.
       const creditor = trip?.participants.find(({ id }) => id === from);
-      if (!trip || !suggestion || !creditor) {
-        throw createError({ status: 403, statusText: 'Only the creditor of a suggestion reminds' });
-      }
+      if (!trip || !suggestion || !creditor) return { refused: 'notSuggested' };
 
       const vapid = vapidDetails();
       const devices = vapid
@@ -64,9 +66,7 @@ export function createReminders(db: Database, store: TripStore, rates: Rates) {
               ),
             )
         : [];
-      if (!vapid || devices.length === 0) {
-        throw createError({ status: 409, statusText: 'The debtor cannot be notified' });
-      }
+      if (!vapid || devices.length === 0) return { refused: 'unreachable' };
 
       // One statement, so two Reminders sent at once can't both get through.
       const [sent] = await db
@@ -78,7 +78,7 @@ export function createReminders(db: Database, store: TripStore, rates: Rates) {
           setWhere: sql`${reminders.sentAt} < ${startOfToday}`,
         })
         .returning({ sentAt: reminders.sentAt });
-      if (!sent) throw createError({ status: 429, statusText: 'Reminded today' });
+      if (!sent) return { refused: 'remindedToday' };
 
       const message: ReminderMessage = {
         kind: 'reminder',
@@ -90,6 +90,7 @@ export function createReminders(db: Database, store: TripStore, rates: Rates) {
         amount: roundMoney(suggestion.amount, trip.currency).decimal,
       };
       void deliver(db, devices, () => message, vapid);
+      return undefined;
     },
 
     /**
