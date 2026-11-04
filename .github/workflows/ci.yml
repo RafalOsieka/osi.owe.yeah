@@ -146,15 +146,20 @@ jobs:
           docker network create healthz
           docker run -d --name db --network healthz -e POSTGRES_PASSWORD=postgres postgres:18-alpine
           check() {
+            image=$1 expected=$2
             docker run -d --name app --network healthz -p 3000:3000 \
-              -e DATABASE_URL=postgres://postgres:postgres@db:5432/postgres "$1"
+              -e DATABASE_URL=postgres://postgres:postgres@db:5432/postgres "$image"
             for _ in $(seq 60); do
               health=$(curl -fsS http://localhost:3000/healthz) && break
               sleep 1
             done
-            docker rm -f app
             commit=$(echo "$health" | jq -r .commit)
-            if [ "$commit" != "$2" ]; then echo "$1 reports '$commit', expected '$2'"; exit 1; fi
+            if [ "$commit" != "$expected" ]; then
+              docker logs app
+              echo "$image reports '$commit', expected '$expected'"
+              exit 1
+            fi
+            docker rm -f app
           }
           check owe-yeah-runtime "$GITHUB_SHA"
           check owe-yeah-runtime-dev dev
