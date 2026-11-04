@@ -454,5 +454,73 @@
     "paid": "You paid {amount}",
     "collapsed": "{count} changes in {trip}",
     "reminder": "{name} reminds you to pay them back {amount}"
+  },
+  "legal": {
+    "title": "Legal"
+  },
+  "privacy": {
+    "title": "Privacy notice",
+    "updated": "Last updated on 4 November 2026.",
+    "intro": "Owe Yeah keeps track of what a group of people spends together and works out who owes whom. This notice says what personal data it processes, why, for how long, and what your rights are. This is a test environment: don't enter anything sensitive.",
+    "controller": {
+      "title": "Who is responsible",
+      "who": "The controller of your personal data is {name} ({business}), NIP {nip}.",
+      "contact": "Write to {email} about anything in this notice. No data protection officer has been appointed."
+    },
+    "data": {
+      "title": "What is processed",
+      "intro": "There are no accounts: Owe Yeah never asks for your email address, phone number or a password. It processes:",
+      "trips": "Trips: their name and Trip currency, the names of their Participants, their Expenses and Repayments (titles, amounts, dates and times, who paid and how each one is split), and every Revision of each Expense.",
+      "device": "A random id each device makes up for itself, and which Participant you say you are on it. Both are sent with every change you make, so the Trip shows who changed what.",
+      "notifications": "If you turn Notifications on: your browser's push subscription (its address at your browser's push service and the keys that encrypt messages for it), and which Participant you are.",
+      "reminders": "When one Participant last sent a Reminder to another.",
+      "ip": "Your IP address, which every request to the server carries.",
+      "none": "There is no analytics, advertising or profiling, and no decision about you is made automatically."
+    },
+    "namedByOthers": {
+      "title": "If someone else added you to a Trip",
+      "body": "Participants are usually added by someone else in the Trip, and may never open the app. Then your name, and the Expenses and Repayments you take part in, come from the other Participants of that Trip. We know nothing else about you and have no way to reach you, so this public notice is how we inform you (Art. 14(5)(b) GDPR)."
+    },
+    "purposes": {
+      "title": "Why, and on what legal basis",
+      "sync": "To store Trips and sync them between the devices of the people who share them, work out balances, and send the Notifications and Reminders they ask for. The legal basis is legitimate interests (Art. 6(1)(f) GDPR): the Participants' interest in keeping one shared record of what they spent, and ours in providing it.",
+      "security": "To keep the service secure and available: the server limits how many requests one IP address can send, and Cloudflare protects it from attacks. The legal basis is our legitimate interest in the security of the service (Art. 6(1)(f) GDPR).",
+      "voluntary": "Entering data is voluntary, but without names and Expenses there is nothing to share."
+    },
+    "recipients": {
+      "title": "Who else sees it",
+      "tripLink": "Everyone who has a Trip's Trip link can see and change everything in that Trip. Share it only with the people in the Trip.",
+      "cloudflare": "Cloudflare, Inc. passes every request on to the server, so it sees your IP address and what the app sends, Trip contents included. It acts as our processor under its {dpa}. Where Cloudflare transfers data to the United States, it relies on the EU–US Data Privacy Framework, with the standard contractual clauses as a fallback.",
+      "dpa": "data processing addendum",
+      "push": "If you turn Notifications on, they are delivered by the push service your browser uses (for example Google for Chrome, Mozilla for Firefox, Apple for Safari, Microsoft for Edge), which your browser picks, not us. Messages are encrypted for your browser: the push service sees where and when one goes, not what it says. It may be outside the European Economic Area.",
+      "server": "We run the server ourselves, in the European Union, with no hosting company involved. The server fetches exchange rates from a public rate service, sending it only currencies and dates."
+    },
+    "retention": {
+      "title": "How long it is kept",
+      "test": "This is a test environment: its data may be wiped at any time without notice, and the whole test database is wiped at least once every 12 months. Until then, Trips are kept with every Revision.",
+      "notifications": "A push subscription is deleted when you turn Notifications off, forget the Trip, or the push service says it no longer exists.",
+      "ip": "The server keeps IP addresses for limiting requests only in memory, for a few minutes. Cloudflare keeps its logs as its own policies set.",
+      "device": "On your device, a Trip stays until you forget it, clear the site's data or uninstall the app."
+    },
+    "rights": {
+      "title": "Your rights",
+      "list": "You have the right to access your data and get a copy of it, to have it rectified or erased, to restrict its processing, to object to it (Art. 21 GDPR), and to data portability.",
+      "how": "There are no accounts, so we find a Trip only by its Trip link. Write to {email}, send the Trip link and say what you want: holding the link shows you may ask about that Trip. We answer within a month.",
+      "noLink": "If you were added to a Trip but don't have its link, ask someone in the Trip for it: without it, we may not be able to find your data (Art. 11 GDPR).",
+      "inApp": "You can change and delete Expenses in the app yourself, but every Revision is kept: to erase it, write to us.",
+      "complaint": "You can complain to the President of the Personal Data Protection Office (Prezes Urzędu Ochrony Danych Osobowych, ul. Stawki 2, 00-193 Warszawa, {uodo}), or to the data protection authority where you live or work."
+    },
+    "storage": {
+      "title": "What the app keeps on your device",
+      "intro": "Owe Yeah sets no cookies and uses no analytics. It keeps on your device only what it needs to work, so it doesn't ask for consent:",
+      "indexedDb": "IndexedDB: the Trips on this device with their Trip links, which Participant you are in each, changes not synced yet, and exchange rates, so the app works offline.",
+      "localStorage": "Local storage: this device's random id; light or dark mode, if you pick one; and that you dismissed the suggestion to install the app.",
+      "serviceWorker": "A service worker and its cache: the app's own files, so it opens offline, and the code that shows Notifications.",
+      "remove": "Forget a Trip in its Trip tab to remove it from this device. To remove everything, clear this site's data in your browser's settings, or uninstall the app."
+    },
+    "changes": {
+      "title": "Changes",
+      "body": "If this notice changes, the new version is published here with its date."
+    }
   }
 }

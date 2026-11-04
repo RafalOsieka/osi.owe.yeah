@@ -1,6 +1,6 @@
 # Owe Yeah on osieka.dev
 
-These files are built for one instance: Owe Yeah run by osieka.dev at `owe-yeah-test.osieka.dev`, served through Cloudflare Tunnel from GHCR images, on a Docker host that polls Git. To run your own, copy and adapt them, and replace the `/privacy` and `/terms` pages, which are written for this instance, and the source offer in `docker/source-offer.sh` if you publish images. Why it works this way: [ADR 0005](../../docs/adr/0005-environments-pull-digest-pinned-images-from-git.md).
+These files are built for one instance: Owe Yeah run by osieka.dev at `owe-yeah-test.osieka.dev`, served through Cloudflare Tunnel from GHCR images, on a Docker host that polls Git. To run your own, copy and adapt them, and replace the `/privacy` and `/terms` pages, which are written for this instance (their text in the i18n catalogs, and the operator in `apps/web/app/utils/operator.ts`), and the source offer in `docker/source-offer.sh` if you publish images. Why it works this way: [ADR 0005](../../docs/adr/0005-environments-pull-digest-pinned-images-from-git.md).
 
 ## How a build reaches test
 

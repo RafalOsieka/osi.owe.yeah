@@ -6,7 +6,8 @@ import type { BrowserSubscription } from '~/sync/db';
 // or uses "Add me" to create a new Participant and Claim it in one step. Closing it ("Just
 // looking", or "Cancel" with a Claim) changes nothing. Asked again because someone removed
 // the Participant this device was, it says so. With `offerFor` (the Trip's name), it ends
-// with the offer of notifications that follows a Claim (#41).
+// with the offer of notifications that follows a Claim (#41). Joining a Trip opens it first,
+// so it links the privacy notice too.
 const {
   current,
   removed = null,
@@ -72,6 +73,8 @@ const description = computed(() => {
         :label="current ? $t('claim.cancel') : $t('claim.justLooking')"
         @click="open = false"
       />
+      <!-- Closed on the way in (capture), as an open sheet cancels navigation (`useCloseOnBack`). -->
+      <LegalLinks class="mt-2" @click.capture="open = false" />
     </template>
   </UDrawer>
 </template>

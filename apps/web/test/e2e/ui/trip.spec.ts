@@ -1366,3 +1366,60 @@ test('a Polish browser gets the app in Polish, each time it opens it', async ({ 
   expect(await context.cookies()).toEqual([]);
   await context.close();
 });
+
+test('the privacy notice names who runs the app, in English and in Polish', async ({
+  page,
+  browser,
+}) => {
+  await page.goto('/privacy');
+  await expect(page.getByRole('heading', { name: 'Privacy notice', level: 1 })).toBeVisible();
+  await expect(page.getByRole('main')).toContainText('NIP');
+  await expect(page.getByRole('link', { name: 'owe-yeah@osieka.dev' }).first()).toBeVisible();
+
+  const context = await browser.newContext({ locale: 'pl-PL' });
+  const polish = await context.newPage();
+  await polish.goto('/privacy');
+  await expect(
+    polish.getByRole('heading', { name: 'Polityka prywatności', level: 1 }),
+  ).toBeVisible();
+  await expect(polish.getByRole('main')).toContainText('Urzędu Ochrony Danych Osobowych');
+  await context.close();
+});
+
+test('the privacy notice opens offline after the first visit', async ({ page, context }) => {
+  await page.goto('/');
+  await page.waitForFunction(() => navigator.serviceWorker.controller !== null);
+  await context.setOffline(true);
+
+  await page.goto('/privacy');
+
+  await expect(page.getByRole('heading', { name: 'Privacy notice', level: 1 })).toBeVisible();
+  await context.setOffline(false);
+});
+
+test('the privacy notice is linked from My Trips, New Trip, joining a Trip and the Trip tab', async ({
+  page,
+  request,
+}) => {
+  const notice = page.getByRole('heading', { name: 'Privacy notice', level: 1 });
+
+  await page.goto('/');
+  await page.getByRole('link', { name: 'Privacy notice' }).click();
+  await expect(notice).toBeVisible();
+
+  await page.goto('/trips/new');
+  await page.getByRole('link', { name: 'Privacy notice' }).click();
+  await expect(notice).toBeVisible();
+
+  // Joining from a Trip link asks "Who are you?" first; the notice is linked right there.
+  const link = await tripLinkFor(request, 'Hel 2026', ['Ania', 'Kasia']);
+  await page.goto(link);
+  const sheet = page.getByRole('dialog', { name: 'Who are you?' });
+  await sheet.getByRole('link', { name: 'Privacy notice' }).click();
+  await expect(notice).toBeVisible();
+
+  await page.goBack();
+  await page.getByRole('link', { name: 'Trip', exact: true }).click();
+  await page.getByRole('link', { name: 'Privacy notice' }).click();
+  await expect(notice).toBeVisible();
+});

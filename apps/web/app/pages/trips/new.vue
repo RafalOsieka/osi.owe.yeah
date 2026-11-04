@@ -10,7 +10,8 @@ import type { FormError } from '@nuxt/ui';
 import { v7 as uuidv7 } from 'uuid';
 
 // New Trip: "Your name" is the first Participant and becomes this device's Claim, so the
-// creator is never asked "Who are you?".
+// creator is never asked "Who are you?". The privacy notice is linked below the form, to read
+// before typing names in.
 definePageMeta({ viewTransition: { toTypes: ['forward'], fromTypes: ['back'] } });
 
 const { t } = useI18n();
@@ -123,6 +124,7 @@ async function create(): Promise<void> {
         />
       </fieldset>
     </UForm>
+    <LegalLinks class="mt-8" />
 
     <template #action>
       <UButton type="submit" form="new-trip" block size="xl" :label="$t('trip.create.submit')" />
