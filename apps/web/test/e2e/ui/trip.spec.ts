@@ -1397,29 +1397,70 @@ test('the privacy notice opens offline after the first visit', async ({ page, co
   await context.setOffline(false);
 });
 
-test('the privacy notice is linked from My Trips, New Trip, joining a Trip and the Trip tab', async ({
+for (const [doc, title] of [
+  ['privacy notice', 'Privacy notice'],
+  ['terms', 'Terms of service'],
+] as const) {
+  test(`My Trips, New Trip, joining a Trip and the Trip tab link the ${doc}`, async ({
+    page,
+    request,
+  }) => {
+    const heading = page.getByRole('heading', { name: title, level: 1 });
+
+    await page.goto('/');
+    await page.getByRole('link', { name: title }).click();
+    await expect(heading).toBeVisible();
+
+    await page.goto('/trips/new');
+    await page.getByRole('link', { name: title }).click();
+    await expect(heading).toBeVisible();
+
+    // Joining from a Trip link asks "Who are you?" first; both are linked right there.
+    const link = await tripLinkFor(request, 'Hel 2026', ['Ania', 'Kasia']);
+    await page.goto(link);
+    const sheet = page.getByRole('dialog', { name: 'Who are you?' });
+    await sheet.getByRole('link', { name: title }).click();
+    await expect(heading).toBeVisible();
+
+    await page.goBack();
+    await page.getByRole('link', { name: 'Trip', exact: true }).click();
+    await page.getByRole('link', { name: title }).click();
+    await expect(heading).toBeVisible();
+  });
+}
+
+test('the terms name who provides the app and where to report illegal content, in English and in Polish', async ({
   page,
-  request,
+  browser,
 }) => {
-  const notice = page.getByRole('heading', { name: 'Privacy notice', level: 1 });
+  await page.goto('/terms');
+  await expect(page.getByRole('heading', { name: 'Terms of service', level: 1 })).toBeVisible();
+  const main = page.getByRole('main');
+  await expect(main).toContainText('NIP');
+  await expect(main.getByRole('heading', { name: 'Reporting illegal content' })).toBeVisible();
+  await expect(page.getByRole('link', { name: 'owe-yeah@osieka.dev' }).first()).toBeVisible();
+  await expect(main.getByRole('link', { name: '/licenses.txt' })).toHaveAttribute(
+    'href',
+    '/licenses.txt',
+  );
 
+  const context = await browser.newContext({ locale: 'pl-PL' });
+  const polish = await context.newPage();
+  await polish.goto('/terms');
+  await expect(polish.getByRole('heading', { name: 'Regulamin', level: 1 })).toBeVisible();
+  await expect(
+    polish.getByRole('main').getByRole('heading', { name: 'Zgłaszanie nielegalnych treści' }),
+  ).toBeVisible();
+  await context.close();
+});
+
+test('the terms open offline after the first visit', async ({ page, context }) => {
   await page.goto('/');
-  await page.getByRole('link', { name: 'Privacy notice' }).click();
-  await expect(notice).toBeVisible();
+  await page.waitForFunction(() => navigator.serviceWorker.controller !== null);
+  await context.setOffline(true);
 
-  await page.goto('/trips/new');
-  await page.getByRole('link', { name: 'Privacy notice' }).click();
-  await expect(notice).toBeVisible();
+  await page.goto('/terms');
 
-  // Joining from a Trip link asks "Who are you?" first; the notice is linked right there.
-  const link = await tripLinkFor(request, 'Hel 2026', ['Ania', 'Kasia']);
-  await page.goto(link);
-  const sheet = page.getByRole('dialog', { name: 'Who are you?' });
-  await sheet.getByRole('link', { name: 'Privacy notice' }).click();
-  await expect(notice).toBeVisible();
-
-  await page.goBack();
-  await page.getByRole('link', { name: 'Trip', exact: true }).click();
-  await page.getByRole('link', { name: 'Privacy notice' }).click();
-  await expect(notice).toBeVisible();
+  await expect(page.getByRole('heading', { name: 'Terms of service', level: 1 })).toBeVisible();
+  await context.setOffline(false);
 });

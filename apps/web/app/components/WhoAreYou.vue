@@ -7,7 +7,7 @@ import type { BrowserSubscription } from '~/sync/db';
 // looking", or "Cancel" with a Claim) changes nothing. Asked again because someone removed
 // the Participant this device was, it says so. With `offerFor` (the Trip's name), it ends
 // with the offer of notifications that follows a Claim (#41). Joining a Trip opens it first,
-// so it links the privacy notice too.
+// so it links the privacy notice and the terms too.
 const {
   current,
   removed = null,

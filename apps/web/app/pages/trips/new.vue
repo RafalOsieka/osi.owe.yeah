@@ -10,8 +10,8 @@ import type { FormError } from '@nuxt/ui';
 import { v7 as uuidv7 } from 'uuid';
 
 // New Trip: "Your name" is the first Participant and becomes this device's Claim, so the
-// creator is never asked "Who are you?". The privacy notice is linked below the form, to read
-// before typing names in.
+// creator is never asked "Who are you?". The privacy notice and the terms are linked below the
+// form, to read before typing names in.
 definePageMeta({ viewTransition: { toTypes: ['forward'], fromTypes: ['back'] } });
 
 const { t } = useI18n();
