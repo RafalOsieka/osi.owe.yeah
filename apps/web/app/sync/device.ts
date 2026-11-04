@@ -10,6 +10,7 @@ import {
   type PushRequest,
   type PushResponse,
   type RateEntry,
+  type ReminderRefusal,
   type ReminderRequest,
   type ReminderStatus,
   type Revision,
@@ -57,7 +58,10 @@ export type Transport = {
   unsubscribe(tripId: string, token: string, deviceId: string): Promise<void>;
   /** Whom a Reminder can reach in the Trip, and the pairs reminded today. */
   reminderStatus(tripId: string, token: string): Promise<ReminderStatus>;
-  /** Sends a Reminder, never through the outbox, resolving to how the server answered. */
+  /**
+   * Sends a Reminder, never through the outbox, resolving to how the server answered. Rejects
+   * on any other answer, such as a proxy's block or rate limit, as it does offline.
+   */
   remind(tripId: string, token: string, request: ReminderRequest): Promise<Reminded>;
 };
 
@@ -65,7 +69,7 @@ export type Transport = {
  * How the server answered a Reminder: sent, or refused, as it doesn't suggest that
  * Repayment now, no device of the debtor's can be notified, or the pair was reminded today.
  */
-export type Reminded = 'sent' | 'notSuggested' | 'unreachable' | 'remindedToday';
+export type Reminded = 'sent' | ReminderRefusal['refused'];
 
 /** A Trip opened on this device, as it shows it. */
 export type DeviceTripView = {

@@ -126,3 +126,15 @@ export const reminderStatusSchema = z.object({
 });
 
 export type ReminderStatus = z.infer<typeof reminderStatusSchema>;
+
+/**
+ * Why the server refuses a Reminder, named in the body of its refusal: the server doesn't
+ * suggest that Repayment now, no device of the debtor's can be notified, or the pair was
+ * reminded today. A device trusts a refusal only from a body that parses as this: a proxy in
+ * front of the server, such as a WAF block or a rate limit, answers with the same statuses.
+ */
+export const reminderRefusalSchema = z.object({
+  refused: z.enum(['notSuggested', 'unreachable', 'remindedToday']),
+});
+
+export type ReminderRefusal = z.infer<typeof reminderRefusalSchema>;

@@ -1,6 +1,7 @@
 import {
   pullResponseSchema,
   pushResponseSchema,
+  reminderRefusalSchema,
   reminderStatusSchema,
   revisionsResponseSchema,
   TRIP_TOKEN_HEADER,
@@ -9,7 +10,7 @@ import { DeviceDb } from '~/sync/db';
 import { createDevice, type Device, type Transport } from '~/sync/device';
 
 /** The sync API over `syncApi`. Answers are checked before they reach the device store. */
-const transport: Transport = {
+export const httpTransport: Transport = {
   async push(tripId, token, request) {
     const response = await syncApi(`/api/trips/${tripId}/push`, {
       method: 'POST',
@@ -65,17 +66,11 @@ const transport: Transport = {
       ignoreResponseError: true,
     });
     if (response.ok) return 'sent';
-    // The server's refusals (`server/utils/reminders.ts`).
-    switch (response.status) {
-      case 403:
-        return 'notSuggested';
-      case 409:
-        return 'unreachable';
-      case 429:
-        return 'remindedToday';
-      default:
-        throw new Error(`Reminder failed with ${response.status}`);
-    }
+    // Only the server's own refusals name one (`server/utils/reminders.ts`): a WAF block or a
+    // rate limit in front of it answers 403 or 429 too, and is no refusal.
+    const refusal = reminderRefusalSchema.safeParse(response._data);
+    if (!refusal.success) throw new Error(`Reminder failed with ${response.status}`);
+    return refusal.data.refused;
   },
 };
 
@@ -94,6 +89,6 @@ let device: Device | undefined;
 
 /** The device's Trips, outbox and sync, shared by the whole app (see `createDevice`). */
 export function useDevice(): Device {
-  device ??= createDevice(new DeviceDb(), transport, deviceId());
+  device ??= createDevice(new DeviceDb(), httpTransport, deviceId());
   return device;
 }

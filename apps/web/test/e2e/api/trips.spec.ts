@@ -257,6 +257,12 @@ function remind(tripId: string, token: string, from: Participant, to: Participan
   });
 }
 
+/** How the server refused a Reminder: its status, and the refusal its body names. */
+async function refusalOf(sending: Promise<Response>) {
+  const response = await sending;
+  return { status: response.status, body: await response.json() };
+}
+
 /** The Reminders `device` got, in the order they came, leaving out news of changes. */
 function remindersOf(device: string): unknown[] {
   return pushService
@@ -913,9 +919,10 @@ describeApi('Trip API', () => {
     await push(trip.id, token, change(plainExpense(kasia, [kasia, ania])));
 
     // Ania owes, Ola is not in it, and nobody owes Ola.
-    expect((await remind(trip.id, token, ania, kasia)).status).toBe(403);
-    expect((await remind(trip.id, token, ola, ania)).status).toBe(403);
-    expect((await remind(trip.id, token, kasia, ola)).status).toBe(403);
+    const notSuggested = { status: 403, body: { refused: 'notSuggested' } };
+    expect(await refusalOf(remind(trip.id, token, ania, kasia))).toEqual(notSuggested);
+    expect(await refusalOf(remind(trip.id, token, ola, ania))).toEqual(notSuggested);
+    expect(await refusalOf(remind(trip.id, token, kasia, ola))).toEqual(notSuggested);
     expect((await remind(trip.id, newToken(), kasia, ania)).status).toBe(401);
     expect((await remind(trip.id, token, kasia, ania)).status).toBe(204);
 
@@ -944,7 +951,10 @@ describeApi('Trip API', () => {
     await push(trip.id, token, change(lidl));
 
     expect((await remind(trip.id, token, kasia, ania)).status).toBe(204);
-    expect((await remind(trip.id, token, kasia, ania)).status).toBe(429);
+    expect(await refusalOf(remind(trip.id, token, kasia, ania))).toEqual({
+      status: 429,
+      body: { refused: 'remindedToday' },
+    });
     // Another pair is not held back.
     expect((await remind(trip.id, token, kasia, ola)).status).toBe(204);
 
@@ -964,7 +974,10 @@ describeApi('Trip API', () => {
     await push(trip.id, token, change(plainExpense(kasia, [kasia, ania])));
 
     expect(await reminderStatus(trip.id, token)).toEqual({ reachable: [], remindedToday: [] });
-    expect((await remind(trip.id, token, kasia, ania)).status).toBe(409);
+    expect(await refusalOf(remind(trip.id, token, kasia, ania))).toEqual({
+      status: 409,
+      body: { refused: 'unreachable' },
+    });
     // Refused, it holds nothing back for later that day.
     await subscribe(trip.id, token, uuidv7(), ania.id);
     expect((await remind(trip.id, token, kasia, ania)).status).toBe(204);
