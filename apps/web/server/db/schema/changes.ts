@@ -21,6 +21,9 @@ export const changes = pgTable(
     subjectId: uuid().notNull(),
     // The Expense version the change produced; null for Trip and Participant changes.
     version: integer(),
+    // The removed Participants an Expense change brought back; null when it brought back
+    // nobody. A retry answers with them, as the first time did.
+    restored: uuid().array(),
     // The Participant the device claimed when making the change, if any. Not a reference:
     // it is what the device said, kept as it was.
     claimId: uuid(),

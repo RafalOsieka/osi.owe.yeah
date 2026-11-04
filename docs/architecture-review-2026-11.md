@@ -69,7 +69,7 @@ Two reviews feed this file:
 ## Smaller findings (bugs and inconsistencies)
 
 - [ ] **Lost update across tabs.** In `device.ts:104,393-397`, `acceptedVersions` lives in memory. If another tab accepted the change, `resolveBase` takes `current.version` and can overwrite someone else's version without a Conflict.
-- [ ] **A retry loses `restored`.** In `push.post.ts:84-91`, `appliedBefore` returns no restored Participants, so after a lost response the Notice does not show.
+- [x] **A retry loses `restored`.** In `push.post.ts:84-91`, `appliedBefore` returns no restored Participants, so after a lost response the Notice does not show. Done in #79: the `changes` row keeps them.
 - [ ] **The Conflict screen gets the wrong list of people.** `conflict.vue:49,56` uses `trip.participants` instead of `everyone`, so a removed Participant shows as "?".
 - [ ] **A Manual rate rule exists only in the UI.** "Charged with a zero total" is checked only in `useManualRateErrors.ts:22`. The domain and server accept it, `conversionRate` returns `null`, and the Expense drops out of balances without a word. A Manual rate in the Expense's own currency is likewise stripped only by the UI.
 - [ ] **The Web Push payload is not validated.** `service-worker/sw.ts:35` casts `as PushMessage` even though `pushMessageSchema` exists. The payload has no schema version, and `notification.ts` has a third amount formatter.

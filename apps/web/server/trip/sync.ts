@@ -43,10 +43,11 @@ export function createTripSync(db: Database, store: TripStore, rates: Rates, not
   /** The first result of a change this Trip has applied before, if it has. */
   async function appliedBefore(change: SyncChange, tripId: string): Promise<ChangeResult | null> {
     const [applied] = await db
-      .select({ version: changes.version })
+      .select({ version: changes.version, restored: changes.restored })
       .from(changes)
       .where(and(eq(changes.id, change.id), eq(changes.tripId, tripId)));
-    return applied ? { changeId: change.id, status: 'accepted', version: applied.version } : null;
+    if (!applied) return null;
+    return accepted(change.id, applied.version, applied.restored ?? []);
   }
 
   /**
@@ -179,10 +180,8 @@ export function createTripSync(db: Database, store: TripStore, rates: Rates, not
           .set({ removed: false })
           .where(and(eq(participants.tripId, tripId), inArray(participants.id, restored)));
       }
-      await recordChange(tx, change, tripId, id, stored.version);
-
-      const accepted = { changeId, status: 'accepted', version: stored.version } as const;
-      return restored.length > 0 ? { ...accepted, restored } : accepted;
+      await recordChange(tx, change, tripId, id, stored.version, restored);
+      return accepted(changeId, stored.version, restored);
     });
   }
 
@@ -304,9 +303,16 @@ async function lockTrip(tx: Transaction, tripId: string): Promise<WholeTrip> {
   return trip;
 }
 
+/** An accepted change's result, naming the Participants it brought back only if there are any. */
+function accepted(changeId: string, version: number | null, restored: string[]): ChangeResult {
+  const result = { changeId, status: 'accepted', version } as const;
+  return restored.length > 0 ? { ...result, restored } : result;
+}
+
 /**
- * Records an applied change and bumps the Trip version, in the transaction that applied it.
- * A retry racing this one may have recorded it first; it was applied either way.
+ * Records an applied change, with the Participants it brought back, and bumps the Trip
+ * version, in the transaction that applied it. A retry racing this one may have recorded it
+ * first; it was applied either way.
  */
 async function recordChange(
   tx: Transaction,
@@ -314,11 +320,20 @@ async function recordChange(
   tripId: string,
   subjectId: string,
   version: number | null,
+  restored: string[] = [],
 ): Promise<void> {
   const { id, claimId, deviceId } = change;
   await tx
     .insert(changes)
-    .values({ id, tripId, subjectId, version, claimId, deviceId })
+    .values({
+      id,
+      tripId,
+      subjectId,
+      version,
+      restored: restored.length > 0 ? restored : null,
+      claimId,
+      deviceId,
+    })
     .onConflictDoNothing();
   await tx
     .update(trips)
