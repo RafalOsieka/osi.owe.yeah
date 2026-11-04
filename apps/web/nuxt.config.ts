@@ -119,6 +119,10 @@ export default defineNuxtConfig({
     // bakes it in as `NUXT_COMMIT_SHA` from its `COMMIT_SHA` build arg; the prerendered app
     // can't carry it.
     commitSha: 'dev',
+    // Whether this server is a test environment, whose data may be wiped: `NUXT_TEST_ENVIRONMENT`
+    // turns on the app's banner saying so (#105). The device asks `/api/environment`, as the
+    // same image runs on test and production and the prerendered app can't carry it.
+    testEnvironment: false,
   },
   // The files that name a version of the app are revalidated on every request, so a new
   // service worker isn't held back by a cache in between: Cloudflare caches `.js` by extension

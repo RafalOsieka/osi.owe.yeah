@@ -14,6 +14,9 @@
     "ios": "Tap Share, then Add to Home Screen: it opens like an app, and Safari keeps your Trips on this device for good.",
     "action": "Install"
   },
+  "testEnvironment": {
+    "banner": "Test environment: data may be wiped, don't enter anything sensitive"
+  },
   "myTrips": {
     "title": "My Trips",
     "empty": "No Trips yet.",
@@ -515,7 +518,7 @@
       "title": "What the app keeps on your device",
       "intro": "Owe Yeah sets no cookies and uses no analytics. It keeps on your device only what it needs to work, so it doesn't ask for consent:",
       "indexedDb": "IndexedDB: the Trips on this device with their Trip links, which Participant you are in each, changes not synced yet, and exchange rates, so the app works offline.",
-      "localStorage": "Local storage: this device's random id; light or dark mode, if you pick one; and that you dismissed the suggestion to install the app.",
+      "localStorage": "Local storage: this device's random id; light or dark mode, if you pick one; that you dismissed the suggestion to install the app; and whether this server is a test environment.",
       "serviceWorker": "A service worker and its cache: the app's own files, so it opens offline, and the code that shows Notifications.",
       "remove": "Forget a Trip in its Trip tab to remove it from this device. To remove everything, clear this site's data in your browser's settings, or uninstall the app."
     },

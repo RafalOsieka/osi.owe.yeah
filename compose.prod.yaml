@@ -54,6 +54,8 @@ services:
       NUXT_VAPID_PUBLIC_KEY: ${VAPID_PUBLIC_KEY:-}
       NUXT_VAPID_PRIVATE_KEY: ${VAPID_PRIVATE_KEY:-}
       NUXT_VAPID_SUBJECT: ${VAPID_SUBJECT:-}
+      # A test environment, whose data may be wiped, says so in a banner on every screen (#105).
+      NUXT_TEST_ENVIRONMENT: ${TEST_ENVIRONMENT:-false}
     depends_on:
       migrate:
         condition: service_completed_successfully

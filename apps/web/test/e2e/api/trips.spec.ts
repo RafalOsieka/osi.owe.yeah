@@ -21,9 +21,9 @@ import {
   type TripSnapshot,
   type TripWithParticipants,
 } from '@osi/owe-yeah-domain';
-import { createTest, fetch } from '@nuxt/test-utils/e2e';
+import { createTest, fetch, startServer } from '@nuxt/test-utils/e2e';
 import { v7 as uuidv7 } from 'uuid';
-import { afterAll, beforeAll, expect, inject, it } from 'vitest';
+import { afterAll, beforeAll, expect, inject, it, onTestFinished } from 'vitest';
 import webpush from 'web-push';
 import { startFrankfurter } from '../harness/frankfurter';
 import { describeWithDocker } from '../harness/postgres';
@@ -340,6 +340,23 @@ describeApi('Trip API', () => {
     }
     expect(script).toBeDefined();
     expect((await fetch(script!)).headers.get('cache-control')).toContain('immutable');
+  });
+
+  it('says it is no test environment unless switched on', async () => {
+    const response = await fetch('/api/environment', { headers: deviceHeaders() });
+
+    expect(response.status).toBe(200);
+    expect(await response.json()).toEqual({ testEnvironment: false });
+  });
+
+  it('says it is a test environment when switched on', async () => {
+    await startServer({ env: { NUXT_TEST_ENVIRONMENT: 'true' } });
+    onTestFinished(() => startServer());
+
+    const response = await fetch('/api/environment', { headers: deviceHeaders() });
+
+    expect(response.status).toBe(200);
+    expect(await response.json()).toEqual({ testEnvironment: true });
   });
 
   it('serves the licenses of the dependencies bundled into the app', async () => {

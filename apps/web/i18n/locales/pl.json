@@ -14,6 +14,9 @@
     "ios": "Stuknij Udostępnij, a potem Do ekranu początkowego: otwiera się jak aplikacja, a Safari zachowa Twoje podróże na tym urządzeniu na stałe.",
     "action": "Zainstaluj"
   },
+  "testEnvironment": {
+    "banner": "Środowisko testowe: dane mogą zostać usunięte, nie wpisuj niczego wrażliwego"
+  },
   "myTrips": {
     "title": "Moje podróże",
     "empty": "Nie masz jeszcze żadnych podróży.",
@@ -515,7 +518,7 @@
       "title": "Co aplikacja zapisuje na Twoim urządzeniu",
       "intro": "Owe Yeah nie ustawia plików cookie i nie używa analityki. Zapisuje na Twoim urządzeniu tylko to, czego potrzebuje do działania, więc nie prosi o zgodę:",
       "indexedDb": "IndexedDB: podróże na tym urządzeniu z ich linkami do podróży, to, którym uczestnikiem jesteś w każdej z nich, jeszcze niezsynchronizowane zmiany i kursy walut, żeby aplikacja działała offline.",
-      "localStorage": "Pamięć lokalna (local storage): losowy identyfikator tego urządzenia, tryb jasny lub ciemny, jeśli go wybierzesz, oraz to, że odrzucono propozycję instalacji aplikacji.",
+      "localStorage": "Pamięć lokalna (local storage): losowy identyfikator tego urządzenia, tryb jasny lub ciemny, jeśli go wybierzesz, to, że odrzucono propozycję instalacji aplikacji, oraz to, czy ten serwer jest środowiskiem testowym.",
       "serviceWorker": "Service worker i jego pamięć podręczna: pliki samej aplikacji, żeby otwierała się offline, oraz kod, który pokazuje powiadomienia.",
       "remove": "Żeby usunąć podróż z tego urządzenia, zapomnij ją na jej karcie Podróż. Żeby usunąć wszystko, wyczyść dane tej strony w ustawieniach przeglądarki albo odinstaluj aplikację."
     },

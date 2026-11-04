@@ -131,3 +131,5 @@ export type {
   ReminderStatus,
   SubscriptionRequest,
 } from './push.ts';
+export { environmentResponseSchema } from './environment.ts';
+export type { EnvironmentResponse } from './environment.ts';

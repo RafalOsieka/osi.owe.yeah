@@ -30,11 +30,12 @@ useAppUpdatePrompt();
     <NuxtPwaManifest />
     <!-- A phone app first: wide screens get the same layout in a centered column. Each page
          wraps itself in its layout (`<NuxtLayout name>`), so layouts can take a title and a
-         fixed action. -->
+         fixed action. A test environment's banner tops every page. -->
     <div class="min-h-dvh bg-muted">
       <div
         class="mx-auto min-h-dvh max-w-120 bg-default ps-[env(safe-area-inset-left)] pe-[env(safe-area-inset-right)]"
       >
+        <TestEnvironmentBanner />
         <NuxtPage />
       </div>
     </div>
