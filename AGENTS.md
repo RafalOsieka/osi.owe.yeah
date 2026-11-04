@@ -25,3 +25,5 @@ In `apps/web/server`, import `defineEventHandler` and the request helpers explic
 ## Database
 
 Every UUID primary key in `apps/web/server/db/schema` gets ``.default(sql`uuidv7()`)`` (Postgres 18), even when the client always sends the id: ids are client-generated UUIDv7s (ADR 0002), and the default covers inserts that omit them.
+
+A table that holds a Trip's data keeps the Trip's id in `trip_id`, referencing `trips` with `onDelete: 'cascade'`, and gets a key in `deploy/osieka-dev/requests/export.sql`. The operator's erasure and access steps rely on both (`erase.sql` refuses to run without the cascade).
