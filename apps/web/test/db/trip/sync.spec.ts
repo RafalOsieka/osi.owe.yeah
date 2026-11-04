@@ -324,6 +324,25 @@ describeDb('Trip sync', () => {
     });
   });
 
+  it('answers a retried Expense change with the Participants it brought back, applying it once', async () => {
+    const { trip, token, kasia, ania } = await tripWithKasiaAndAnia();
+    await push(trip.id, token, participantChange(ania, true));
+    const offline = change(plainExpense(kasia, [kasia, ania]));
+    const plain = change(plainExpense(kasia));
+    // The first push lands, but its device never hears back.
+    const first = await push(trip.id, token, offline, plain);
+
+    const retried = await push(trip.id, token, offline, plain);
+
+    expect(retried).toStrictEqual<ChangeResult[]>([
+      { changeId: offline.id, status: 'accepted', version: 1, restored: [ania.id] },
+      { changeId: plain.id, status: 'accepted', version: 1 },
+    ]);
+    expect(retried).toStrictEqual(first);
+    expect(await createTripStore(db()).revisions(trip.id, offline.expense.id)).toHaveLength(1);
+    expect(notifiedOf(trip.id)).toHaveLength(1);
+  });
+
   it('keeps the last write of the Trip details, with who changed them and when', async () => {
     const { trip, token, kasia, ania } = await tripWithKasiaAndAnia();
 
