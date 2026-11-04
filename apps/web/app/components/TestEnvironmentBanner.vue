@@ -9,13 +9,13 @@ const REMEMBERED_KEY = 'owe-yeah:test-environment';
 const testEnvironment = ref(localStorage.getItem(REMEMBERED_KEY) === 'true');
 const closed = ref(false);
 
-async function ask(): Promise<void> {
+async function askServer(): Promise<void> {
   const answer = environmentResponseSchema.parse(await syncApi('/api/environment'));
   testEnvironment.value = answer.testEnvironment;
   localStorage.setItem(REMEMBERED_KEY, String(answer.testEnvironment));
 }
 // Offline, or a server that can't answer: the remembered answer stands.
-void ask().catch(() => {});
+void askServer().catch(() => {});
 </script>
 
 <template>
