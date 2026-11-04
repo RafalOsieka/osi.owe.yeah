@@ -107,7 +107,8 @@ async function appliedBefore(change: SyncChange, tripId: string): Promise<Change
 async function lockTrip(tx: Transaction, tripId: string): Promise<WholeTrip> {
   await tx.select({ id: trips.id }).from(trips).where(eq(trips.id, tripId)).for('update');
   const trip = await createTripStore(tx).readTrip(tripId);
-  // The Trip link was checked before, and a Trip is never deleted.
+  // The Trip link was checked before. Only the operator deletes a Trip (the erasure steps in
+  // deploy/osieka-dev), so a push that races that fails here.
   if (!trip) throw new Error(`Trip ${tripId} is gone`);
   return trip;
 }

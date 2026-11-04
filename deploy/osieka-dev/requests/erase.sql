@@ -1,5 +1,6 @@
 -- Erases the Trip a Trip link names, with everything stored with it: Participants, Expenses,
--- Revisions, changes, push subscriptions and Reminders. Exchange rates hold no Trip data.
+-- Revisions, changes, notification subscriptions and Reminders, blocked or not. Exchange
+-- rates hold no Trip data.
 --
 --   psql -U postgres -d owe_yeah -v id=<id> -v token=<token> < erase.sql
 --
@@ -9,12 +10,13 @@
 -- The checks and the delete are one statement, so one transaction.
 \set ON_ERROR_STOP on
 SET erase.trip_id = :'id';
-SET erase.token = :'token';
+SELECT encode(sha256(convert_to(:'token', 'UTF8')), 'hex') AS hash \gset
+SET erase.token_hash = :'hash';
 
 DO $$
 DECLARE
   erased uuid := current_setting('erase.trip_id');
-  token text := current_setting('erase.token');
+  hash text := current_setting('erase.token_hash');
   holders text[];
   uncovered text;
   holder text;
@@ -43,7 +45,7 @@ BEGIN
 
   DELETE FROM trips
   WHERE id = erased
-    AND token_hash = encode(sha256(convert_to(token, 'UTF8')), 'hex');
+    AND token_hash IN (hash, 'blocked:' || hash);
   IF NOT FOUND THEN
     RAISE EXCEPTION 'Nothing erased: no Trip has this id and token';
   END IF;

@@ -1,14 +1,16 @@
--- Everything stored about the Trip a Trip link names, as one JSON document; no output when
--- the link names no Trip. Left out: the token's hash, and each push subscription's endpoint
--- and keys, which would let the reader push to the browser of whoever subscribed (only the
--- push service is kept). Keep it in step with the schema: one key per table with a trip_id.
+-- Everything stored about the Trip a Trip link names, blocked or not, as one JSON document;
+-- no output when the link names no Trip. Left out: the token's hash, and each notification
+-- subscription's endpoint and keys, which would let the reader push to the browser of
+-- whoever subscribed (only the push service is kept). Keep it in step with the schema: one
+-- key per table with a trip_id.
 --
 --   psql -U postgres -d owe_yeah -At -v id=<id> -v token=<token> < export.sql > trip.json
+SELECT encode(sha256(convert_to(:'token', 'UTF8')), 'hex') AS hash \gset
 WITH trip AS (
   SELECT *
   FROM trips
   WHERE id = :'id'
-    AND token_hash = encode(sha256(convert_to(:'token', 'UTF8')), 'hex')
+    AND token_hash IN (:'hash', 'blocked:' || :'hash')
 )
 SELECT jsonb_pretty(jsonb_build_object(
   'trip', to_jsonb(trip) - 'token_hash',
@@ -32,7 +34,7 @@ SELECT jsonb_pretty(jsonb_build_object(
     SELECT coalesce(jsonb_agg(to_jsonb(m) - 'trip_id' ORDER BY m.sent_at), '[]')
     FROM reminders m WHERE m.trip_id = trip.id
   ),
-  'push_subscriptions', (
+  'notification_subscriptions', (
     SELECT coalesce(jsonb_agg(jsonb_build_object(
       'device_id', s.device_id,
       'claim_id', s.claim_id,
