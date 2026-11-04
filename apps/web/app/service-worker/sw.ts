@@ -26,7 +26,13 @@ self.addEventListener('message', (event) => {
 clientsClaim();
 precacheAndRoute(self.__WB_MANIFEST);
 cleanupOutdatedCaches();
-registerRoute(new NavigationRoute(createHandlerBoundToURL('/'), { denylist: [/^\/api\//] }));
+// Every page is the app's, but for the API and the licenses file (`modules/client-licenses.ts`),
+// which the server answers.
+registerRoute(
+  new NavigationRoute(createHandlerBoundToURL('/'), {
+    denylist: [/^\/api\//, /^\/licenses\.txt$/],
+  }),
+);
 
 // A push about a Trip's activity, written in the browser's language and collapsed into the
 // Trip's notification on screen, if there is one; or a Reminder, shown on its own.

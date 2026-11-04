@@ -1,6 +1,6 @@
 # Owe Yeah on osieka.dev
 
-These files are built for one instance: Owe Yeah run by osieka.dev at `owe-yeah-test.osieka.dev`, served through Cloudflare Tunnel from GHCR images, on a Docker host that polls Git. To run your own, copy and adapt them, and replace the `/privacy` and `/terms` pages, which are written for this instance. Why it works this way: [ADR 0005](../../docs/adr/0005-environments-pull-digest-pinned-images-from-git.md).
+These files are built for one instance: Owe Yeah run by osieka.dev at `owe-yeah-test.osieka.dev`, served through Cloudflare Tunnel from GHCR images, on a Docker host that polls Git. To run your own, copy and adapt them, and replace the `/privacy` and `/terms` pages, which are written for this instance, and the source offer in `docker/source-offer.sh` if you publish images. Why it works this way: [ADR 0005](../../docs/adr/0005-environments-pull-digest-pinned-images-from-git.md).
 
 ## How a build reaches test
 
@@ -18,8 +18,9 @@ These files are built for one instance: Owe Yeah run by osieka.dev at `owe-yeah-
    - `VAPID_SUBJECT`: `mailto:owe-yeah@osieka.dev`.
    - `TUNNEL_TOKEN`: the tunnel's token.
    - `TEST_ENVIRONMENT=true` on test only, which turns on the test banner.
-3. **Stack.** Create a stack from this repo, branch `deploy`, file `test/compose.yaml`, polling every ~5 minutes. Redeploying it by hand is the fallback.
-4. Check that `cloudflared` reports the tunnel healthy and `app` turns healthy.
+3. **Packages.** After the first `publish`, set both GHCR packages to public in their settings, so the host pulls them without a credential. Their images carry the license notices public distribution asks for (`/app/notices`).
+4. **Stack.** Create a stack from this repo, branch `deploy`, file `test/compose.yaml`, polling every ~5 minutes. Redeploying it by hand is the fallback.
+5. Check that `cloudflared` reports the tunnel healthy and `app` turns healthy.
 
 ## Opening test to the public
 

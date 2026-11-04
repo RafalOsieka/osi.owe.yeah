@@ -70,6 +70,8 @@ cp .env.example .env   # fill in POSTGRES_PASSWORD, and the VAPID keys for push 
 docker compose -f compose.prod.yaml up -d --build
 ```
 
+Both images carry the notices their contents' licenses ask for, in `/app/notices`: the repo's `LICENSE`, `THIRD-PARTY-NOTICES.md` with the npm packages they bundle or ship and the full text of each license, and `SOURCE-OFFER.md` with the Alpine packages and a written offer of their source (`docker/` builds them; the offer is osieka.dev's, so replace it before publishing images of your own). The app serves its browser bundle's licenses at `/licenses.txt`.
+
 Push notifications need a VAPID key pair. Make it once, on any machine with the repo installed, and put the printed keys into `.env` as `VAPID_PUBLIC_KEY` and `VAPID_PRIVATE_KEY`, with a contact for the push services as `VAPID_SUBJECT` (e.g. `mailto:you@example.com`):
 
 ```sh

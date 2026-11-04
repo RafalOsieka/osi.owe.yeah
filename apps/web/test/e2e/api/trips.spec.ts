@@ -336,6 +336,14 @@ describeApi('Trip API', () => {
     expect((await fetch(script!)).headers.get('cache-control')).toContain('immutable');
   });
 
+  it('serves the licenses of the dependencies bundled into the app', async () => {
+    const response = await fetch('/licenses.txt');
+
+    expect(response.status).toBe(200);
+    // Dexie runs only in the browser, under Apache-2.0, whose text it carries.
+    expect(await response.text()).toMatch(/## dexie - [\d.]+ \(Apache-2\.0\)\n\n\s*Apache License/);
+  });
+
   it('accepts a Trip created offline on its first push, with Expenses in the same push', async () => {
     const kasia = participant('Kasia');
     const trip = newTrip('Croatia 2026', [kasia]);

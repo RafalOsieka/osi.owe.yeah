@@ -131,7 +131,7 @@ jobs:
         uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
 
       - name: Build migrator image
-        run: docker build --target migrator --tag owe-yeah-migrator .
+        run: docker build --target migrator --build-arg COMMIT_SHA="$GITHUB_SHA" --tag owe-yeah-migrator .
 
       - name: Build runtime image
         run: docker build --target runtime --build-arg COMMIT_SHA="$GITHUB_SHA" --tag owe-yeah-runtime .
@@ -170,6 +170,65 @@ jobs:
           for image in owe-yeah-migrator owe-yeah-runtime; do
             docker run --rm --entrypoint sh "$image" -c \
               'for tool in npm npx pnpm yarn corepack vp; do if command -v "$tool"; then exit 1; fi; done'
+          done
+
+      # Both carry what their contents' licenses ask for (see docker/): the repo's license, a
+      # source offer covering every Alpine package at its version, and the npm packages they
+      # bundle or ship, with the full text of each license. The packages checked are traced
+      # (`web-push`, `drizzle-orm`, `lru-cache`) or inlined into a bundle (`nuxt-security`, and
+      # the migrator's two).
+      - name: Check images carry their license notices
+        run: |
+          read_file() { docker run --rm --entrypoint cat "$1" "$2"; }
+          fail() { echo "$1"; exit 1; }
+          for image in owe-yeah-migrator owe-yeah-runtime; do
+            read_file "$image" /app/notices/LICENSE | diff - LICENSE
+            read_file "$image" /app/notices/THIRD-PARTY-NOTICES.md > "$image.md"
+            read_file "$image" /app/notices/SOURCE-OFFER.md > offer.md
+            grep -q '^## Written offer' offer.md
+            # Into a file first: the default shell has no pipefail, so a failed read would
+            # pass an empty list down a pipe.
+            read_file "$image" /lib/apk/db/installed > installed
+            grep -q '^P:busybox$' installed
+            awk '/^P:/ { p = substr($0, 3) } /^V:/ { print "| " p " | " substr($0, 3) " |" }' installed |
+              while read -r row; do
+                grep -qF "$row" offer.md || fail "$image: the source offer lacks $row"
+              done
+          done
+          # A package's notice, under the license it declares.
+          has_package() {
+            grep -qE "^## $2 - [^ ]+ \($3\)$" "$1.md" || fail "$1: no notice for $2 under $3"
+          }
+          # A license's full text under its heading in "License texts", by a phrase near its end.
+          has_text() {
+            awk -v heading="### $2" '$0 == heading { found = 1; next } /^### / { found = 0 } found' \
+              "$1.md" > text.md
+            grep -q "$3" text.md || fail "$1: no full $2 text"
+          }
+          has_package owe-yeah-migrator drizzle-orm Apache-2.0
+          has_package owe-yeah-migrator postgres Unlicense
+          has_text owe-yeah-migrator Apache-2.0 'END OF TERMS AND CONDITIONS'
+          has_text owe-yeah-migrator Unlicense 'unencumbered'
+          has_package owe-yeah-runtime web-push MPL-2.0
+          has_package owe-yeah-runtime drizzle-orm Apache-2.0
+          has_package owe-yeah-runtime lru-cache BlueOak-1.0.0
+          has_package owe-yeah-runtime nuxt-security MIT
+          has_text owe-yeah-runtime MPL-2.0 'Exhibit B'
+          has_text owe-yeah-runtime Apache-2.0 'END OF TERMS AND CONDITIONS'
+          has_text owe-yeah-runtime BlueOak-1.0.0 'No Liability'
+          # The browser app's own, which the app serves (the api suite checks its contents).
+          docker run --rm --entrypoint test owe-yeah-runtime -s /app/public/licenses.txt
+
+      - name: Check images carry the OCI labels
+        run: |
+          for image in owe-yeah-migrator owe-yeah-runtime; do
+            labels=$(docker inspect --format '{{json .Config.Labels}}' "$image")
+            echo "$labels" | jq -e --arg sha "$GITHUB_SHA" '
+              ."org.opencontainers.image.source" == "https://github.com/RafalOsieka/osi.owe.yeah"
+              and ."org.opencontainers.image.licenses" == "MIT"
+              and ."org.opencontainers.image.revision" == $sha
+              and (."org.opencontainers.image.description" | length > 0)' > /dev/null ||
+              { echo "$image: $labels"; exit 1; }
           done
 
   db:
