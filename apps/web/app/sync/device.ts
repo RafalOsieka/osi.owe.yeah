@@ -273,7 +273,8 @@ export function createDevice(db: DeviceDb, transport: Transport, deviceId: strin
 
   /**
    * Queues an Expense's full new state, on the base the Expense had as the user read it
-   * (`asRead`, `null` for a new one), unless it breaks a Trip rule. See `saveExpense`.
+   * (`asRead`, `null` for a new one), unless it breaks a Trip rule. See the handle's
+   * `saveExpense`.
    */
   async function queueExpense(
     tripId: string,
@@ -328,14 +329,18 @@ export function createDevice(db: DeviceDb, transport: Transport, deviceId: strin
    * without waiting for that sync.
    */
   function trip(tripId: string) {
-    // `change`, after which the Trip syncs.
+    // `change`, after which the Trip syncs, unless its result says nothing was written.
     const syncing =
-      <A extends unknown[], R>(change: (...args: A) => Promise<R>) =>
+      <A extends unknown[], R>(
+        change: (...args: A) => Promise<R>,
+        written: (result: R) => boolean = () => true,
+      ) =>
       async (...args: A): Promise<R> => {
         const result = await change(...args);
-        changed(tripId);
+        if (written(result)) changed(tripId);
         return result;
       };
+    const refusedNothing = (problems: ExpenseProblem[]) => problems.length === 0;
 
     return {
       /** Records that the Trip was opened now, for My Trips' order, and syncs it. */
@@ -363,11 +368,15 @@ export function createDevice(db: DeviceDb, transport: Transport, deviceId: strin
 
       /**
        * Sets which Participant this device is in the Trip. The server's push subscription
-       * follows it while notifications are on.
+       * follows it while notifications are on, so then the Trip syncs.
        */
-      claim: syncing(async (participant: Participant): Promise<void> => {
-        await db.trips.update(tripId, { claim: participant });
-      }),
+      async claim(participant: Participant): Promise<void> {
+        const device = await db.transaction('rw', db.trips, async () => {
+          await db.trips.update(tripId, { claim: participant });
+          return db.trips.get(tripId);
+        });
+        if (device?.notifications.subscription) changed(tripId);
+      },
 
       /**
        * Turns push notifications on for the Trip with the browser's subscription. The server
@@ -394,15 +403,17 @@ export function createDevice(db: DeviceDb, transport: Transport, deviceId: strin
        * Removes a Participant softly, unless an Expense (deleted ones aside) references them.
        * Resolves to how many do: 0 when they were removed.
        */
-      removeParticipant: syncing((participant: Participant) =>
-        db.transaction('rw', db.trips, db.outbox, async () => {
-          const local = await readLocal(tripId);
-          const referencing = expensesReferencing(local.expenses, participant.id);
-          if (referencing === 0) {
-            await enqueue(tripId, { kind: 'participant', participant, removed: true });
-          }
-          return referencing;
-        }),
+      removeParticipant: syncing(
+        (participant: Participant) =>
+          db.transaction('rw', db.trips, db.outbox, async () => {
+            const local = await readLocal(tripId);
+            const referencing = expensesReferencing(local.expenses, participant.id);
+            if (referencing === 0) {
+              await enqueue(tripId, { kind: 'participant', participant, removed: true });
+            }
+            return referencing;
+          }),
+        (referencing) => referencing === 0,
       ),
 
       /**
@@ -441,14 +452,17 @@ export function createDevice(db: DeviceDb, transport: Transport, deviceId: strin
           }
           return problems;
         },
+        refusedNothing,
       ),
 
       /**
        * Deletes an Expense softly: it moves to Recently deleted, keeping its state, and saving
        * it again restores it. Otherwise like `saveExpense`.
        */
-      deleteExpense: syncing((expense: Expense, asRead: LocalExpense | null) =>
-        queueExpense(tripId, expense, asRead, true),
+      deleteExpense: syncing(
+        (expense: Expense, asRead: LocalExpense | null) =>
+          queueExpense(tripId, expense, asRead, true),
+        refusedNothing,
       ),
 
       /**
