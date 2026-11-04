@@ -5,7 +5,7 @@ These files are built for one instance: Owe Yeah run by osieka.dev at `owe-yeah-
 ## How a build reaches test
 
 1. A push to `main` runs CI. Once every job is green, `publish` pushes `ghcr.io/rafalosieka/owe-yeah` (the app) and `ghcr.io/rafalosieka/owe-yeah-migrator`, tagged by commit SHA.
-2. It renders `compose.yaml` with both images pinned by digest and commits it to the `deploy` branch as `test/compose.yaml`.
+2. It renders [`compose.yaml`](compose.yaml) with both images pinned by digest (`MIGRATOR_IMAGE` and `APP_IMAGE`, the only variables it fills in) and commits it to the `deploy` branch as `test/compose.yaml`.
 3. The host's stack polls `deploy` every ~5 minutes and redeploys on a change: `db`, then `migrate` to completion, then `app`, with `cloudflared` alongside.
 4. `verify-deploy` polls `https://owe-yeah-test.osieka.dev/healthz` until it reports the new commit, or fails the run after ~15 minutes.
 
@@ -14,13 +14,16 @@ These files are built for one instance: Owe Yeah run by osieka.dev at `owe-yeah-
 1. **Tunnel.** In Cloudflare Zero Trust, create a remotely-managed tunnel for the environment (one per environment, never shared) and copy its token. Add no public hostname yet.
 2. **Secrets**, as the stack's environment variables on the host, never in Git or GitHub:
    - `POSTGRES_PASSWORD`: URL-safe (no `@`, `/`, `:`).
-   - `VAPID_PUBLIC_KEY`, `VAPID_PRIVATE_KEY`: a pair of the environment's own, from `pnpm --filter @osi/owe-yeah-web exec web-push generate-vapid-keys`. Keep it once in use: a new pair cuts off every subscribed device.
+   - `VAPID_PUBLIC_KEY`, `VAPID_PRIVATE_KEY`: a pair of the environment's own, made once on any machine with the repo installed by `pnpm --filter @osi/owe-yeah-web exec web-push generate-vapid-keys`. Keep it once in use: a new pair cuts off every subscribed device until it turns notifications on again. Without the pair the app still runs, but notifications can't be turned on.
    - `VAPID_SUBJECT`: `mailto:owe-yeah@osieka.dev`.
    - `TUNNEL_TOKEN`: the tunnel's token.
    - `TEST_ENVIRONMENT=true` on test only, which turns on the test banner.
+
+   The stack refuses to start without `POSTGRES_PASSWORD` or `TUNNEL_TOKEN`.
+
 3. **Packages.** After the first `publish`, set both GHCR packages to public in their settings, so the host pulls them without a credential. Their images carry the license notices public distribution asks for (`/app/notices`).
 4. **Stack.** Create a stack from this repo, branch `deploy`, file `test/compose.yaml`, polling every ~5 minutes. Redeploying it by hand is the fallback.
-5. Check that `cloudflared` reports the tunnel healthy and `app` turns healthy.
+5. Check that `cloudflared` and `app` turn healthy: `cloudflared` once the tunnel holds a connection to Cloudflare, `app` once `/healthz` answers.
 
 ## Opening test to the public
 

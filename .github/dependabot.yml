@@ -22,3 +22,18 @@ updates:
     directory: '/'
     schedule:
       interval: 'weekly'
+
+  # The Node base image. The Vite+ build image follows the `vite-plus` catalog entry,
+  # upgraded with `vp migrate` like the packages above.
+  - package-ecosystem: 'docker'
+    directory: '/'
+    schedule:
+      interval: 'weekly'
+    ignore:
+      - dependency-name: 'ghcr.io/voidzero-dev/vite-plus'
+
+  # The osieka.dev compose's Postgres and cloudflared. CI fills in the app's own two images.
+  - package-ecosystem: 'docker-compose'
+    directory: '/deploy/osieka-dev'
+    schedule:
+      interval: 'weekly'

@@ -104,8 +104,8 @@ export default defineNuxtConfig({
     // self-hosted Frankfurter, or at a stand-in in tests.
     frankfurterUrl: 'https://api.frankfurter.dev',
     // The VAPID keys Notifications are sent with (`NUXT_VAPID_PUBLIC_KEY`,
-    // `NUXT_VAPID_PRIVATE_KEY`; `.env.example` says how to make a pair) and the
-    // contact the push services see (`NUXT_VAPID_SUBJECT`, a `mailto:` or `https:` URL).
+    // `NUXT_VAPID_PRIVATE_KEY`; `deploy/osieka-dev/README.md` says how to make a pair) and
+    // the contact the push services see (`NUXT_VAPID_SUBJECT`, a `mailto:` or `https:` URL).
     // Without keys, notifications can't be turned on. Read from the server at runtime, not
     // baked into the app: the device asks `/api/vapid-key` for the public one.
     vapidPublicKey: '',
