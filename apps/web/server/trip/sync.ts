@@ -85,7 +85,7 @@ export function createTripSync(db: Database, store: TripStore, rates: Rates, not
       await lockTrip(tx, tripId);
       const { name, currency } = change.trip;
       await tx.update(trips).set({ name, currency }).where(eq(trips.id, tripId));
-      await record(tx, change, tripId, tripId, null);
+      await recordChange(tx, change, tripId, tripId, null);
       return { changeId, status: 'accepted', version: null };
     });
   }
@@ -117,7 +117,7 @@ export function createTripSync(db: Database, store: TripStore, rates: Rates, not
         .returning({ id: participants.id });
       if (!upserted) return { changeId, status: 'rejected', problems: ['participantIdTaken'] };
 
-      await record(tx, change, tripId, participant.id, null);
+      await recordChange(tx, change, tripId, participant.id, null);
       return { changeId, status: 'accepted', version: null };
     });
   }
@@ -179,7 +179,7 @@ export function createTripSync(db: Database, store: TripStore, rates: Rates, not
           .set({ removed: false })
           .where(and(eq(participants.tripId, tripId), inArray(participants.id, restored)));
       }
-      await record(tx, change, tripId, id, stored.version);
+      await recordChange(tx, change, tripId, id, stored.version);
 
       const accepted = { changeId, status: 'accepted', version: stored.version } as const;
       return restored.length > 0 ? { ...accepted, restored } : accepted;
@@ -281,7 +281,7 @@ export function createTripSync(db: Database, store: TripStore, rates: Rates, not
       const trip = linked && (await store.readTrip(linked.id));
       if (!trip) return 'invalidLink';
       return {
-        trip: since === trip.version ? null : pulled(trip),
+        trip: since === trip.version ? null : snapshotOf(trip),
         rates: await rates.forTrip(trip),
       };
     },
@@ -308,7 +308,7 @@ async function lockTrip(tx: Transaction, tripId: string): Promise<WholeTrip> {
  * Records an applied change and bumps the Trip version, in the transaction that applied it.
  * A retry racing this one may have recorded it first; it was applied either way.
  */
-async function record(
+async function recordChange(
   tx: Transaction,
   change: SyncChange,
   tripId: string,
@@ -327,7 +327,7 @@ async function record(
 }
 
 /** The whole Trip as the pull returns it, with removed Participants kept apart. */
-function pulled({ participants: everyone, ...trip }: WholeTrip): TripSnapshot {
+function snapshotOf({ participants: everyone, ...trip }: WholeTrip): TripSnapshot {
   const shown = ({ id, name }: StoredParticipant) => ({ id, name });
   return {
     ...trip,
