@@ -16,14 +16,14 @@ Two reviews feed this file:
 
 ## Candidates
 
-### 1. Pull Trip sync out of the h3 handler (Strong). Status: decided (together with #2)
+### 1. Pull Trip sync out of the h3 handler (Strong). Status: done (together with #2; #77, #78, #80)
 
 - **Files:** `apps/web/server/api/trips/[id]/push.post.ts`, `apps/web/test/unit/device.spec.ts` (`FakeServer`, `acceptAll`), `apps/web/test/e2e/api/trips.spec.ts`
 - **Problem:** All of ADR 0002 on the server lives inside `defineEventHandler`, on the `getDb()` singleton: idempotency, Trip lock, conditional update by base version, Revisions, restoring Participants, Conflict and refusals. The only test runs through HTTP e2e and needs a Nuxt build. The client is tested against `FakeServer`, a second, hand-written version of the protocol that nothing keeps in step with the real one.
 - **Direction:** One server "Trip sync" module that takes a db or transaction and handles both push and pull. The handlers become thin adapters. Protocol tests run directly against Postgres, and `device.spec` can run against the real module through an in-process `Transport`.
 - **Check:** Does PGlite support `uuidv7()` (PG18)? If not, the `e2e-db` harness with Postgres 18 already exists.
 
-### 2. One read of an Expense from the database, always through the domain schema (Strong). Status: decided (together with #1)
+### 2. One read of an Expense from the database, always through the domain schema (Strong). Status: done (together with #1; #77)
 
 - **Files:** `push.post.ts:113-118`, `server/utils/reminders.ts:83-90`, `server/utils/rates.ts:36-41`, `server/utils/push.ts:211-237`, `revisions.get.ts`, `server/utils/trip-snapshot.ts:58-67` (the only path through `storedExpenseSchema.parse`)
 - **Problem:** "Expense from a row" is written five times, and only the pull parses through the schema. Reminders, notifications and revisions read the raw jsonb, so zod defaults and transforms apply in only one place.
