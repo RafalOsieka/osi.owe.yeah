@@ -135,8 +135,6 @@ export type KindedExpense<E extends Expense = Expense> =
   | { kind: 'receipt'; expense: Exclude<E, Repayment> }
   | { kind: 'plain' | 'income'; expense: Exclude<E, Repayment> & { lineItems: [LineItem] } };
 
-export type ExpenseKind = KindedExpense['kind'];
-
 /**
  * An Expense's kind, the one place that decides it:
  * - `repayment`: it has a recipient;

@@ -23,6 +23,8 @@ const trip: TripWithParticipants = {
   participants: [kasia, ania],
 };
 
+const both = { mode: 'even' as const, participantIds: [kasia.id, ania.id] };
+
 const lidl: Expense = {
   id: '019a2b3c-4d5e-7f00-8a1b-0000000000e1',
   title: 'Lidl Rovinj',
@@ -114,7 +116,6 @@ describe('expenseSchema', () => {
 });
 
 describe('expenseKind', () => {
-  const both = { mode: 'even' as const, participantIds: [kasia.id, ania.id] };
   const income: Expense = { ...lidl, lineItems: [{ ...lidl.lineItems[0]!, unitPrice: -480 }] };
   const shopping: Expense = {
     ...lidl,
@@ -195,7 +196,6 @@ describe('expenseProblems', () => {
   });
 
   describe('a Manual rate no rate can make', () => {
-    const both = { mode: 'even' as const, participantIds: [kasia.id, ania.id] };
     const inDollars: Expense = { ...lidl, currency: 'USD' };
     const charged = { kind: 'charged' as const, amount: 2100, currency: 'EUR' as const };
 

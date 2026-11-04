@@ -52,10 +52,8 @@ export {
 export type {
   Contribution,
   Expense,
-  ExpenseKind,
   ExpenseProblem,
   ExpenseState,
-  KindedExpense,
   ExpenseTime,
   Repayment,
   SplitExpense,
