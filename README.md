@@ -78,7 +78,7 @@ pnpm --filter @osi/owe-yeah-web exec web-push generate-vapid-keys
 
 Keep the pair once it is in use: a new one cuts off every subscribed device until it turns notifications on again. Without the keys the app still runs, but notifications can't be turned on.
 
-The rate limiter (nuxt-security) keys clients by the first `X-Forwarded-For` value, falling back to the socket address. The reverse proxy must therefore **overwrite** `X-Forwarded-For` with the real client IP (nginx: `proxy_set_header X-Forwarded-For $remote_addr;`). Without the header, every user shares the proxy's limit; if the proxy appends to a client-sent header, clients can spoof their way past the limit.
+The rate limiter (nuxt-security) keys clients by the `CF-Connecting-IP` header, which Cloudflare sets to the real client IP and clients can't forge. It never reads `X-Forwarded-For`, which a client can fill with a new address per request. Without Cloudflare in front the header is missing, so every client shares one limit for the whole app: a limit that still holds, but that one busy group can use up for everyone. A proxy of your own can set `CF-Connecting-IP` to the client address it sees (nginx: `proxy_set_header CF-Connecting-IP $remote_addr;`), as long as it overwrites any value the client sent.
 
 ## Naming
 

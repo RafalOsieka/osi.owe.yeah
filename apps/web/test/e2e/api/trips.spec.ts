@@ -307,6 +307,9 @@ describeApi('Trip API', () => {
       NUXT_NOTIFICATIONS_ALLOW_HTTP: 'true',
       NUXT_COMMIT_SHA: commit,
     },
+    // The PWA is off under Vitest for the nuxt suite's sake; this suite builds the real one,
+    // to check how its files are cached.
+    nuxtConfig: { pwa: { disable: false } },
   });
   beforeAll(server.beforeAll, server.ctx.options.setupTimeout);
   afterAll(server.afterAll, server.ctx.options.teardownTimeout);
@@ -318,6 +321,19 @@ describeApi('Trip API', () => {
 
     expect(response.status).toBe(200);
     expect(await response.json()).toEqual({ commit });
+  });
+
+  it('has caches revalidate the service worker and the app shell, and keep hashed assets', async () => {
+    const shell = await fetch('/');
+    const script = /src="(\/_nuxt\/[^"]+\.js)"/.exec(await shell.text())?.[1];
+
+    for (const path of ['/sw.js', '/', '/index.html', '/manifest.webmanifest']) {
+      const response = await fetch(path);
+      expect(response.status, path).toBe(200);
+      expect(response.headers.get('cache-control'), path).toBe('no-cache');
+    }
+    expect(script).toBeDefined();
+    expect((await fetch(script!)).headers.get('cache-control')).toContain('immutable');
   });
 
   it('accepts a Trip created offline on its first push, with Expenses in the same push', async () => {

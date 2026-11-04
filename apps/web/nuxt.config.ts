@@ -18,7 +18,8 @@ export default defineNuxtConfig({
   // (`useAppUpdatePrompt`). It also shows push notifications (#41).
   pwa: {
     // Off under Vitest, whose Nuxt environment can't load the service worker's virtual
-    // modules; the ui e2e suite builds outside Vitest and gets the real thing.
+    // modules; the ui e2e suite builds outside Vitest and gets the real thing, and the api
+    // suite turns it back on.
     disable: !!process.env.VITEST,
     strategies: 'injectManifest',
     srcDir: 'service-worker',
@@ -64,11 +65,10 @@ export default defineNuxtConfig({
     ],
     langDir: '../i18n/locales',
     vueI18n: '../i18n/i18n.config.ts',
+    // Follows the browser's language on every visit. Nothing remembers it: with no language
+    // switcher, a cookie for it wouldn't be strictly necessary, and would need consent.
     detectBrowserLanguage: {
-      useCookie: true,
-      cookieKey: 'i18n_locale',
-      cookieSecure: process.env.NODE_ENV === 'production',
-      cookieCrossOrigin: false,
+      useCookie: false,
       alwaysRedirect: false,
     },
   },
@@ -85,7 +85,11 @@ export default defineNuxtConfig({
   },
   css: ['~/assets/css/main.css'],
   // Bundle every Lucide icon referenced in app source, so icons never need a runtime fetch.
+  // A missing icon stays blank rather than being fetched from the Iconify API, which would
+  // send the visitor's IP to a third party.
   icon: {
+    provider: 'none',
+    fallbackToApi: false,
     clientBundle: {
       scan: true,
     },
@@ -116,6 +120,15 @@ export default defineNuxtConfig({
     // can't carry it.
     commitSha: 'dev',
   },
+  // The files that name a version of the app are revalidated on every request, so a new
+  // service worker isn't held back by a cache in between: Cloudflare caches `.js` by extension
+  // otherwise. The hashed build assets they point to keep Nuxt's year-long immutable cache.
+  routeRules: {
+    '/sw.js': { headers: { 'cache-control': 'no-cache' } },
+    '/': { headers: { 'cache-control': 'no-cache' } },
+    '/index.html': { headers: { 'cache-control': 'no-cache' } },
+    '/manifest.webmanifest': { headers: { 'cache-control': 'no-cache' } },
+  },
   compatibilityDate: '2025-07-15',
   // Nitro defaults to es2019, which lacks the BigInt literals the domain package's exact
   // arithmetic uses; the server runs on Node 24.
@@ -130,13 +143,16 @@ export default defineNuxtConfig({
     // The Trip link is the credential (ADR 0001) and there are no cookie sessions, so CSRF
     // tokens protect nothing here.
     csrf: false,
+    // Keyed on `CF-Connecting-IP`, which Cloudflare sets to the client's address and a client
+    // can't forge, unlike the `X-Forwarded-For` Cloudflare appends to. Without Cloudflare in
+    // front the header is missing, and every client shares one limit.
     // Off in development, so Vite's many module requests don't exhaust the shared bucket, and
     // for the e2e suites (`UI_E2E`, and the api suite built under Vitest), whose requests all
     // come from one address.
     rateLimiter:
       process.env.NODE_ENV === 'development' || process.env.UI_E2E || process.env.VITEST
         ? false
-        : undefined,
+        : { ipHeader: 'cf-connecting-ip' },
   },
   typescript: {
     // Disabled: the in-dev checker breaks under Nuxt's `/_nuxt/` base
