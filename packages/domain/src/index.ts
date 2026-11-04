@@ -34,6 +34,7 @@ export type { RoundedMoney } from './money.ts';
 export {
   deviceTimeZone,
   expenseIdSchema,
+  expenseKind,
   expenseProblemSchema,
   expenseProblems,
   expenseSchema,
@@ -41,7 +42,6 @@ export {
   expenseTimeSchema,
   expensesReferencing,
   groupByLocalDay,
-  isReceipt,
   isRepayment,
   expenseTitleSchema,
   localDateTime,
@@ -52,8 +52,10 @@ export {
 export type {
   Contribution,
   Expense,
+  ExpenseKind,
   ExpenseProblem,
   ExpenseState,
+  KindedExpense,
   ExpenseTime,
   Repayment,
   SplitExpense,

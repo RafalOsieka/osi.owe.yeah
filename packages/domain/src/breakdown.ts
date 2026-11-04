@@ -1,5 +1,5 @@
 import { takenOff } from './discount.ts';
-import { isReceipt, isRepayment, type Expense } from './expense.ts';
+import { expenseKind, type Expense } from './expense.ts';
 import { fromMinor } from './money.ts';
 import { goodsMinor, isDepositRefund } from './line-item.ts';
 import { add, divide, multiply, negate, rational, type Rational } from './rational.ts';
@@ -57,16 +57,15 @@ function addExpense(totals: PartTotals, expense: Expense, rate = rational(1n)): 
     }
   };
 
-  if (isRepayment(expense)) {
-    credit(
-      'repayments',
-      new Map([[expense.recipientId, fromMinor(expense.amount, expense.currency)]]),
-    );
+  const kinded = expenseKind(expense);
+  if (kinded.kind === 'repayment') {
+    const { recipientId, amount, currency } = kinded.expense;
+    credit('repayments', new Map([[recipientId, fromMinor(amount, currency)]]));
     return;
   }
-  const { lineItems, discount, currency, mainPayerId } = expense;
-  const { total, assigned, unassigned } = receiptShares(expense);
-  if (isReceipt(expense)) {
+  const { lineItems, discount, currency, mainPayerId } = kinded.expense;
+  const { assigned, unassigned } = receiptShares(kinded.expense);
+  if (kinded.kind === 'receipt') {
     // The fraction of the goods the Receipt discount takes off.
     const goods = goodsMinor(lineItems);
     const off = goods.numerator === 0n ? zero : divide(takenOff(discount, goods), goods);
@@ -83,7 +82,7 @@ function addExpense(totals: PartTotals, expense: Expense, rate = rational(1n)): 
       credit('receiptDiscounts', byWeight(negate(multiply(line.net, off))));
     }
   } else {
-    credit(total.numerator < 0n ? 'income' : 'expenses', assigned);
+    credit(kinded.kind === 'income' ? 'income' : 'expenses', assigned);
   }
   // Whatever nobody has been given yet is the Main payer's own until it is.
   if (unassigned.numerator !== 0n) credit('unassigned', new Map([[mainPayerId, unassigned]]));

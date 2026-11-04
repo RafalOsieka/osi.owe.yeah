@@ -1,11 +1,10 @@
 <script setup lang="ts">
 import {
   claimView,
+  expenseKind,
   expenseRate,
   expenseShares,
   groupByLocalDay,
-  isReceipt,
-  isRepayment,
   rateSummary,
   spendingTotal,
   type Rational,
@@ -61,6 +60,23 @@ function forYou(expense: LocalExpense): { text: string; tone: string } | null {
   }
 }
 
+// A row's summary by the Expense's kind, e.g. "Kasia paid · for all 4" or "Receipt · 6 items".
+function summaryOf(expense: LocalExpense, payer: string, forWhom: string, items: number): string {
+  const kinded = expenseKind(expense);
+  switch (kinded.kind) {
+    case 'receipt':
+      return t('receipt.summary', items);
+    case 'repayment': {
+      const recipient = participants.value.get(kinded.expense.recipientId)?.name ?? '?';
+      return t('repayment.fromTo', { payer, recipient });
+    }
+    case 'income':
+      return t('expense.receivedFor', { name: payer, forWhom });
+    case 'plain':
+      return t('expense.paidFor', { name: payer, forWhom });
+  }
+}
+
 const days = computed(() =>
   groupByLocalDay(trip.expenses).map(({ day, expenses }) => {
     const rows = expenses.map((expense) => {
@@ -71,22 +87,11 @@ const days = computed(() =>
         count === trip.participants.length
           ? t('expense.forAll', { count })
           : t('expense.forSome', { count });
-      let summary: string;
-      if (isReceipt(expense)) {
-        summary = t('receipt.summary', lineItems.length);
-      } else if (isRepayment(expense)) {
-        const recipient = participants.value.get(expense.recipientId)?.name ?? '?';
-        summary = t('repayment.fromTo', { payer, recipient });
-      } else if (total.numerator < 0n) {
-        summary = t('expense.receivedFor', { name: payer, forWhom });
-      } else {
-        summary = t('expense.paidFor', { name: payer, forWhom });
-      }
       return {
         expense,
         total,
         payer: participants.value.get(expense.mainPayerId),
-        summary,
+        summary: summaryOf(expense, payer, forWhom, lineItems.length),
         unassigned: lineItems.filter(({ unassigned }) => unassigned.numerator !== 0n).length,
         rate: expenseRate(expense, trip),
         forYou: forYou(expense),

@@ -53,7 +53,8 @@ export function expenseRate(expense: Expense, trip: TripRates): ExpenseRate {
  * The rate converting an Expense into the Trip currency. In the Trip currency itself it is 1.
  * A Manual rate replaces the automatic one: typed as a rate it is that rate; typed as the
  * amount charged it is charged ÷ total, exact, so the charged amount stays what the Expense
- * comes to however its Receipt is edited (`null` while the total is zero). Otherwise it is
+ * comes to however its Receipt is edited (`null` while the total is zero, which only an
+ * Expense still being typed can be: `expenseProblems` refuses to save it). Otherwise it is
  * looked up by the Expense's local date and currency, never stored on it (ADR 0003): see
  * `automaticRate`.
  */

@@ -141,7 +141,9 @@
       "lineDiscountExceedsLineTotal": "Pozycja ma rabat większy niż jej wartość.",
       "receiptDiscountExceedsLineItems": "Rabat na paragon jest większy niż pozycje po ich własnych rabatach.",
       "contributionFromMainPayer": "Główny płatnik nie może mieć też dopłaty.",
-      "contributionsExceedTotal": "Dopłaty wynoszą więcej niż cały wydatek."
+      "contributionsExceedTotal": "Dopłaty wynoszą więcej niż cały wydatek.",
+      "chargedWithoutTotal": "Pobrana kwota wymaga sumy różnej od zera.",
+      "manualRateToOwnCurrency": "Kurs ręczny musi przeliczać na inną walutę niż waluta wydatku."
     },
     "emptyHelp": "Kto za coś płaci, dodaje to tutaj.",
     "addFirst": "Dodaj pierwszy wydatek",
@@ -361,7 +363,9 @@
       "lineDiscountExceedsLineTotal": "rabat pozycji jest większy niż jej wartość.",
       "receiptDiscountExceedsLineItems": "rabat na paragon jest większy niż pozycje po ich własnych rabatach.",
       "contributionFromMainPayer": "główny płatnik nie może mieć też dopłaty.",
-      "contributionsExceedTotal": "dopłaty wynoszą więcej niż cały wydatek."
+      "contributionsExceedTotal": "dopłaty wynoszą więcej niż cały wydatek.",
+      "chargedWithoutTotal": "pobrana kwota wymaga sumy różnej od zera.",
+      "manualRateToOwnCurrency": "kurs ręczny musi przeliczać na inną walutę niż waluta wydatku."
     },
     "pullToRefresh": "Pociągnij, aby zsynchronizować",
     "releaseToRefresh": "Puść, aby zsynchronizować"
