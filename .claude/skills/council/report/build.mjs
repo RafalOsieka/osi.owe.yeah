@@ -253,20 +253,18 @@ const html = `<!DOCTYPE html>
 <meta name="viewport" content="width=device-width, initial-scale=1">
 <title>${esc(data.title)}</title>
 <style>
+/* Dark only: the page frames screenshots of both themes, and a dark frame is easier on the eyes. */
 :root {
-  --bg: #f5f5f4; --surface: #fff; --ink: #1c1917; --soft: #57534e; --rule: #e7e5e4;
-  --accent: #059669; --accent-soft: #d1fae5; --bar: #a8a29e;
+  color-scheme: dark;
+  --bg: #0c0a09; --surface: #1c1917; --ink: #f5f5f4; --soft: #a8a29e; --rule: #292524;
+  --accent: #10b981; --accent-soft: #064e3b; --bar: #57534e;
   --sans: ui-sans-serif, system-ui, -apple-system, "Segoe UI", sans-serif;
   --mono: ui-monospace, "SF Mono", Menlo, Consolas, monospace;
-}
-@media (prefers-color-scheme: dark) {
-  :root { --bg: #0c0a09; --surface: #1c1917; --ink: #f5f5f4; --soft: #a8a29e; --rule: #292524;
-          --accent: #10b981; --accent-soft: #064e3b; --bar: #57534e; }
 }
 * { box-sizing: border-box; }
 [hidden] { display: none !important; }
 html { background: var(--bg); color: var(--ink); }
-body { margin: 0; font: 16px/1.55 var(--sans); }
+body { margin: 0; min-height: 100vh; background: var(--bg); font: 16px/1.55 var(--sans); }
 main { max-width: 72rem; margin: 0 auto; padding: 2.5rem 1.25rem 4rem; }
 a { color: var(--accent); }
 :focus-visible { outline: 2px solid var(--accent); outline-offset: 2px; }
@@ -305,7 +303,7 @@ h3.label { font-size: .85rem; color: var(--soft); font-weight: 600; margin: 1.75
 .changes { margin: 0; padding-left: 1.2rem; max-width: 75ch; }
 .theme-switch, .view-switch { display: inline-flex; border: 1px solid var(--rule); border-radius: 999px; overflow: hidden; margin: 0 .5rem .75rem 0; }
 .theme-switch button, .view-switch button { font: inherit; font-size: .85rem; border: 0; background: var(--surface); color: var(--ink); padding: .3rem .9rem; cursor: pointer; text-transform: capitalize; }
-.theme-switch button[aria-pressed="true"], .view-switch button[aria-pressed="true"] { background: var(--accent); color: #fff; }
+.theme-switch button[aria-pressed="true"], .view-switch button[aria-pressed="true"] { background: var(--accent); color: #0c0a09; }
 .strip { display: grid; grid-auto-flow: column; grid-auto-columns: 9.5rem; gap: .75rem; overflow-x: auto; padding-bottom: .5rem; }
 .strip figure { margin: 0; }
 .shot { padding: 0; border: 1px solid var(--rule); border-radius: 12px; overflow: hidden; background: var(--surface); cursor: zoom-in; display: block; width: 100%; aspect-ratio: 390 / 600; }
