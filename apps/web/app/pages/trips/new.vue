@@ -121,9 +121,11 @@ async function create(): Promise<void> {
           <p class="text-sm text-muted">{{ $t('trip.create.othersHelp') }}</p>
           <UButton
             variant="ghost"
+            color="neutral"
+            size="sm"
             icon="i-lucide-plus"
             :label="$t('trip.create.addParticipant')"
-            class="-mx-2.5"
+            class="-mx-2 text-muted"
             @click="state.others.push('')"
           />
         </fieldset>

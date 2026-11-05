@@ -60,12 +60,7 @@ const details = computed(() => {
               ? t('receipt.depositRefund')
               : t('receipt.unnamed', { position: index + 1 })),
           quantity: item.quantity,
-          unitPrice: formatMoney(
-            fromMinor(item.unitPrice, expense.currency),
-            expense.currency,
-            locale.value,
-            'number',
-          ),
+          unitPrice: money(fromMinor(item.unitPrice, expense.currency)),
           split: splitText(item.split, everyone.value),
           ...lineItems[index]!,
         }))
@@ -228,7 +223,12 @@ function openBreakdown(participantId: string): void {
                 {{ $t('receipt.depositFact', { deposit: money(line.deposit) }) }}
               </span>
               <span v-if="line.unassigned.numerator !== 0n" class="block text-sm text-warning">
-                {{ $t('receipt.notAssigned', { amount: money(line.unassigned) }) }}
+                {{
+                  $t(
+                    details.discount ? 'receipt.notAssignedBeforeDiscount' : 'receipt.notAssigned',
+                    { amount: money(line.unassigned) },
+                  )
+                }}
               </span>
             </span>
             <span class="shrink-0 font-medium text-highlighted tabular-nums">

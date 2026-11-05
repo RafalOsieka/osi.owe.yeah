@@ -161,7 +161,7 @@ function dayHeading(day: string): string {
               <span class="line-clamp-2 font-medium text-highlighted wrap-anywhere">
                 {{ row.expense.title }}
               </span>
-              <span class="mt-0.5 flex min-w-0 items-center gap-1 text-sm text-muted">
+              <span class="mt-0.5 flex min-w-0 flex-wrap items-center gap-1 text-sm text-muted">
                 <UBadge
                   v-if="row.expense.unsynced?.status === 'conflict'"
                   :label="$t('sync.conflictBadge')"
@@ -202,7 +202,7 @@ function dayHeading(day: string): string {
                   size="sm"
                   class="shrink-0"
                 />
-                <span class="truncate">{{ row.summary }}</span>
+                <span class="w-full truncate">{{ row.summary }}</span>
               </span>
             </span>
             <span class="shrink-0 text-end tabular-nums">

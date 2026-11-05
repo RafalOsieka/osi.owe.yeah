@@ -44,16 +44,20 @@ const time = computed(() => {
       />
     </template>
   </UFormField>
-  <button
-    v-else
-    type="button"
-    class="inline-flex h-10 max-w-full cursor-pointer items-center gap-2 rounded-full bg-elevated px-3.5 text-start text-sm text-default transition-colors hover:bg-accented/70"
-    @click="open = true"
-  >
-    <UIcon name="i-lucide-calendar-clock" class="size-4 shrink-0 text-muted" />
-    <span class="sr-only">{{ $t('expense.when') }}:</span>
-    <span class="min-w-0 truncate">
-      {{ $t('expense.timeInZone', { time, zone: zoneName(zone) }) }}
-    </span>
-  </button>
+  <div v-else>
+    <p class="mb-2 text-sm font-medium text-highlighted" aria-hidden="true">
+      {{ $t('expense.when') }}
+    </p>
+    <button
+      type="button"
+      class="inline-flex h-10 max-w-full cursor-pointer items-center gap-2 rounded-full bg-elevated px-3.5 text-start text-sm text-default transition-colors hover:bg-accented/70"
+      @click="open = true"
+    >
+      <UIcon name="i-lucide-calendar-clock" class="size-4 shrink-0 text-muted" />
+      <span class="sr-only">{{ $t('expense.when') }}:</span>
+      <span class="min-w-0 truncate">
+        {{ $t('expense.timeInZone', { time, zone: zoneName(zone) }) }}
+      </span>
+    </button>
+  </div>
 </template>

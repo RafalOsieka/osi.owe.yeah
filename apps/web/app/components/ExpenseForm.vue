@@ -16,8 +16,8 @@ import {
 // options in a card at the end: whether it is money received (Income, saved with a negative
 // amount so nobody types a minus) and "Itemise as a Receipt", which grows the one Line item
 // into the Till list on the same page: the amount becomes the computed Receipt total, each
-// Line item has its own split, Line discount and Deposit, Deposit refunds come off it, and a Receipt discount below "Paid by" comes off the goods. The
-// Deposits total shows under the Receipt total, to check against the Deposits printed on the
+// Line item has its own split, Line discount and Deposit, Deposit refunds come off it, and a
+// Receipt discount right under the lines comes off the goods. The Deposits total shows under the Receipt total, to check against the Deposits printed on the
 // paper Receipt, and the total may go negative. A Receipt may be saved with value not
 // assigned yet, which counts as the Main payer's until it is. Under "Paid by", any Expense
 // but Income takes Contributions from others (so the Income switch hides while there are
@@ -215,8 +215,17 @@ async function submit(): Promise<void> {
             v-model="state.lineItems"
             :participants="trip.participants"
             :currency="state.currency"
+            :discounted="!!reading.receipt?.discount"
           />
         </UFormField>
+
+        <DiscountField
+          v-if="state.lineItems"
+          v-model="state.discount"
+          :label="$t('receipt.receiptDiscount')"
+          :currency="state.currency"
+          :error="discountError"
+        />
 
         <UFormField
           name="mainPayerId"
@@ -244,14 +253,6 @@ async function submit(): Promise<void> {
             :rest="reading.mainPayerPart"
           />
         </UFormField>
-
-        <DiscountField
-          v-if="state.lineItems"
-          v-model="state.discount"
-          :label="$t('receipt.receiptDiscount')"
-          :currency="state.currency"
-          :error="discountError"
-        />
 
         <UFormField
           v-if="!state.lineItems"

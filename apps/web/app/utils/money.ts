@@ -19,7 +19,8 @@ export function shownSign(amount: Rational, currency: string): -1 | 0 | 1 {
 /**
  * An exact amount as the UI shows it: rounded to the currency's minor units and formatted
  * for the locale, with "≈ " in front when rounding changed it (e.g. "≈ €3.33"), or when it is
- * `approximate` anyway, e.g. converted at a Provisional rate.
+ * `approximate` anyway, e.g. converted at a Provisional rate. Negative amounts take a true
+ * minus sign ("−€1.00"), as wide as the plus.
  */
 export function formatMoney(
   amount: Rational,
@@ -39,7 +40,7 @@ export function formatMoney(
           maximumFractionDigits: digits,
           signDisplay,
         });
-  const formatted = format.format(decimal);
+  const formatted = format.format(decimal).replace('-', '\u2212');
   return exact && !approximate ? formatted : `≈ ${formatted}`;
 }
 
@@ -66,6 +67,8 @@ export function formatDiscount(
     style: 'percent',
     maximumFractionDigits: 2,
     signDisplay: 'always',
-  }).format(-discount.basisPoints / 10_000);
+  })
+    .format(-discount.basisPoints / 10_000)
+    .replace('-', '\u2212');
   return `${percent} · ${money}`;
 }

@@ -17,7 +17,7 @@ const model = defineModel<T>({ required: true });
       :key="option.value"
       type="button"
       :aria-pressed="model === option.value"
-      class="flex-1 cursor-pointer rounded-full px-3 py-1.5 text-sm font-medium whitespace-nowrap text-muted transition-colors hover:text-default focus-visible:outline-2 focus-visible:outline-primary aria-pressed:bg-default aria-pressed:text-highlighted aria-pressed:shadow-sm dark:aria-pressed:bg-accented"
+      class="flex flex-1 cursor-pointer items-center justify-center rounded-full px-3 py-1.5 text-sm font-medium whitespace-nowrap text-muted transition-colors hover:text-default focus-visible:outline-2 focus-visible:outline-primary aria-pressed:bg-default aria-pressed:text-highlighted aria-pressed:shadow-sm dark:aria-pressed:bg-accented"
       @click="model = option.value"
     >
       {{ option.label }}

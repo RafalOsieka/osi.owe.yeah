@@ -18,6 +18,10 @@ export default defineAppConfig({
     },
     input: { slots: { base: 'rounded-lg' }, defaultVariants: { size: 'xl' } },
     selectMenu: { slots: { base: 'rounded-lg' }, defaultVariants: { size: 'xl' } },
+    inputNumber: {
+      slots: { base: 'rounded-lg' },
+      defaultVariants: { size: 'xl', color: 'neutral' },
+    },
     // Sheets open from the bottom of the app's centered column, not the whole window, with
     // rounder top corners than the cards on the page.
     drawer: {

@@ -34,8 +34,7 @@ const rows = computed(() => {
       participantId,
       participant: byId.get(participantId),
       name: byId.get(participantId)?.name ?? '?',
-      // With a true minus sign, which is as wide as the plus.
-      amount: formatMoney(rounded, currency, locale.value, 'signedCurrency').replace('-', '−'),
+      amount: formatMoney(rounded, currency, locale.value, 'signedCurrency'),
       tone: sign < 0 ? 'text-error' : sign > 0 ? 'text-success' : 'text-muted',
       bar: {
         class: sign < 0 ? 'rounded-s-full bg-error/80' : 'rounded-e-full bg-success',

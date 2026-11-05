@@ -8,13 +8,20 @@ import {
 } from '~/utils/expense-draft';
 
 // A Receipt's Line items as the Till list enters them, at the till: one line after the
-// other, each opened in place to edit it (one at a time), with the add forms at the end: one
-// for goods, with an optional Deposit per unit, and one for a Deposit refund. New goods copy
+// other, each opened in place to edit it (one at a time), with the add forms at the end, each
+// folded into a row until tapped: one for goods, with an optional Deposit per unit, and one
+// for a Deposit refund. New goods copy
 // the previous goods' split when it was Even, and otherwise start Even across all
 // Participants; a Deposit refund always starts Even across all Participants.
-const { participants, currency } = defineProps<{
+const {
+  participants,
+  currency,
+  discounted = false,
+} = defineProps<{
   participants: readonly Participant[];
   currency: string;
+  /** Whether a Receipt discount applies (`TillLine`). */
+  discounted?: boolean;
 }>();
 const lineItems = defineModel<DraftLineItem[]>({ required: true });
 
@@ -40,6 +47,15 @@ function addRefusal(line: DraftLineItem): string | null {
 const adding = reactive({ name: '', price: '', quantity: 1, deposit: '' });
 const addError = ref<string | null>(null);
 const priceInput = useTemplateRef('price');
+
+// Which add form is open. Each stays folded into one row until tapped, so the Receipt leads;
+// the goods form opens on its price, as the till prints it.
+const composing = ref<'goods' | 'refund' | null>(null);
+async function compose(form: 'goods' | 'refund'): Promise<void> {
+  composing.value = form;
+  await nextTick();
+  if (form === 'goods') priceInput.value?.inputRef?.focus();
+}
 
 function add(): void {
   const line = draftLineItem({
@@ -106,6 +122,7 @@ function remove(index: number): void {
           :open="openKey === line.key"
           :participants="participants"
           :currency="currency"
+          :discounted="discounted"
           :position="index + 1"
           :first="index === 0"
           :last="index === lineItems.length - 1"
@@ -116,13 +133,36 @@ function remove(index: number): void {
         />
       </ol>
 
+      <button
+        v-if="composing !== 'goods'"
+        type="button"
+        class="flex w-full cursor-pointer items-center gap-3 px-4 py-3 text-start font-medium text-primary transition-colors hover:bg-elevated/50"
+        :class="{ 'border-t border-default': lineItems.length > 0 }"
+        @click="compose('goods')"
+      >
+        <span class="grid size-7 place-items-center rounded-full bg-primary/10">
+          <UIcon name="i-lucide-plus" class="size-4" />
+        </span>
+        {{ $t('receipt.addLineItem') }}
+      </button>
       <div
+        v-else
         role="group"
         :aria-label="$t('receipt.addLineItem')"
         class="space-y-2 bg-elevated/40 p-3"
         :class="{ 'border-t border-default': lineItems.length > 0 }"
       >
-        <p class="text-xs font-medium text-muted">{{ $t('receipt.addLineItem') }}</p>
+        <div class="flex items-center justify-between">
+          <p class="text-xs font-medium text-muted">{{ $t('receipt.addLineItem') }}</p>
+          <UButton
+            icon="i-lucide-x"
+            color="neutral"
+            variant="ghost"
+            size="xs"
+            :aria-label="$t('receipt.closeAdding')"
+            @click="composing = null"
+          />
+        </div>
         <UInput
           v-model="adding.name"
           :placeholder="$t('receipt.namePlaceholder')"
@@ -173,6 +213,7 @@ function remove(index: number): void {
           <UButton
             icon="i-lucide-plus"
             :label="$t('receipt.add')"
+            variant="soft"
             size="lg"
             class="w-28 justify-center"
             @click="add"
@@ -181,12 +222,34 @@ function remove(index: number): void {
         <p v-if="addError" class="text-sm text-error">{{ addError }}</p>
       </div>
 
+      <button
+        v-if="composing !== 'refund'"
+        type="button"
+        class="flex w-full cursor-pointer items-center gap-3 px-4 py-3 text-start font-medium text-primary transition-colors hover:bg-elevated/50 border-t border-default"
+        @click="compose('refund')"
+      >
+        <span class="grid size-7 place-items-center rounded-full bg-primary/10">
+          <UIcon name="i-lucide-undo-2" class="size-4" />
+        </span>
+        {{ $t('receipt.addDepositRefund') }}
+      </button>
       <div
+        v-else
         role="group"
         :aria-label="$t('receipt.addDepositRefund')"
         class="space-y-2 border-t border-default bg-elevated/40 p-3"
       >
-        <p class="text-xs font-medium text-muted">{{ $t('receipt.addDepositRefund') }}</p>
+        <div class="flex items-center justify-between">
+          <p class="text-xs font-medium text-muted">{{ $t('receipt.addDepositRefund') }}</p>
+          <UButton
+            icon="i-lucide-x"
+            color="neutral"
+            variant="ghost"
+            size="xs"
+            :aria-label="$t('receipt.closeAdding')"
+            @click="composing = null"
+          />
+        </div>
         <div class="flex gap-2">
           <UInput
             v-model="refundAmount"

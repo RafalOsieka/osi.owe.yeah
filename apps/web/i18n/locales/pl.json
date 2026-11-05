@@ -238,7 +238,10 @@
     "refundPlaceholder": "Kwota z bonu",
     "refundAmount": "Kwota",
     "refundHelp": "Pieniądze za oddane opakowania zwrotne, często bon wykorzystany przy kasie. Odejmowany od sumy, dzielony osobno i nigdy nie rabatowany.",
-    "checkAmount": "Sprawdź kwotę."
+    "checkAmount": "Sprawdź kwotę.",
+    "done": "Gotowe",
+    "closeAdding": "Zamknij",
+    "notAssignedBeforeDiscount": "{amount} jeszcze nieprzypisane, przed rabatem na paragon"
   },
   "contribution": {
     "title": "Dopłaty",

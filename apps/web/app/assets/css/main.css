@@ -22,6 +22,7 @@
   --ui-primary: var(--ui-color-primary-600);
   --ui-success: var(--ui-color-success-600);
   --ui-error: var(--ui-color-error-600);
+  --ui-warning: var(--ui-color-warning-700);
   --ui-border: color-mix(in oklab, var(--ui-color-neutral-200) 80%, transparent);
 }
 
@@ -33,6 +34,14 @@
   --ui-success: var(--ui-color-success-500);
   --ui-error: var(--ui-color-error-400);
   --ui-border: color-mix(in oklab, var(--ui-color-neutral-800) 80%, transparent);
+}
+
+p,
+li,
+h1,
+h2,
+h3 {
+  text-wrap: pretty;
 }
 
 /* A white (dark: raised) rounded surface on the canvas, holding a list or a group of rows. */

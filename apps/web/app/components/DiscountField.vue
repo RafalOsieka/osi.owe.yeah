@@ -43,7 +43,7 @@ const kind = computed({
         v-model="kind"
         :options="kinds"
         :label="$t('receipt.discountKind', { label })"
-        class="shrink-0 self-center"
+        class="shrink-0 self-stretch"
       />
     </div>
   </UFormField>

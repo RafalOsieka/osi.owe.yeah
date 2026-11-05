@@ -492,6 +492,7 @@ test('a Receipt entered offline at the till, Line item by Line item, reaches a s
   await page.getByRole('link', { name: 'Add the first Expense' }).click();
   await page.getByLabel('Title').fill('Lidl Rovinj');
   await page.getByRole('button', { name: 'Itemise as a Receipt' }).click();
+  await page.getByRole('button', { name: 'Add a Line item' }).click();
   const adding = page.getByRole('group', { name: 'Add a Line item' });
   const addLine = async (price: string, name: string, quantity = '1') => {
     await adding.getByLabel('New Line item unit price').fill(price);
@@ -505,7 +506,7 @@ test('a Receipt entered offline at the till, Line item by Line item, reaches a s
   // Six waters copy the bread's Even split, then go to Kasia and Ania by Units.
   await addLine('2,49', 'Bread');
   await addLine(',29', 'Water', '6');
-  await expect(line('Water')).toContainText('6 × 0.29 · Even · for all 3');
+  await expect(line('Water')).toContainText('6 × €0.29 · Even · for all 3');
   await line('Water').getByRole('button', { name: /Water/ }).click();
   await line('Water').getByRole('button', { name: 'Units' }).click();
   await expect(line('Water')).toContainText('€1.74 not assigned yet');
@@ -552,7 +553,7 @@ test('a Receipt entered offline at the till, Line item by Line item, reaches a s
   const items = otherPage.getByRole('region', { name: 'Line items' }).getByRole('listitem');
   await expect(items).toHaveCount(3);
   await expect(items.nth(1)).toContainText('Chocolate');
-  await expect(items.nth(2)).toContainText('6 × 0.29 · Units · Kasia 3, Ania 3');
+  await expect(items.nth(2)).toContainText('6 × €0.29 · Units · Kasia 3, Ania 3');
   await other.close();
 });
 
@@ -566,6 +567,7 @@ test('a Line discount follows the Units and a Receipt discount is shared by what
   await page.getByRole('link', { name: 'Add the first Expense' }).click();
   await page.getByLabel('Title').fill('Konoba');
   await page.getByRole('button', { name: 'Itemise as a Receipt' }).click();
+  await page.getByRole('button', { name: 'Add a Line item' }).click();
   const adding = page.getByRole('group', { name: 'Add a Line item' });
   await adding.getByLabel('New Line item unit price').fill('2,00');
   await adding.getByLabel('New Line item quantity').fill('5');
@@ -579,7 +581,7 @@ test('a Line discount follows the Units and a Receipt discount is shared by what
   await beer.getByLabel('Units for Ania').fill('2');
   await beer.getByLabel('Units for Ola').fill('1');
   await beer.getByRole('textbox', { name: 'Line discount' }).fill('1');
-  await expect(beer).toContainText('Discount -€1.00');
+  await expect(beer).toContainText('Discount −€1.00');
   const total = page.getByRole('status', { name: 'Receipt total' });
   await expect(total).toHaveText('€9.00');
 
@@ -589,7 +591,7 @@ test('a Line discount follows the Units and a Receipt discount is shared by what
     .getByRole('button', { name: '%' })
     .click();
   await expect(total).toHaveText('€8.10');
-  await expect(page.getByRole('main')).toContainText('Receipt discount -10% · -€0.90');
+  await expect(page.getByRole('main')).toContainText('Receipt discount −10% · −€0.90');
   await page.getByRole('button', { name: 'Save Expense' }).click();
   const row = page.getByRole('link', { name: /Konoba/ });
   await expect(row).not.toContainText('not synced');
@@ -603,9 +605,9 @@ test('a Line discount follows the Units and a Receipt discount is shared by what
   await expect(otherRow).toContainText('your share €3.24');
   await otherRow.click();
   const main = otherPage.getByRole('main');
-  await expect(main).toContainText('Discount -€1.00');
+  await expect(main).toContainText('Discount −€1.00');
   await expect(main).toContainText('Receipt discount');
-  await expect(main).toContainText('-10% · -€0.90');
+  await expect(main).toContainText('−10% · −€0.90');
   await other.close();
 });
 
@@ -619,6 +621,7 @@ test('a Deposit is never discounted, and a Deposit refund comes off the Receipt 
   await page.getByRole('link', { name: 'Add the first Expense' }).click();
   await page.getByLabel('Title').fill('Lidl Rovinj');
   await page.getByRole('button', { name: 'Itemise as a Receipt' }).click();
+  await page.getByRole('button', { name: 'Add a Line item' }).click();
   const adding = page.getByRole('group', { name: 'Add a Line item' });
   await adding.getByLabel('New Line item unit price').fill('0,53');
   await adding.getByLabel('New Line item quantity').fill('10');
@@ -639,13 +642,15 @@ test('a Deposit is never discounted, and a Deposit refund comes off the Receipt 
     .click();
   await expect(total).toHaveText('€7.27');
 
+  await page.getByRole('button', { name: 'Add a Deposit refund' }).click();
+
   const refund = page.getByRole('group', { name: 'Add a Deposit refund' });
   await refund.getByLabel('Deposit refund amount').fill('1');
   await refund.getByRole('button', { name: 'Add' }).click();
   await expect(total).toHaveText('€6.27');
   const lines = page.getByRole('region', { name: 'Line items' }).getByRole('listitem');
   await expect(lines.nth(1)).toContainText('Deposit refund');
-  await expect(lines.nth(1)).toContainText('-€1.00');
+  await expect(lines.nth(1)).toContainText('−€1.00');
   await page.getByRole('button', { name: 'Save Expense' }).click();
   const row = page.getByRole('link', { name: /Lidl Rovinj/ });
   await expect(row).not.toContainText('not synced');
@@ -674,6 +679,7 @@ test('a share on a Receipt and a bar on Balances open where the share comes from
   await page.getByRole('link', { name: 'Add the first Expense' }).click();
   await page.getByLabel('Title').fill('Lidl Rovinj');
   await page.getByRole('button', { name: 'Itemise as a Receipt' }).click();
+  await page.getByRole('button', { name: 'Add a Line item' }).click();
   const adding = page.getByRole('group', { name: 'Add a Line item' });
   await adding.getByLabel('New Line item unit price').fill('0,53');
   await adding.getByLabel('New Line item quantity').fill('10');
@@ -684,6 +690,7 @@ test('a share on a Receipt and a bar on Balances open where the share comes from
     .getByRole('group', { name: 'Receipt discount: amount or percent' })
     .getByRole('button', { name: '%' })
     .click();
+  await page.getByRole('button', { name: 'Add a Deposit refund' }).click();
   const refund = page.getByRole('group', { name: 'Add a Deposit refund' });
   await refund.getByLabel('Deposit refund amount').fill('1');
   await refund.getByRole('button', { name: 'Add' }).click();
@@ -695,8 +702,8 @@ test('a share on a Receipt and a bar on Balances open where the share comes from
   const sheet = page.getByRole('dialog', { name: "Ania's share" });
   await expect(sheet).toContainText('Goods at full price≈ +€1.77');
   await expect(sheet).toContainText('Deposits≈ +€0.83');
-  await expect(sheet).toContainText('Deposit refunds≈ -€0.33');
-  await expect(sheet).toContainText('Receipt discount≈ -€0.18');
+  await expect(sheet).toContainText('Deposit refunds≈ −€0.33');
+  await expect(sheet).toContainText('Receipt discount≈ −€0.18');
   await expect(sheet).toContainText('Share€2.09');
   await expect(sheet).toContainText('rounded to the cent');
 
@@ -926,7 +933,7 @@ test('settle up: Income, then the suggested Repayments, until the Trip is Settle
   await page.getByRole('button', { name: 'Save Income' }).click();
   const income = page.getByRole('link', { name: /Bottles/ });
   await expect(income).toContainText('Ola received · for all 3');
-  await expect(income).toContainText('-€6.00');
+  await expect(income).toContainText('−€6.00');
   await expect(income).toContainText('you get back €2.00');
 
   // Kasia is owed 22.00: Ola owes 14.00 and Ania 8.00. The total is net of the Income.

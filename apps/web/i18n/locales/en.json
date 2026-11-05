@@ -238,7 +238,10 @@
     "refundPlaceholder": "Voucher amount",
     "refundAmount": "Amount",
     "refundHelp": "Money back for returned packaging, often a voucher used at the till. It comes off the total, is split on its own and is never discounted.",
-    "checkAmount": "Check the amount."
+    "checkAmount": "Check the amount.",
+    "done": "Done",
+    "closeAdding": "Close",
+    "notAssignedBeforeDiscount": "{amount} not assigned yet, before the Receipt discount"
   },
   "contribution": {
     "title": "Contributions",
