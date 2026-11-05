@@ -595,6 +595,10 @@ test('a Line discount follows the Units and a Receipt discount is shared by what
   await beer.getByLabel('Units for Kasia').fill('2');
   await beer.getByLabel('Units for Ania').fill('2');
   await beer.getByLabel('Units for Ola').fill('1');
+  // The stepper takes what is typed when it loses focus; once every unit is assigned, the
+  // unassigned note above goes and the line moves up.
+  await beer.getByLabel('Units for Ola').press('Tab');
+  await expect(page.getByRole('main')).not.toContainText('unassigned');
   await beer.getByRole('button', { name: 'Line discount and Deposit' }).click();
   await beer.getByRole('textbox', { name: 'Line discount' }).fill('1');
   await beer.getByRole('button', { name: 'Done' }).click();
