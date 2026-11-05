@@ -64,7 +64,7 @@ const shown = computed(() => {
 // A field's look: highlighted where the versions differ, quiet where they agree.
 const look = (...fields: ExpenseField[]) =>
   fields.some((field) => changed.includes(field))
-    ? 'rounded-md bg-warning/15 box-decoration-clone px-1.5 -mx-1.5 text-highlighted'
+    ? 'rounded-sm bg-accented box-decoration-clone px-1.5 -mx-1.5 text-highlighted'
     : 'text-muted';
 </script>
 

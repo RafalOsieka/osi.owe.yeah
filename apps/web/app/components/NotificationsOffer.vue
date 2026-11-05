@@ -45,7 +45,8 @@ async function turnOn(): Promise<void> {
     <div v-if="support === 'denied'" class="rounded-xl bg-elevated/60 p-3.5 text-sm">
       <p class="flex items-start gap-2 font-medium text-highlighted">
         <UIcon name="i-lucide-bell-off" class="mt-0.5 size-4 shrink-0 text-warning" />
-        {{ $t('notifications.blockedHelp') }}
+        <!-- The page's status chip already says they're blocked; a sheet has none. -->
+        {{ dismissible ? $t('notifications.blockedHelp') : $t('notifications.unblock') }}
       </p>
       <ol class="mt-2 list-decimal space-y-1.5 ps-6 text-default marker:text-muted">
         <li>

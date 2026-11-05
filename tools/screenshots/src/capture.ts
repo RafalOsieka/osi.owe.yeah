@@ -806,7 +806,7 @@ async function capture(scheme: 'light' | 'dark'): Promise<void> {
     await page.getByRole('main').getByRole('button', { name: 'Who are you?' }).click();
     await whoAreYou.getByRole('button', { name: 'Ania', exact: true }).click();
     await whoAreYou.waitFor({ state: 'hidden' });
-    await page.getByText('Notifications for Owe Yeah are blocked').waitFor();
+    await page.getByText('To unblock them').waitFor();
     await snap('a36-notifications-blocked', true);
     await context.close();
   }
@@ -1025,7 +1025,7 @@ async function capture(scheme: 'light' | 'dark'): Promise<void> {
     .getByRole('region', { name: 'Everyone' })
     .getByRole('button', { name: /Kasia/ })
     .click();
-  await page.getByRole('dialog', { name: "Kasia's share" }).waitFor();
+  await page.getByRole('dialog', { name: "Kasia's balance" }).waitFor();
   await snap('a20-balances-breakdown');
   await close();
   await link(/^Record Repayment/)

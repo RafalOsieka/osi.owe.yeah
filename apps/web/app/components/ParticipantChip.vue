@@ -41,7 +41,7 @@ function change(event: Event): void {
       class="absolute inset-0 cursor-pointer appearance-none rounded-full opacity-0 disabled:cursor-not-allowed"
       @change="change"
     />
-    <ParticipantAvatar :participant="participant" size="xs" class="ring-2 ring-(--ui-bg)" />
+    <ParticipantAvatar :participant="participant" size="xs" />
     <span class="flex min-w-0 flex-1 items-center">
       <span class="truncate">{{ participant.name }}</span>
       <YouBadge v-if="participant.id === claim?.id" />

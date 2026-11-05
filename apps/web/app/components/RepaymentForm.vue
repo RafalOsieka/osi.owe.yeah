@@ -13,11 +13,10 @@ import {
 // order: amount with its currency beside it and a Manual rate if needed (`ExpenseCurrency`),
 // closed by who pays whom ("Ania → Marta", "you" marked), then who paid, who got the money
 // (never who paid: picking them as payer swaps the two) and when, and last an optional note.
-// The note is the title,
-// "Repayment" when left empty. A new one is in the Trip currency until another is picked, and
-// may start from a Suggested Repayment (`suggested`), which it says it settles while it still
-// matches; its amount stays editable for a partial Repayment. Otherwise who paid defaults to
-// the Claim. Reading and saving work like the Expense form's.
+// The note is the title, "Repayment" when left empty. A new one is in the Trip currency until
+// another is picked, and may start from a Suggested Repayment (`suggested`), which it says it
+// settles ("what you owe Marta" where it is yours) while it still matches; its amount stays
+// editable for a partial Repayment. Otherwise who paid defaults to the Claim. Reading and saving work like the Expense form's.
 const {
   repayment = null,
   suggested = null,
@@ -138,15 +137,25 @@ async function submit(): Promise<void> {
             aria-hidden="true"
           >
             <ParticipantAvatar :participant="payer" size="xs" />
-            <span class="truncate">{{ payer.name }}</span>
-            <YouBadge v-if="payer.id === claim?.id" />
+            <span class="flex min-w-0 items-center">
+              <span class="truncate">{{ payer.name }}</span>
+              <YouBadge v-if="payer.id === claim?.id" />
+            </span>
             <UIcon name="i-lucide-arrow-right" class="size-4 shrink-0 text-muted" />
             <ParticipantAvatar :participant="recipient" size="xs" />
-            <span class="truncate">{{ recipient.name }}</span>
-            <YouBadge v-if="recipient.id === claim?.id" />
+            <span class="flex min-w-0 items-center">
+              <span class="truncate">{{ recipient.name }}</span>
+              <YouBadge v-if="recipient.id === claim?.id" />
+            </span>
           </p>
           <p v-if="settles" class="mt-1 text-sm text-muted">
-            {{ $t('repayment.settles', { payer: payer.name, recipient: recipient.name }) }}
+            {{
+              payer.id === claim?.id
+                ? $t('repayment.settlesYours', { recipient: recipient.name })
+                : recipient.id === claim?.id
+                  ? $t('repayment.settlesToYou', { payer: payer.name })
+                  : $t('repayment.settles', { payer: payer.name, recipient: recipient.name })
+            }}
           </p>
         </div>
       </div>

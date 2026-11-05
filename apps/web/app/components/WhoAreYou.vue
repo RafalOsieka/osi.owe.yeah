@@ -49,25 +49,22 @@ const description = computed(() => {
         @not-now="open = false"
       />
       <div v-else class="space-y-4">
-        <div v-if="participants.length > 0">
-          <ul class="grid grid-cols-2 gap-2">
-            <li v-for="participant in participants" :key="participant.id" class="min-w-0">
-              <UButton
-                :variant="participant.id === current?.id ? 'soft' : 'outline'"
-                color="neutral"
-                size="lg"
-                block
-                class="justify-start"
-                @click="emit('claim', participant)"
-              >
-                <ParticipantAvatar :participant="participant" size="xs" />
-                <span class="truncate">{{ participant.name }}</span>
-                <YouBadge v-if="participant.id === current?.id" class="ms-auto" />
-              </UButton>
-            </li>
-          </ul>
-          <p class="mt-3 text-sm text-muted">{{ $t('claim.noRights') }}</p>
-        </div>
+        <ul v-if="participants.length > 0" class="grid grid-cols-2 gap-2">
+          <li v-for="participant in participants" :key="participant.id" class="min-w-0">
+            <UButton
+              :variant="participant.id === current?.id ? 'soft' : 'outline'"
+              color="neutral"
+              size="lg"
+              block
+              class="justify-start"
+              @click="emit('claim', participant)"
+            >
+              <ParticipantAvatar :participant="participant" size="xs" />
+              <span class="truncate">{{ participant.name }}</span>
+              <YouBadge v-if="participant.id === current?.id" class="ms-auto" />
+            </UButton>
+          </li>
+        </ul>
         <ParticipantNameForm
           :label="$t('claim.notListed')"
           :submit-label="$t('claim.addMe')"
@@ -83,8 +80,10 @@ const description = computed(() => {
         :label="current ? $t('claim.cancel') : $t('claim.justLooking')"
         @click="open = false"
       />
+      <!-- What a name doesn't change, next to the legal links rather than between the choices. -->
+      <p class="mt-2 text-center text-sm text-balance text-muted">{{ $t('claim.noRights') }}</p>
       <!-- Closed on the way in (capture), as an open sheet cancels navigation (`useCloseOnBack`). -->
-      <LegalLinks class="mt-2" @click.capture="open = false" />
+      <LegalLinks @click.capture="open = false" />
     </template>
   </UDrawer>
 </template>

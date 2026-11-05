@@ -52,7 +52,10 @@ const now = computed(() => {
   if (fields.length === 0) return t('history.sameAsNow');
   return t('history.differsFromNow', {
     fields: new Intl.ListFormat(locale.value).format(
-      fields.map((field) => t(`history.field.${field}`)),
+      // The amount moves the payer's part and the shares with it, as marked below.
+      fields.map((field) =>
+        field === 'amount' ? t('history.amountAndShares') : t(`history.field.${field}`),
+      ),
     ),
   });
 });

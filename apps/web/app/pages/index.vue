@@ -8,8 +8,8 @@ import {
 } from '@osi/owe-yeah-domain';
 
 // My Trips: every Trip on this device, most recently opened first, and Settled ones in their
-// own group below the rest. Each row has the Trip's initial on its own tint, so Trips tell
-// apart at a glance, the faces of its first Participants, when its Expenses were (or "No
+// own group below the rest. Each row has the Trip's initial on its own tint (none repeated
+// while one is free), so Trips tell apart at a glance, the faces of its first Participants, when its Expenses were (or "No
 // Expenses yet"), your balance there under the name you are in it, e.g. "Ania owes" (or "Who
 // are you?" without a Claim), and how many of your changes haven't synced yet. Above them,
 // the install nudge; below, the privacy notice and the terms. A first visit gets a welcome
@@ -17,6 +17,11 @@ import {
 const { t, locale } = useI18n();
 const device = useDevice();
 const trips = useLiveQuery(() => device.readAll());
+
+// Each Trip's tile tint, different for every Trip on this device while a free one is left.
+const tints = computed(() =>
+  distinctAvatarColors((trips.value ?? []).map(({ deviceTrip }) => deviceTrip.id)),
+);
 
 const rows = computed(() =>
   (trips.value ?? []).flatMap(({ deviceTrip: { id, claim }, local, unsynced }) => {
@@ -43,6 +48,7 @@ const rows = computed(() =>
         id,
         name: local.name,
         initial: Array.from(local.name)[0]?.toLocaleUpperCase() ?? '',
+        tint: tints.value.get(id) ?? avatarColor(id),
         unsynced,
         settled,
         // The first few faces of who is in it.
@@ -110,7 +116,7 @@ useHead({ title: () => t('myTrips.title') });
             >
               <span
                 class="grid size-12 shrink-0 place-items-center rounded-[0.875rem] text-xl font-semibold"
-                :class="trip.settled ? 'bg-elevated text-muted' : avatarColor(trip.id)"
+                :class="trip.settled ? 'bg-elevated text-muted' : trip.tint"
                 aria-hidden="true"
               >
                 {{ trip.initial }}

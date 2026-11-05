@@ -71,7 +71,7 @@ const card = computed(() => {
     >
       {{ card.amount }}
     </p>
-    <p v-if="card.sub" class="mt-3 text-sm text-muted tabular-nums">{{ card.sub }}</p>
+    <p v-if="card.sub" class="mt-3 text-sm text-muted tabular-nums">{{ keepApprox(card.sub) }}</p>
     <div v-if="$slots.default" class="-mx-5 mt-5 -mb-5 border-t border-default">
       <slot />
     </div>

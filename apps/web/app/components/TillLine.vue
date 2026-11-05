@@ -20,17 +20,29 @@ import {
 // One Line item of the Till list, a row of its card. Folded, it reads as on the paper Receipt,
 // in full rather than cut short: name, quantity × unit price, how it is split, its Line
 // discount and Deposit, its total after that discount, and what is not assigned yet (by units
-// where it has them, as on the detail page), or what of it can't be read (`readLineItem`). A
-// Deposit refund is marked so. Open, it keeps only its name and total on top and is
-// edited in place, closed again with Done: name, unit price, quantity, Split mode and that
-// mode's inputs ("you" marked) with how much of the line they assign, then the Line discount and Deposit per
-// unit (folded until wanted), moving it up or down, and removing it. A Deposit refund has only
-// a name, an amount and a split, and reads as a negative amount. Switching the Split mode
-// starts that mode from scratch (`chooseSplitMode`). Its `id` lets the Receipt total point at
-// it.
-const { participants, currency, position, first, last } = defineProps<{
+// and their value where it has them, as on the detail page), or what of it can't be read
+// (`readLineItem`). A Deposit refund is marked so. Open, its header keeps only its total (the
+// name is in the field below) and it is edited in place, closed again with Done: name, unit
+// price, quantity, Split mode and that mode's inputs ("you" marked) with how much of the line
+// they assign, then the Line discount and Deposit per unit (folded until wanted), moving it up
+// or down, and removing it. A Deposit refund has only a name, an amount and a split, and reads
+// as a negative amount. Switching the Split mode starts that mode from scratch
+// (`chooseSplitMode`). Its `id` lets the Receipt total point at it.
+const {
+  participants,
+  currency,
+  after = null,
+  position,
+  first,
+  last,
+} = defineProps<{
   participants: readonly Participant[];
   currency: string;
+  /**
+   * What the Receipt's unassigned value comes to after its Receipt discount, when it is all on
+   * this line, to say after its own (`useUnassignedText`).
+   */
+  after?: Rational | null;
   /** Its place on the Receipt, from 1, to name a line without a name. */
   position: number;
   first: boolean;
@@ -73,7 +85,9 @@ const unassigned = computed(() =>
 );
 // What of it is not assigned yet, by units where it has them ("1 of 4 units unassigned").
 const missing = computed(() =>
-  item.value && shares.value ? unassignedText(item.value, shares.value, currency) : null,
+  item.value && shares.value
+    ? unassignedText(item.value, shares.value, currency, { withValue: true, after })
+    : null,
 );
 const name = computed(
   () =>
@@ -212,7 +226,9 @@ const step = { color: 'neutral', class: 'disabled:opacity-30' } as const;
       @click="open = !open"
     >
       <span class="min-w-0 flex-1 leading-snug">
-        <span class="block font-medium break-words text-highlighted">{{ name }}</span>
+        <span class="block font-medium break-words text-highlighted" :class="{ 'sr-only': open }">
+          {{ name }}
+        </span>
         <template v-if="!open">
           <span class="mt-0.5 block text-sm text-muted">
             <UIcon

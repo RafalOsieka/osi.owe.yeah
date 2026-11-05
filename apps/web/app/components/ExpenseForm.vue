@@ -1,6 +1,7 @@
 <script setup lang="ts">
 import {
   add,
+  conversionRate,
   deviceTimeZone,
   lineItemShares,
   multiply,
@@ -95,7 +96,21 @@ const splitSummary = computed(() => {
   const { total } = reading.value;
   if (!total || total.numerator === 0n) return t('expense.splitPeople', { count });
   const each = multiply(total.numerator < 0n ? negate(total) : total, rational(1n, BigInt(count)));
-  return t('expense.splitEach', { amount: money(each) });
+  const text = t('expense.splitEach', { amount: money(each) });
+  // In another currency, also what that comes to in the Trip currency.
+  const { time, manualRate } = reading.value;
+  if (state.currency === trip.value.currency || !time || manualRate === 'unreadable') return text;
+  // The rate is the whole Expense's: an amount charged sets it for the total, not a share.
+  const found = conversionRate({ currency: state.currency, time, manualRate, total }, trip.value);
+  if (!found) return text;
+  const converted = formatMoney(
+    multiply(each, found.rate),
+    trip.value.currency,
+    locale.value,
+    'currency',
+    true,
+  );
+  return `${text} · ${converted}`;
 });
 
 const discountError = computed(() => {
@@ -168,6 +183,14 @@ const unassignedLines = computed(() =>
         : null;
     return [{ key: line.key, name, units }];
   }),
+);
+
+// What is not assigned yet after the Receipt discount, for the one line it is on to say, so the
+// line meets the Main payer's share; `null` without a Receipt discount or on several lines.
+const unassignedAfter = computed(() =>
+  reading.value.receipt?.discount && unassignedLines.value.length === 1
+    ? reading.value.receipt.unassigned
+    : null,
 );
 
 // What is not assigned yet in all, as the detail page heads it: in units while every line it
@@ -325,6 +348,7 @@ async function submit(): Promise<void> {
           v-model:pending="pendingLine"
           :participants="trip.participants"
           :currency="state.currency"
+          :unassigned-after="unassignedAfter"
         >
           <!-- The Receipt's sums, as its detail page shows them. -->
           <div v-if="reading.receipt" class="space-y-3 tabular-nums">
@@ -488,8 +512,6 @@ async function submit(): Promise<void> {
         block
         size="xl"
         :disabled="pendingLine"
-        :color="pendingLine ? 'neutral' : 'primary'"
-        :variant="pendingLine ? 'soft' : 'solid'"
         :loading="saving"
         :label="texts.save"
       />

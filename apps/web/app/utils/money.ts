@@ -18,8 +18,8 @@ export function shownSign(amount: Rational, currency: string): -1 | 0 | 1 {
 
 /**
  * An exact amount as the UI shows it: rounded to the currency's minor units and formatted
- * for the locale, with "≈ " in front when rounding changed it (e.g. "≈ €3.33"), or when it is
- * `approximate` anyway, e.g. converted at a Provisional rate. Negative amounts take a true
+ * for the locale, with "≈" and a no-break space in front (so it never wraps away from the
+ * amount) when rounding changed it (e.g. "≈ €3.33"), or when it is `approximate` anyway, e.g. converted at a Provisional rate. Negative amounts take a true
  * minus sign ("−€1.00"), as wide as the plus.
  */
 export function formatMoney(
@@ -41,7 +41,7 @@ export function formatMoney(
           signDisplay,
         });
   const formatted = format.format(decimal).replace('-', '\u2212');
-  return exact && !approximate ? formatted : `≈ ${formatted}`;
+  return exact && !approximate ? formatted : `≈ ${formatted}`;
 }
 
 /** An exchange rate as the UI shows it, to six significant digits (e.g. "4.24835"). */

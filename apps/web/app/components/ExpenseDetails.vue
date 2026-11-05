@@ -31,8 +31,8 @@ import {
 // a Line discount said to be included in its Line item's amount. What is not assigned yet is
 // counted in the Main payer's share, whose row says how much and why; a line under the total
 // says so too and scrolls to the first such Line item. Against another version (`against`:
-// an older Revision against the Expense now), everything that differs gets the amber marker
-// the Conflict screen uses (title, total, each payer's part, each share), the total with what
+// an older Revision against the Expense now), everything that differs gets the neutral
+// highlight the Conflict screen uses (title, total, each payer's part, each share), the total with what
 // it is now under it. On a Receipt, tapping a share opens where it comes from
 // (`ShareBreakdownSheet`). Shares are rounded only to show them, so a note explains "≈" when
 // they don't add up to the total. All amounts are in the Expense's own currency; `converted` adds its total in the Trip currency
@@ -64,8 +64,8 @@ const other = computed(() => {
   return { fields: changedFields(expense, against), now, paid, shares };
 });
 
-// The amber marker for what differs, as the Conflict screen uses it.
-const MARK = 'rounded-lg bg-warning/15 box-decoration-clone px-2';
+// The marker for what differs, a neutral highlight, as the Conflict screen uses it.
+const MARK = 'rounded-sm bg-accented box-decoration-clone px-1.5';
 const marked = (...fields: ExpenseField[]) =>
   fields.some((field) => other.value?.fields.includes(field)) ? MARK : '';
 // A payer's part or a share marked where the other version has a different one.
@@ -84,7 +84,7 @@ function unassignedUnits(item: LineItem): number | null {
 // What is not assigned yet of a Line item, said on it as the form says it, with the money
 // after the units of a Units split ("1 of 4 units unassigned · ≈ €1.12"), and `after`, what
 // it comes to after the Receipt discount, so it meets the amount in the Main payer's share
-// ("≈ €1.12, ≈ €1.06 after the Receipt discount").
+// ("≈ €1.12 (≈ €1.06 after the Receipt discount)").
 function unassignedText(
   item: LineItem,
   shares: LineItemShares,
@@ -93,9 +93,9 @@ function unassignedText(
   const text = unassignedOf(item, shares, expense.currency);
   if (!text) return null;
   const discounted = after && t('receipt.afterReceiptDiscount', { amount: money(after) });
-  if (unassignedUnits(item) === null) return discounted ? `${text}, ${discounted}` : text;
-  const amount = money(shares.unassigned);
-  return `${text} · ${discounted ? `${amount}, ${discounted}` : amount}`;
+  const withAfter = (said: string) => (discounted ? `${said} (${discounted})` : said);
+  if (unassignedUnits(item) === null) return keepApprox(withAfter(text));
+  return keepApprox(`${text} · ${withAfter(money(shares.unassigned))}`);
 }
 
 const kinded = computed(() => expenseKind(expense));
@@ -125,7 +125,6 @@ const details = computed(() => {
       ? t('receipt.countedAsYours')
       : t('receipt.countedAs', { name: payer?.name ?? '?' });
   return {
-    countedAs,
     total,
     unassigned: unassigned.numerator === 0n ? null : unassigned,
     discount: receipt?.discount && discountText(receipt.discount, discountOff, expense.currency),
@@ -316,7 +315,7 @@ function openBreakdown(participantId: string): void {
         {{ $t('history.nowAmount', { amount: other.now }) }}
       </p>
       <template v-if="conversion">
-        <p class="mt-2 font-medium tabular-nums">{{ conversion.text }}</p>
+        <p class="mt-2 font-medium tabular-nums">{{ keepApprox(conversion.text) }}</p>
         <p v-if="conversion.manual" class="text-sm text-muted tabular-nums">
           {{ conversion.manual }}
         </p>
@@ -350,7 +349,7 @@ function openBreakdown(participantId: string): void {
         @click="scrollToLine(details.unassignedSummary.lineId)"
       >
         <UIcon name="i-lucide-circle-alert" class="size-4 shrink-0" aria-hidden="true" />
-        {{ details.unassignedSummary.text }}
+        {{ keepApprox(details.unassignedSummary.text) }}
         <UIcon name="i-lucide-chevron-down" class="-me-1 size-4 shrink-0" aria-hidden="true" />
       </button>
     </div>
@@ -489,8 +488,11 @@ function openBreakdown(participantId: string): void {
                 </span>
               </span>
               <span v-if="unassignedHere && details.unassigned" class="block text-sm text-warning">
-                {{ $t('receipt.includesUnassigned', { amount: money(details.unassigned) }) }},
-                {{ details.countedAs }}
+                {{
+                  keepApprox(
+                    `${$t('receipt.includesUnassigned', { amount: money(details.unassigned) })} · ${$t('receipt.forNow')}`,
+                  )
+                }}
               </span>
             </span>
             <UIcon

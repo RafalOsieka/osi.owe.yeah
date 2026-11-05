@@ -733,7 +733,7 @@ test('a share on a Receipt and a bar on Balances open where the share comes from
     .getByRole('region', { name: 'Everyone' })
     .getByRole('button', { name: /Kasia/ })
     .click();
-  const kasia = page.getByRole('dialog', { name: "Kasia's share" });
+  const kasia = page.getByRole('dialog', { name: "Kasia's balance" });
   await expect(kasia).toContainText('Paid€6.27');
   await expect(kasia).toContainText('Share€2.09');
   // Kasia is who you are.
@@ -1340,7 +1340,8 @@ test('a Participant on an Expense is not removed, one on none is; and the Trip i
 
   await participants.getByRole('button', { name: 'Ania' }).click();
   const ania = page.getByRole('dialog', { name: 'Ania' });
-  await expect(ania).toContainText("Ania is on 1 Expense, so they can't be removed.");
+  await expect(ania).toContainText('On 1 Expense');
+  await expect(ania).toContainText("they can't be removed");
   await expect(ania.getByRole('button', { name: 'Remove from Trip' })).toHaveCount(0);
   await ania.getByRole('button', { name: 'Done' }).click();
 

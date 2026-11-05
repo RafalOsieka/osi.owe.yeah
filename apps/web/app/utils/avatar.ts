@@ -1,13 +1,14 @@
 /**
  * The avatar colors a Participant can get, in an order that keeps neighbours far apart on the
- * colour wheel: an opaque soft tint with the initial in a deeper shade of the same hue, and in
+ * colour wheel: an opaque soft tint with the initial in a deeper shade of the same hue (orange's
+ * a brown, so it never reads as the owing red), and in
  * dark mode the hue mixed into the card colour with a light initial. Written out in full so
  * Tailwind finds the classes. Identity tints are the one exception to the app's few colours,
  * so none is green or red (money coming back, owing), amber (needs attention) or grey (Settled).
  */
 export const AVATAR_COLORS = [
   'bg-sky-100 text-sky-800 dark:bg-[color-mix(in_oklab,var(--color-sky-500)_28%,var(--ui-bg))] dark:text-sky-200',
-  'bg-orange-100 text-orange-800 dark:bg-[color-mix(in_oklab,var(--color-orange-500)_28%,var(--ui-bg))] dark:text-orange-200',
+  'bg-orange-100 text-amber-900 dark:bg-[color-mix(in_oklab,var(--color-orange-500)_28%,var(--ui-bg))] dark:text-orange-200',
   'bg-violet-100 text-violet-800 dark:bg-[color-mix(in_oklab,var(--color-violet-500)_28%,var(--ui-bg))] dark:text-violet-200',
   'bg-cyan-100 text-cyan-800 dark:bg-[color-mix(in_oklab,var(--color-cyan-500)_28%,var(--ui-bg))] dark:text-cyan-200',
   'bg-purple-100 text-purple-800 dark:bg-[color-mix(in_oklab,var(--color-purple-500)_28%,var(--ui-bg))] dark:text-purple-200',
@@ -26,11 +27,33 @@ export function avatarColorAt(index: number): AvatarColor {
 
 /**
  * The avatar color picked from an id alone, so every device shows the same one: for a
- * Participant no longer in the Trip, and for a Trip's tile on My Trips. The whole id is
- * hashed: ids created in the same millisecond share their start.
+ * Participant no longer in the Trip, and as the starting point for a Trip's tile on My Trips
+ * (`distinctAvatarColors`). The whole id is hashed: ids created in the same millisecond share
+ * their start.
  */
 export function avatarColor(id: string): AvatarColor {
   let hash = 0;
   for (const char of id) hash = (hash * 31 + char.charCodeAt(0)) >>> 0;
   return AVATAR_COLORS[hash % AVATAR_COLORS.length]!;
+}
+
+/**
+ * Tints for a set of ids that don't repeat while a free one is left, e.g. the Trip tiles on
+ * My Trips. The ids go in order (UUIDv7s, so oldest first): each takes its hashed tint
+ * (`avatarColor`) or, if taken, the next free one; once all are taken, the hashed one. A
+ * newer id never changes the tint of an older one.
+ */
+export function distinctAvatarColors(ids: readonly string[]): Map<string, AvatarColor> {
+  const tints = new Map<string, AvatarColor>();
+  const taken = new Set<AvatarColor>();
+  for (const id of ids.toSorted()) {
+    const hashed = AVATAR_COLORS.indexOf(avatarColor(id));
+    const free = AVATAR_COLORS.map(
+      (_, step) => AVATAR_COLORS[(hashed + step) % AVATAR_COLORS.length]!,
+    ).find((tint) => !taken.has(tint));
+    const tint = free ?? avatarColor(id);
+    taken.add(tint);
+    tints.set(id, tint);
+  }
+  return tints;
 }

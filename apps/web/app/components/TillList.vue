@@ -6,6 +6,7 @@ import {
   newLineItemSplit,
   parseMoney,
   type Participant,
+  type Rational,
 } from '@osi/owe-yeah-domain';
 import {
   draftLineItem,
@@ -23,9 +24,15 @@ import {
 // (the Receipt's sums) closes the card. New goods copy the previous goods' split when it was
 // Even, and otherwise start Even across all Participants; a Deposit refund always starts Even
 // across all Participants.
-const { participants, currency } = defineProps<{
+const {
+  participants,
+  currency,
+  unassignedAfter = null,
+} = defineProps<{
   participants: readonly Participant[];
   currency: string;
+  /** What the unassigned value comes to after the Receipt discount (`TillLine`'s `after`). */
+  unassignedAfter?: Rational | null;
 }>();
 const lineItems = defineModel<DraftLineItem[]>({ required: true });
 /** The key of the line open for editing; `null` while none is. */
@@ -162,6 +169,7 @@ const addRow =
           :open="openKey === line.key"
           :participants="participants"
           :currency="currency"
+          :after="unassignedAfter"
           :position="index + 1"
           :first="index === 0"
           :last="index === lineItems.length - 1"

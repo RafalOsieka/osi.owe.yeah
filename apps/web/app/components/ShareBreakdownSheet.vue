@@ -65,6 +65,13 @@ const place = (part: BreakdownPart) => ORDER.indexOf(part);
 const rounded = (amount: Rational) =>
   formatMoney(decimal(roundMoney(amount, currency).decimal), currency, locale.value);
 
+// "Kasia's balance" on the Balances tab, where it ends in it; "Kasia's share" on a Receipt.
+const title = computed(() =>
+  balance
+    ? t('breakdown.balanceTitle', { name: participant.name })
+    : t('breakdown.title', { name: participant.name }),
+);
+
 const sheet = computed(() => {
   const inexact = (amount: Rational) => !roundMoney(amount, currency).exact;
   // On the Balances tab, the share that adds up with what they paid and their balance.
@@ -124,15 +131,11 @@ function outcomeOf(rounded: Rational) {
 </script>
 
 <template>
-  <UDrawer
-    v-model:open="open"
-    :title="$t('breakdown.title', { name: participant.name })"
-    :description="context ?? undefined"
-  >
+  <UDrawer v-model:open="open" :title="title" :description="context ?? undefined">
     <template #title>
       <span class="flex items-center gap-3">
         <ParticipantAvatar :participant="participant" size="md" />
-        {{ $t('breakdown.title', { name: participant.name }) }}
+        {{ title }}
         <YouBadge v-if="participant.id === claimId" />
       </span>
     </template>

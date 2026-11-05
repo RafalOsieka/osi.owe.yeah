@@ -92,7 +92,8 @@
     "you": "ty",
     "remove": "Usuń z podróży",
     "removeHelp": "Imię zostaje w starszych wersjach i usuniętych wydatkach. Wydatek, który znowu go obejmie, przywróci uczestnika.",
-    "referenced": "{name}: brak wydatków. | {name}: wydatki z tym uczestnikiem: 1, więc nie można go usunąć. Najpierw usuń go z tego wydatku. | {name}: wydatki z tym uczestnikiem: {count}, więc nie można go usunąć. Najpierw usuń go z tych wydatków."
+    "onExpenses": "Nie ma go w żadnym wydatku | Wydatki z tym uczestnikiem: 1 | Wydatki z tym uczestnikiem: {count}",
+    "onExpensesHelp": "Dopóki jest w wydatku, nie można go usunąć. Najpierw usuń go z tych wydatków."
   },
   "claim": {
     "title": "Kim jesteś?",
@@ -275,7 +276,8 @@
     "amountUnassigned": "{amount} nieprzypisane",
     "countedAs": "na razie: {name}",
     "countedAsYours": "na razie twoje",
-    "afterReceiptDiscount": "{amount} po rabacie na paragon"
+    "afterReceiptDiscount": "{amount} po rabacie na paragon",
+    "forNow": "na razie"
   },
   "contribution": {
     "title": "Dopłaty",
@@ -302,6 +304,8 @@
     "note": "Notatka",
     "notePlaceholder": "np. Gotówka na lotnisku",
     "settles": "Wyrównuje rozliczenie: {payer} → {recipient}.",
+    "settlesYours": "Wyrównuje twoje rozliczenie z: {recipient}.",
+    "settlesToYou": "Wyrównuje rozliczenie: {payer} → ty.",
     "delete": "Usuń spłatę"
   },
   "balances": {
@@ -369,7 +373,8 @@
     "isEven": "{name}: na zero",
     "roundedParts": "Części są zaokrąglone do grosza, więc ich suma może się nieco różnić od udziału.",
     "unassignedRule": "Nieprzypisane sztuki liczą się do udziału osoby, która zapłaciła, dopóki ktoś ich nie weźmie.",
-    "unassignedRuleYours": "Nieprzypisane sztuki liczą się do twojego udziału jako płacącego, dopóki ktoś ich nie weźmie."
+    "unassignedRuleYours": "Nieprzypisane sztuki liczą się do twojego udziału jako płacącego, dopóki ktoś ich nie weźmie.",
+    "balanceTitle": "Saldo: {name}"
   },
   "rate": {
     "currency": "Waluta",
@@ -510,7 +515,8 @@
     "earlierRevision": "Wcześniejsza wersja",
     "currentRevision": "Aktualna wersja",
     "sameAsNow": "Tak samo jak teraz.",
-    "nowAmount": "teraz {amount}"
+    "nowAmount": "teraz {amount}",
+    "amountAndShares": "kwota (a z nią część płacącego i udziały)"
   },
   "deleted": {
     "title": "Ostatnio usunięte",
@@ -549,7 +555,8 @@
     "turnOff": "Wyłącz",
     "failed": "Nie udało się włączyć powiadomień. Sprawdź połączenie i spróbuj ponownie.",
     "blockedHelp": "Powiadomienia Owe Yeah są zablokowane w tej przeglądarce. Aby je odblokować:",
-    "blockedStep1": "Otwórz ustawienia powiadomień Owe Yeah:",
+    "blockedStep1": "Znajdź ustawienia powiadomień:",
+    "unblock": "Aby je odblokować:",
     "inBrowser": {
       "label": "W przeglądarce:",
       "how": "stuknij {icon} obok adresu i otwórz ustawienia strony."
@@ -560,7 +567,7 @@
     },
     "inAppleApp": {
       "label": "Zainstalowana aplikacja na iPhonie lub iPadzie:",
-      "how": "otwórz Ustawienia, potem Powiadomienia i Owe Yeah."
+      "how": "otwórz Ustawienia, potem Powiadomienia i Owe Yeah."
     },
     "blockedStep2": "Zezwól na powiadomienia.",
     "blockedStep3": "Wróć tutaj i stuknij Sprawdź ponownie.",

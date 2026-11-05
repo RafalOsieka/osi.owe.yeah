@@ -46,9 +46,10 @@ export default defineAppConfig({
       },
     },
     // Off reads as a control, not as a gap.
+    // Off reads as a live control (a 3:1 track); disabled fades well below it.
     switch: {
       slots: {
-        base: 'data-[state=unchecked]:bg-neutral-300 dark:data-[state=unchecked]:bg-neutral-700',
+        base: 'data-[state=unchecked]:bg-(--ui-border-accented) disabled:opacity-40',
       },
     },
     // Fields are 44 px, like the buttons beside them.
@@ -76,7 +77,7 @@ export default defineAppConfig({
     // rounder top corners than the cards on the page.
     drawer: {
       slots: {
-        overlay: 'bg-stone-950/20 dark:bg-black/60',
+        overlay: 'bg-stone-950/15 dark:bg-black/60',
         content: 'mx-auto max-w-120 rounded-t-3xl! ring-0',
         container: 'gap-5 px-5 pb-[calc(1.25rem+env(safe-area-inset-bottom))]',
         title: 'text-lg',
@@ -84,7 +85,7 @@ export default defineAppConfig({
       },
     },
     modal: {
-      slots: { overlay: 'bg-stone-950/20 dark:bg-black/60', content: 'rounded-3xl ring-0' },
+      slots: { overlay: 'bg-stone-950/15 dark:bg-black/60', content: 'rounded-3xl ring-0' },
     },
   },
 });

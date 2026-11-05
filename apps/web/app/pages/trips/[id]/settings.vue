@@ -198,24 +198,22 @@ const action =
       </template>
     </UDrawer>
 
-    <!-- What it says sits right under the name, as the sheet's description. -->
-    <UDrawer
-      v-model:open="pickedOpen"
-      :description="
-        referencing > 0
-          ? $t('participants.referenced', referencing, { named: { name: picked?.name ?? '' } })
-          : $t('participants.removeHelp')
-      "
-      :ui="{
-        description: referencing > 0 ? 'mt-3 text-base text-default' : 'mt-3 text-pretty',
-        footer: 'pt-2',
-      }"
-    >
+    <!-- The Participant's own sheet: their name, how many Expenses they are on, then what that
+         means for removing them, right under the name as the sheet's description. -->
+    <UDrawer v-model:open="pickedOpen" :ui="{ description: 'mt-3', footer: 'pt-2' }">
       <template #title>
         <span v-if="picked" class="flex items-center gap-3">
           <ParticipantAvatar :participant="picked" size="lg" />
           <span class="min-w-0 wrap-anywhere">{{ picked.name }}</span>
           <YouBadge v-if="picked.id === claim?.id" class="ms-0" />
+        </span>
+      </template>
+      <template #description>
+        <span class="block text-base text-highlighted">
+          {{ $t('participants.onExpenses', referencing) }}
+        </span>
+        <span class="mt-1 block text-pretty">
+          {{ referencing > 0 ? $t('participants.onExpensesHelp') : $t('participants.removeHelp') }}
         </span>
       </template>
       <template #footer>

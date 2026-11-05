@@ -55,25 +55,37 @@ export function useSplitText() {
 }
 
 /**
- * What of a Line item is not assigned yet, said once, as the Receipt's detail page says it:
- * the units for a Units split ("1 of 4 units unassigned"), the amount otherwise; `null` once
- * all of it is.
+ * What of a Line item is not assigned yet, as the Receipt's form and detail page say it on the
+ * line: the units for a Units split ("1 of 4 units unassigned"), the amount otherwise; `null`
+ * once all of it is. With `withValue`, the units are followed by what they come to, and
+ * `after`, when given, by what the Receipt's unassigned value comes to after its Receipt
+ * discount, so the line meets the Main payer's share ("1 of 4 units unassigned · ≈ €1.12,
+ * ≈ €1.06 after the Receipt discount").
  */
 export function useUnassignedText() {
   const { t, locale } = useI18n();
 
-  return (item: LineItem, shares: LineItemShares, currency: string): string | null => {
+  return (
+    item: LineItem,
+    shares: LineItemShares,
+    currency: string,
+    { withValue = false, after = null }: { withValue?: boolean; after?: Rational | null } = {},
+  ): string | null => {
     if (shares.unassigned.numerator === 0n) return null;
+    const money = (amount: Rational) => formatMoney(amount, currency, locale.value);
+    const discounted = after && t('receipt.afterReceiptDiscount', { amount: money(after) });
     if (item.split.mode !== 'units') {
-      return t('receipt.notAssigned', {
-        amount: formatMoney(shares.unassigned, currency, locale.value),
-      });
+      const text = t('receipt.notAssigned', { amount: money(shares.unassigned) });
+      return discounted ? `${text}, ${discounted}` : text;
     }
     const assigned = item.split.parts.reduce((sum, { units }) => sum + units, 0);
-    return t('receipt.unitsUnassigned', {
+    const text = t('receipt.unitsUnassigned', {
       unassigned: item.quantity - assigned,
       quantity: item.quantity,
     });
+    if (!withValue) return text;
+    const value = money(shares.unassigned);
+    return `${text} · ${discounted ? `${value}, ${discounted}` : value}`;
   };
 }
 
