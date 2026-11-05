@@ -523,8 +523,13 @@ test('a Receipt entered offline at the till, Line item by Line item, reaches a s
     .getByRole('button', { name: /Chocolate/ })
     .click();
   await line('Chocolate').getByRole('button', { name: 'All', exact: true }).click();
+  // An open line shows only its name and total; closed, it says how it is split.
+  await line('Chocolate').getByRole('button', { name: 'Done' }).click();
   await expect(line('Chocolate')).toContainText('Even · nobody yet');
   // Reordered to match the paper Receipt.
+  await line('Chocolate')
+    .getByRole('button', { name: /Chocolate/ })
+    .click();
   await line('Chocolate').getByRole('button', { name: 'Move up' }).click();
   await expect(lines).toHaveText([/Bread/, /Chocolate/, /Water/]);
 
@@ -580,7 +585,9 @@ test('a Line discount follows the Units and a Receipt discount is shared by what
   await beer.getByLabel('Units for Kasia').fill('2');
   await beer.getByLabel('Units for Ania').fill('2');
   await beer.getByLabel('Units for Ola').fill('1');
+  await beer.getByRole('button', { name: 'Line discount and Deposit' }).click();
   await beer.getByRole('textbox', { name: 'Line discount' }).fill('1');
+  await beer.getByRole('button', { name: 'Done' }).click();
   await expect(beer).toContainText('Discount −€1.00');
   const total = page.getByRole('status', { name: 'Receipt total' });
   await expect(total).toHaveText('€9.00');

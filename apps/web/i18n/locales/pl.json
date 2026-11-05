@@ -231,7 +231,7 @@
     "deposits": "Kaucje",
     "depositsFact": "Kaucje {amount}",
     "newDeposit": "Kaucja za sztukę nowej pozycji",
-    "depositPlaceholder": "Kaucja",
+    "depositPlaceholder": "Kaucja za sztukę",
     "depositRefund": "Zwrot kaucji",
     "addDepositRefund": "Dodaj zwrot kaucji",
     "newRefundAmount": "Kwota zwrotu kaucji",
@@ -241,7 +241,8 @@
     "checkAmount": "Sprawdź kwotę.",
     "done": "Gotowe",
     "closeAdding": "Zamknij",
-    "notAssignedBeforeDiscount": "{amount} jeszcze nieprzypisane, przed rabatem na paragon"
+    "notAssignedBeforeDiscount": "{amount} jeszcze nieprzypisane, przed rabatem na paragon",
+    "extras": "Rabat i kaucja na pozycji"
   },
   "contribution": {
     "title": "Dopłaty",

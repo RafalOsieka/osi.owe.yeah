@@ -28,7 +28,8 @@ const lineItems = defineModel<DraftLineItem[]>({ required: true });
 const { t } = useI18n();
 const { lineItemReason } = useDraftReasons();
 
-const openKey = ref<string | null>(null);
+// A Receipt just itemised opens on its one line, the amount carried over, as the thing to edit.
+const openKey = ref<string | null>(lineItems.value.length === 1 ? lineItems.value[0]!.key : null);
 
 const everyone = () => participants.map(({ id }) => id);
 

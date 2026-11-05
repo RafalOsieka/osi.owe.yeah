@@ -18,7 +18,8 @@ import {
 // One Line item of the Till list. Collapsed, it reads as on the paper Receipt: name, quantity
 // × unit price, how it is split, its Line discount, its Deposit, its total after that
 // discount, and what is not assigned yet, or what of it can't be read (`readLineItem`). Open,
-// it keeps only its name and total on top and is edited in place, closed again with Done: name, unit price, quantity, Line discount, Deposit per unit, Split
+// it keeps only its name and total on top and is edited in place, closed again with Done
+// (Line discount and Deposit per unit folded under the split until wanted): name, unit price, quantity, Line discount, Deposit per unit, Split
 // mode and that mode's inputs, moving it up or down, and removing it. A Deposit refund has
 // only a name, an amount and a split, and reads as a negative amount. Switching the Split mode
 // starts that mode from scratch (`chooseSplitMode`).
@@ -42,6 +43,10 @@ const {
 const line = defineModel<DraftLineItem>('line', { required: true });
 const open = defineModel<boolean>('open', { required: true });
 const emit = defineEmits<{ move: [by: -1 | 1]; remove: [] }>();
+
+// Line discount and Deposit per unit, folded under the split until wanted: open from the
+// start when the line has either.
+const extrasOpen = ref(line.value.discount.value.trim() !== '' || line.value.deposit.trim() !== '');
 
 const { t, locale } = useI18n();
 const splitText = useSplitText();
@@ -247,38 +252,7 @@ const modes: readonly SplitMode[] = ['even', 'units', 'amounts'];
         </UFormField>
       </div>
       <p v-if="line.refund" class="text-sm text-muted">{{ $t('receipt.refundHelp') }}</p>
-      <template v-else>
-        <p class="-mt-2 text-sm text-muted">{{ $t('receipt.weighedHelp') }}</p>
-
-        <div>
-          <DiscountField
-            :model-value="line.discount"
-            :label="$t('receipt.lineDiscount')"
-            :currency="currency"
-            :error="discountError"
-            @update:model-value="update({ discount: $event })"
-          />
-          <p class="mt-2 text-sm text-muted">{{ $t('receipt.perUnitDiscountHelp') }}</p>
-        </div>
-
-        <UFormField
-          :label="$t('receipt.depositPerUnit')"
-          :help="$t('receipt.depositHelp')"
-          :error="readable('deposit') ? undefined : $t('receipt.depositUnreadable')"
-        >
-          <UInput
-            :model-value="line.deposit"
-            inputmode="decimal"
-            placeholder="0"
-            class="w-full"
-            @update:model-value="update({ deposit: String($event) })"
-          >
-            <template #trailing>
-              <span class="text-xs text-muted">{{ currency }}</span>
-            </template>
-          </UInput>
-        </UFormField>
-      </template>
+      <p v-else class="-mt-2 text-sm text-muted">{{ $t('receipt.weighedHelp') }}</p>
 
       <SegmentedControl
         :model-value="line.split.mode"
@@ -339,6 +313,53 @@ const modes: readonly SplitMode[] = ['even', 'units', 'amounts'];
           {{ $t('receipt.unitsAssigned', { assigned: assignedUnits, quantity: line.quantity }) }}
         </li>
       </ul>
+
+      <template v-if="!line.refund">
+        <button
+          type="button"
+          class="flex w-full cursor-pointer items-center justify-between gap-2 border-t border-default pt-3 text-sm font-medium text-default"
+          :aria-expanded="extrasOpen"
+          :aria-controls="`${editorId}-extras`"
+          @click="extrasOpen = !extrasOpen"
+        >
+          {{ $t('receipt.extras') }}
+          <UIcon
+            name="i-lucide-chevron-down"
+            class="size-4 text-dimmed transition-transform"
+            :class="{ 'rotate-180': extrasOpen }"
+          />
+        </button>
+        <div v-if="extrasOpen" :id="`${editorId}-extras`" class="space-y-4">
+          <div>
+            <DiscountField
+              :model-value="line.discount"
+              :label="$t('receipt.lineDiscount')"
+              :currency="currency"
+              :error="discountError"
+              @update:model-value="update({ discount: $event })"
+            />
+            <p class="mt-2 text-sm text-muted">{{ $t('receipt.perUnitDiscountHelp') }}</p>
+          </div>
+
+          <UFormField
+            :label="$t('receipt.depositPerUnit')"
+            :help="$t('receipt.depositHelp')"
+            :error="readable('deposit') ? undefined : $t('receipt.depositUnreadable')"
+          >
+            <UInput
+              :model-value="line.deposit"
+              inputmode="decimal"
+              placeholder="0"
+              class="w-full"
+              @update:model-value="update({ deposit: String($event) })"
+            >
+              <template #trailing>
+                <span class="text-xs text-muted">{{ currency }}</span>
+              </template>
+            </UInput>
+          </UFormField>
+        </div>
+      </template>
 
       <div class="flex items-center gap-1 border-t border-default pt-3">
         <UButton

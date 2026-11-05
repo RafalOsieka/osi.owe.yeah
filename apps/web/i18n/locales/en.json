@@ -231,7 +231,7 @@
     "deposits": "Deposits",
     "depositsFact": "Deposits {amount}",
     "newDeposit": "New Line item Deposit per unit",
-    "depositPlaceholder": "Deposit",
+    "depositPlaceholder": "Deposit per unit",
     "depositRefund": "Deposit refund",
     "addDepositRefund": "Add a Deposit refund",
     "newRefundAmount": "Deposit refund amount",
@@ -241,7 +241,8 @@
     "checkAmount": "Check the amount.",
     "done": "Done",
     "closeAdding": "Close",
-    "notAssignedBeforeDiscount": "{amount} not assigned yet, before the Receipt discount"
+    "notAssignedBeforeDiscount": "{amount} not assigned yet, before the Receipt discount",
+    "extras": "Line discount and Deposit"
   },
   "contribution": {
     "title": "Contributions",
