@@ -113,21 +113,21 @@ async function create(): Promise<void> {
                 color="neutral"
                 variant="ghost"
                 icon="i-lucide-x"
+                class="text-dimmed hover:text-default"
                 :aria-label="$t('trip.create.removeParticipant')"
                 @click="state.others.splice(index, 1)"
               />
             </div>
           </UFormField>
-          <p class="text-sm text-muted">{{ $t('trip.create.othersHelp') }}</p>
+          <!-- Right under the fields it adds to, green like every other add. -->
           <UButton
             variant="ghost"
-            color="neutral"
-            size="sm"
             icon="i-lucide-plus"
             :label="$t('trip.create.addParticipant')"
-            class="-mx-2 text-muted"
+            class="-ms-3"
             @click="state.others.push('')"
           />
+          <p class="text-sm text-muted">{{ $t('trip.create.othersHelp') }}</p>
         </fieldset>
       </div>
     </UForm>

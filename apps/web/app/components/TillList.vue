@@ -14,11 +14,13 @@ import {
   type LineItemReason,
 } from '~/utils/expense-draft';
 
-// A Receipt's Line items as the Till list enters them, at the till: one line after the
-// other, each opened in place to edit it (one at a time), with the add forms at the end, each
-// folded into a row until tapped: one for goods, with an optional Deposit per unit, and one
-// for a Deposit refund. New goods copy
-// the previous goods' split when it was Even, and otherwise start Even across all
+// A Receipt's Line items as the Till list enters them, at the till, as one card under its
+// heading: one line after the other, each opened in place to edit it (one at a time, `openKey`),
+// then the add forms, each folded into a row until tapped: one for goods, with an optional
+// Deposit per unit, and one for a Deposit refund. An open add form is a pending line, tinted
+// and saying it isn't on the Receipt until "Add to Receipt"; `pending` tells the form while one
+// has something typed. Whatever the slot holds (the Receipt discount) closes the card. New
+// goods copy the previous goods' split when it was Even, and otherwise start Even across all
 // Participants; a Deposit refund always starts Even across all Participants.
 const {
   participants,
@@ -31,12 +33,16 @@ const {
   discounted?: boolean;
 }>();
 const lineItems = defineModel<DraftLineItem[]>({ required: true });
+/** The key of the line open for editing; `null` while none is. */
+const openKey = defineModel<string | null>('openKey', { default: null });
+/** Whether an add form holds a line that isn't on the Receipt yet. */
+const pending = defineModel<boolean>('pending', { default: false });
 
 const { t, locale } = useI18n();
 const { lineItemReason } = useDraftReasons();
 
 // A Receipt just itemised opens on its one line, the amount carried over, as the thing to edit.
-const openKey = ref<string | null>(lineItems.value.length === 1 ? lineItems.value[0]!.key : null);
+if (openKey.value === null && lineItems.value.length === 1) openKey.value = lineItems.value[0]!.key;
 
 const everyone = () => participants.map(({ id }) => id);
 
@@ -55,14 +61,16 @@ function addRefusal(line: DraftLineItem): string | null {
 const adding = reactive({ name: '', price: '', quantity: 1, deposit: '' });
 const addError = ref<string | null>(null);
 
-// What the line being typed comes to, Deposits included, and that it isn't on the Receipt
-// (or in its total) until added.
-const draft = computed(() => {
+// What the line being typed comes to, Deposits included; `null` before its price reads.
+const draftTotal = computed(() => {
   const price = parseMoney(adding.price, currency);
-  if (price === null) return t('receipt.draftEmpty');
+  if (price === null) return null;
   const deposit = parseMoney(adding.deposit, currency) ?? 0;
-  const amount = fromMinor((price + deposit) * adding.quantity, currency);
-  return t('receipt.draftLine', { amount: formatMoney(amount, currency, locale.value) });
+  return formatMoney(
+    fromMinor((price + deposit) * adding.quantity, currency),
+    currency,
+    locale.value,
+  );
 });
 const priceInput = useTemplateRef('price');
 
@@ -72,7 +80,7 @@ const composing = ref<'goods' | 'refund' | null>(null);
 async function compose(form: 'goods' | 'refund'): Promise<void> {
   composing.value = form;
   await nextTick();
-  if (form === 'goods') priceInput.value?.inputRef?.focus();
+  if (form === 'goods') priceInput.value?.focus();
 }
 
 function add(): void {
@@ -90,7 +98,7 @@ function add(): void {
   if (addError.value) return;
   lineItems.value = [...lineItems.value, line];
   Object.assign(adding, { name: '', price: '', quantity: 1, deposit: '' });
-  priceInput.value?.inputRef?.focus();
+  priceInput.value?.focus();
 }
 
 const refundAmount = ref('');
@@ -110,6 +118,12 @@ function addRefund(): void {
   refundAmount.value = '';
 }
 
+watchEffect(() => {
+  pending.value =
+    (composing.value === 'goods' && (adding.price.trim() !== '' || adding.name.trim() !== '')) ||
+    (composing.value === 'refund' && refundAmount.value.trim() !== '');
+});
+
 function replace(index: number, line: DraftLineItem): void {
   lineItems.value = lineItems.value.with(index, line);
 }
@@ -124,14 +138,21 @@ function move(index: number, by: -1 | 1): void {
 function remove(index: number): void {
   lineItems.value = lineItems.value.toSpliced(index, 1);
 }
+
+// The tint and edge of a pending line, so it can't pass for one on the Receipt.
+const pendingRow =
+  'space-y-3 border-t border-default bg-primary/6 px-4 pt-3 pb-4 dark:bg-primary/10';
+// A folded add form.
+const addRow =
+  'flex min-h-14 w-full cursor-pointer items-center gap-3 border-t border-default px-4 text-start font-medium text-primary transition-colors hover:bg-elevated/50';
 </script>
 
 <template>
-  <section aria-labelledby="till-list-heading" class="space-y-2">
-    <h2 id="till-list-heading" class="text-sm font-medium text-highlighted">
+  <section aria-labelledby="till-list-heading">
+    <h2 id="till-list-heading" class="section-heading">
       {{ $t('receipt.lineItems') }}
     </h2>
-    <div class="overflow-hidden rounded-xl ring ring-default">
+    <div class="card overflow-hidden">
       <ol v-if="lineItems.length > 0" class="divide-y divide-default">
         <TillLine
           v-for="(line, index) in lineItems"
@@ -154,11 +175,10 @@ function remove(index: number): void {
       <button
         v-if="composing !== 'goods'"
         type="button"
-        class="flex w-full cursor-pointer items-center gap-3 px-4 py-3 text-start font-medium text-primary transition-colors hover:bg-elevated/50"
-        :class="{ 'border-t border-default': lineItems.length > 0 }"
+        :class="[addRow, { 'border-t-0': lineItems.length === 0 }]"
         @click="compose('goods')"
       >
-        <span class="grid size-7 place-items-center rounded-full bg-primary/10">
+        <span class="grid size-8 place-items-center rounded-full bg-primary/10">
           <UIcon name="i-lucide-plus" class="size-4" />
         </span>
         {{ $t('receipt.addLineItem') }}
@@ -167,145 +187,118 @@ function remove(index: number): void {
         v-else
         role="group"
         :aria-label="$t('receipt.addLineItem')"
-        class="space-y-2 bg-elevated/40 p-3"
-        :class="{ 'border-t border-default': lineItems.length > 0 }"
+        :class="[pendingRow, { 'border-t-0': lineItems.length === 0 }]"
       >
         <div class="flex items-center justify-between">
-          <p class="text-xs font-medium text-muted">{{ $t('receipt.addLineItem') }}</p>
+          <p class="font-semibold text-highlighted">{{ $t('receipt.newLineItem') }}</p>
           <UButton
             icon="i-lucide-x"
             color="neutral"
             variant="ghost"
-            size="xs"
             :aria-label="$t('receipt.closeAdding')"
+            class="-me-3"
             @click="composing = null"
           />
         </div>
-        <div class="grid grid-cols-[1fr_8rem] gap-x-2 gap-y-1">
-          <span class="col-span-2 text-xs font-medium text-muted" aria-hidden="true">
-            {{ $t('receipt.name') }}
-          </span>
+        <UFormField :label="$t('receipt.name')">
           <UInput
             v-model="adding.name"
             :placeholder="$t('receipt.namePlaceholder')"
             :aria-label="$t('receipt.newName')"
-            size="lg"
-            class="col-span-2 mb-1.5"
+            class="w-full"
             @keydown.enter.prevent="add"
           />
-          <span class="text-xs font-medium text-muted" aria-hidden="true">
-            {{ $t('receipt.unitPrice') }}
-          </span>
-          <span class="text-xs font-medium text-muted" aria-hidden="true">
-            {{ $t('receipt.quantity') }}
-          </span>
-          <UInput
-            ref="price"
-            v-model="adding.price"
-            inputmode="decimal"
-            placeholder="0.00"
-            :aria-label="$t('receipt.newUnitPrice')"
-            :color="addError ? 'error' : undefined"
-            size="lg"
-            class="mb-1.5 min-w-0"
-            @keydown.enter.prevent="add"
-          >
-            <template #trailing>
-              <span class="text-xs text-muted">{{ currency }}</span>
-            </template>
-          </UInput>
-          <UInputNumber
-            v-model="adding.quantity"
-            :min="1"
-            :max="MAX_UNITS"
-            :aria-label="$t('receipt.newQuantity')"
-            size="lg"
-            class="mb-1.5"
-          />
-          <span class="col-span-2 text-xs font-medium text-muted" aria-hidden="true">
-            {{ $t('receipt.depositPerUnit') }}
-          </span>
-          <UInput
-            v-model="adding.deposit"
-            inputmode="decimal"
-            placeholder="0.00"
-            :aria-label="$t('receipt.newDeposit')"
-            size="lg"
-            class="min-w-0"
-            @keydown.enter.prevent="add"
-          >
-            <template #trailing>
-              <span class="text-xs text-muted">{{ currency }}</span>
-            </template>
-          </UInput>
+        </UFormField>
+        <div class="flex gap-2">
+          <UFormField :label="$t('receipt.unitPrice')" class="min-w-0 flex-1">
+            <MoneyInput
+              ref="price"
+              v-model="adding.price"
+              :currency="currency"
+              :aria-label="$t('receipt.newUnitPrice')"
+              :color="addError ? 'error' : undefined"
+              class="w-full"
+              @keydown.enter.prevent="add"
+            />
+          </UFormField>
+          <UFormField :label="$t('receipt.quantity')" class="w-36 shrink-0">
+            <UInputNumber
+              v-model="adding.quantity"
+              :min="1"
+              :max="MAX_UNITS"
+              :increment="{ color: 'neutral', class: 'disabled:opacity-30' }"
+              :decrement="{ color: 'neutral', class: 'disabled:opacity-30' }"
+              :aria-label="$t('receipt.newQuantity')"
+              :ui="{ base: 'h-11' }"
+            />
+          </UFormField>
         </div>
-        <div class="flex items-center gap-3 pt-1">
-          <p class="min-w-0 flex-1 text-sm text-muted tabular-nums">{{ draft }}</p>
-          <UButton
-            icon="i-lucide-plus"
-            :label="$t('receipt.add')"
-            variant="soft"
-            size="lg"
-            class="w-28 justify-center"
-            @click="add"
-          />
+        <div class="flex items-end gap-2">
+          <UFormField
+            :label="$t('receipt.depositPerUnit')"
+            :hint="$t('form.optional')"
+            class="min-w-0 flex-1"
+          >
+            <MoneyInput
+              v-model="adding.deposit"
+              :currency="currency"
+              :aria-label="$t('receipt.newDeposit')"
+              class="w-full"
+              @keydown.enter.prevent="add"
+            />
+          </UFormField>
+          <div class="w-36 shrink-0 pb-2.5 text-end">
+            <p class="text-sm text-muted">{{ $t('receipt.lineTotal') }}</p>
+            <p class="text-lg font-semibold text-highlighted tabular-nums">
+              {{ draftTotal ?? '–' }}
+            </p>
+          </div>
         </div>
         <p v-if="addError" class="text-sm text-error">{{ addError }}</p>
+        <UButton icon="i-lucide-plus" :label="$t('receipt.add')" block @click="add" />
+        <p class="text-center text-sm text-muted">{{ $t('receipt.pendingHelp') }}</p>
       </div>
 
       <button
         v-if="composing !== 'refund'"
         type="button"
-        class="flex w-full cursor-pointer items-center gap-3 px-4 py-3 text-start font-medium text-primary transition-colors hover:bg-elevated/50 border-t border-default"
+        :class="addRow"
         @click="compose('refund')"
       >
-        <span class="grid size-7 place-items-center rounded-full bg-primary/10">
+        <span class="grid size-8 place-items-center rounded-full bg-primary/10">
           <UIcon name="i-lucide-undo-2" class="size-4" />
         </span>
         {{ $t('receipt.addDepositRefund') }}
       </button>
-      <div
-        v-else
-        role="group"
-        :aria-label="$t('receipt.addDepositRefund')"
-        class="space-y-2 border-t border-default bg-elevated/40 p-3"
-      >
+      <div v-else role="group" :aria-label="$t('receipt.addDepositRefund')" :class="pendingRow">
         <div class="flex items-center justify-between">
-          <p class="text-xs font-medium text-muted">{{ $t('receipt.addDepositRefund') }}</p>
+          <p class="font-semibold text-highlighted">{{ $t('receipt.depositRefund') }}</p>
           <UButton
             icon="i-lucide-x"
             color="neutral"
             variant="ghost"
-            size="xs"
             :aria-label="$t('receipt.closeAdding')"
+            class="-me-3"
             @click="composing = null"
           />
         </div>
-        <div class="flex gap-2">
-          <UInput
+        <UFormField :label="$t('receipt.refundAmount')">
+          <MoneyInput
             v-model="refundAmount"
-            inputmode="decimal"
-            :placeholder="$t('receipt.refundPlaceholder')"
+            :currency="currency"
             :aria-label="$t('receipt.newRefundAmount')"
             :color="refundError ? 'error' : undefined"
-            size="lg"
-            class="min-w-0 flex-1"
+            class="w-full"
             @keydown.enter.prevent="addRefund"
-          >
-            <template #trailing>
-              <span class="text-xs text-muted">{{ currency }}</span>
-            </template>
-          </UInput>
-          <UButton
-            icon="i-lucide-plus"
-            :label="$t('receipt.add')"
-            variant="soft"
-            size="lg"
-            class="w-28 justify-center"
-            @click="addRefund"
           />
-        </div>
+        </UFormField>
         <p v-if="refundError" class="text-sm text-error">{{ refundError }}</p>
+        <UButton icon="i-lucide-plus" :label="$t('receipt.add')" block @click="addRefund" />
+        <p class="text-center text-sm text-muted">{{ $t('receipt.pendingHelp') }}</p>
+      </div>
+
+      <div v-if="$slots.default" class="border-t border-default p-4">
+        <slot />
       </div>
     </div>
   </section>

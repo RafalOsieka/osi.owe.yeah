@@ -1,7 +1,8 @@
 <script setup lang="ts">
 // The Trip's tabs (Expenses · Balances · Trip): the Trip header on top with the sync status
-// and Invite, what sync has to tell (`TripNotices`) above the tab, the tab bar at the bottom and an
-// optional `#action` floating just above it. Pulling a tab down syncs the Trip. Only for
+// (a cloud whose popover points at it and says what isn't synced, in the list's words) and
+// Invite, what sync has to tell (`TripNotices`) above the tab, the tab bar at the bottom and
+// an optional `#action` floating just above it. Pulling a tab down syncs the Trip. Only for
 // pages under `pages/trips/[id].vue`, which provides the open Trip.
 const { trip, claim, unsynced, sync, askWhoYouAre, invite } = useOpenTrip();
 const { t } = useI18n();
@@ -34,7 +35,7 @@ const tabs = computed(() => {
         <h1 class="truncate text-base font-semibold text-highlighted">{{ trip.name }}</h1>
         <button
           type="button"
-          class="block max-w-full cursor-pointer truncate text-xs text-muted hover:text-default"
+          class="block max-w-full cursor-pointer truncate text-[0.8125rem] text-muted hover:text-default"
           @click="askWhoYouAre"
         >
           {{
@@ -45,7 +46,11 @@ const tabs = computed(() => {
           }}
         </button>
       </div>
-      <UPopover :content="{ align: 'end' }">
+      <UPopover
+        arrow
+        :content="{ align: 'end', side: 'bottom', sideOffset: 4, collisionPadding: 16 }"
+        :ui="{ content: 'rounded-xl' }"
+      >
         <UButton
           color="neutral"
           variant="ghost"
@@ -54,7 +59,7 @@ const tabs = computed(() => {
         >
           <UIcon
             :name="unsynced > 0 ? 'i-lucide-cloud' : 'i-lucide-cloud-check'"
-            class="size-4.5 text-dimmed"
+            class="size-5 text-muted"
           />
           <span
             v-if="unsynced > 0"
@@ -62,9 +67,18 @@ const tabs = computed(() => {
           />
         </UButton>
         <template #content>
-          <div class="max-w-64 p-3 text-sm">
-            <p class="font-semibold">{{ $t('sync.unsynced', unsynced) }}</p>
-            <p v-if="unsynced > 0" class="mt-1 text-muted">{{ $t('sync.unsyncedHelp') }}</p>
+          <div class="flex max-w-72 gap-2.5 p-3.5">
+            <UIcon
+              :name="unsynced > 0 ? 'i-lucide-cloud-off' : 'i-lucide-cloud-check'"
+              class="mt-0.5 size-5 shrink-0"
+              :class="unsynced > 0 ? 'text-warning' : 'text-success'"
+            />
+            <div>
+              <p class="font-semibold text-highlighted">{{ $t('sync.unsynced', unsynced) }}</p>
+              <p v-if="unsynced > 0" class="mt-0.5 text-sm text-muted">
+                {{ $t('sync.unsyncedHelp') }}
+              </p>
+            </div>
           </div>
         </template>
       </UPopover>
@@ -113,7 +127,7 @@ const tabs = computed(() => {
         <NuxtLink
           :to="tab.to"
           replace
-          class="group flex h-16 flex-col items-center justify-center gap-1 text-xs font-medium text-muted aria-[current=page]:text-highlighted"
+          class="group flex h-16 flex-col items-center justify-center gap-1 text-[0.8125rem] font-medium text-muted aria-[current=page]:text-highlighted"
         >
           <span
             class="grid h-7 w-14 place-items-center rounded-full transition-colors group-aria-[current=page]:bg-primary/12 group-aria-[current=page]:text-primary"

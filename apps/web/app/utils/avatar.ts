@@ -26,11 +26,12 @@ export function avatarColorAt(index: number): AvatarColor {
 }
 
 /**
- * A Participant's avatar color, picked from their id alone, for one no longer in the Trip, so every device shows the
- * same one. The whole id is hashed: ids created in the same millisecond share their start.
+ * The avatar color picked from an id alone, so every device shows the same one: for a
+ * Participant no longer in the Trip, and for a Trip's tile on My Trips. The whole id is
+ * hashed: ids created in the same millisecond share their start.
  */
-export function avatarColor(participantId: string): AvatarColor {
+export function avatarColor(id: string): AvatarColor {
   let hash = 0;
-  for (const char of participantId) hash = (hash * 31 + char.charCodeAt(0)) >>> 0;
+  for (const char of id) hash = (hash * 31 + char.charCodeAt(0)) >>> 0;
   return AVATAR_COLORS[hash % AVATAR_COLORS.length]!;
 }

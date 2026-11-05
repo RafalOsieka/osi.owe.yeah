@@ -4,7 +4,7 @@ import type { RemindBy } from '~/composables/useReminders';
 // Remind on a creditor's own Suggested Repayment (#42). Its icon says beforehand how it
 // reminds: a bell sends a push notification; share or copy passes on a pre-filled message,
 // as the debtor can't be notified or this device is offline (the row says so too).
-// "Reminded today" once the pair was reminded.
+// "Reminded today" once the pair was reminded. Quiet beside Record, which it sits next to.
 const {
   by,
   debtor,
@@ -48,13 +48,13 @@ const button = computed(() => {
 
 <template>
   <UButton
-    variant="ghost"
+    color="neutral"
+    variant="outline"
     :icon="button.icon"
     :label="button.label"
     :aria-label="button.aria"
     :loading="sending || by === 'checking'"
     :disabled="by === 'remindedToday'"
-    class="shrink-0"
     @click="$emit('remind')"
   />
 </template>

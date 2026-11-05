@@ -20,7 +20,7 @@ const qr = computed(() => {
     :aria-label="label"
     :viewBox="`0 0 ${qr.size} ${qr.size}`"
     shape-rendering="crispEdges"
-    class="rounded-lg bg-white"
+    class="rounded-2xl bg-white"
   >
     <path :d="qr.path" fill="#000" />
   </svg>

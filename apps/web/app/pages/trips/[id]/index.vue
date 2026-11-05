@@ -1,6 +1,6 @@
 <script setup lang="ts">
 // The Expenses tab: the Trip's Expenses, each opening its detail page, and "+ Expense".
-// While there are none, it offers the first Expense and Invite. Opened from a notification,
+// While there are none, a welcome offers Add Expense, and Invite under it. Opened from a notification,
 // `?highlight=<id>` marks the Expense it was about (#41), until the tab is opened again: the
 // address loses it at once, so a reload doesn't mark it again.
 definePageMeta({ scrollToTop: false });
@@ -33,7 +33,11 @@ const newExpense = computed(() => `/trips/${trip.value.id}/expenses/new`);
       :claim-id="claim?.id"
       :highlight-id="highlight"
     />
-    <div v-else class="flex flex-col items-center px-4 pt-16 text-center">
+    <!-- Centred in the space between the header and the tabs, as My Trips' welcome is. -->
+    <div
+      v-else
+      class="flex min-h-[calc(100dvh-17rem)] flex-col items-center justify-center px-4 text-center"
+    >
       <span
         class="grid size-20 place-items-center rounded-3xl bg-primary/10 text-primary"
         aria-hidden="true"
@@ -43,25 +47,23 @@ const newExpense = computed(() => `/trips/${trip.value.id}/expenses/new`);
       <p class="mt-6 text-xl font-semibold tracking-tight text-highlighted">
         {{ $t('expense.empty') }}
       </p>
-      <p class="mt-1.5 max-w-72 text-muted">{{ $t('expense.emptyHelp') }}</p>
-      <div class="mt-7 flex flex-wrap justify-center gap-2.5">
-        <UButton
-          icon="i-lucide-plus"
-          :label="$t('expense.addFirst')"
-          :disabled="!canAdd"
-          :to="newExpense"
-          size="lg"
-          class="shadow-md shadow-black/10 dark:shadow-none"
-        />
-        <UButton
-          icon="i-lucide-share-2"
-          :label="$t('invite.action')"
-          color="neutral"
-          variant="outline"
-          size="lg"
-          @click="invite"
-        />
-      </div>
+      <p class="mt-2 max-w-72 text-balance text-muted">{{ $t('expense.emptyHelp') }}</p>
+      <UButton
+        icon="i-lucide-plus"
+        :label="$t('expense.add')"
+        :disabled="!canAdd"
+        :to="newExpense"
+        size="xl"
+        class="mt-8 px-6"
+      />
+      <UButton
+        icon="i-lucide-share-2"
+        :label="$t('invite.action')"
+        color="neutral"
+        variant="ghost"
+        class="mt-2"
+        @click="invite"
+      />
     </div>
 
     <!-- While the list is empty, the empty state offers the button instead. -->

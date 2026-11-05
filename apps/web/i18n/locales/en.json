@@ -10,8 +10,11 @@
   },
   "install": {
     "title": "Install Owe Yeah",
-    "why": "It opens like an app, and the browser keeps your Trips on this device for good.",
-    "ios": "Tap Share, then Add to Home Screen: it opens like an app, and Safari keeps your Trips on this device for good.",
+    "why": "It opens like an app, straight from your home screen.",
+    "iosTitle": "Add Owe Yeah to your Home Screen",
+    "ios": "Tap {share}, then {addToHomeScreen}. It opens like an app, and Safari won't clear your Trips after a while without a visit.",
+    "share": "Share",
+    "addToHomeScreen": "Add to Home Screen",
     "action": "Install"
   },
   "testEnvironment": {
@@ -19,15 +22,17 @@
   },
   "myTrips": {
     "title": "My Trips",
-    "empty": "No Trips yet.",
-    "emptyHelp": "Start a Trip, share its link with the others, and see who owes whom. It works offline too.",
+    "empty": "No Trips yet",
+    "welcome": "Split a Trip's costs with friends",
+    "emptyHelp": "Add what everyone paid, share the Trip link, and see who owes whom. It works offline too.",
     "create": "New Trip",
-    "settled": "Settled"
+    "noExpenses": "No Expenses yet",
+    "settledHeading": "Settled"
   },
   "trip": {
     "create": {
       "title": "New Trip",
-      "name": "Name",
+      "name": "Trip name",
       "namePlaceholder": "Croatia {year}",
       "nameInvalid": "Give the Trip a name of up to 100 characters.",
       "currency": "Trip currency",
@@ -37,7 +42,7 @@
       "removeParticipant": "Remove Participant",
       "submit": "Create Trip",
       "me": "Your name",
-      "meHelp": "You will be this Participant on this device.",
+      "meHelp": "This device will show your share and balance.",
       "mePlaceholder": "e.g. Ania",
       "othersPlaceholder": "e.g. Kasia",
       "others": "Who else is coming?",
@@ -58,16 +63,20 @@
       "title": "Name and Trip currency",
       "row": "{name} · {currency}",
       "save": "Save",
+      "currencyHelp": "All balances are kept and settled in it. Changing it changes no Expense: each is converted at its own day's rate.",
+      "currencyChange": "Balances and Suggested Repayments will be in {currency}, each Expense converted at its own day's rate. No Expense changes.",
       "lastChangedBy": "Last changed by {name}, {when}",
       "lastChanged": "Last changed {when}"
     },
     "forget": {
       "title": "Forget this Trip",
-      "help": "{name} leaves My Trips on this device. Its Participants, you too, stay in the Trip for everyone else.",
+      "help": "{name} is removed from this device only. You and the other Participants stay in the Trip.",
+      "row": "Only from this device. The Trip stays for everyone else.",
       "unsynced": "Everything is synced. | 1 change on this device hasn't synced yet. Forgetting the Trip loses it. | {count} changes on this device haven't synced yet. Forgetting the Trip loses them.",
       "linkNeeded": "To open the Trip again, you'll need its Trip link.",
       "confirm": "Forget",
-      "anyway": "Forget anyway | Forget anyway (lose 1 change) | Forget anyway (lose {count} changes)"
+      "anyway": "Forget | Forget and lose 1 change | Forget and lose {count} changes",
+      "keep": "Keep Trip"
     }
   },
   "participants": {
@@ -77,14 +86,15 @@
     "add": "Add",
     "name": "Name",
     "addParticipant": "Add Participant",
+    "addHelp": "They can also add themselves when they open the Trip link.",
     "you": "you",
     "remove": "Remove from Trip",
     "removeHelp": "Their name stays on older versions and deleted Expenses. An Expense that includes them again brings them back.",
-    "referenced": "{name} is on no Expenses. | {name} is on 1 Expense, so they can't be removed. | {name} is on {count} Expenses, so they can't be removed."
+    "referenced": "{name} is on no Expenses. | {name} is on 1 Expense, so they can't be removed. Take them off it first. | {name} is on {count} Expenses, so they can't be removed. Take them off those first."
   },
   "claim": {
     "title": "Who are you?",
-    "help": "Pick your name, so this device can fill in defaults for you.",
+    "help": "Pick your name to see your share and balance on this device.",
     "notListed": "Not on the list?",
     "addMe": "Add me",
     "youAre": "You are {name}",
@@ -93,7 +103,7 @@
     "whoYouAre": "Who you are",
     "nobody": "Not said yet",
     "removed": "{name}, who you were on this device, was removed from the Trip. Who are you now?",
-    "noRights": "Picking a name gives you no extra rights."
+    "noRights": "Anyone with the Trip link can edit the Trip, whichever name they pick."
   },
   "invite": {
     "action": "Invite",
@@ -103,6 +113,7 @@
     "qrHelp": "Let someone next to you scan it with their phone's camera.",
     "share": "Share the Trip link",
     "copy": "Copy the Trip link",
+    "copyShort": "Copy",
     "copied": "Trip link copied",
     "copyFailed": "The Trip link couldn't be copied. Try again.",
     "notSynced": "The Trip hasn't synced yet",
@@ -117,12 +128,15 @@
     "newIncome": "New Income",
     "editIncome": "Edit Income",
     "title": "Title",
-    "titlePlaceholder": "Lidl Rovinj",
-    "titleInvalid": "Give the Expense a title of up to 100 characters.",
+    "titlePlaceholder": "e.g. Dinner or groceries",
+    "titleMissing": "Add a title.",
+    "titleInvalid": "Keep the title to 100 characters or fewer.",
     "amount": "Amount",
+    "amountMissing": "Enter an amount.",
     "amountInvalid": "Enter a whole amount above zero. | Enter an amount above zero with at most 1 decimal place. | Enter an amount above zero with at most {decimals} decimal places.",
     "moneyReceived": "Money received",
     "moneyReceivedHelp": "For a Deposit refund or other money someone got back for the group.",
+    "moneyReceivedWithContributions": "Not with Contributions: remove them to record money received.",
     "paidBy": "Paid by",
     "payerMissing": "Pick who paid.",
     "receivedBy": "Received by",
@@ -149,8 +163,7 @@
       "chargedWithoutTotal": "The amount charged needs a total other than zero.",
       "manualRateToOwnCurrency": "The Manual rate must convert into a currency other than the Expense's own."
     },
-    "emptyHelp": "Whoever pays for something adds it here.",
-    "addFirst": "Add the first Expense",
+    "emptyHelp": "Add what anyone paid for the group. Everyone's share is worked out for you.",
     "addShort": "Expense",
     "paidFor": "{name} paid · {forWhom}",
     "receivedFor": "{name} received · {forWhom}",
@@ -162,7 +175,10 @@
     "youGetBack": "you get back {amount}",
     "youRepaid": "you paid {amount}",
     "notForYou": "doesn't involve you",
-    "all": "All",
+    "selectAll": "Select all",
+    "clearAll": "Clear",
+    "splitEach": "Split evenly · {amount} each",
+    "splitBetween": "Split evenly between {count}",
     "forWhomEven": "For whom · Even",
     "editShort": "Edit",
     "notFound": "This Expense doesn't exist.",
@@ -170,16 +186,17 @@
     "delete": "Delete Expense",
     "deleted": "Deleted “{title}”. It is kept in Recently deleted.",
     "undo": "Undo",
-    "deleteRefused": "The Expense was not deleted"
+    "deleteRefused": "The Expense was not deleted",
+    "youOwe": "you owe {amount}",
+    "deleteIncome": "Delete Income"
   },
   "receipt": {
-    "kind": "Receipt",
     "itemise": "Itemise as a Receipt",
     "total": "Receipt total",
     "lineItems": "Line items",
     "shares": "Shares",
     "summary": "Receipt · no items | Receipt · 1 item | Receipt · {count} items",
-    "unassignedBadge": "{count} unassigned",
+    "unassignedBadge": "{count} items unassigned | {count} item unassigned | {count} items unassigned",
     "unassignedTotal": "{amount} not assigned yet, counted as {name}'s until it is.",
     "notAssigned": "{amount} not assigned yet",
     "nobodyYet": "nobody yet",
@@ -190,12 +207,12 @@
     "namePlaceholder": "Name (optional)",
     "unitPrice": "Unit price",
     "quantity": "Quantity",
-    "weighedHelp": "Weighed goods are one unit at the line price.",
+    "weighedHelp": "Weighed? Use quantity 1 and the line's price.",
     "lineDiscount": "Line discount",
     "receiptDiscount": "Receipt discount",
     "discountKind": "{label}: amount or percent",
     "discountUnreadable": "Check the discount.",
-    "perUnitDiscountHelp": "A discount per unit goes in for the whole line: 2 × 0.20 off is 0.40.",
+    "perUnitDiscountHelp": "For the whole line, not per unit.",
     "lineDiscountFact": "Discount {discount}",
     "receiptDiscountFact": "Receipt discount {discount}",
     "receiptDiscountExceeds": "The discount is larger than the Line items after their own discounts.",
@@ -208,6 +225,7 @@
     "unitsFor": "Units for {name}",
     "amountFor": "Amount for {name}",
     "unitsAssigned": "{assigned} of {quantity} units assigned",
+    "amountsAssigned": "{assigned} of {total} assigned",
     "problem": {
       "negativeLineItem": "A Deposit refund is one amount, with no discount or Deposit.",
       "unitsExceedQuantity": "More units assigned than bought.",
@@ -221,11 +239,16 @@
     "newUnitPrice": "New Line item unit price",
     "newQuantity": "New Line item quantity",
     "newName": "New Line item name",
-    "add": "Add",
+    "add": "Add to Receipt",
+    "newLineItem": "New Line item",
+    "lineTotal": "Line total",
+    "pendingHelp": "Not on the Receipt until you add it.",
+    "pendingRefused": "Add the new Line item to the Receipt, or close it, before saving.",
+    "openLine": "Open {name}",
     "lineItemsMissing": "Add at least one Line item.",
     "lineItemsUnreadable": "Check the prices, Deposits and Amounts of the Line items marked.",
     "depositPerUnit": "Deposit per unit",
-    "depositHelp": "Charged per unit for returnable packaging. It follows the split and is never discounted.",
+    "depositHelp": "Per unit of returnable packaging. Split like the line, never discounted.",
     "depositUnreadable": "Check the Deposit.",
     "amountsUnreadable": "Check the Amounts.",
     "depositFact": "Deposit {deposit}",
@@ -244,8 +267,9 @@
     "closeAdding": "Close",
     "notAssignedBeforeDiscount": "{amount} not assigned yet, before the Receipt discount",
     "extras": "Line discount and Deposit",
-    "draftLine": "{amount}, not on the Receipt until added",
-    "draftEmpty": "Not on the Receipt until added"
+    "unitsUnassigned": "{unassigned} of {quantity} units unassigned",
+    "subtotal": "Subtotal",
+    "includesUnassigned": "incl. {amount} unassigned"
   },
   "contribution": {
     "title": "Contributions",
@@ -253,10 +277,11 @@
     "add": "Add a Contribution",
     "amountFrom": "Contribution from {name}",
     "remove": "Remove the Contribution from {name}",
-    "rest": "{name} pays the rest: {amount}",
+    "rest": "{name} pays the rest",
     "exceeds": "The Contributions add up to more than the Expense.",
     "unreadable": "Check the Contribution amounts.",
-    "payerRefused": "{name} made a Contribution. Remove it to make {name} the Main payer."
+    "payerRefused": "{name} made a Contribution. Remove it to make {name} the Main payer.",
+    "mainPayer": "Main payer"
   },
   "repayment": {
     "title": "Repayment",
@@ -267,7 +292,11 @@
     "paidTo": "Paid to",
     "recipientMissing": "Pick who got the money.",
     "sameParticipant": "Pick someone other than who paid.",
-    "fromTo": "{payer} → {recipient}"
+    "fromTo": "{payer} → {recipient}",
+    "note": "Note",
+    "notePlaceholder": "e.g. Cash at the airport",
+    "settles": "Settles what {payer} owes {recipient}.",
+    "delete": "Delete Repayment"
   },
   "balances": {
     "title": "Balances",
@@ -290,7 +319,8 @@
     "recordLabel": "Record Repayment: {what} {amount}",
     "recordAnother": "Record another Repayment",
     "allSettled": "All settled",
-    "allSettledHelp": "Everyone's balance is zero."
+    "allSettledHelp": "Everyone's balance is zero.",
+    "recordOne": "Record a Repayment"
   },
   "reminder": {
     "remind": "Remind",
@@ -298,31 +328,41 @@
     "pushLabel": "Remind {name} with a notification",
     "shareLabel": "Remind {name} with a message you share",
     "copyLabel": "Remind {name} with a message you copy",
-    "byShare": "Can't be notified: you'll share a message",
-    "byCopy": "Can't be notified: you'll copy a message",
     "sent": "Reminder sent to {name}",
     "notSuggested": "This isn't a Suggested Repayment anymore. Pull to refresh and try again.",
     "message": "Hi {name}, a quick reminder: you owe me {amount} for {trip}.",
     "copied": "Reminder copied. Paste it into a message.",
-    "copyFailed": "The reminder couldn't be copied. Try again."
+    "copyFailed": "The reminder couldn't be copied. Try again.",
+    "unreachable": {
+      "share": "{names} can't get notifications, so Remind shares a message for you to send.",
+      "copy": "{names} can't get notifications, so Remind copies a message for you to send."
+    },
+    "offline": {
+      "share": "You're offline, so Remind shares a message for you to send.",
+      "copy": "You're offline, so Remind copies a message for you to send."
+    }
   },
   "breakdown": {
     "title": "{name}'s share",
     "paid": "Paid",
     "share": "Share",
-    "balance": "Balance",
     "rounded": "≈ rounded to the cent. The exact shares add up to the total.",
     "part": {
-      "expenses": "Expenses",
+      "expenses": "Plain Expenses",
       "goods": "Goods at full price",
       "lineDiscounts": "Line discounts",
       "deposits": "Deposits",
       "depositRefunds": "Deposit refunds",
       "receiptDiscounts": "Receipt discount",
-      "unassigned": "Not assigned yet",
+      "unassigned": "Not assigned yet, theirs for now",
       "income": "Income",
       "repayments": "Repayments received"
-    }
+    },
+    "owes": "{name} owes",
+    "isOwed": "{name} is owed",
+    "isEven": "{name} is even",
+    "done": "Done",
+    "roundedParts": "Parts are rounded to the cent, so they may not add up to the share exactly."
   },
   "rate": {
     "currency": "Currency",
@@ -336,12 +376,16 @@
     "missingCount": "No Expenses left out | 1 Expense left out: no rate yet | {count} Expenses left out: no rate yet",
     "manual": "Manual rate",
     "manualKind": "Manual rate: amount charged or rate",
-    "kindCharged": "Charged",
-    "kindRate": "Rate",
+    "kindCharged": "Amount charged",
+    "kindRate": "Exchange rate",
+    "chargedLabel": "Amount charged in {to}",
+    "rateLabel": "Exchange rate",
     "typeManual": "Type a Manual rate",
-    "askManual": "No exchange rate for {from} yet. Type a Manual rate, or this is left out of balances until one arrives.",
-    "chargedHelp": "What you were actually charged in {to}, e.g. by your card. It stays the same when the amounts change.",
+    "noAutomatic": "There's no automatic rate for {from} yet.",
+    "askManual": "There's no automatic rate for {from} yet. Type one, or this stays out of balances until it arrives.",
+    "chargedHelp": "What your card or bank actually took. If you change the amount later, this stays as typed and the rate follows.",
     "rateHelp": "How much 1 {from} was in {to}, e.g. at an exchange office.",
+    "derivedRate": "That's 1 {from} = {rate} {to}.",
     "rateInvalid": "Enter a rate above zero.",
     "chargedWithoutTotal": "An amount charged needs a total other than zero.",
     "manualTypedRate": "Manual rate: 1 {from} = {rate} {to}",
@@ -350,8 +394,8 @@
   },
   "sync": {
     "status": "Sync status",
-    "unsynced": "Everything is synced. | 1 change not synced yet | {count} changes not synced yet",
-    "unsyncedHelp": "Your changes are saved on this device and sync on their own when you're online.",
+    "unsynced": "Everything is synced. | 1 change not synced | {count} changes not synced",
+    "unsyncedHelp": "Saved on this device. Will sync when you're online.",
     "unsyncedShort": "· {count} not synced",
     "notSynced": "not synced",
     "pending": "Not synced yet. The others will see it after the next sync.",
@@ -380,21 +424,28 @@
       "manualRateToOwnCurrency": "the Manual rate must convert into a currency other than the Expense's own."
     },
     "pullToRefresh": "Pull to sync",
-    "releaseToRefresh": "Release to sync"
+    "releaseToRefresh": "Release to sync",
+    "conflictShown": "Below is your version, not synced yet."
   },
   "conflict": {
     "title": "Conflict",
-    "help": "You and someone else changed this Expense at the same time. Choose which version to keep; the other one is dropped.",
+    "help": "You and someone else changed this Expense before it synced. Pick the version to keep; what differs is highlighted.",
     "mine": "Your version",
     "theirs": "Their version",
-    "by": "by {name}",
     "paidBy": "Paid by {name}",
     "receivedBy": "Received by {name}",
     "forWhom": "For {names}",
-    "keepMine": "Keep mine",
+    "keepMine": "Keep yours",
     "keepTheirs": "Keep theirs",
     "none": "This Expense has no Conflict.",
-    "deleted": "Deleted"
+    "deleted": "Deleted",
+    "helpNamed": "You and {name} changed this Expense before it synced. Pick the version to keep; what differs is highlighted.",
+    "theirsNamed": "{name}'s version",
+    "keepTheirsNamed": "Keep {name}'s",
+    "keepMineHelp": "Their version stays in History.",
+    "keepMineHelpNamed": "{name}'s version stays in History.",
+    "keepTheirsHelp": "Your changes are dropped for good.",
+    "alsoDiffers": "Also differs: {fields}"
   },
   "colorMode": {
     "title": "Color mode",
@@ -404,7 +455,9 @@
   },
   "form": {
     "back": "Back",
-    "close": "Close"
+    "close": "Close",
+    "done": "Done",
+    "optional": "Optional"
   },
   "history": {
     "title": "History",
@@ -415,7 +468,6 @@
     "offline": "History needs a connection. Try again when you are online.",
     "empty": "No History yet. It starts once the Expense is synced.",
     "notFound": "This Revision doesn't exist.",
-    "version": "Revision {version}",
     "byline": "{name} · {when}",
     "deletedHere": "This change deleted the Expense.",
     "restore": "Restore this Revision",
@@ -425,7 +477,29 @@
       "edited": "Edited",
       "deleted": "Deleted",
       "restored": "Restored"
-    }
+    },
+    "byYou": "you",
+    "you": "You",
+    "justNow": "just now",
+    "current": "Current",
+    "changed": "Changed {fields}",
+    "field": {
+      "title": "title",
+      "amount": "amount",
+      "currency": "currency",
+      "when": "when",
+      "paidBy": "paid by",
+      "forWhom": "for whom",
+      "lineItems": "Line items",
+      "rate": "Manual rate"
+    },
+    "was": "was {amount}",
+    "earlierVersion": "Earlier version",
+    "currentVersion": "Current version",
+    "readOnly": "This is how the Expense looked after this change.",
+    "nowIs": "It's {amount} now.",
+    "differsFromNow": "Differs from now: {fields}.",
+    "restoreHelp": "Restoring adds it as a new change. The current version stays in History."
   },
   "deleted": {
     "title": "Recently deleted",
@@ -435,11 +509,13 @@
     "restoreTitle": "Restore {title}",
     "empty": "Nothing deleted",
     "emptyHelp": "Deleted Expenses wait here, so you can bring them back.",
-    "row": "{total} · {deleted}"
+    "kept": "Deleted Expenses stay here until someone restores them."
   },
   "notices": {
-    "participantRestored": "{name} was removed while you were offline. Your Expense \"{title}\" brought them back.",
-    "removalRefused": "{name} wasn't removed: they're on an Expense now."
+    "participantRestored": "{name} was removed while you were offline. Your Expense “{title}” brought them back.",
+    "removalRefused": "{name} wasn't removed: they're on an Expense now.",
+    "removalRefusedBy": "{name} wasn't removed: “{title}” includes them now.",
+    "showExpense": "Show Expense"
   },
   "notifications": {
     "title": "Notifications",
@@ -460,9 +536,12 @@
     "turnOff": "Turn off",
     "failed": "Notifications couldn't be turned on. Check your connection and try again.",
     "blockedHelp": "Notifications for Owe Yeah are blocked in this browser. To unblock them:",
-    "blockedStep1": "Open this site's settings: tap the icon next to the address, or find Owe Yeah under Site settings in the browser's settings.",
+    "blockedStep1": "In the browser, tap {icon} next to the address and open the site's settings. In the installed app, long-press its icon and open App info.",
     "blockedStep2": "Allow notifications.",
-    "blockedStep3": "Come back here and tap Turn on."
+    "blockedStep3": "Come back here and tap Check again.",
+    "siteIcon": "the site settings icon",
+    "checkAgain": "Check again",
+    "stillBlocked": "Still blocked. Allow notifications in the settings, then check again."
   },
   "push": {
     "added": "{author} added “{title}”",
@@ -477,7 +556,9 @@
   },
   "legal": {
     "title": "Legal",
-    "privacyLink": "privacy notice"
+    "privacyLink": "privacy notice",
+    "contents": "On this page",
+    "backToContents": "Back to contents"
   },
   "privacy": {
     "title": "Privacy notice",

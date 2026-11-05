@@ -12,8 +12,8 @@ export type RemindBy = 'push' | 'share' | 'copy' | 'remindedToday' | 'checking';
 /**
  * Reminders by hand on the Balances tab (#42), for the claimed Participant's suggestions as
  * creditor: `by` says how each debtor would be reminded, `remind` reminds them. The server is
- * asked whom it can reach on open and on reconnect; offline, or when it can't be asked,
- * Remind shares a pre-filled message instead.
+ * asked whom it can reach on open and on reconnect; offline, or when it can't be asked
+ * (`offline`), Remind shares a pre-filled message instead.
  */
 export function useReminders() {
   const { trip, claim, link, reminderStatus, remind: send } = useOpenTrip();
@@ -123,5 +123,7 @@ export function useReminders() {
     }
   }
 
-  return { by, sending: readonly(sending), remind };
+  const offline = computed(() => status.value === null);
+
+  return { by, offline, sending: readonly(sending), remind };
 }

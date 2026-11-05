@@ -3,8 +3,9 @@ import { expenseShares } from '@osi/owe-yeah-domain';
 import { toExpense, type LocalExpense } from '~/sync/local-trip';
 
 // Recently deleted, opened from the Trip tab: the Trip's deleted Expenses, most recently
-// deleted first (deletions not synced yet on top), each with who deleted it and when, and
-// Restore. Restoring saves the Expense again, on top of its deletion, so it can cause a
+// deleted first (deletions not synced yet on top), each with its total on the right like every
+// list, who deleted it and when, and Restore. Nothing removes them for good, so the page says
+// they stay until restored. Restoring saves the Expense again, on top of its deletion, so it can cause a
 // Conflict; one in Conflict opens the Conflict screen, and one not synced yet is marked.
 definePageMeta({ viewTransition: { toTypes: ['forward'], fromTypes: ['back'] } });
 
@@ -27,14 +28,12 @@ const rows = computed(() => {
     const { edited, unsynced } = expense;
     const name = everyone.value.find(({ id }) => id === edited?.by)?.name;
     const when = edited?.at
-      ? formatTimeAgo(edited.at, now, locale.value)
+      ? formatTimeAgo(edited.at, now, locale.value, t('history.justNow'))
       : t('history.notSyncedYet');
     return {
       expense,
-      deleted: t('deleted.row', {
-        total: formatMoney(expenseShares(expense).total, expense.currency, locale.value),
-        deleted: name ? t('deleted.by', { name, when }) : t('deleted.at', { when }),
-      }),
+      total: formatMoney(expenseShares(expense).total, expense.currency, locale.value),
+      deleted: name ? t('deleted.by', { name, when }) : t('deleted.at', { when }),
       conflict: unsynced?.status === 'conflict',
       notSynced: unsynced !== null && unsynced.status !== 'conflict',
     };
@@ -56,37 +55,56 @@ useHead({ title: () => t('deleted.title') });
 
 <template>
   <NuxtLayout name="form" :title="$t('deleted.title')" :parent="`${tripPage}/settings`">
-    <ul v-if="rows.length > 0" class="card divide-y divide-default">
-      <li v-for="row in rows" :key="row.expense.id" class="flex items-center gap-3 px-4 py-3">
-        <span class="min-w-0 flex-1 leading-snug">
-          <span class="block truncate font-medium text-highlighted">{{ row.expense.title }}</span>
-          <span class="block truncate text-sm text-muted">
-            <NuxtLink
-              v-if="row.conflict"
-              :to="`${tripPage}/expenses/${row.expense.id}/conflict`"
-              class="me-1"
-            >
-              <UBadge :label="$t('sync.conflictBadge')" color="error" variant="subtle" size="sm" />
-            </NuxtLink>
-            <UBadge
-              v-else-if="row.notSynced"
-              :label="$t('sync.notSynced')"
-              color="neutral"
-              variant="subtle"
-              size="sm"
-              class="me-1"
-            />
-            {{ row.deleted }}
+    <template v-if="rows.length > 0">
+      <ul class="card divide-y divide-default">
+        <li
+          v-for="row in rows"
+          :key="row.expense.id"
+          class="flex items-center gap-3 py-3 ps-4 pe-3"
+        >
+          <span class="min-w-0 flex-1 leading-snug">
+            <span class="flex items-baseline gap-3">
+              <span class="min-w-0 flex-1 truncate font-medium text-highlighted">
+                {{ row.expense.title }}
+              </span>
+              <span class="shrink-0 font-semibold text-highlighted tabular-nums">
+                {{ row.total }}
+              </span>
+            </span>
+            <span class="mt-0.5 block text-sm text-muted">
+              <NuxtLink
+                v-if="row.conflict"
+                :to="`${tripPage}/expenses/${row.expense.id}/conflict`"
+                class="me-1"
+              >
+                <UBadge
+                  :label="$t('sync.conflictBadge')"
+                  color="warning"
+                  variant="subtle"
+                  size="md"
+                />
+              </NuxtLink>
+              <UBadge
+                v-else-if="row.notSynced"
+                :label="$t('sync.notSynced')"
+                color="neutral"
+                variant="subtle"
+                size="md"
+                class="me-1"
+              />
+              {{ row.deleted }}
+            </span>
           </span>
-        </span>
-        <UButton
-          variant="soft"
-          :label="$t('deleted.restore')"
-          :aria-label="$t('deleted.restoreTitle', { title: row.expense.title })"
-          @click="restore(row.expense)"
-        />
-      </li>
-    </ul>
+          <UButton
+            variant="soft"
+            :label="$t('deleted.restore')"
+            :aria-label="$t('deleted.restoreTitle', { title: row.expense.title })"
+            @click="restore(row.expense)"
+          />
+        </li>
+      </ul>
+      <p class="mt-3 px-4 text-sm text-muted">{{ $t('deleted.kept') }}</p>
+    </template>
     <UEmpty
       v-else
       icon="i-lucide-trash-2"

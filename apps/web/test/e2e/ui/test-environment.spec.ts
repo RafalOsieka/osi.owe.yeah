@@ -22,7 +22,7 @@ async function everyScreen(page: Page, check: () => Promise<void>): Promise<void
   await check();
   await page.getByRole('link', { name: 'New Trip' }).click();
   await check();
-  await page.getByLabel('Name', { exact: true }).fill('Hel 2026');
+  await page.getByLabel('Trip name').fill('Hel 2026');
   await page.getByLabel('Your name').fill('Ania');
   await page.getByLabel('Participant 2').fill('Kasia');
   await page.getByRole('button', { name: 'Create Trip' }).click();

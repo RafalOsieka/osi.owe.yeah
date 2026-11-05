@@ -1,46 +1,67 @@
 <script setup lang="ts">
-// When an Expense happened, as the forms take it: one chip with the local date, time
-// and zone until tapped, then a `datetime-local` field with the zone picker under it. Sits
-// inside a `UForm`, as its `local` field.
+// When an Expense happened, as the forms take it: one chip with the local date, time and zone
+// city until tapped, then a `datetime-local` field with the zone picker under it, listing each
+// zone by its city and UTC offset, and Done to fold it back into the chip. Times follow the
+// device's 12- or 24-hour clock, as the field does. Sits inside a `UForm`, as its `local` field.
 const local = defineModel<string>('local', { required: true });
 const zone = defineModel<string>('zone', { required: true });
 
 const { locale } = useI18n();
 
 const open = ref(false);
-// The device's zone may be an alias missing from the list, so it is always offered.
-const zones = computed(() => [...new Set([zone.value, ...Intl.supportedValuesOf('timeZone')])]);
+// The device's zone may be an alias missing from the list, so it is always offered. Listed by
+// city and offset, and found by either or by its identifier.
+const zones = computed(() => {
+  const now = new Date();
+  return [...new Set([zone.value, ...Intl.supportedValuesOf('timeZone')])].map((value) => ({
+    value,
+    label: zoneLabel(value, now),
+  }));
+});
 // A local date and time is not an instant, so it is formatted in UTC to keep the device's
-// zone from shifting it.
-// Today's date reads "Today".
+// zone from shifting it. Today's date reads "Today".
 const time = computed(() => {
   if (!local.value) return '';
   const at = new Date(`${local.value}:00Z`);
+  const hourCycle = deviceHourCycle();
   const today = local.value.slice(0, 10) === new Date().toLocaleDateString('sv');
   if (!today) {
     return new Intl.DateTimeFormat(locale.value, {
       dateStyle: 'medium',
       timeStyle: 'short',
+      hourCycle,
       timeZone: 'UTC',
     }).format(at);
   }
   const day = new Intl.RelativeTimeFormat(locale.value, { numeric: 'auto' }).format(0, 'day');
-  const clock = new Intl.DateTimeFormat(locale.value, { timeStyle: 'short', timeZone: 'UTC' });
+  const clock = new Intl.DateTimeFormat(locale.value, {
+    timeStyle: 'short',
+    hourCycle,
+    timeZone: 'UTC',
+  });
   return `${day.charAt(0).toLocaleUpperCase(locale.value)}${day.slice(1)}, ${clock.format(at)}`;
 });
 </script>
 
 <template>
-  <UFormField v-if="open" name="local" :label="$t('expense.when')">
-    <UInput v-model="local" type="datetime-local" class="w-full" />
+  <UFormField v-if="open" name="local" :label="$t('expense.when')" :ui="{ hint: 'flex' }">
+    <template #hint>
+      <UButton variant="link" :label="$t('form.done')" class="-my-3 -me-4" @click="open = false" />
+    </template>
+    <UInput v-model="local" type="datetime-local" class="w-full dark:scheme-dark" />
     <template #help>
       <USelectMenu
         v-model="zone"
         :items="zones"
+        value-key="value"
+        :filter-fields="['label', 'value']"
+        virtualize
         :aria-label="$t('expense.timeZone')"
         variant="ghost"
-        size="xs"
         icon="i-lucide-globe"
+        class="-ms-3 max-w-full"
+        :content="{ align: 'start' }"
+        :ui="{ content: 'min-w-72' }"
       />
     </template>
   </UFormField>
@@ -50,7 +71,7 @@ const time = computed(() => {
     </p>
     <button
       type="button"
-      class="inline-flex h-10 max-w-full cursor-pointer items-center gap-2 rounded-full bg-elevated px-3.5 text-start text-sm text-default transition-colors hover:bg-accented/70"
+      class="inline-flex h-11 max-w-full cursor-pointer items-center gap-2 rounded-full bg-elevated px-4 text-start text-sm text-default transition-colors hover:bg-accented/70"
       @click="open = true"
     >
       <UIcon name="i-lucide-calendar-clock" class="size-4 shrink-0 text-muted" />
@@ -58,6 +79,7 @@ const time = computed(() => {
       <span class="min-w-0 truncate">
         {{ $t('expense.timeInZone', { time, zone: zoneName(zone) }) }}
       </span>
+      <UIcon name="i-lucide-chevron-down" class="size-4 shrink-0 text-dimmed" />
     </button>
   </div>
 </template>

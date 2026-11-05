@@ -1,6 +1,7 @@
 <script setup lang="ts">
 import {
   balances,
+  isRepayment,
   isSettled,
   participantIdSchema,
   rateSummary,
@@ -12,13 +13,16 @@ import { z } from 'zod';
 
 // The Balances tab: your balance, with your own Suggested Repayments ("To settle") on its
 // card, then everyone's balance as diverging bars, headed by what the Trip spent, the other
-// Suggested Repayments (all of them without a Claim), and Record another Repayment. Once the
-// Trip is Settled, "All settled" replaces the balance and the suggestions. Balances are worked out exactly and
-// rounded with the largest remainder method, as settling up uses them, in the Trip currency.
+// Suggested Repayments (all of them without a Claim), and a quiet Record a Repayment for one
+// nobody suggested ("another" once there are Repayments). Once the Trip is Settled, "All
+// settled" replaces the balance and the suggestions, and everyone's row keeps only the name
+// and the zero. Balances are worked out exactly and rounded with the largest remainder
+// method, as settling up uses them, in the Trip currency.
 // The footer warns how many Expenses use a Provisional rate, so balances may still move a
 // little (settling up stays allowed), and how many are left out without any rate. Tapping a
 // bar opens where that Participant's share comes from, with what they paid and their balance.
-// On the claimed Participant's suggestions as creditor, Remind reminds the debtor (#42).
+// On the claimed Participant's suggestions as creditor, Remind reminds the debtor (#42); a
+// line under them says once whom it can only remind by a message they send themselves.
 // Opened from a Reminder, `?payer=<id>&recipient=<id>` marks the suggestion it was about,
 // Record one tap away, until the tab is opened again: the address loses it at once.
 definePageMeta({ scrollToTop: false });
@@ -80,21 +84,37 @@ const suggestions = computed(() => {
   return { own: all.filter(own), others: all.filter((suggestion) => !own(suggestion)) };
 });
 
-// The claimed Participant's debtors, Remind on their suggestions: how it reminds each, and the
-// line saying beforehand when it passes on a message instead of notifying them.
+// The claimed Participant's debtors, Remind on their suggestions: how it reminds each.
 const remindable = computed(
   () =>
     new Map(
       suggestions.value.own
         .filter(({ recipientId }) => recipientId === claim.value?.id)
         .map(({ payerId }) => {
-          const by = reminders.by(payerId);
-          const hints = { share: t('reminder.byShare'), copy: t('reminder.byCopy') };
-          const hint = by === 'share' || by === 'copy' ? hints[by] : null;
           const debtor = trip.value.participants.find(({ id }) => id === payerId)?.name ?? '?';
-          return [payerId, { by, hint, debtor }];
+          return [payerId, { by: reminders.by(payerId), debtor }];
         }),
     ),
+);
+
+// Said once under the debtors, before Remind is tapped: who it can only remind by a message
+// this device shares (or copies), or that it does so for all of them while offline.
+const reminderNote = computed(() => {
+  const byMessage = [...remindable.value.values()].filter(
+    ({ by }) => by === 'share' || by === 'copy',
+  );
+  const how = byMessage[0]?.by;
+  if (how !== 'share' && how !== 'copy') return null;
+  if (reminders.offline.value) return t(`reminder.offline.${how}`);
+  const names = new Intl.ListFormat(locale.value).format(byMessage.map(({ debtor }) => debtor));
+  return t(`reminder.unreachable.${how}`, { names });
+});
+
+// "Record a Repayment", or "another" once the Trip has one and isn't Settled.
+const recordLabel = computed(() =>
+  !settled.value && trip.value.expenses.some(isRepayment)
+    ? t('balances.recordAnother')
+    : t('balances.recordOne'),
 );
 </script>
 
@@ -116,37 +136,34 @@ const remindable = computed(
     <template v-else>
       <BalanceCard :balance="mine" :total="total" :currency="trip.currency">
         <template v-if="suggestions.own.length > 0" #default>
-          <section aria-labelledby="to-settle-heading" class="pt-3">
-            <h2 id="to-settle-heading" class="px-5 text-xs font-medium text-muted">
+          <section aria-labelledby="to-settle-heading" class="pt-4">
+            <h2 id="to-settle-heading" class="px-4 text-sm font-medium text-muted">
               {{ $t('balances.toSettle') }}
             </h2>
             <SuggestedRepaymentList
               :suggestions="suggestions.own"
-              :amount-shown="suggestions.own.length > 1"
               :participants="trip.participants"
               :trip-id="trip.id"
               :currency="trip.currency"
               :claim-id="claim?.id"
               :highlight="highlight"
             >
-              <template #detail="{ suggestion }">
-                <span
-                  v-if="remindable.get(suggestion.payerId)?.hint"
-                  class="block text-xs text-muted"
-                >
-                  {{ remindable.get(suggestion.payerId)?.hint }}
-                </span>
-              </template>
-              <template #action="{ suggestion }">
+              <template v-if="remindable.size > 0" #action="{ suggestion }">
                 <RemindButton
-                  v-if="remindable.has(suggestion.payerId)"
-                  :by="remindable.get(suggestion.payerId)!.by"
-                  :debtor="remindable.get(suggestion.payerId)!.debtor"
+                  :by="remindable.get(suggestion.payerId)?.by ?? 'checking'"
+                  :debtor="remindable.get(suggestion.payerId)?.debtor ?? '?'"
                   :sending="reminders.sending.value === suggestion.payerId"
                   @remind="reminders.remind(suggestion)"
                 />
               </template>
             </SuggestedRepaymentList>
+            <p
+              v-if="reminderNote"
+              class="flex gap-2 border-t border-default px-4 py-3 text-sm text-muted"
+            >
+              <UIcon name="i-lucide-info" class="mt-0.5 size-4 shrink-0" />
+              {{ reminderNote }}
+            </p>
           </section>
         </template>
       </BalanceCard>
@@ -168,6 +185,7 @@ const remindable = computed(
         :participants="trip.participants"
         :currency="trip.currency"
         :claim-id="claim?.id"
+        :bars="!settled"
         @select="openBreakdown"
       />
     </section>
@@ -187,15 +205,15 @@ const remindable = computed(
       />
     </section>
 
-    <NuxtLink
+    <UButton
       :to="`/trips/${trip.id}/repayments/new`"
-      class="card mt-6 flex items-center gap-3 px-4 py-3 font-medium text-primary transition-colors hover:bg-elevated/60"
-    >
-      <span class="grid size-8 place-items-center rounded-full bg-primary/10">
-        <UIcon name="i-lucide-plus" class="size-4" />
-      </span>
-      {{ $t('balances.recordAnother') }}
-    </NuxtLink>
+      icon="i-lucide-plus"
+      :label="recordLabel"
+      color="neutral"
+      variant="ghost"
+      block
+      class="mt-5"
+    />
 
     <div
       v-if="rates.provisional > 0 || rates.missing > 0"
@@ -217,6 +235,7 @@ const remindable = computed(
       :participant="opened.participant"
       :breakdown="opened.breakdown"
       :currency="trip.currency"
+      :claim-id="claim?.id"
       :paid="opened.balance.paid"
       :balance="opened.balance.rounded"
     />

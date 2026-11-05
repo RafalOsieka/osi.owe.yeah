@@ -7,7 +7,7 @@ import type { BrowserSubscription } from '~/sync/db';
 // looking", or "Cancel" with a Claim) changes nothing. Asked again because someone removed
 // the Participant this device was, it says so. With `offerFor` (the Trip's name), it ends
 // with the offer of notifications that follows a Claim (#41). Joining a Trip opens it first,
-// so it links the privacy notice and the terms too.
+// so it links the privacy notice and the terms too. Its description uses the sheet's full width.
 const {
   current,
   removed = null,
@@ -34,11 +34,17 @@ const description = computed(() => {
 </script>
 
 <template>
-  <UDrawer v-model:open="open" :title="title" :description="description">
+  <UDrawer
+    v-model:open="open"
+    :title="title"
+    :description="description"
+    :ui="{ description: 'text-pretty' }"
+  >
     <template #body>
       <NotificationsOffer
         v-if="offerFor"
         :trip-name="offerFor"
+        dismissible
         @subscribed="emit('subscribed', $event)"
         @not-now="open = false"
       />
@@ -59,7 +65,7 @@ const description = computed(() => {
               </UButton>
             </li>
           </ul>
-          <p class="mt-2 text-xs text-muted">{{ $t('claim.noRights') }}</p>
+          <p class="mt-3 text-sm text-muted">{{ $t('claim.noRights') }}</p>
         </div>
         <ParticipantNameForm
           :label="$t('claim.notListed')"

@@ -78,7 +78,7 @@ const SCREENS = {
   ],
   'a07-notifications-offer': [
     'Notifications offer after a Claim',
-    'The same sheet once a name is picked: the one-time offer of notifications for this Trip, Turn on or Not now.',
+    'The same sheet once a name is picked: the one-time offer of notifications for this Trip, and Turn on or Not now.',
     'none',
   ],
   'a08-notifications-offer-iphone': [
@@ -188,7 +188,7 @@ const SCREENS = {
   ],
   'a29-forget-trip-unsynced': [
     'Forget this Trip, unsynced changes',
-    "The Forget this Trip confirmation while a change hasn't synced: the warning, and Forget anyway (lose 1 change).",
+    "The Forget this Trip confirmation while a change hasn't synced: the warning, and Forget and lose 1 change.",
     'light',
   ],
   'a30-who-are-you-removed': [
@@ -213,7 +213,7 @@ const SCREENS = {
   ],
   'a34-notifications-off': [
     'Notifications, off',
-    'The Notifications page while off: what they tell, and Turn on or Not now.',
+    'The Notifications page while off: what they tell, and Turn on.',
     'light',
   ],
   'a35-notifications-failed': [
@@ -290,7 +290,7 @@ const SCREENS = {
   ],
   'b12-conflict': [
     'Conflict',
-    'The Conflict screen: your version and theirs side by side, Keep mine or Keep theirs.',
+    'The Conflict screen: your version and theirs side by side, each with its own Keep button and what it does.',
     'light',
   ],
   'c01-new-expense': [
@@ -823,7 +823,7 @@ async function capture(scheme: 'light' | 'dark'): Promise<void> {
     await offer.getByRole('button', { name: 'Not now' }).click();
     await offer.waitFor({ state: 'hidden' });
     await go(base);
-    await page.getByText('Install Owe Yeah').waitFor();
+    await page.getByText('Add Owe Yeah to your Home Screen').waitFor();
     await snap('a10-my-trips-install-nudge');
     await go(`${croatia.page}/notifications`);
     await page.getByText('only the installed app gets notifications').waitFor();
@@ -859,7 +859,7 @@ async function capture(scheme: 'light' | 'dark'): Promise<void> {
   await go(`${base}/trips/new`);
   await page.getByLabel('Your name').waitFor();
   await snap('a02-new-trip');
-  await page.getByLabel('Name', { exact: true }).fill('Lake Bled 2026');
+  await page.getByLabel('Trip name').fill('Lake Bled 2026');
   await page.getByLabel('Your name').fill('Ania');
   for (const [index, other] of ['Kasia', 'Tomek', 'Marta'].entries()) {
     if (index > 0) await button('Add another').click();
@@ -934,7 +934,7 @@ async function capture(scheme: 'light' | 'dark'): Promise<void> {
   await newExpense();
   await snap('c01-new-expense', true);
   await button('Save Expense').click();
-  await text('Give the Expense a title').waitFor();
+  await text('Add a title').waitFor();
   await snap('c02-new-expense-errors', true);
   await newExpense();
   await page.getByRole('textbox', { name: 'Amount', exact: true }).fill('86.40');
@@ -957,7 +957,7 @@ async function capture(scheme: 'light' | 'dark'): Promise<void> {
   await page.getByRole('option', { name: /HUF/ }).click();
   await page.getByRole('textbox', { name: 'Amount', exact: true }).fill('32000');
   await page.getByRole('textbox', { name: 'Contribution from Tomek' }).fill('8000');
-  await page.getByRole('textbox', { name: 'Manual rate' }).fill('80.50');
+  await page.getByRole('textbox', { name: 'Amount charged in EUR' }).fill('80.50');
   await text('€80.50').waitFor();
   await snap('c06-new-expense-foreign-currency', true);
   await newExpense();
@@ -1117,8 +1117,8 @@ async function capture(scheme: 'light' | 'dark'): Promise<void> {
   await go(croatia.page);
   const gelato = page.getByRole('link').filter({ hasText: 'Gelato and lemonade' });
   await gelato.waitFor();
-  await banner.getByRole('button', { name: '1 change not synced yet' }).click();
-  await sheet.getByText('1 change not synced yet').waitFor();
+  await banner.getByRole('button', { name: '1 change not synced' }).click();
+  await sheet.getByText('1 change not synced').waitFor();
   await snap('a16-sync-unsynced');
   await close();
   await croatia.edit('Gelato', 'Tomek', (expense) =>
@@ -1133,7 +1133,7 @@ async function capture(scheme: 'light' | 'dark'): Promise<void> {
   await link('Choose version').waitFor();
   await snap('b11-expense-conflict', true);
   await link('Choose version').click();
-  await page.getByRole('region', { name: 'Their version' }).waitFor();
+  await page.getByRole('region', { name: "Tomek's version" }).waitFor();
   await snap('b12-conflict', true);
 
   // A Trip without Expenses; a removal another device's Expense refuses; and this device's
@@ -1176,7 +1176,7 @@ async function capture(scheme: 'light' | 'dark'): Promise<void> {
   // A Trip created offline, before it reaches the server.
   await offline();
   await go(`${base}/trips/new`);
-  await page.getByLabel('Name', { exact: true }).fill('Weekend in Gdańsk');
+  await page.getByLabel('Trip name').fill('Weekend in Gdańsk');
   await page.getByLabel('Your name').fill('Ania');
   await page.getByLabel('Participant 2').fill('Kasia');
   await button('Create Trip').click();
