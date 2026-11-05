@@ -2,8 +2,8 @@
 import type { Discount } from '@osi/owe-yeah-domain';
 import type { DraftDiscount } from '~/utils/expense-draft';
 
-// A Line or Receipt discount as typed: its value, and beside it whether that is an amount in
-// the currency or a percentage, which names its unit. Empty means no discount, so
+// A Line or Receipt discount as typed: its value, marked like every money input (or "%"), and
+// beside it whether that is an amount in the currency or a percentage. Empty means no discount, so
 // the field is marked optional; `help` says more under it. `error` says why it can't be used,
 // if it can't; the form reads and checks it.
 const {
@@ -47,8 +47,7 @@ const kind = computed({
       <MoneyInput
         :model-value="discount.value"
         :currency="currency"
-        bare
-        :placeholder="discount.kind === 'percent' ? '0' : undefined"
+        :percent="discount.kind === 'percent'"
         :color="error ? 'error' : undefined"
         class="min-w-0 flex-1"
         @update:model-value="discount = { ...discount, value: $event }"

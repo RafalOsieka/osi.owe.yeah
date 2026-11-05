@@ -3,7 +3,8 @@ import { participantNameSchema } from '@osi/owe-yeah-domain';
 import type { FormError } from '@nuxt/ui';
 
 // One name field and a button, used for "Add me" and for adding a Participant. The button is
-// the solid primary once a name is typed, and plainly unavailable before. Emits the trimmed
+// the solid primary once a name is typed, and plainly unavailable before; it has the field's
+// corners, so the two read as one control. Emits the trimmed
 // name and clears itself; the parent does the adding.
 defineProps<{ label: string; submitLabel: string }>();
 const emit = defineEmits<{ submit: [name: string] }>();
@@ -40,7 +41,7 @@ function submit(): void {
       :disabled="!typed"
       icon="i-lucide-user-plus"
       :label="submitLabel"
-      class="mt-6 shrink-0 disabled:text-dimmed"
+      class="mt-6 shrink-0 rounded-lg disabled:text-dimmed"
     />
   </UForm>
 </template>

@@ -6,6 +6,7 @@ import {
   roundMoney,
   subtract,
   type Participant,
+  type BreakdownPart,
   type Rational,
   type ShareBreakdown,
 } from '@osi/owe-yeah-domain';
@@ -14,7 +15,7 @@ import {
 // what it is of, e.g. the Receipt's title): each
 // part of it (plain Expenses, goods, discounts, Deposits, Deposit refunds, what is not
 // assigned yet, in amber with a line on why it is theirs for now, Income and Repayments
-// received), summed up in the share. The claimed Participant's title carries "you". Opened from a share
+// received), in the order the Receipt's summary uses, summed up in the share. The claimed Participant's title carries "you". Opened from a share
 // on a Receipt; or, from their bar on the Balances tab, also with what they paid and their
 // balance, said as Balances says it ("Kasia owes €116.95", red; "is owed", green), the share
 // there being what they paid less that balance, as the balance card shows it, so the three add
@@ -45,6 +46,21 @@ const open = defineModel<boolean>('open', { required: true });
 
 const { t, locale } = useI18n();
 
+// The order the parts show in, as the Receipt's summary reads: the goods after their Line
+// discounts, then Deposit refunds, the Receipt discount and Deposits.
+const ORDER = [
+  'expenses',
+  'goods',
+  'lineDiscounts',
+  'depositRefunds',
+  'receiptDiscounts',
+  'deposits',
+  'unassigned',
+  'income',
+  'repayments',
+] as const satisfies readonly BreakdownPart[];
+const place = (part: BreakdownPart) => ORDER.indexOf(part);
+
 // An amount as rounded to show it, without "≈": the sheet marks rounding once, on the share.
 const rounded = (amount: Rational) =>
   formatMoney(decimal(roundMoney(amount, currency).decimal), currency, locale.value);
@@ -60,17 +76,14 @@ const sheet = computed(() => {
     (paid !== null && inexact(paid)) ||
     breakdown.parts.some(({ amount }) => inexact(amount));
   return {
-    parts: breakdown.parts.map(({ part, amount }) => ({
-      label:
-        part === 'unassigned'
-          ? participant.id === claimId
-            ? t('breakdown.unassignedYours')
-            : t('breakdown.unassignedTheirs', { name: participant.name })
-          : t(`breakdown.part.${part}`),
-      amount: rounded(amount),
-      // What is not assigned yet, in amber as everywhere.
-      tone: part === 'unassigned' ? 'text-warning' : '',
-    })),
+    parts: breakdown.parts
+      .toSorted((a, b) => place(a.part) - place(b.part))
+      .map(({ part, amount }) => ({
+        label: t(`breakdown.part.${part}`),
+        amount: rounded(amount),
+        // What is not assigned yet, in amber as everywhere.
+        tone: part === 'unassigned' ? 'text-warning' : '',
+      })),
     unassigned: breakdown.parts.some(({ part }) => part === 'unassigned'),
     share: formatMoney(share, currency, locale.value, 'currency', approximate),
     partsRounded,
@@ -128,7 +141,7 @@ function outcomeOf(rounded: Rational) {
         <div
           v-for="{ label, amount, tone } in sheet.parts"
           :key="label"
-          class="flex justify-between gap-3 py-1.5"
+          class="flex justify-between gap-6 py-1.5"
           :class="tone"
         >
           <dt>{{ label }}</dt>
@@ -154,7 +167,11 @@ function outcomeOf(rounded: Rational) {
         </template>
       </dl>
       <p v-if="sheet.unassigned" class="mt-3 text-sm text-muted">
-        {{ $t('breakdown.unassignedRule') }}
+        {{
+          participant.id === claimId
+            ? $t('breakdown.unassignedRuleYours')
+            : $t('breakdown.unassignedRule')
+        }}
       </p>
       <p v-if="sheet.partsRounded" class="mt-2 text-sm text-muted">
         {{ $t('breakdown.roundedParts') }}

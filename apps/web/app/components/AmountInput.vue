@@ -24,7 +24,7 @@ const width = computed(() => `${Math.max((amount.value || placeholder.value).len
 
 <template>
   <div
-    class="flex h-18 items-center gap-2 rounded-2xl bg-elevated/60 ps-4 pe-30 ring-2 ring-transparent transition-colors focus-within:ring-primary has-[[aria-invalid=true]]:ring-error dark:bg-elevated"
+    class="flex h-18 items-center gap-2 rounded-2xl bg-elevated/60 ps-4 pe-30 ring ring-transparent transition-colors focus-within:ring-2 focus-within:ring-primary has-[[aria-invalid=true]]:ring-error dark:bg-elevated"
   >
     <div class="flex min-w-0 flex-1 items-baseline gap-1.5 overflow-hidden">
       <span

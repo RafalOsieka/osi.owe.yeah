@@ -41,9 +41,15 @@ const shown = computed(() => {
     payer: nameOf(expense.mainPayerId) ?? '?',
     income: expenseKind(expense).kind === 'income',
     // In the Trip's order.
-    forWhom: new Intl.ListFormat(locale.value).format(
-      participants.filter(({ id }) => shares.has(id)).map(({ id }) => nameOf(id) ?? '?'),
-    ),
+    // "For all 4" when it is everyone, as the Expense list says it.
+    forWhom:
+      shares.size === participants.length
+        ? t('conflict.forAll', { count: shares.size })
+        : t('conflict.forWhom', {
+            names: new Intl.ListFormat(locale.value).format(
+              participants.filter(({ id }) => shares.has(id)).map(({ id }) => nameOf(id) ?? '?'),
+            ),
+          }),
     alsoDiffers:
       hidden.length > 0
         ? t('conflict.alsoDiffers', {
@@ -99,7 +105,7 @@ const look = (...fields: ExpenseField[]) =>
     </p>
     <p class="mt-1 text-sm wrap-anywhere">
       <span :class="look('forWhom')">
-        {{ $t('conflict.forWhom', { names: shown.forWhom }) }}
+        {{ shown.forWhom }}
       </span>
     </p>
     <p v-if="shown.alsoDiffers" class="mt-1 text-sm">

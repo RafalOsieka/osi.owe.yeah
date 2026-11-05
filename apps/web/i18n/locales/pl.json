@@ -67,7 +67,8 @@
       "save": "Zapisz",
       "currencyHelp": "W tej walucie salda są pokazywane i rozliczane. Jej zmiana zostawia każdy wydatek tak, jak go wpisano; każdy jest przeliczany po kursie ze swojego dnia.",
       "currencyChange": "Salda zostaną przeliczone na {currency}. Każdy wydatek zachowa swoją kwotę i walutę; każdy jest przeliczany po kursie ze swojego dnia.",
-      "lastChangedBy": "Ostatnia zmiana: {name}, {when}",
+      "lastChangedBy": "Ostatnia zmiana: {name} · {when}",
+      "lastChangedByYou": "Ostatnia zmiana: ty · {when}",
       "lastChanged": "Ostatnia zmiana: {when}"
     },
     "forget": {
@@ -179,7 +180,7 @@
     "selectAll": "Zaznacz wszystkich",
     "clearAll": "Wyczyść",
     "splitEach": "Po równo · {amount} na osobę",
-    "splitBetween": "Po równo między {count} os.",
+    "splitPeople": "Po równo · {count} os.",
     "forWhomEven": "Za kogo · Po równo",
     "editShort": "Edytuj",
     "notFound": "Ten wydatek nie istnieje.",
@@ -190,8 +191,7 @@
     "deleteRefused": "Wydatek nie został usunięty",
     "youOwe": "masz do oddania {amount}",
     "deleteIncome": "Usuń wpływ",
-    "daySpent": "wydano {amount}",
-    "dayTotalsHelp": "Przy każdym dniu: ile wydano. Wpływy się odejmują, spłaty się nie liczą."
+    "daySpent": "wydano {amount}"
   },
   "receipt": {
     "kind": "Paragon",
@@ -267,14 +267,15 @@
     "unitsUnassigned": "Nieprzypisane sztuki: {unassigned} z {quantity}",
     "subtotal": "Suma pozycji",
     "depositRefunds": "Zwroty kaucji",
-    "includesUnassigned": "w tym {amount} nieprzypisane (na razie płacącego)",
+    "includesUnassigned": "w tym {amount} nieprzypisane",
     "percentOff": "rabat {percent} · {amount}",
     "lineDiscountAmount": "Rabat {amount} wliczony",
     "lineDiscountPercent": "{discount}, wliczony",
     "unitsUnassignedTotal": "nieprzypisane sztuki: {count} | nieprzypisana sztuka: {count} | nieprzypisane sztuki: {count}",
     "amountUnassigned": "{amount} nieprzypisane",
     "countedAs": "na razie: {name}",
-    "countedAsYours": "na razie twoje"
+    "countedAsYours": "na razie twoje",
+    "afterReceiptDiscount": "{amount} po rabacie na paragon"
   },
   "contribution": {
     "title": "Dopłaty",
@@ -325,8 +326,7 @@
     "allSettled": "Podróż rozliczona",
     "allSettledHelp": "Każdy wychodzi na zero.",
     "recordOne": "Zapisz spłatę",
-    "recordWhenPaid": "Gdy już zapłacisz, zapisz to tutaj.",
-    "recordWhenReceived": "Gdy dostaniesz pieniądze, zapisz to tutaj."
+    "recordWhenPaid": "Gdy już zapłacisz, zapisz to tutaj."
   },
   "reminder": {
     "remind": "Przypomnij",
@@ -360,7 +360,7 @@
       "deposits": "Kaucje",
       "depositRefunds": "Zwroty kaucji",
       "receiptDiscounts": "Rabat na paragon",
-      "unassigned": "Jeszcze nieprzypisane, na razie tutaj",
+      "unassigned": "Nieprzypisane (na razie)",
       "income": "Wpływy",
       "repayments": "Otrzymane spłaty"
     },
@@ -368,9 +368,8 @@
     "isOwed": "{name}: do odebrania",
     "isEven": "{name}: na zero",
     "roundedParts": "Części są zaokrąglone do grosza, więc ich suma może się nieco różnić od udziału.",
-    "unassignedTheirs": "Nieprzypisane, na razie w udziale: {name}",
-    "unassignedYours": "Nieprzypisane, na razie w twoim udziale",
-    "unassignedRule": "To, czego nikt jeszcze nie wziął, liczy się do udziału osoby, która zapłaciła, dopóki ktoś tego nie weźmie."
+    "unassignedRule": "Nieprzypisane sztuki liczą się do udziału osoby, która zapłaciła, dopóki ktoś ich nie weźmie.",
+    "unassignedRuleYours": "Nieprzypisane sztuki liczą się do twojego udziału jako płacącego, dopóki ktoś ich nie weźmie."
   },
   "rate": {
     "currency": "Waluta",
@@ -454,7 +453,9 @@
     "keepMineHelpNamed": "Wersja ({name}) zostanie w historii.",
     "keepTheirsHelp": "Twoje zmiany przepadną na dobre.",
     "alsoDiffers": "Różni się też: {fields}",
-    "changedWhen": "Zmiana: {when}"
+    "changedWhen": "Zmiana: {when}",
+    "forAll": "Za wszystkich ({count})",
+    "mineWhen": "Zmiana na tym urządzeniu, jeszcze niezsynchronizowana"
   },
   "colorMode": {
     "title": "Motyw",
@@ -471,7 +472,7 @@
   },
   "history": {
     "title": "Historia",
-    "lastEditedBy": "Ostatnia zmiana: {name}, {when}",
+    "lastEditedBy": "Ostatnia zmiana: {name} · {when}",
     "lastEdited": "Ostatnia zmiana: {when}",
     "notSyncedYet": "jeszcze niezsynchronizowana",
     "someone": "Ktoś",
@@ -508,13 +509,13 @@
     "restoreHelp": "Przywrócenie zapisze ją jako nową zmianę. Aktualna wersja zostanie w historii.",
     "earlierRevision": "Wcześniejsza wersja",
     "currentRevision": "Aktualna wersja",
-    "amountCompare": "Kwota w tej wersji {then} · teraz {now}",
-    "alsoDiffersFromNow": "Poza tym inaczej niż teraz: {fields}.",
-    "sameAsNow": "Tak samo jak teraz."
+    "sameAsNow": "Tak samo jak teraz.",
+    "nowAmount": "teraz {amount}"
   },
   "deleted": {
     "title": "Ostatnio usunięte",
-    "by": "{name} · {when}",
+    "by": "Usunięte przez: {name} · {when}",
+    "byYou": "Usunięte przez: ty · {when}",
     "at": "Usunięto {when}",
     "restore": "Przywróć",
     "restoreTitle": "Przywróć: {title}",

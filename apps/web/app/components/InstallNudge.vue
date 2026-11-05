@@ -2,8 +2,9 @@
 // The install nudge on My Trips, until dismissed for good: installed, the app opens straight
 // from the home screen. "Install" opens the browser's own prompt where it has one; iOS Safari
 // has none, so the nudge says how to add the app to the Home Screen instead, with Safari's Share
-// icon where the step names it. An outlined note on the canvas, not a white card, so it never
-// reads as one of the Trips under it.
+// icon where the step names it, and each UI term kept on one line. An outlined note on the canvas, not a white card, so it never
+// reads as one of the Trips under it. The ✕ sits in the corner, so the text below the title
+// runs the full width.
 const DISMISSED_KEY = 'owe-yeah:install-nudge-dismissed';
 
 const { $pwa } = useNuxtApp();
@@ -25,7 +26,7 @@ function dismiss(): void {
   <aside
     v-if="shown"
     aria-labelledby="install-nudge-title"
-    class="flex items-start gap-3 rounded-xl py-3 ps-4 pe-2 ring-1 ring-accented ring-inset"
+    class="relative flex items-start gap-3 rounded-xl py-3 ps-4 pe-4 ring-1 ring-accented ring-inset"
   >
     <UIcon
       name="i-lucide-square-plus"
@@ -33,11 +34,17 @@ function dismiss(): void {
       aria-hidden="true"
     />
     <div class="min-w-0 flex-1 pt-2">
-      <p id="install-nudge-title" class="font-semibold text-highlighted">
+      <p id="install-nudge-title" class="pe-10 font-semibold text-highlighted">
         {{ $t('install.title') }}
       </p>
       <p v-if="prompt" class="mt-0.5 text-sm text-toned">{{ $t('install.why') }}</p>
-      <i18n-t v-else keypath="install.ios" tag="p" scope="global" class="mt-0.5 text-sm text-toned">
+      <i18n-t
+        v-else
+        keypath="install.ios"
+        tag="p"
+        scope="global"
+        class="mt-0.5 text-sm text-wrap text-toned"
+      >
         <template #share>
           <span class="whitespace-nowrap font-medium text-highlighted">
             <UIcon
@@ -49,7 +56,9 @@ function dismiss(): void {
           </span>
         </template>
         <template #addToHomeScreen>
-          <span class="font-medium text-highlighted">{{ $t('install.addToHomeScreen') }}</span>
+          <span class="font-medium whitespace-nowrap text-highlighted">
+            {{ $t('install.addToHomeScreen') }}
+          </span>
         </template>
       </i18n-t>
       <UButton
@@ -64,7 +73,7 @@ function dismiss(): void {
       icon="i-lucide-x"
       color="neutral"
       variant="ghost"
-      class="text-dimmed"
+      class="absolute end-2 top-2 text-dimmed"
       :aria-label="$t('form.close')"
       @click="dismiss"
     />

@@ -8,7 +8,7 @@ import type { FormError } from '@nuxt/ui';
 // currency is picked. Save waits for a change.
 definePageMeta({ viewTransition: { toTypes: ['forward'], fromTypes: ['back'] } });
 
-const { trip, everyone, saveTripDetails } = useOpenTrip();
+const { trip, claim, everyone, saveTripDetails } = useOpenTrip();
 const { t, locale } = useI18n();
 const back = useBack();
 const currencies = useCurrencyItems(TRIP_CURRENCIES);
@@ -19,7 +19,8 @@ const changed = computed(
   () => state.name.trim() !== trip.value.name || state.currency !== trip.value.currency,
 );
 
-// "Last changed by Kasia, 2 hours ago", by the server's clock once it has the change.
+// "Last changed by Kasia · 2 hours ago" ("by you" for this device's Claim), by the server's
+// clock once it has the change.
 const lastChanged = computed(() => {
   const { edited } = trip.value;
   if (!edited) return null;
@@ -27,6 +28,7 @@ const lastChanged = computed(() => {
   const when = edited.at
     ? formatTimeAgo(edited.at, new Date(), locale.value, t('history.justNow'))
     : t('history.notSyncedYet');
+  if (edited.by === claim.value?.id) return t('trip.details.lastChangedByYou', { when });
   return name
     ? t('trip.details.lastChangedBy', { name, when })
     : t('trip.details.lastChanged', { when });

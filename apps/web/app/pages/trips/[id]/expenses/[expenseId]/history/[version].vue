@@ -1,11 +1,11 @@
 <script setup lang="ts">
-import { expenseShares, type Expense } from '@osi/owe-yeah-domain';
 import { findExpense } from '~/sync/local-trip';
 
 // One Revision of an Expense, opened from its History: the whole Expense as that change left
 // it, titled "Earlier Revision" (or "Current Revision"), under a read-only notice saying who
-// made the change and exactly when, and how it compares with now: the amount then and now when
-// it moved, highlighted in the header in amber, and anything else that differs. Restore
+// made the change and exactly when. Everything that differs from the Expense now is marked
+// in amber below, the total with what it is now under it (`ExpenseDetails`), and the notice
+// names what differs; or says nothing does. Restore
 // saves it again as a normal change on top of the current version (so it can cause a
 // Conflict), deleted or not, keeping the current version in History, as the line beside it
 // says, and opens the Expense. Not offered for a Revision that deleted the Expense, nor for
@@ -43,33 +43,18 @@ const byline = computed(() => {
   return name ? t('history.byline', { name, when }) : when;
 });
 
-// How this Revision compares with the Expense now: the amount then and now when it moved,
-// and the rest of what differs.
+// What of this Revision differs from the Expense now, named in the notice.
 const now = computed(() => {
   const shown = current.value;
   const then = revision.value?.expense;
   if (!then || !shown || isCurrent.value) return null;
   const fields = changedFields(then, shown);
-  const amountMoved = fields.includes('amount') || fields.includes('currency');
-  const others = fields.filter((field) => field !== 'amount' && field !== 'currency');
-  const total = (expense: Expense) =>
-    formatMoney(expenseShares(expense).total, expense.currency, locale.value);
-  const list = (names: ExpenseField[]) =>
-    new Intl.ListFormat(locale.value).format(names.map((field) => t(`history.field.${field}`)));
-  return {
-    fields,
-    amount: amountMoved
-      ? t('history.amountCompare', { then: total(then), now: total(shown) })
-      : null,
-    differs:
-      others.length === 0
-        ? fields.length === 0
-          ? t('history.sameAsNow')
-          : null
-        : t(amountMoved ? 'history.alsoDiffersFromNow' : 'history.differsFromNow', {
-            fields: list(others),
-          }),
-  };
+  if (fields.length === 0) return t('history.sameAsNow');
+  return t('history.differsFromNow', {
+    fields: new Intl.ListFormat(locale.value).format(
+      fields.map((field) => t(`history.field.${field}`)),
+    ),
+  });
 });
 
 const canRestore = computed(
@@ -105,11 +90,10 @@ useHead({ title });
         <div class="min-w-0 text-sm leading-snug">
           <p class="font-medium text-highlighted">{{ byline }}</p>
           <p v-if="revision.deleted" class="mt-1 text-toned">{{ $t('history.deletedHere') }}</p>
-          <p v-if="now?.amount" class="mt-1 text-toned tabular-nums">{{ now.amount }}</p>
-          <p v-if="now?.differs" class="mt-1 text-toned">{{ now.differs }}</p>
+          <p v-if="now" class="mt-1 text-toned">{{ now }}</p>
         </div>
       </section>
-      <ExpenseDetails :expense="revision.expense" :changed="now?.fields ?? []" />
+      <ExpenseDetails :expense="revision.expense" :against="isCurrent ? null : (current ?? null)" />
       <!-- Room for Restore's line, which the fixed action area grows by. -->
       <div v-if="canRestore" class="h-8" aria-hidden="true" />
     </template>

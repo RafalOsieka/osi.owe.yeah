@@ -93,7 +93,7 @@ const splitSummary = computed(() => {
   const count = state.participantIds.length;
   if (count < 2) return null;
   const { total } = reading.value;
-  if (!total || total.numerator === 0n) return t('expense.splitBetween', { count });
+  if (!total || total.numerator === 0n) return t('expense.splitPeople', { count });
   const each = multiply(total.numerator < 0n ? negate(total) : total, rational(1n, BigInt(count)));
   return t('expense.splitEach', { amount: money(each) });
 });

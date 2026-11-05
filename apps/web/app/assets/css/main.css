@@ -33,6 +33,12 @@
     var(--ui-color-neutral-600)
   );
   --ui-text-dimmed: var(--ui-color-neutral-500);
+  /* Field outlines and unselected radios and checkboxes: 3:1 against the card. */
+  --ui-border-accented: color-mix(
+    in oklab,
+    var(--ui-color-neutral-400) 50%,
+    var(--ui-color-neutral-500)
+  );
 }
 
 .dark {
@@ -45,7 +51,9 @@
   --ui-warning: oklch(0.8 0.14 72);
   --ui-border: color-mix(in oklab, var(--ui-color-neutral-800) 80%, transparent);
   /* Field outlines: clear on the raised dark cards. */
-  --ui-border-accented: var(--ui-color-neutral-600);
+  --ui-border-accented: var(--ui-color-neutral-500);
+  /* Set again here: the light values above come later than Nuxt UI's dark ones. */
+  --ui-text-muted: var(--ui-color-neutral-400);
   --ui-text-dimmed: color-mix(
     in oklab,
     var(--ui-color-neutral-400) 75%,

@@ -128,11 +128,11 @@ useHead({ title: () => t('myTrips.title') });
                       :index="index"
                       size="xs"
                       class="ring-2 ring-(--ui-bg)"
-                      :class="{ '-ms-1.5': index > 0 }"
+                      :class="{ '-ms-1': index > 0 }"
                     />
                     <span
                       v-if="trip.more > 0"
-                      class="-ms-1.5 grid h-6 min-w-6 place-items-center rounded-full bg-elevated px-1 text-[0.6875rem] font-semibold ring-2 ring-(--ui-bg)"
+                      class="-ms-1 grid h-6 min-w-6 place-items-center rounded-full bg-elevated px-1 text-[0.6875rem] font-semibold ring-2 ring-(--ui-bg)"
                     >
                       +{{ trip.more }}
                     </span>

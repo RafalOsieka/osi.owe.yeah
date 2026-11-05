@@ -136,7 +136,15 @@ const addable = computed<DropdownMenuItem[]>(() =>
       :items="addable"
       :content="{ onCloseAutoFocus: focusAdded }"
     >
-      <UButton icon="i-lucide-plus" variant="link" :label="$t('contribution.add')" class="-ms-3" />
+      <button
+        type="button"
+        class="flex min-h-12 cursor-pointer items-center gap-3 rounded-lg pe-2 text-start font-medium text-primary transition-colors hover:text-primary/80 focus-visible:outline-2 focus-visible:outline-primary"
+      >
+        <span class="grid size-8 place-items-center rounded-full bg-primary/10">
+          <UIcon name="i-lucide-plus" class="size-4" />
+        </span>
+        {{ $t('contribution.add') }}
+      </button>
     </UDropdownMenu>
   </div>
 </template>

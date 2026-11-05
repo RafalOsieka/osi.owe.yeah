@@ -40,7 +40,7 @@ const rows = computed(() => {
       amount: formatMoney(rounded, currency, locale.value, 'signedCurrency'),
       tone: sign < 0 ? 'text-error' : sign > 0 ? 'text-success' : 'text-muted',
       bar: {
-        class: sign < 0 ? 'rounded-s-full bg-error/80' : 'rounded-e-full bg-success',
+        class: sign < 0 ? 'rounded-s-full bg-error' : 'rounded-e-full bg-success',
         style: { insetInlineStart: sign < 0 ? `${50 - half}%` : '50%', width: `${half}%` },
       },
     };

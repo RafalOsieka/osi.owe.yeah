@@ -1,15 +1,14 @@
 <script setup lang="ts">
 // The Trip's tabs (Expenses · Balances · Trip): the Trip header on top with the sync status
 // (the list's mark while something isn't synced: a cloud with an amber dot; its popover points
-// at it, spans the content column and dims the page under the header like a sheet's scrim) and
-// Invite, what sync has to tell (`TripNotices`) above the tab, the tab bar at the bottom and an
-// optional `#action` floating just above it. Pulling a tab down syncs the Trip. Only for
-// pages under `pages/trips/[id].vue`, which provides the open Trip.
+// at it and spans the content column) and Invite, what sync has to tell (`TripNotices`) above
+// the tab, the tab bar at the bottom and an optional `#action` floating just above it. Pulling
+// a tab down syncs the Trip. Only for pages under `pages/trips/[id].vue`, which provides the
+// open Trip.
 const { trip, claim, unsynced, sync, askWhoYouAre, invite } = useOpenTrip();
 const { t } = useI18n();
 const back = useBack();
 const { pulled, ready, refreshing } = usePullToRefresh(sync);
-const syncOpen = ref(false);
 
 const tabs = computed(() => {
   const base = `/trips/${trip.value.id}`;
@@ -49,7 +48,6 @@ const tabs = computed(() => {
         </button>
       </div>
       <UPopover
-        v-model:open="syncOpen"
         arrow
         :content="{ align: 'end', side: 'bottom', sideOffset: 4, collisionPadding: 16 }"
         :ui="{ content: 'w-[min(calc(100vw-2rem),28rem)] rounded-xl' }"
@@ -97,12 +95,6 @@ const tabs = computed(() => {
       />
     </div>
   </header>
-  <!-- Below the header (z-10), above the page: the popover's scrim. -->
-  <div
-    v-if="syncOpen"
-    class="fixed inset-0 z-[9] bg-stone-950/20 dark:bg-black/60"
-    aria-hidden="true"
-  />
   <div
     v-if="pulled > 0 || refreshing"
     class="flex items-center justify-center gap-2 overflow-hidden text-xs text-muted"

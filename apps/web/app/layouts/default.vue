@@ -50,11 +50,16 @@ const menu = computed<DropdownMenuItem[]>(() => [
         <AppBrandMark class="size-6 text-primary" />
         <span class="truncate">{{ $t('app.title') }}</span>
       </NuxtLink>
-      <!-- Kept off the screen's edge by the same gutter as the content, with 48 px rows. -->
+      <!-- Kept off the screen's edge by the same gutter as the content, with 48 px rows in the text colour. -->
       <UDropdownMenu
         :items="menu"
         :content="{ align: 'end', collisionPadding: 16 }"
-        :ui="{ item: 'min-h-12' }"
+        :ui="{
+          item: 'min-h-12',
+          itemLabel: 'text-highlighted',
+          itemLeadingIcon: 'text-muted',
+          label: 'pt-3',
+        }"
       >
         <UButton
           icon="i-lucide-ellipsis"

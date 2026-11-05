@@ -9,7 +9,7 @@ import { toExpense, type LocalExpense } from '~/sync/local-trip';
 // Conflict; one in Conflict opens the Conflict screen, and one not synced yet is marked.
 definePageMeta({ viewTransition: { toTypes: ['forward'], fromTypes: ['back'] } });
 
-const { trip, everyone, saveExpense } = useOpenTrip();
+const { trip, claim, everyone, saveExpense } = useOpenTrip();
 const { t, locale } = useI18n();
 const toast = useToast();
 
@@ -33,7 +33,12 @@ const rows = computed(() => {
     return {
       expense,
       total: formatMoney(expenseShares(expense).total, expense.currency, locale.value),
-      deleted: name ? t('deleted.by', { name, when }) : t('deleted.at', { when }),
+      deleted:
+        edited?.by === claim.value?.id
+          ? t('deleted.byYou', { when })
+          : name
+            ? t('deleted.by', { name, when })
+            : t('deleted.at', { when }),
       conflict: unsynced?.status === 'conflict',
       notSynced: unsynced !== null && unsynced.status !== 'conflict',
     };

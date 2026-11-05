@@ -16,17 +16,16 @@ import type { LocalExpense, LocalTrip } from '~/sync/local-trip';
 
 // The Trip's Expenses, newest first, under a heading for each Expense's own local day with
 // what was spent that day in the Trip currency ("spent €54.00": net of Income, without
-// Repayments, as a line under the list says; "≈" when an Expense of the day uses a
-// Provisional rate). Each row shows the Expense in its own currency
-// (Income as the money received, without a minus), with its payer's avatar (a Repayment, which
-// is not spending, a quiet arrow instead), opens its detail page and, with a Claim, says what
-// the Expense means for the claimed Participant. Every row keeps to two lines, its title cut
-// short if need be, so rows stay even: what needs attention leads the second line in amber (a
-// Conflict, a Provisional rate or none yet, Line items not fully assigned yet: "1 item
-// unassigned"), then who paid and for how many; a small receipt glyph starts a Receipt's
-// line; and a cloud with an amber dot by the amount, as in the header, marks a row not
-// synced yet. The Expense `highlightId` names, e.g. the one a tapped
-// notification was about, is scrolled to and marked.
+// Repayments; "≈" when an Expense of the day uses a Provisional rate). Each row shows the
+// Expense in its own currency (Income as the money received, without a minus), with its
+// payer's avatar (a Repayment, which is not spending, a quiet arrow instead), opens its detail
+// page and, with a Claim, says what the Expense means for the claimed Participant. The title
+// is cut short if need be; the second line says who paid and for how many, after a small
+// receipt glyph on a Receipt and a short amber flag (a Conflict, a Provisional rate or none
+// yet); Line items not fully assigned yet get a third, amber line of their own ("1 item
+// unassigned"), so the payer stays in sight. A cloud with an amber dot by the amount, as in
+// the header, marks a row not synced yet. The Expense `highlightId` names, e.g. the one a
+// tapped notification was about, is scrolled to and marked.
 const {
   trip,
   claimId = null,
@@ -231,20 +230,23 @@ function dayHeading(day: string): string {
                     />
                   </i>
                   <span v-if="row.flag" class="font-medium text-warning">{{ row.flag }}</span>
-                  <span v-if="row.unassigned > 0" class="font-medium text-warning">
-                    {{ $t('receipt.unassignedBadge', row.unassigned) }}
-                  </span>
                   <span>{{ row.summary }}</span>
                 </span>
                 <span v-if="row.forYou" class="shrink-0 tabular-nums" :class="row.forYou.tone">
                   {{ row.forYou.text }}
                 </span>
               </span>
+              <span
+                v-if="row.unassigned > 0"
+                class="mt-0.5 flex items-center gap-1 text-sm font-medium text-warning"
+              >
+                <UIcon name="i-lucide-circle-alert" class="size-3.5 shrink-0" aria-hidden="true" />
+                {{ $t('receipt.unassignedBadge', row.unassigned) }}
+              </span>
             </span>
           </NuxtLink>
         </li>
       </ul>
     </section>
-    <p class="px-1 text-sm text-muted">{{ $t('expense.dayTotalsHelp') }}</p>
   </div>
 </template>

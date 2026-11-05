@@ -1,6 +1,7 @@
 <script setup lang="ts">
 import {
   add,
+  compare,
   expenseKind,
   expenseRate,
   expenseShares,
@@ -29,36 +30,47 @@ import {
 // refunds, the Receipt discount, the Deposits and the total. Discounts read "25% off · −€1.49",
 // a Line discount said to be included in its Line item's amount. What is not assigned yet is
 // counted in the Main payer's share, whose row says how much and why; a line under the total
-// says so too and scrolls to the first such Line item. `changed` marks the title and total in
-// amber where they differ from another version (an older Revision against now). On a Receipt, tapping a share opens where it comes from
+// says so too and scrolls to the first such Line item. Against another version (`against`:
+// an older Revision against the Expense now), everything that differs gets the amber marker
+// the Conflict screen uses (title, total, each payer's part, each share), the total with what
+// it is now under it. On a Receipt, tapping a share opens where it comes from
 // (`ShareBreakdownSheet`). Shares are rounded only to show them, so a note explains "≈" when
-// they don't add up to the total. All
-// amounts are in the Expense's own currency; `converted` adds its total in the Trip currency
+// they don't add up to the total. All amounts are in the Expense's own currency; `converted` adds its total in the Trip currency
 // under it, at the rate for its local date, "≈" and explained at a Provisional rate, or says
 // it is left out of balances while there is no rate yet. A Manual rate shows as it was typed.
 const {
   expense,
   converted = false,
-  changed = [],
+  against = null,
 } = defineProps<{
   expense: Expense;
   /** Show the total converted into the Trip currency, as the Expense is now. */
   converted?: boolean;
-  /** What differs from another version of it, to mark in the header. */
-  changed?: readonly ExpenseField[];
+  /** Another version of it, to mark what differs from (the Expense now, on a Revision). */
+  against?: Expense | null;
 }>();
-
-// The amber marker for what differs, as the Conflict screen uses it.
-const marked = (...fields: ExpenseField[]) =>
-  fields.some((field) => changed.includes(field))
-    ? 'rounded-lg bg-warning/15 box-decoration-clone px-2'
-    : '';
 
 const { trip, claim, everyone } = useOpenTrip();
 const { t, locale } = useI18n();
 const splitText = useSplitText();
 const unassignedOf = useUnassignedText();
 const discountText = useDiscountText();
+
+// What differs from `against`, and that version's parts paid and shares, to compare by row.
+const other = computed(() => {
+  if (!against) return null;
+  const { total, paid, shares } = expenseShares(against);
+  const now = formatMoney(total, against.currency, locale.value);
+  return { fields: changedFields(expense, against), now, paid, shares };
+});
+
+// The amber marker for what differs, as the Conflict screen uses it.
+const MARK = 'rounded-lg bg-warning/15 box-decoration-clone px-2';
+const marked = (...fields: ExpenseField[]) =>
+  fields.some((field) => other.value?.fields.includes(field)) ? MARK : '';
+// A payer's part or a share marked where the other version has a different one.
+const markedAmount = (amount: Rational, theirs: Rational | undefined) =>
+  other.value && (!theirs || compare(amount, theirs) !== 0) ? MARK : '';
 
 const money = (amount: Rational) => formatMoney(amount, expense.currency, locale.value);
 const isYou = (participant: Participant) => participant.id === claim.value?.id;
@@ -70,10 +82,20 @@ function unassignedUnits(item: LineItem): number | null {
 }
 
 // What is not assigned yet of a Line item, said on it as the form says it, with the money
-// after the units of a Units split ("1 of 4 units unassigned · ≈ €1.12").
-function unassignedText(item: LineItem, shares: LineItemShares): string | null {
+// after the units of a Units split ("1 of 4 units unassigned · ≈ €1.12"), and `after`, what
+// it comes to after the Receipt discount, so it meets the amount in the Main payer's share
+// ("≈ €1.12, ≈ €1.06 after the Receipt discount").
+function unassignedText(
+  item: LineItem,
+  shares: LineItemShares,
+  after: Rational | null,
+): string | null {
   const text = unassignedOf(item, shares, expense.currency);
-  return text && unassignedUnits(item) !== null ? `${text} · ${money(shares.unassigned)}` : text;
+  if (!text) return null;
+  const discounted = after && t('receipt.afterReceiptDiscount', { amount: money(after) });
+  if (unassignedUnits(item) === null) return discounted ? `${text}, ${discounted}` : text;
+  const amount = money(shares.unassigned);
+  return `${text} · ${discounted ? `${amount}, ${discounted}` : amount}`;
 }
 
 const kinded = computed(() => expenseKind(expense));
@@ -95,7 +117,15 @@ const details = computed(() => {
     : [];
   const openUnits = open.map(({ item }) => unassignedUnits(item));
   const payer = everyone.value.find(({ id }) => id === expense.mainPayerId);
+  // What is not assigned yet after the Receipt discount, when there is one.
+  const afterDiscount = receipt?.discount && unassigned.numerator !== 0n ? unassigned : null;
+  // Whose it is for now: "Kasia's for now".
+  const countedAs =
+    payer && isYou(payer)
+      ? t('receipt.countedAsYours')
+      : t('receipt.countedAs', { name: payer?.name ?? '?' });
   return {
+    countedAs,
     total,
     unassigned: unassigned.numerator === 0n ? null : unassigned,
     discount: receipt?.discount && discountText(receipt.discount, discountOff, expense.currency),
@@ -111,9 +141,7 @@ const details = computed(() => {
                     openUnits.reduce<number>((total, units) => total + (units ?? 0), 0),
                   )
                 : t('receipt.amountUnassigned', { amount: money(unassigned) }),
-              payer && isYou(payer)
-                ? t('receipt.countedAsYours')
-                : t('receipt.countedAs', { name: payer?.name ?? '?' }),
+              countedAs,
             ].join(' · '),
             lineId: lineId(open[0]!.index),
           }
@@ -152,7 +180,11 @@ const details = computed(() => {
           ]
             .filter((fact) => fact !== null)
             .join(' · '),
-          unassignedText: unassignedText(item, lineItems[index]!),
+          unassignedText: unassignedText(
+            item,
+            lineItems[index]!,
+            open.length === 1 ? afterDiscount : null,
+          ),
           ...lineItems[index]!,
         }))
       : null,
@@ -277,6 +309,12 @@ function openBreakdown(participantId: string): void {
       <p class="mt-1 text-5xl font-semibold tracking-tight text-highlighted tabular-nums">
         <span :class="marked('amount', 'currency')">{{ money(details.total) }}</span>
       </p>
+      <p
+        v-if="other && marked('amount', 'currency')"
+        class="mt-2 text-sm font-medium text-toned tabular-nums"
+      >
+        {{ $t('history.nowAmount', { amount: other.now }) }}
+      </p>
       <template v-if="conversion">
         <p class="mt-2 font-medium tabular-nums">{{ conversion.text }}</p>
         <p v-if="conversion.manual" class="text-sm text-muted tabular-nums">
@@ -313,6 +351,7 @@ function openBreakdown(participantId: string): void {
       >
         <UIcon name="i-lucide-circle-alert" class="size-4 shrink-0" aria-hidden="true" />
         {{ details.unassignedSummary.text }}
+        <UIcon name="i-lucide-chevron-down" class="-me-1 size-4 shrink-0" aria-hidden="true" />
       </button>
     </div>
 
@@ -337,7 +376,9 @@ function openBreakdown(participantId: string): void {
             </span>
           </span>
           <span class="shrink-0 font-medium text-highlighted tabular-nums">
-            {{ money(amount) }}
+            <span :class="markedAmount(amount, other?.paid.get(participant.id))">
+              {{ money(amount) }}
+            </span>
           </span>
         </li>
       </ul>
@@ -436,16 +477,21 @@ function openBreakdown(participantId: string): void {
           >
             <ParticipantAvatar :participant="participant" size="md" />
             <span class="min-w-0 flex-1 leading-snug">
-              <span class="block truncate text-highlighted">
-                {{ participant.name }}
-                <YouBadge v-if="you" />
+              <span class="flex items-baseline gap-3">
+                <span class="min-w-0 flex-1 truncate text-highlighted">
+                  {{ participant.name }}
+                  <YouBadge v-if="you" />
+                </span>
+                <span class="shrink-0 font-medium text-highlighted tabular-nums">
+                  <span :class="markedAmount(share, other?.shares.get(participant.id))">
+                    {{ money(share) }}
+                  </span>
+                </span>
               </span>
               <span v-if="unassignedHere && details.unassigned" class="block text-sm text-warning">
-                {{ $t('receipt.includesUnassigned', { amount: money(details.unassigned) }) }}
+                {{ $t('receipt.includesUnassigned', { amount: money(details.unassigned) }) }},
+                {{ details.countedAs }}
               </span>
-            </span>
-            <span class="shrink-0 font-medium text-highlighted tabular-nums">
-              {{ money(share) }}
             </span>
             <UIcon
               v-if="breakdowns"

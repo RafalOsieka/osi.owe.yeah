@@ -31,7 +31,7 @@ function change(event: Event): void {
 
 <template>
   <label
-    class="group relative flex h-11 min-w-0 items-center gap-2 rounded-full bg-default ps-1.5 pe-3 text-sm font-medium text-default ring ring-accented transition-colors has-checked:bg-primary/10 has-checked:text-highlighted has-checked:ring-primary/50 has-disabled:opacity-45 has-focus-visible:outline-2 has-focus-visible:outline-offset-2 has-focus-visible:outline-primary dark:ring-neutral-700 dark:has-checked:bg-primary/18 dark:has-checked:ring-primary/70"
+    class="group relative flex h-11 min-w-0 items-center gap-2 rounded-full bg-default ps-1.5 pe-3 text-sm font-medium text-default ring ring-accented transition-colors has-checked:bg-primary/10 has-checked:text-highlighted has-checked:ring-primary/50 has-disabled:opacity-45 has-focus-visible:outline-2 has-focus-visible:outline-offset-2 has-focus-visible:outline-primary dark:has-checked:bg-primary/18 dark:has-checked:ring-primary/70"
   >
     <input
       :type="type"
@@ -48,7 +48,7 @@ function change(event: Event): void {
     </span>
     <span
       v-if="type === 'radio'"
-      class="grid size-5 shrink-0 place-items-center rounded-full ring-2 ring-neutral-300 ring-inset group-has-checked:ring-primary dark:ring-neutral-600"
+      class="grid size-5 shrink-0 place-items-center rounded-full ring-2 ring-accented ring-inset group-has-checked:ring-primary"
       aria-hidden="true"
     >
       <span
@@ -57,7 +57,7 @@ function change(event: Event): void {
     </span>
     <span
       v-else
-      class="grid size-5 shrink-0 place-items-center rounded-[0.25rem] ring-2 ring-neutral-300 ring-inset transition-colors group-has-checked:bg-primary group-has-checked:ring-primary dark:ring-neutral-600"
+      class="grid size-5 shrink-0 place-items-center rounded-[0.25rem] ring-2 ring-accented ring-inset transition-colors group-has-checked:bg-primary group-has-checked:ring-primary"
       aria-hidden="true"
     >
       <UIcon

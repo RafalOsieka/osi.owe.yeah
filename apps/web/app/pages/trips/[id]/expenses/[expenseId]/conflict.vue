@@ -67,6 +67,7 @@ useHead({ title: () => t('conflict.title') });
       <div class="flex flex-col gap-3">
         <ExpenseVersion
           :heading="$t('conflict.mine')"
+          :subtitle="$t('conflict.mineWhen')"
           :expense="conflict.mine"
           :deleted="conflict.mine.deleted"
           :changed="conflict.changed"

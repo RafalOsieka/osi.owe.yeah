@@ -23,7 +23,7 @@ import {
 // where it has them, as on the detail page), or what of it can't be read (`readLineItem`). A
 // Deposit refund is marked so. Open, it keeps only its name and total on top and is
 // edited in place, closed again with Done: name, unit price, quantity, Split mode and that
-// mode's inputs with how much of the line they assign, then the Line discount and Deposit per
+// mode's inputs ("you" marked) with how much of the line they assign, then the Line discount and Deposit per
 // unit (folded until wanted), moving it up or down, and removing it. A Deposit refund has only
 // a name, an amount and a split, and reads as a negative amount. Switching the Split mode
 // starts that mode from scratch (`chooseSplitMode`). Its `id` lets the Receipt total point at
@@ -45,6 +45,7 @@ const emit = defineEmits<{ move: [by: -1 | 1]; remove: [] }>();
 const extrasOpen = ref(line.value.discount.value.trim() !== '' || line.value.deposit.trim() !== '');
 
 const { t, locale } = useI18n();
+const { claim } = useOpenTrip();
 const splitText = useSplitText();
 const unassignedText = useUnassignedText();
 const discountText = useDiscountText();
@@ -323,8 +324,9 @@ const step = { color: 'neutral', class: 'disabled:opacity-30' } as const;
       <ul v-else class="space-y-2">
         <li v-for="row in rows" :key="row.participant.id" class="flex items-center gap-3">
           <ParticipantAvatar :participant="row.participant" size="xs" />
-          <span class="min-w-0 flex-1 truncate text-sm font-medium">
-            {{ row.participant.name }}
+          <span class="flex min-w-0 flex-1 items-center text-sm font-medium">
+            <span class="truncate">{{ row.participant.name }}</span>
+            <YouBadge v-if="row.participant.id === claim?.id" />
           </span>
           <UInputNumber
             v-if="line.split.mode === 'units'"
@@ -439,6 +441,7 @@ const step = { color: 'neutral', class: 'disabled:opacity-30' } as const;
         />
         <UButton
           :label="$t('receipt.done')"
+          color="neutral"
           variant="soft"
           class="ms-auto me-2 px-6"
           @click="open = false"

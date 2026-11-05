@@ -13,10 +13,10 @@ import { z } from 'zod';
 // The Balances tab: your balance, with your own Suggested Repayments ("To settle") on its
 // card, then everyone's balance as diverging bars, headed by what the Trip spent, the other
 // Suggested Repayments (all of them without a Claim), and a quiet Record a Repayment for one
-// nobody suggested. "To settle" says first when to record (after paying, or once the money
-// came), and leaves out the amount when it is the one in the headline. Once the Trip is Settled, "All
-// settled" replaces the balance and the suggestions, and everyone's row keeps only the name
-// and the zero. Balances are worked out exactly and rounded with the largest remainder
+// nobody suggested. "To settle" says first when to record what you pay (or, for what you're
+// owed, how Remind reaches whom it can't notify), and leaves out the amount when it is the one
+// in the headline. Once the Trip is Settled, "All settled" replaces the balance and the
+// suggestions, and everyone's row keeps only the name and the zero. Balances are worked out exactly and rounded with the largest remainder
 // method, as settling up uses them, in the Trip currency.
 // The footer warns how many Expenses use a Provisional rate, so balances may still move a
 // little (settling up stays allowed), and how many are left out without any rate. Tapping a
@@ -110,12 +110,12 @@ const reminderNote = computed(() => {
   return t(`reminder.unreachable.${how}`, { names });
 });
 
-// When to record what "To settle" suggests: after paying, or once the money came, and how
-// Remind reaches whom it can't notify.
+// The line opening "To settle": when to record what you pay, or how Remind reaches whom it
+// can't notify.
 const settleNote = computed(() => {
   const creditor = suggestions.value.own.some(({ recipientId }) => recipientId === claim.value?.id);
-  const when = creditor ? t('balances.recordWhenReceived') : t('balances.recordWhenPaid');
-  return reminderNote.value ? `${when} ${reminderNote.value}` : when;
+  // Record beside money coming in needs no cue; Remind's way of reminding does.
+  return creditor ? reminderNote.value : t('balances.recordWhenPaid');
 });
 </script>
 
@@ -141,7 +141,7 @@ const settleNote = computed(() => {
             <h2 id="to-settle-heading" class="px-4 text-sm font-medium text-muted">
               {{ $t('balances.toSettle') }}
             </h2>
-            <p class="px-4 pt-1 pb-1 text-sm text-muted">{{ settleNote }}</p>
+            <p v-if="settleNote" class="px-4 pt-1 pb-1 text-sm text-muted">{{ settleNote }}</p>
             <SuggestedRepaymentList
               :suggestions="suggestions.own"
               :amount-shown="suggestions.own.length > 1"

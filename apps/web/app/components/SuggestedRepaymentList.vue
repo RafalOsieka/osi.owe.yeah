@@ -86,13 +86,15 @@ watch(
       :aria-current="row.key === highlight ? 'true' : undefined"
     >
       <span class="flex shrink-0 items-center">
+        <!-- The second avatar overlaps the first, set apart by a rim in the card colour. -->
         <template v-for="(avatar, index) in row.avatars" :key="index">
-          <ParticipantAvatar
+          <span
             v-if="avatar"
-            :participant="avatar"
-            size="md"
-            :class="{ '-ms-2 ring-2 ring-(--ui-bg)': index > 0 }"
-          />
+            class="flex rounded-full"
+            :class="{ 'relative -ms-2.5 bg-(--ui-bg) p-0.5': index > 0 }"
+          >
+            <ParticipantAvatar :participant="avatar" size="md" />
+          </span>
         </template>
       </span>
       <span class="min-w-0 flex-1 leading-snug">

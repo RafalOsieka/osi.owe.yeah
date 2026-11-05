@@ -1080,10 +1080,10 @@ async function capture(scheme: 'light' | 'dark'): Promise<void> {
   await snap('a28-forget-trip');
   await close();
   await go(`${croatia.page}/details`);
-  await text('Last changed by Ania').waitFor();
+  await text('Last changed by you').waitFor();
   await snap('a31-trip-details', true);
   await go(`${croatia.page}/deleted`);
-  await text('Kasia · ').waitFor();
+  await text('Deleted by Kasia · ').waitFor();
   await snap('a32-recently-deleted', true);
   await go(`${croatia.page}/notifications`);
   await button('Turn on').waitFor();

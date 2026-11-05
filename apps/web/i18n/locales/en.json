@@ -67,7 +67,8 @@
       "save": "Save",
       "currencyHelp": "Balances are shown and settled in this currency. Changing it keeps every Expense as entered; each is converted at its own day's rate.",
       "currencyChange": "Balances will be recalculated in {currency}. Every Expense keeps its amount and currency; each is converted at its own day's rate.",
-      "lastChangedBy": "Last changed by {name}, {when}",
+      "lastChangedBy": "Last changed by {name} · {when}",
+      "lastChangedByYou": "Last changed by you · {when}",
       "lastChanged": "Last changed {when}"
     },
     "forget": {
@@ -179,7 +180,7 @@
     "selectAll": "Select all",
     "clearAll": "Clear",
     "splitEach": "Split evenly · {amount} each",
-    "splitBetween": "Split evenly between {count}",
+    "splitPeople": "Split evenly · {count} people",
     "forWhomEven": "For whom · Even",
     "editShort": "Edit",
     "notFound": "This Expense doesn't exist.",
@@ -190,8 +191,7 @@
     "deleteRefused": "The Expense was not deleted",
     "youOwe": "you owe {amount}",
     "deleteIncome": "Delete Income",
-    "daySpent": "spent {amount}",
-    "dayTotalsHelp": "Each day shows what was spent: Income counts against it, Repayments don't count."
+    "daySpent": "spent {amount}"
   },
   "receipt": {
     "kind": "Receipt",
@@ -267,14 +267,15 @@
     "unitsUnassigned": "{unassigned} of {quantity} units unassigned",
     "subtotal": "Subtotal",
     "depositRefunds": "Deposit refunds",
-    "includesUnassigned": "incl. {amount} unassigned (payer's for now)",
+    "includesUnassigned": "incl. {amount} unassigned",
     "percentOff": "{percent} off · {amount}",
     "lineDiscountAmount": "Discount {amount} included",
     "lineDiscountPercent": "{discount} included",
     "unitsUnassignedTotal": "{count} units unassigned | {count} unit unassigned | {count} units unassigned",
     "amountUnassigned": "{amount} unassigned",
     "countedAs": "{name}'s for now",
-    "countedAsYours": "yours for now"
+    "countedAsYours": "yours for now",
+    "afterReceiptDiscount": "{amount} after the Receipt discount"
   },
   "contribution": {
     "title": "Contributions",
@@ -325,8 +326,7 @@
     "allSettled": "All settled",
     "allSettledHelp": "Everyone's balance is zero.",
     "recordOne": "Record a Repayment",
-    "recordWhenPaid": "After you've paid, record it here.",
-    "recordWhenReceived": "Once you've got the money, record it here."
+    "recordWhenPaid": "After you've paid, record it here."
   },
   "reminder": {
     "remind": "Remind",
@@ -360,7 +360,7 @@
       "deposits": "Deposits",
       "depositRefunds": "Deposit refunds",
       "receiptDiscounts": "Receipt discount",
-      "unassigned": "Not assigned yet, theirs for now",
+      "unassigned": "Unassigned (for now)",
       "income": "Income",
       "repayments": "Repayments received"
     },
@@ -368,9 +368,8 @@
     "isOwed": "{name} is owed",
     "isEven": "{name} is even",
     "roundedParts": "Parts are rounded to the cent, so they may not add up to the share exactly.",
-    "unassignedTheirs": "Unassigned, counted as {name}'s for now",
-    "unassignedYours": "Unassigned, counted as yours for now",
-    "unassignedRule": "What nobody has taken yet counts towards whoever paid, until someone takes it."
+    "unassignedRule": "Unassigned units count towards whoever paid until someone takes them.",
+    "unassignedRuleYours": "Unassigned units count towards your share, as you paid, until someone takes them."
   },
   "rate": {
     "currency": "Currency",
@@ -454,7 +453,9 @@
     "keepMineHelpNamed": "{name}'s version stays in History.",
     "keepTheirsHelp": "Your changes are dropped for good.",
     "alsoDiffers": "Also differs: {fields}",
-    "changedWhen": "Changed {when}"
+    "changedWhen": "Changed {when}",
+    "forAll": "For all {count}",
+    "mineWhen": "Changed on this device, not synced yet"
   },
   "colorMode": {
     "title": "Color mode",
@@ -471,7 +472,7 @@
   },
   "history": {
     "title": "History",
-    "lastEditedBy": "Last edited by {name}, {when}",
+    "lastEditedBy": "Last edited by {name} · {when}",
     "lastEdited": "Last edited {when}",
     "notSyncedYet": "not synced yet",
     "someone": "Someone",
@@ -508,13 +509,13 @@
     "restoreHelp": "Restoring adds it as a new Revision. The current one stays in History.",
     "earlierRevision": "Earlier Revision",
     "currentRevision": "Current Revision",
-    "amountCompare": "Amount in this Revision {then} · now {now}",
-    "alsoDiffersFromNow": "Also differs from now: {fields}.",
-    "sameAsNow": "Same as the Expense now."
+    "sameAsNow": "Same as the Expense now.",
+    "nowAmount": "now {amount}"
   },
   "deleted": {
     "title": "Recently deleted",
-    "by": "{name} · {when}",
+    "by": "Deleted by {name} · {when}",
+    "byYou": "Deleted by you · {when}",
     "at": "Deleted {when}",
     "restore": "Restore",
     "restoreTitle": "Restore {title}",

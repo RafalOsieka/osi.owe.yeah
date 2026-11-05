@@ -1169,7 +1169,7 @@ test('delete an Expense, bring it back from Recently deleted, and restore an old
   await page.getByRole('link', { name: 'Edit Expense' }).click();
   await page.getByLabel('Amount').fill('45');
   await page.getByRole('button', { name: 'Save Expense' }).click();
-  await expect(main).toContainText('Last edited by you, just now');
+  await expect(main).toContainText('Last edited by you · just now');
 
   // Deleted, it leaves the Expenses tab for Recently deleted.
   await page.getByRole('button', { name: 'Delete Expense' }).click();
@@ -1178,7 +1178,7 @@ test('delete an Expense, bring it back from Recently deleted, and restore an old
   await page.getByRole('link', { name: 'Recently deleted' }).click();
   await expect(page.getByRole('heading', { name: 'Recently deleted' })).toBeVisible();
   await expect(main.getByRole('listitem')).toContainText('€45.00');
-  await expect(main.getByRole('listitem')).toContainText('Kasia · ');
+  await expect(main.getByRole('listitem')).toContainText('Deleted by you · ');
   await page.getByRole('button', { name: 'Restore Ferry' }).click();
   await expect(main).toContainText('Nothing deleted');
 
@@ -1353,7 +1353,7 @@ test('a Participant on an Expense is not removed, one on none is; and the Trip i
   );
   await expect(page.getByRole('banner')).toContainText('Rügen 2027');
   await page.getByRole('link', { name: /Name and Trip currency/ }).click();
-  await expect(page.getByRole('main')).toContainText('Last changed by Kasia');
+  await expect(page.getByRole('main')).toContainText('Last changed by you');
 });
 
 test('the tab, the home screen and the installed app all get the Owe Yeah icons', async ({
