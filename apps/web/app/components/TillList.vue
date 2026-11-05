@@ -1,5 +1,12 @@
 <script setup lang="ts">
-import { MAX_UNITS, minorUnits, newLineItemSplit, type Participant } from '@osi/owe-yeah-domain';
+import {
+  fromMinor,
+  MAX_UNITS,
+  minorUnits,
+  newLineItemSplit,
+  parseMoney,
+  type Participant,
+} from '@osi/owe-yeah-domain';
 import {
   draftLineItem,
   readLineItem,
@@ -25,7 +32,7 @@ const {
 }>();
 const lineItems = defineModel<DraftLineItem[]>({ required: true });
 
-const { t } = useI18n();
+const { t, locale } = useI18n();
 const { lineItemReason } = useDraftReasons();
 
 // A Receipt just itemised opens on its one line, the amount carried over, as the thing to edit.
@@ -47,6 +54,16 @@ function addRefusal(line: DraftLineItem): string | null {
 
 const adding = reactive({ name: '', price: '', quantity: 1, deposit: '' });
 const addError = ref<string | null>(null);
+
+// What the line being typed comes to, Deposits included, and that it isn't on the Receipt
+// (or in its total) until added.
+const draft = computed(() => {
+  const price = parseMoney(adding.price, currency);
+  if (price === null) return t('receipt.draftEmpty');
+  const deposit = parseMoney(adding.deposit, currency) ?? 0;
+  const amount = fromMinor((price + deposit) * adding.quantity, currency);
+  return t('receipt.draftLine', { amount: formatMoney(amount, currency, locale.value) });
+});
 const priceInput = useTemplateRef('price');
 
 // Which add form is open. Each stays folded into one row until tapped, so the Receipt leads;
@@ -164,24 +181,33 @@ function remove(index: number): void {
             @click="composing = null"
           />
         </div>
-        <UInput
-          v-model="adding.name"
-          :placeholder="$t('receipt.namePlaceholder')"
-          :aria-label="$t('receipt.newName')"
-          size="lg"
-          class="w-full"
-          @keydown.enter.prevent="add"
-        />
-        <div class="flex gap-2">
+        <div class="grid grid-cols-[1fr_8rem] gap-x-2 gap-y-1">
+          <span class="col-span-2 text-xs font-medium text-muted" aria-hidden="true">
+            {{ $t('receipt.name') }}
+          </span>
+          <UInput
+            v-model="adding.name"
+            :placeholder="$t('receipt.namePlaceholder')"
+            :aria-label="$t('receipt.newName')"
+            size="lg"
+            class="col-span-2 mb-1.5"
+            @keydown.enter.prevent="add"
+          />
+          <span class="text-xs font-medium text-muted" aria-hidden="true">
+            {{ $t('receipt.unitPrice') }}
+          </span>
+          <span class="text-xs font-medium text-muted" aria-hidden="true">
+            {{ $t('receipt.quantity') }}
+          </span>
           <UInput
             ref="price"
             v-model="adding.price"
             inputmode="decimal"
-            :placeholder="$t('receipt.unitPrice')"
+            placeholder="0.00"
             :aria-label="$t('receipt.newUnitPrice')"
             :color="addError ? 'error' : undefined"
             size="lg"
-            class="min-w-0 flex-1"
+            class="mb-1.5 min-w-0"
             @keydown.enter.prevent="add"
           >
             <template #trailing>
@@ -194,23 +220,27 @@ function remove(index: number): void {
             :max="MAX_UNITS"
             :aria-label="$t('receipt.newQuantity')"
             size="lg"
-            class="w-32"
+            class="mb-1.5"
           />
-        </div>
-        <div class="flex gap-2">
+          <span class="col-span-2 text-xs font-medium text-muted" aria-hidden="true">
+            {{ $t('receipt.depositPerUnit') }}
+          </span>
           <UInput
             v-model="adding.deposit"
             inputmode="decimal"
-            :placeholder="$t('receipt.depositPlaceholder')"
+            placeholder="0.00"
             :aria-label="$t('receipt.newDeposit')"
             size="lg"
-            class="min-w-0 flex-1"
+            class="min-w-0"
             @keydown.enter.prevent="add"
           >
             <template #trailing>
               <span class="text-xs text-muted">{{ currency }}</span>
             </template>
           </UInput>
+        </div>
+        <div class="flex items-center gap-3 pt-1">
+          <p class="min-w-0 flex-1 text-sm text-muted tabular-nums">{{ draft }}</p>
           <UButton
             icon="i-lucide-plus"
             :label="$t('receipt.add')"

@@ -174,7 +174,10 @@ async function submit(): Promise<void> {
             })
           }}
         </p>
-        <p v-if="reading.receipt.unassigned.numerator !== 0n" class="mt-1 text-sm text-warning">
+        <p
+          v-if="reading.receipt.unassigned.numerator !== 0n"
+          class="mt-1 text-sm text-balance text-warning"
+        >
           {{
             $t('receipt.unassignedTotal', {
               amount: formatMoney(reading.receipt.unassigned, state.currency, locale),

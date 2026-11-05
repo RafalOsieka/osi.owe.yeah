@@ -242,7 +242,9 @@
     "done": "Done",
     "closeAdding": "Close",
     "notAssignedBeforeDiscount": "{amount} not assigned yet, before the Receipt discount",
-    "extras": "Line discount and Deposit"
+    "extras": "Line discount and Deposit",
+    "draftLine": "{amount}, not on the Receipt until added",
+    "draftEmpty": "Not on the Receipt until added"
   },
   "contribution": {
     "title": "Contributions",

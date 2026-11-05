@@ -363,6 +363,7 @@ const modes: readonly SplitMode[] = ['even', 'units', 'amounts'];
 
       <div class="flex items-center gap-1 border-t border-default pt-3">
         <UButton
+          v-if="!(first && last)"
           icon="i-lucide-arrow-up"
           color="neutral"
           variant="ghost"
@@ -371,6 +372,7 @@ const modes: readonly SplitMode[] = ['even', 'units', 'amounts'];
           @click="emit('move', -1)"
         />
         <UButton
+          v-if="!(first && last)"
           icon="i-lucide-arrow-down"
           color="neutral"
           variant="ghost"

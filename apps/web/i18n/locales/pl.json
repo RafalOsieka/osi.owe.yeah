@@ -242,7 +242,9 @@
     "done": "Gotowe",
     "closeAdding": "Zamknij",
     "notAssignedBeforeDiscount": "{amount} jeszcze nieprzypisane, przed rabatem na paragon",
-    "extras": "Rabat i kaucja na pozycji"
+    "extras": "Rabat i kaucja na pozycji",
+    "draftLine": "{amount}, poza paragonem, dopóki jej nie dodasz",
+    "draftEmpty": "Poza paragonem, dopóki jej nie dodasz"
   },
   "contribution": {
     "title": "Dopłaty",

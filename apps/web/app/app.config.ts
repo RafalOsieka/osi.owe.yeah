@@ -18,9 +18,14 @@ export default defineAppConfig({
     },
     input: { slots: { base: 'rounded-lg' }, defaultVariants: { size: 'xl' } },
     selectMenu: { slots: { base: 'rounded-lg' }, defaultVariants: { size: 'xl' } },
+    // Steppers focus like every other field; their − and + stay neutral.
     inputNumber: {
-      slots: { base: 'rounded-lg' },
-      defaultVariants: { size: 'xl', color: 'neutral' },
+      slots: {
+        base: 'rounded-lg',
+        increment: '[&_button]:text-default',
+        decrement: '[&_button]:text-default',
+      },
+      defaultVariants: { size: 'xl' },
     },
     // Sheets open from the bottom of the app's centered column, not the whole window, with
     // rounder top corners than the cards on the page.
@@ -30,6 +35,7 @@ export default defineAppConfig({
         content: 'mx-auto max-w-120 rounded-t-3xl! ring-0',
         container: 'gap-5 px-5 pb-[calc(1.25rem+env(safe-area-inset-bottom))]',
         title: 'text-lg',
+        description: 'text-balance',
       },
     },
     modal: {
