@@ -2,6 +2,7 @@ packages:
   - packages/*
   - apps/*
   - tools/tricount-import
+  - tools/screenshots
 
 allowBuilds:
   '@parcel/watcher': true
