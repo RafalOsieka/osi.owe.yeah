@@ -59,7 +59,7 @@ const menu = computed<DropdownMenuItem[]>(() => [
           item: 'min-h-12',
           itemLabel: 'text-highlighted',
           itemLeadingIcon: 'text-muted',
-          label: 'px-3 pt-3 pb-2 text-[0.8125rem] font-medium text-dimmed',
+          label: 'px-3 pt-3 pb-2 text-sm font-semibold text-muted',
         }"
       >
         <UButton

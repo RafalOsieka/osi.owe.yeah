@@ -265,9 +265,8 @@ const step = { color: 'neutral', class: 'disabled:opacity-30' } as const;
         </span>
         <span
           v-if="missing && problems.length === 0"
-          class="mt-0.5 flex items-center gap-1 text-sm font-medium text-warning"
+          class="mt-0.5 block text-sm font-medium text-warning"
         >
-          <UIcon name="i-lucide-circle-alert" class="size-3.5 shrink-0" aria-hidden="true" />
           {{ missing }}
         </span>
       </span>
@@ -455,18 +454,21 @@ const step = { color: 'neutral', class: 'disabled:opacity-30' } as const;
           :aria-label="$t('receipt.moveDown')"
           @click="emit('move', 1)"
         />
+        <!-- Remove stays quieter than Done: neutral, with only its icon in red. -->
         <UButton
           :label="$t('receipt.remove')"
           icon="i-lucide-trash-2"
-          color="error"
+          color="neutral"
           variant="ghost"
+          :ui="{ leadingIcon: 'text-error' }"
           @click="emit('remove')"
         />
         <UButton
           :label="$t('receipt.done')"
           color="neutral"
           variant="soft"
-          class="ms-auto me-2 px-6"
+          size="lg"
+          class="ms-auto px-6"
           @click="open = false"
         />
       </div>

@@ -485,6 +485,8 @@
     "empty": "Nie ma jeszcze historii. Pojawi się, gdy wydatek się zsynchronizuje.",
     "notFound": "Ta wersja nie istnieje.",
     "byline": "{name} · {when}",
+    "changedBy": "Zmienione przez: {name} · {when}",
+    "changedAt": "Zmienione {when}",
     "deletedHere": "Ta zmiana usunęła wydatek.",
     "restore": "Przywróć tę wersję",
     "restoreRefused": "Wydatek nie został przywrócony",

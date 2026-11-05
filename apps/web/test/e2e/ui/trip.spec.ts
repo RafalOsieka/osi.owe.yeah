@@ -474,7 +474,7 @@ test('a Trip and an Expense made offline reach a second device once back online'
   await expect(row).toContainText('not synced');
   // The Trip, Kasia, Ania and the Expense.
   await header.getByRole('button', { name: '4 changes not synced' }).click();
-  await expect(page.getByRole('dialog')).toContainText("Will sync when you're online");
+  await expect(header).toContainText("Will sync when you're online");
   await page.keyboard.press('Escape');
 
   await context.setOffline(false);

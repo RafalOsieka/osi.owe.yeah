@@ -485,6 +485,8 @@
     "empty": "No History yet. It starts once the Expense is synced.",
     "notFound": "This Revision doesn't exist.",
     "byline": "{name} · {when}",
+    "changedBy": "Changed by {name} · {when}",
+    "changedAt": "Changed {when}",
     "deletedHere": "This change deleted the Expense.",
     "restore": "Restore this Revision",
     "restoreRefused": "The Expense was not restored",

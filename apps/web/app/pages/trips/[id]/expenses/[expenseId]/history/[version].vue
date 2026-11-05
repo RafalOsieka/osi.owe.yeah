@@ -30,7 +30,8 @@ const isCurrent = computed(() => {
   return !!shown && 'version' in shown.base && shown.base.version === version && !shown.deleted;
 });
 
-// Who made the change and exactly when, e.g. "Kasia · Jul 5, 2026, 9:14 PM".
+// Who made the change and exactly when, e.g. "Changed by Kasia · Jul 5, 2026, 9:14 PM", so it
+// isn't read as the Expense's own date in the header below.
 const byline = computed(() => {
   if (!revision.value) return '';
   const { by, at } = revision.value.edited;
@@ -40,7 +41,7 @@ const byline = computed(() => {
     dateStyle: 'medium',
     timeStyle: 'short',
   }).format(new Date(at));
-  return name ? t('history.byline', { name, when }) : when;
+  return name ? t('history.changedBy', { name, when }) : t('history.changedAt', { when });
 });
 
 // What of this Revision differs from the Expense now, named in the notice.

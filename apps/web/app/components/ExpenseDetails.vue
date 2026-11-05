@@ -348,7 +348,7 @@ function openBreakdown(participantId: string): void {
       <button
         v-if="details.unassignedSummary"
         type="button"
-        class="mt-3 inline-flex min-h-11 cursor-pointer items-center gap-1.5 rounded-full bg-warning/10 px-3.5 text-sm font-medium text-warning transition-colors hover:bg-warning/15"
+        class="mt-3 inline-flex min-h-11 cursor-pointer items-center gap-1.5 rounded-lg bg-[color-mix(in_oklab,var(--ui-warning)_10%,var(--ui-bg))] px-3.5 text-sm font-medium text-warning ring-1 ring-warning/25 transition-colors ring-inset hover:bg-[color-mix(in_oklab,var(--ui-warning)_16%,var(--ui-bg))]"
         @click="scrollToLine(details.unassignedSummary.lineId)"
       >
         <UIcon name="i-lucide-circle-alert" class="size-4 shrink-0" aria-hidden="true" />
@@ -418,9 +418,8 @@ function openBreakdown(participantId: string): void {
               </span>
               <span
                 v-if="line.unassignedText"
-                class="mt-0.5 flex items-center gap-1 text-sm font-medium text-warning"
+                class="mt-0.5 block text-sm font-medium text-warning"
               >
-                <UIcon name="i-lucide-circle-alert" class="size-3.5 shrink-0" aria-hidden="true" />
                 {{ line.unassignedText }}
               </span>
             </span>

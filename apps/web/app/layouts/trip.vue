@@ -9,6 +9,7 @@ const { trip, claim, unsynced, sync, askWhoYouAre, invite } = useOpenTrip();
 const { t } = useI18n();
 const back = useBack();
 const { pulled, ready, refreshing } = usePullToRefresh(sync);
+const syncOpen = ref(false);
 
 const tabs = computed(() => {
   const base = `/trips/${trip.value.id}`;
@@ -47,45 +48,25 @@ const tabs = computed(() => {
           }}
         </button>
       </div>
-      <UPopover
-        arrow
-        :content="{ align: 'end', side: 'bottom', sideOffset: 4, collisionPadding: 16 }"
-        :ui="{ content: 'w-[min(calc(100vw-2rem),28rem)] rounded-xl' }"
+      <UButton
+        color="neutral"
+        variant="ghost"
+        :aria-label="$t('sync.unsynced', unsynced)"
+        :aria-expanded="syncOpen"
+        aria-controls="sync-status"
+        @click="syncOpen = !syncOpen"
       >
-        <UButton color="neutral" variant="ghost" :aria-label="$t('sync.unsynced', unsynced)">
-          <span class="relative">
-            <UIcon
-              :name="unsynced > 0 ? 'i-lucide-cloud' : 'i-lucide-cloud-check'"
-              class="block size-5 text-muted"
-            />
-            <span
-              v-if="unsynced > 0"
-              class="absolute -end-0.5 -top-0.5 size-2 rounded-full bg-warning"
-            />
-          </span>
-        </UButton>
-        <template #content>
-          <div class="flex gap-3 p-4">
-            <span class="relative mt-0.5 shrink-0">
-              <UIcon
-                :name="unsynced > 0 ? 'i-lucide-cloud' : 'i-lucide-cloud-check'"
-                class="block size-5"
-                :class="unsynced > 0 ? 'text-muted' : 'text-success'"
-              />
-              <span
-                v-if="unsynced > 0"
-                class="absolute -end-0.5 -top-0.5 size-2 rounded-full bg-warning"
-              />
-            </span>
-            <div>
-              <p class="font-semibold text-highlighted">{{ $t('sync.unsynced', unsynced) }}</p>
-              <p v-if="unsynced > 0" class="mt-0.5 text-sm text-muted">
-                {{ $t('sync.unsyncedHelp') }}
-              </p>
-            </div>
-          </div>
-        </template>
-      </UPopover>
+        <span class="relative">
+          <UIcon
+            :name="unsynced > 0 ? 'i-lucide-cloud' : 'i-lucide-cloud-check'"
+            class="block size-5 text-muted"
+          />
+          <span
+            v-if="unsynced > 0"
+            class="absolute -end-0.5 -top-0.5 size-2 rounded-full bg-warning"
+          />
+        </span>
+      </UButton>
       <UButton
         icon="i-lucide-share-2"
         color="neutral"
@@ -93,6 +74,27 @@ const tabs = computed(() => {
         :aria-label="$t('invite.action')"
         @click="invite"
       />
+    </div>
+    <!-- The sync status opens in the header itself and pushes the page down, so it never
+         sits over the list. -->
+    <div v-if="syncOpen" id="sync-status" class="flex gap-3 border-t border-default px-4 py-3">
+      <span class="relative mt-0.5 shrink-0">
+        <UIcon
+          :name="unsynced > 0 ? 'i-lucide-cloud' : 'i-lucide-cloud-check'"
+          class="block size-5"
+          :class="unsynced > 0 ? 'text-muted' : 'text-success'"
+        />
+        <span
+          v-if="unsynced > 0"
+          class="absolute -end-0.5 -top-0.5 size-2 rounded-full bg-warning"
+        />
+      </span>
+      <div>
+        <p class="font-semibold text-highlighted">{{ $t('sync.unsynced', unsynced) }}</p>
+        <p v-if="unsynced > 0" class="mt-0.5 text-sm text-muted">
+          {{ $t('sync.unsyncedHelp') }}
+        </p>
+      </div>
     </div>
   </header>
   <div

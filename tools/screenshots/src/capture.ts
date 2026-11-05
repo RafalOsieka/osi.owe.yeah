@@ -895,10 +895,12 @@ async function capture(scheme: 'light' | 'dark'): Promise<void> {
   await go(croatia.page);
   await link(/Konzum groceries/).waitFor();
   await snap('a12-expenses', true);
-  await banner.getByRole('button', { name: 'Everything is synced.' }).click();
-  await sheet.getByText('Everything is synced.').waitFor();
+  // The sync status opens in the header, and the same button closes it.
+  const syncStatus = banner.getByRole('button', { name: 'Everything is synced.' });
+  await syncStatus.click();
+  await banner.getByText('Everything is synced.').waitFor();
   await snap('a15-sync-status');
-  await close();
+  await syncStatus.click();
   await banner.getByRole('button', { name: 'Invite' }).click();
   await sheet.getByRole('img', { name: 'QR code of the Trip link' }).waitFor();
   await snap('a18-invite');
@@ -912,10 +914,12 @@ async function capture(scheme: 'light' | 'dark'): Promise<void> {
   };
   await detail('Dinner at Konoba Fetivi', 'b01-expense-detail');
   await detail('Konzum groceries', 'b02-receipt-detail');
-  // The tapped share row in the middle of the screen, behind the sheet.
-  const ania = page.getByRole('region', { name: 'Shares' }).getByRole('button', { name: /Ania/ });
-  await ania.evaluate((row) => row.scrollIntoView({ block: 'center' }));
-  await ania.click();
+  // The Shares heading just under the header, behind the sheet, so the header cuts no line.
+  const shares = page.getByRole('region', { name: 'Shares' });
+  await shares.evaluate((region) =>
+    window.scrollTo(0, region.getBoundingClientRect().top + window.scrollY - 72),
+  );
+  await shares.getByRole('button', { name: /Ania/ }).click();
   await page.getByRole('dialog', { name: "Ania's share" }).waitFor();
   await snap('b03-share-breakdown');
   await close();
@@ -1122,10 +1126,11 @@ async function capture(scheme: 'light' | 'dark'): Promise<void> {
   await gelato.waitFor();
   // At the end of the list, as a phone left there would be: the tab keeps its scroll.
   await page.evaluate(() => window.scrollTo(0, document.documentElement.scrollHeight));
-  await banner.getByRole('button', { name: '1 change not synced' }).click();
-  await sheet.getByText('1 change not synced').waitFor();
+  const unsyncedStatus = banner.getByRole('button', { name: '1 change not synced' });
+  await unsyncedStatus.click();
+  await banner.getByText("Will sync when you're online").waitFor();
   await snap('a16-sync-unsynced');
-  await close();
+  await unsyncedStatus.click();
   await croatia.edit('Gelato', 'Tomek', (expense) =>
     'lineItems' in expense
       ? { ...expense, lineItems: plain(1650, expense.lineItems[0].split) }
