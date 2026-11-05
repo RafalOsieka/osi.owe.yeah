@@ -56,10 +56,11 @@ function forYou(expense: LocalExpense): { text: string; tone: string } | null {
     case 'share':
       return { text: t('expense.yourShare', { amount }), tone: 'text-muted' };
     case 'received': {
-      // Their own part of an Income is negative (what they keep); the rest is the others'.
+      // A Repayment's recipient only received it. Their own part of an Income is negative
+      // (what they keep); the rest is the others'.
       const own = expenseShares(expense).shares.get(claimId) ?? rational(0n);
       const owed = add(view.amount, own);
-      if (owed.numerator <= 0n) {
+      if (expenseKind(expense).kind === 'repayment' || owed.numerator <= 0n) {
         return { text: t('expense.youReceived', { amount }), tone: 'text-muted' };
       }
       return {

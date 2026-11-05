@@ -147,7 +147,11 @@ test('a new Trip lands on its empty Expenses tab, already knowing who you are', 
   // Back from the Trip goes to My Trips, not to the finished form.
   await header.getByRole('button', { name: 'Back to My Trips' }).click();
   await expect(page).toHaveURL('/');
-  await expect(page.getByRole('link', { name: /Croatia 2026/ })).toContainText('You are Ania');
+  const row = page.getByRole('link', { name: /Croatia 2026/ });
+  await expect(row).toContainText('No Expenses yet');
+  // The Claim stays on the device: reopened, the Trip still knows who you are.
+  await row.click();
+  await expect(header).toContainText('You are Ania · EUR');
 });
 
 test('joining with a Trip link keeps its token on the device', async ({
@@ -155,7 +159,13 @@ test('joining with a Trip link keeps its token on the device', async ({
   request,
   browser,
 }) => {
-  const tripLink = await tripLinkFor(request, 'Tatry 2026', ['Kasia', 'Ania']);
+  // With an Expense, so My Trips has a balance to show, or asks who you are instead.
+  const tripLink = await tripWithExpenses(
+    request,
+    'Tatry 2026',
+    ['Kasia', 'Ania'],
+    [{ title: 'Hut', amount: 2000 }],
+  );
   const tripUrl = tripLink.split('#')[0]!;
 
   // The first open asks who you are; "Just looking" leaves it for later.
@@ -726,7 +736,8 @@ test('a share on a Receipt and a bar on Balances open where the share comes from
   const kasia = page.getByRole('dialog', { name: "Kasia's share" });
   await expect(kasia).toContainText('Paid€6.27');
   await expect(kasia).toContainText('Share€2.09');
-  await expect(kasia).toContainText('Kasia is owed€4.18');
+  // Kasia is who you are.
+  await expect(kasia).toContainText("You're owed€4.18");
 });
 
 test('Contributions from others: added, edited and removed, the Main payer covering the rest', async ({
@@ -744,7 +755,7 @@ test('Contributions from others: added, edited and removed, the Main payer cover
   await expect(aniasContribution).toBeFocused();
   await aniasContribution.fill('6');
   const form = page.getByRole('main');
-  await expect(form).toContainText(/Kasia pays the rest\s*€54\.00/);
+  await expect(form).toContainText(/Kasia pays the rest\s*you\s*€54\.00/);
   // Income has no Contributions.
   await expect(page.getByRole('switch', { name: 'Money received' })).toBeDisabled();
   await page.getByRole('button', { name: 'Save Expense' }).click();
@@ -795,7 +806,7 @@ test('a Trip rule the Expense would break shows at its field before saving', asy
   // It goes as soon as the Expense no longer breaks it, whichever field changed.
   await page.getByLabel('Amount').fill('20');
   await expect(aniasContribution).not.toHaveAccessibleDescription(/more than the Expense/);
-  await expect(page.getByRole('main')).toContainText(/Kasia pays the rest\s*€5\.00/);
+  await expect(page.getByRole('main')).toContainText(/Kasia pays the rest\s*you\s*€5\.00/);
 });
 
 test('a Manual rate: the amount the card charged in the Trip currency', async ({ page }) => {
