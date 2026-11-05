@@ -62,6 +62,7 @@ const description = computed(() => {
               >
                 <ParticipantAvatar :participant="participant" size="xs" />
                 <span class="truncate">{{ participant.name }}</span>
+                <YouBadge v-if="participant.id === current?.id" class="ms-auto" />
               </UButton>
             </li>
           </ul>

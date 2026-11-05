@@ -1,7 +1,6 @@
 <script setup lang="ts">
 import {
   balances,
-  isRepayment,
   isSettled,
   participantIdSchema,
   rateSummary,
@@ -14,15 +13,16 @@ import { z } from 'zod';
 // The Balances tab: your balance, with your own Suggested Repayments ("To settle") on its
 // card, then everyone's balance as diverging bars, headed by what the Trip spent, the other
 // Suggested Repayments (all of them without a Claim), and a quiet Record a Repayment for one
-// nobody suggested ("another" once there are Repayments). Once the Trip is Settled, "All
+// nobody suggested. "To settle" says first when to record (after paying, or once the money
+// came), and leaves out the amount when it is the one in the headline. Once the Trip is Settled, "All
 // settled" replaces the balance and the suggestions, and everyone's row keeps only the name
 // and the zero. Balances are worked out exactly and rounded with the largest remainder
 // method, as settling up uses them, in the Trip currency.
 // The footer warns how many Expenses use a Provisional rate, so balances may still move a
 // little (settling up stays allowed), and how many are left out without any rate. Tapping a
 // bar opens where that Participant's share comes from, with what they paid and their balance.
-// On the claimed Participant's suggestions as creditor, Remind reminds the debtor (#42); a
-// line under them says once whom it can only remind by a message they send themselves.
+// On the claimed Participant's suggestions as creditor, Remind reminds the debtor (#42); the
+// line above them says once whom it can only remind by a message they send themselves.
 // Opened from a Reminder, `?payer=<id>&recipient=<id>` marks the suggestion it was about,
 // Record one tap away, until the tab is opened again: the address loses it at once.
 definePageMeta({ scrollToTop: false });
@@ -97,7 +97,7 @@ const remindable = computed(
     ),
 );
 
-// Said once under the debtors, before Remind is tapped: who it can only remind by a message
+// Said once above the debtors, before Remind is tapped: who it can only remind by a message
 // this device shares (or copies), or that it does so for all of them while offline.
 const reminderNote = computed(() => {
   const byMessage = [...remindable.value.values()].filter(
@@ -110,12 +110,13 @@ const reminderNote = computed(() => {
   return t(`reminder.unreachable.${how}`, { names });
 });
 
-// "Record a Repayment", or "another" once the Trip has one and isn't Settled.
-const recordLabel = computed(() =>
-  !settled.value && trip.value.expenses.some(isRepayment)
-    ? t('balances.recordAnother')
-    : t('balances.recordOne'),
-);
+// When to record what "To settle" suggests: after paying, or once the money came, and how
+// Remind reaches whom it can't notify.
+const settleNote = computed(() => {
+  const creditor = suggestions.value.own.some(({ recipientId }) => recipientId === claim.value?.id);
+  const when = creditor ? t('balances.recordWhenReceived') : t('balances.recordWhenPaid');
+  return reminderNote.value ? `${when} ${reminderNote.value}` : when;
+});
 </script>
 
 <template>
@@ -140,8 +141,10 @@ const recordLabel = computed(() =>
             <h2 id="to-settle-heading" class="px-4 text-sm font-medium text-muted">
               {{ $t('balances.toSettle') }}
             </h2>
+            <p class="px-4 pt-1 pb-1 text-sm text-muted">{{ settleNote }}</p>
             <SuggestedRepaymentList
               :suggestions="suggestions.own"
+              :amount-shown="suggestions.own.length > 1"
               :participants="trip.participants"
               :trip-id="trip.id"
               :currency="trip.currency"
@@ -157,13 +160,6 @@ const recordLabel = computed(() =>
                 />
               </template>
             </SuggestedRepaymentList>
-            <p
-              v-if="reminderNote"
-              class="flex gap-2 border-t border-default px-4 py-3 text-sm text-muted"
-            >
-              <UIcon name="i-lucide-info" class="mt-0.5 size-4 shrink-0" />
-              {{ reminderNote }}
-            </p>
           </section>
         </template>
       </BalanceCard>
@@ -208,7 +204,7 @@ const recordLabel = computed(() =>
     <UButton
       :to="`/trips/${trip.id}/repayments/new`"
       icon="i-lucide-plus"
-      :label="recordLabel"
+      :label="$t('balances.recordOne')"
       color="neutral"
       variant="ghost"
       block

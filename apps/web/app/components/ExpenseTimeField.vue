@@ -49,21 +49,18 @@ const time = computed(() => {
       <UButton variant="link" :label="$t('form.done')" class="-my-3 -me-4" @click="open = false" />
     </template>
     <UInput v-model="local" type="datetime-local" class="w-full dark:scheme-dark" />
-    <template #help>
-      <USelectMenu
-        v-model="zone"
-        :items="zones"
-        value-key="value"
-        :filter-fields="['label', 'value']"
-        virtualize
-        :aria-label="$t('expense.timeZone')"
-        variant="ghost"
-        icon="i-lucide-globe"
-        class="-ms-3 max-w-full"
-        :content="{ align: 'start' }"
-        :ui="{ content: 'min-w-72' }"
-      />
-    </template>
+    <USelectMenu
+      v-model="zone"
+      :items="zones"
+      value-key="value"
+      :filter-fields="['label', 'value']"
+      virtualize
+      :aria-label="$t('expense.timeZone')"
+      icon="i-lucide-globe"
+      class="mt-2 w-full"
+      :content="{ align: 'start' }"
+      :ui="{ content: 'min-w-72' }"
+    />
   </UFormField>
   <div v-else>
     <p class="mb-2 text-sm font-medium text-highlighted" aria-hidden="true">

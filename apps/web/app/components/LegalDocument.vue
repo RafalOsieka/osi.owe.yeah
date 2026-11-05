@@ -55,7 +55,6 @@ function jump(id: string): void {
               {{ index + 1 }}
             </span>
             <span class="min-w-0 flex-1">{{ $t(`${doc}.${id}.title`) }}</span>
-            <UIcon name="i-lucide-arrow-down" class="size-4 shrink-0 text-dimmed" />
           </a>
         </li>
       </ol>

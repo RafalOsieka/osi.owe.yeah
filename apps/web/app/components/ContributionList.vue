@@ -18,6 +18,7 @@ const { participants, mainPayerId, currency, rest } = defineProps<{
 const contributions = defineModel<DraftContribution[]>({ required: true });
 
 const { locale } = useI18n();
+const { claim } = useOpenTrip();
 const labelId = useId();
 const inputId = (participantId: string) => `${labelId}-${participantId}`;
 
@@ -93,8 +94,9 @@ const addable = computed<DropdownMenuItem[]>(() =>
           class="flex items-center gap-2.5 py-2 first:pt-0"
         >
           <ParticipantAvatar :participant="row.participant" size="xs" />
-          <span class="min-w-0 flex-1 truncate text-sm font-medium">
-            {{ row.participant.name }}
+          <span class="flex min-w-0 flex-1 items-center text-sm font-medium">
+            <span class="truncate">{{ row.participant.name }}</span>
+            <YouBadge v-if="row.participant.id === claim?.id" />
           </span>
           <MoneyInput
             :id="inputId(row.participant.id)"
@@ -118,6 +120,7 @@ const addable = computed<DropdownMenuItem[]>(() =>
           <ParticipantAvatar :participant="payer" size="xs" />
           <span class="min-w-0 flex-1 text-sm text-muted">
             {{ $t('contribution.rest', { name: payer.name }) }}
+            <YouBadge v-if="payer.id === claim?.id" />
           </span>
           <span
             v-if="rest && rest.numerator >= 0n"
@@ -133,13 +136,7 @@ const addable = computed<DropdownMenuItem[]>(() =>
       :items="addable"
       :content="{ onCloseAutoFocus: focusAdded }"
     >
-      <UButton
-        icon="i-lucide-plus"
-        variant="ghost"
-        color="neutral"
-        :label="$t('contribution.add')"
-        class="-mx-3 text-muted"
-      />
+      <UButton icon="i-lucide-plus" variant="link" :label="$t('contribution.add')" class="-ms-3" />
     </UDropdownMenu>
   </div>
 </template>

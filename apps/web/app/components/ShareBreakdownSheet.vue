@@ -13,7 +13,8 @@ import {
 // Where a Participant's share comes from, as a sheet headed by their avatar and name (and
 // what it is of, e.g. the Receipt's title): each
 // part of it (plain Expenses, goods, discounts, Deposits, Deposit refunds, what is not
-// assigned yet, Income and Repayments received), summed up in the share. Opened from a share
+// assigned yet, in amber with a line on why it is theirs for now, Income and Repayments
+// received), summed up in the share. The claimed Participant's title carries "you". Opened from a share
 // on a Receipt; or, from their bar on the Balances tab, also with what they paid and their
 // balance, said as Balances says it ("Kasia owes €116.95", red; "is owed", green), the share
 // there being what they paid less that balance, as the balance card shows it, so the three add
@@ -60,9 +61,17 @@ const sheet = computed(() => {
     breakdown.parts.some(({ amount }) => inexact(amount));
   return {
     parts: breakdown.parts.map(({ part, amount }) => ({
-      label: t(`breakdown.part.${part}`),
+      label:
+        part === 'unassigned'
+          ? participant.id === claimId
+            ? t('breakdown.unassignedYours')
+            : t('breakdown.unassignedTheirs', { name: participant.name })
+          : t(`breakdown.part.${part}`),
       amount: rounded(amount),
+      // What is not assigned yet, in amber as everywhere.
+      tone: part === 'unassigned' ? 'text-warning' : '',
     })),
+    unassigned: breakdown.parts.some(({ part }) => part === 'unassigned'),
     share: formatMoney(share, currency, locale.value, 'currency', approximate),
     partsRounded,
     outcome: balance && outcomeOf(balance),
@@ -111,14 +120,16 @@ function outcomeOf(rounded: Rational) {
       <span class="flex items-center gap-3">
         <ParticipantAvatar :participant="participant" size="md" />
         {{ $t('breakdown.title', { name: participant.name }) }}
+        <YouBadge v-if="participant.id === claimId" />
       </span>
     </template>
     <template #body>
       <dl class="tabular-nums">
         <div
-          v-for="{ label, amount } in sheet.parts"
+          v-for="{ label, amount, tone } in sheet.parts"
           :key="label"
           class="flex justify-between gap-3 py-1.5"
+          :class="tone"
         >
           <dt>{{ label }}</dt>
           <dd class="shrink-0">{{ amount }}</dd>
@@ -142,16 +153,20 @@ function outcomeOf(rounded: Rational) {
           </div>
         </template>
       </dl>
-      <p v-if="sheet.partsRounded" class="mt-3 text-sm text-muted">
+      <p v-if="sheet.unassigned" class="mt-3 text-sm text-muted">
+        {{ $t('breakdown.unassignedRule') }}
+      </p>
+      <p v-if="sheet.partsRounded" class="mt-2 text-sm text-muted">
         {{ $t('breakdown.roundedParts') }}
       </p>
     </template>
     <template #footer>
       <UButton
-        block
         color="neutral"
         variant="soft"
-        :label="$t('breakdown.done')"
+        block
+        size="xl"
+        :label="$t('form.done')"
         @click="open = false"
       />
     </template>

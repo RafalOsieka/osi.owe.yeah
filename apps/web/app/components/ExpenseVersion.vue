@@ -2,14 +2,24 @@
 import { expenseKind, expenseShares, type Expense, type Participant } from '@osi/owe-yeah-domain';
 import type { ExpenseField } from '~/utils/revisions';
 
-// One version of an Expense on the Conflict screen, as a card under `heading`: whether it
+// One version of an Expense on the Conflict screen, as a card under `heading` (and
+// `subtitle`, e.g. when it was made): whether it
 // deletes the Expense, its title, total, when it was paid, who paid and who it is for, the
 // claimed Participant as "you". What differs from the other version (`changed`) is
 // highlighted and the rest stays quiet, with a line for differences it doesn't show (Line
 // items, a Manual rate). The default slot ends the card, for the choice that keeps it.
-const { expense, heading, deleted, changed, claimId, participants } = defineProps<{
+const {
+  expense,
+  heading,
+  subtitle = '',
+  deleted,
+  changed,
+  claimId,
+  participants,
+} = defineProps<{
   expense: Expense;
   heading: string;
+  subtitle?: string;
   deleted: boolean;
   changed: readonly ExpenseField[];
   claimId: string | null;
@@ -55,7 +65,10 @@ const look = (...fields: ExpenseField[]) =>
 <template>
   <section :aria-labelledby="headingId" class="card p-4">
     <div class="flex items-center justify-between gap-2">
-      <h2 :id="headingId" class="font-semibold text-highlighted">{{ heading }}</h2>
+      <div class="min-w-0">
+        <h2 :id="headingId" class="font-semibold text-highlighted">{{ heading }}</h2>
+        <p v-if="subtitle" class="text-sm text-muted">{{ subtitle }}</p>
+      </div>
       <UBadge
         v-if="deleted"
         :label="$t('conflict.deleted')"

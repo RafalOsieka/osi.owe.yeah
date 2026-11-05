@@ -11,7 +11,6 @@ import {
   rational,
   roundMoney,
   shareBreakdown,
-  type Discount,
   type Expense,
   type LineItem,
   type LineItemShares,
@@ -26,61 +25,55 @@ import {
 // once, with the amount, in its header. A Receipt also lists its Line items, each amount level
 // with its name, with how each is split (an Amounts split with each one's amount), its Line
 // discount, its Deposit, and what is not assigned yet (in units, for a Units split), Deposit
-// refunds marked as such; then a summary of the Line items, the Receipt discount, the
-// Deposits and the total. What is not assigned yet is counted in the Main payer's share, whose
-// row says how much. On a Receipt, tapping a share opens where it comes from
+// refunds marked as such; then a summary: the goods after their Line discounts, the Deposit
+// refunds, the Receipt discount, the Deposits and the total. Discounts read "25% off · −€1.49",
+// a Line discount said to be included in its Line item's amount. What is not assigned yet is
+// counted in the Main payer's share, whose row says how much and why; a line under the total
+// says so too and scrolls to the first such Line item. `changed` marks the title and total in
+// amber where they differ from another version (an older Revision against now). On a Receipt, tapping a share opens where it comes from
 // (`ShareBreakdownSheet`). Shares are rounded only to show them, so a note explains "≈" when
 // they don't add up to the total. All
 // amounts are in the Expense's own currency; `converted` adds its total in the Trip currency
 // under it, at the rate for its local date, "≈" and explained at a Provisional rate, or says
 // it is left out of balances while there is no rate yet. A Manual rate shows as it was typed.
-const { expense, converted = false } = defineProps<{
+const {
+  expense,
+  converted = false,
+  changed = [],
+} = defineProps<{
   expense: Expense;
   /** Show the total converted into the Trip currency, as the Expense is now. */
   converted?: boolean;
+  /** What differs from another version of it, to mark in the header. */
+  changed?: readonly ExpenseField[];
 }>();
+
+// The amber marker for what differs, as the Conflict screen uses it.
+const marked = (...fields: ExpenseField[]) =>
+  fields.some((field) => changed.includes(field))
+    ? 'rounded-lg bg-warning/15 box-decoration-clone px-2'
+    : '';
 
 const { trip, claim, everyone } = useOpenTrip();
 const { t, locale } = useI18n();
 const splitText = useSplitText();
+const unassignedOf = useUnassignedText();
+const discountText = useDiscountText();
 
 const money = (amount: Rational) => formatMoney(amount, expense.currency, locale.value);
 const isYou = (participant: Participant) => participant.id === claim.value?.id;
-// The "you" next to the claimed Participant's name, wherever it appears.
-const youBadge = computed(
-  () =>
-    ({
-      label: t('participants.you'),
-      variant: 'subtle',
-      size: 'md',
-      class: 'ms-1.5 align-middle text-[0.8125rem]',
-    }) as const,
-);
 
-// What is not assigned yet of a Line item, said once, on it: the units for a Units split
-// ("1 of 4 units unassigned"), the amount otherwise.
-function unassignedText(item: LineItem, shares: LineItemShares): string | null {
-  if (shares.unassigned.numerator === 0n) return null;
-  if (item.split.mode !== 'units') {
-    return t('receipt.notAssigned', { amount: money(shares.unassigned) });
-  }
-  const assigned = item.split.parts.reduce((sum, { units }) => sum + units, 0);
-  return t('receipt.unitsUnassigned', {
-    unassigned: item.quantity - assigned,
-    quantity: item.quantity,
-  });
+// The units of a Line item nobody has been given yet, for a Units split; `null` otherwise.
+function unassignedUnits(item: LineItem): number | null {
+  if (item.split.mode !== 'units') return null;
+  return item.quantity - item.split.parts.reduce((sum, { units }) => sum + units, 0);
 }
 
-// How a Line item is split, an Amounts split with each one's amount ("Amounts · Kasia €7.25,
-// Marta €7.25").
-function splitOf(item: LineItem, shares: LineItemShares): string {
-  if (item.split.mode !== 'amounts') return splitText(item.split, everyone.value);
-  const parts = item.split.parts.map(({ participantId }) => {
-    const name = everyone.value.find(({ id }) => id === participantId)?.name ?? '?';
-    const part = shares.shares.get(participantId);
-    return part ? `${name} ${money(part)}` : name;
-  });
-  return `${t('receipt.mode.amounts')} · ${new Intl.ListFormat(locale.value, { style: 'narrow' }).format(parts)}`;
+// What is not assigned yet of a Line item, said on it as the form says it, with the money
+// after the units of a Units split ("1 of 4 units unassigned · ≈ €1.12").
+function unassignedText(item: LineItem, shares: LineItemShares): string | null {
+  const text = unassignedOf(item, shares, expense.currency);
+  return text && unassignedUnits(item) !== null ? `${text} · ${money(shares.unassigned)}` : text;
 }
 
 const kinded = computed(() => expenseKind(expense));
@@ -90,16 +83,48 @@ const details = computed(() => {
     expenseShares(expense);
   const { kind, expense: narrowed } = kinded.value;
   const receipt = kind === 'receipt' ? narrowed : null;
-  const discountText = (entered: Discount | undefined, off: Rational) =>
-    entered && formatDiscount(entered, off, expense.currency, locale.value);
+  const refunds = lineItems.filter(
+    (_, index) => receipt && isDepositRefund(receipt.lineItems[index]!),
+  );
+  const sum = (amounts: readonly Rational[]) => amounts.reduce(add, rational(0n));
+  // Where what is not assigned yet is: in units when every such Line item is split by Units.
+  const open = receipt
+    ? receipt.lineItems.flatMap((item, index) =>
+        lineItems[index]!.unassigned.numerator === 0n ? [] : [{ item, index }],
+      )
+    : [];
+  const openUnits = open.map(({ item }) => unassignedUnits(item));
+  const payer = everyone.value.find(({ id }) => id === expense.mainPayerId);
   return {
     total,
     unassigned: unassigned.numerator === 0n ? null : unassigned,
-    discount: receipt ? discountText(receipt.discount, discountOff) : undefined,
+    discount: receipt?.discount && discountText(receipt.discount, discountOff, expense.currency),
+    refunds: refunds.length > 0 ? sum(refunds.map(({ net }) => net)) : null,
+    // The headline of what is not assigned yet, and the first Line item it is on.
+    unassignedSummary:
+      open.length > 0
+        ? {
+            text: [
+              openUnits.every((units) => units !== null)
+                ? t(
+                    'receipt.unitsUnassignedTotal',
+                    openUnits.reduce<number>((total, units) => total + (units ?? 0), 0),
+                  )
+                : t('receipt.amountUnassigned', { amount: money(unassigned) }),
+              payer && isYou(payer)
+                ? t('receipt.countedAsYours')
+                : t('receipt.countedAs', { name: payer?.name ?? '?' }),
+            ].join(' · '),
+            lineId: lineId(open[0]!.index),
+          }
+        : null,
     deposits: deposits.numerator === 0n ? null : deposits,
     lineItems: receipt
       ? receipt.lineItems.map((item, index) => ({
-          discountText: discountText(item.discount, lineItems[index]!.discountOff),
+          discountText:
+            item.discount &&
+            discountText(item.discount, lineItems[index]!.discountOff, expense.currency, true),
+          id: lineId(index),
           refund: isDepositRefund(item),
           name:
             item.name ||
@@ -113,9 +138,17 @@ const details = computed(() => {
               ? t('receipt.facts', {
                   quantity: item.quantity,
                   price: money(fromMinor(item.unitPrice, expense.currency)),
-                  split: splitOf(item, lineItems[index]!),
+                  split: splitText(
+                    draftSplit(item.split, expense.currency),
+                    everyone.value,
+                    expense.currency,
+                  ),
                 })
-              : splitOf(item, lineItems[index]!),
+              : splitText(
+                  draftSplit(item.split, expense.currency),
+                  everyone.value,
+                  expense.currency,
+                ),
           ]
             .filter((fact) => fact !== null)
             .join(' · '),
@@ -123,8 +156,9 @@ const details = computed(() => {
           ...lineItems[index]!,
         }))
       : null,
-    // The Line items after their own discounts, before the Receipt discount and Deposits.
-    subtotal: lineItems.reduce((sum, { net }) => add(sum, net), rational(0n)),
+    // The goods after their Line discounts: the Line items but the Deposit refunds, before
+    // the Receipt discount and Deposits.
+    subtotal: sum(lineItems.filter((line) => !refunds.includes(line)).map(({ net }) => net)),
     repayment: kind === 'repayment',
     recipient:
       kind === 'repayment'
@@ -132,7 +166,7 @@ const details = computed(() => {
         : undefined,
     income: kind === 'income',
     when: formatExpenseTime(expense.time, locale.value),
-    payer: everyone.value.find(({ id }) => id === expense.mainPayerId),
+    payer,
     // The Main payer first, then the Contributions in the order they were added.
     payers: [...paid].flatMap(([id, amount]) => {
       const participant = everyone.value.find((other) => other.id === id);
@@ -157,6 +191,16 @@ const details = computed(() => {
     rounded: [...shares.values()].some((share) => !roundMoney(share, expense.currency).exact),
   };
 });
+
+// A Line item's element id, for the headline of what is not assigned yet to scroll to.
+const idPrefix = useId();
+function lineId(index: number): string {
+  return `${idPrefix}-line-${index}`;
+}
+
+function scrollToLine(id: string): void {
+  document.getElementById(id)?.scrollIntoView({ behavior: 'smooth', block: 'center' });
+}
 
 // The total in the Trip currency, when the Expense is in another one.
 const conversion = computed(() => {
@@ -228,10 +272,10 @@ function openBreakdown(participantId: string): void {
   <div>
     <div class="card px-5 py-6 text-center">
       <p class="text-lg leading-snug font-medium text-highlighted wrap-anywhere">
-        {{ expense.title }}
+        <span :class="marked('title')">{{ expense.title }}</span>
       </p>
       <p class="mt-1 text-5xl font-semibold tracking-tight text-highlighted tabular-nums">
-        {{ money(details.total) }}
+        <span :class="marked('amount', 'currency')">{{ money(details.total) }}</span>
       </p>
       <template v-if="conversion">
         <p class="mt-2 font-medium tabular-nums">{{ conversion.text }}</p>
@@ -248,19 +292,28 @@ function openBreakdown(participantId: string): void {
         <span class="flex items-center gap-2">
           <ParticipantAvatar :participant="details.payer" size="sm" />
           <span class="text-highlighted">{{ details.payer.name }}</span>
-          <UBadge v-if="isYou(details.payer)" v-bind="youBadge" />
+          <YouBadge v-if="isYou(details.payer)" />
         </span>
         <UIcon name="i-lucide-arrow-right" class="size-4 text-muted" aria-hidden="true" />
         <span class="sr-only">{{ $t('repayment.paidTo') }}</span>
         <span class="flex items-center gap-2">
           <ParticipantAvatar :participant="details.recipient" size="sm" />
           <span class="text-highlighted">{{ details.recipient.name }}</span>
-          <UBadge v-if="isYou(details.recipient)" v-bind="youBadge" />
+          <YouBadge v-if="isYou(details.recipient)" />
         </span>
       </p>
       <p class="mt-3 text-sm text-muted">
         {{ $t('expense.timeInZone', { time: details.when, zone: zoneName(expense.time.zone) }) }}
       </p>
+      <button
+        v-if="details.unassignedSummary"
+        type="button"
+        class="mt-3 inline-flex min-h-11 cursor-pointer items-center gap-1.5 rounded-full bg-warning/10 px-3.5 text-sm font-medium text-warning transition-colors hover:bg-warning/15"
+        @click="scrollToLine(details.unassignedSummary.lineId)"
+      >
+        <UIcon name="i-lucide-circle-alert" class="size-4 shrink-0" aria-hidden="true" />
+        {{ details.unassignedSummary.text }}
+      </button>
     </div>
 
     <section v-if="!details.repayment" aria-labelledby="paid-by-heading">
@@ -277,7 +330,7 @@ function openBreakdown(participantId: string): void {
           <span class="min-w-0 flex-1 leading-snug">
             <span class="block truncate text-highlighted">
               {{ participant.name }}
-              <UBadge v-if="you" v-bind="youBadge" />
+              <YouBadge v-if="you" />
             </span>
             <span v-if="details.payers.length > 1" class="block text-sm text-muted">
               {{ contribution ? $t('contribution.label') : $t('contribution.mainPayer') }}
@@ -298,8 +351,9 @@ function openBreakdown(participantId: string): void {
         <ol class="divide-y divide-default">
           <li
             v-for="(line, index) in details.lineItems"
+            :id="line.id"
             :key="index"
-            class="flex items-start gap-3 px-4 py-3"
+            class="flex scroll-mt-20 items-start gap-3 px-4 py-3"
             :class="{ 'shadow-[inset_3px_0_0_var(--ui-warning)]': line.unassignedText }"
           >
             <span class="min-w-0 flex-1 leading-snug">
@@ -314,7 +368,7 @@ function openBreakdown(participantId: string): void {
                 {{ line.facts }}
               </span>
               <span v-if="line.discountText" class="block text-sm text-muted">
-                {{ $t('receipt.lineDiscountFact', { discount: line.discountText }) }}
+                {{ line.discountText }}
               </span>
               <span v-if="line.deposit.numerator !== 0n" class="block text-sm text-muted">
                 {{ $t('receipt.depositFact', { deposit: money(line.deposit) }) }}
@@ -334,12 +388,16 @@ function openBreakdown(participantId: string): void {
         </ol>
         <!-- What the Receipt comes to, apart from its Line items. -->
         <dl
-          v-if="details.discount || details.deposits"
+          v-if="details.discount || details.deposits || details.refunds"
           class="border-t border-default bg-elevated/40 px-4 py-2 tabular-nums"
         >
           <div class="flex justify-between gap-3 py-1 text-sm">
             <dt class="text-muted">{{ $t('receipt.subtotal') }}</dt>
             <dd class="shrink-0">{{ money(details.subtotal) }}</dd>
+          </div>
+          <div v-if="details.refunds" class="flex justify-between gap-3 py-1 text-sm">
+            <dt class="text-muted">{{ $t('breakdown.part.depositRefunds') }}</dt>
+            <dd class="shrink-0">{{ money(details.refunds) }}</dd>
           </div>
           <div v-if="details.discount" class="flex justify-between gap-3 py-1 text-sm">
             <dt class="text-muted">{{ $t('receipt.receiptDiscount') }}</dt>
@@ -380,7 +438,7 @@ function openBreakdown(participantId: string): void {
             <span class="min-w-0 flex-1 leading-snug">
               <span class="block truncate text-highlighted">
                 {{ participant.name }}
-                <UBadge v-if="you" v-bind="youBadge" />
+                <YouBadge v-if="you" />
               </span>
               <span v-if="unassignedHere && details.unassigned" class="block text-sm text-warning">
                 {{ $t('receipt.includesUnassigned', { amount: money(details.unassigned) }) }}

@@ -19,26 +19,18 @@ import {
 
 // One Line item of the Till list, a row of its card. Folded, it reads as on the paper Receipt,
 // in full rather than cut short: name, quantity × unit price, how it is split, its Line
-// discount and Deposit, its total after that discount, and what is not assigned yet, or what of
-// it can't be read (`readLineItem`). Open, it keeps only its name and total on top and is
+// discount and Deposit, its total after that discount, and what is not assigned yet (by units
+// where it has them, as on the detail page), or what of it can't be read (`readLineItem`). A
+// Deposit refund is marked so. Open, it keeps only its name and total on top and is
 // edited in place, closed again with Done: name, unit price, quantity, Split mode and that
 // mode's inputs with how much of the line they assign, then the Line discount and Deposit per
 // unit (folded until wanted), moving it up or down, and removing it. A Deposit refund has only
 // a name, an amount and a split, and reads as a negative amount. Switching the Split mode
 // starts that mode from scratch (`chooseSplitMode`). Its `id` lets the Receipt total point at
 // it.
-const {
-  participants,
-  currency,
-  position,
-  first,
-  last,
-  discounted = false,
-} = defineProps<{
+const { participants, currency, position, first, last } = defineProps<{
   participants: readonly Participant[];
   currency: string;
-  /** Whether a Receipt discount applies, which the line's own figures come before. */
-  discounted?: boolean;
   /** Its place on the Receipt, from 1, to name a line without a name. */
   position: number;
   first: boolean;
@@ -54,6 +46,8 @@ const extrasOpen = ref(line.value.discount.value.trim() !== '' || line.value.dep
 
 const { t, locale } = useI18n();
 const splitText = useSplitText();
+const unassignedText = useUnassignedText();
+const discountText = useDiscountText();
 const { lineItemReason } = useDraftReasons();
 const editorId = useId();
 
@@ -76,6 +70,10 @@ const discountError = computed(() => {
 const unassigned = computed(() =>
   shares.value && shares.value.unassigned.numerator !== 0n ? shares.value.unassigned : null,
 );
+// What of it is not assigned yet, by units where it has them ("1 of 4 units unassigned").
+const missing = computed(() =>
+  item.value && shares.value ? unassignedText(item.value, shares.value, currency) : null,
+);
 const name = computed(
   () =>
     line.value.name.trim() ||
@@ -87,18 +85,11 @@ const unitPrice = computed(() =>
 
 // The folded line's facts under its name: how it is split, then its discount and Deposit.
 const facts = computed(() => {
-  const split = splitText(line.value.split, participants);
+  const split = splitText(line.value.split, participants, currency);
   const extras = [
     item.value?.discount &&
       shares.value &&
-      t('receipt.lineDiscountFact', {
-        discount: formatDiscount(
-          item.value.discount,
-          shares.value.discountOff,
-          currency,
-          locale.value,
-        ),
-      }),
+      discountText(item.value.discount, shares.value.discountOff, currency, true),
     shares.value &&
       shares.value.deposit.numerator !== 0n &&
       t('receipt.depositFact', { deposit: money(shares.value.deposit) }),
@@ -222,7 +213,15 @@ const step = { color: 'neutral', class: 'disabled:opacity-30' } as const;
       <span class="min-w-0 flex-1 leading-snug">
         <span class="block font-medium break-words text-highlighted">{{ name }}</span>
         <template v-if="!open">
-          <span class="mt-0.5 block text-sm text-muted">{{ facts.split }}</span>
+          <span class="mt-0.5 block text-sm text-muted">
+            <UIcon
+              v-if="line.refund"
+              name="i-lucide-undo-2"
+              class="me-1 size-3.5 align-[-0.125em]"
+              aria-hidden="true"
+            />
+            {{ line.refund ? `${$t('receipt.depositRefund')} · ${facts.split}` : facts.split }}
+          </span>
           <span v-if="facts.extras" class="block text-sm text-muted">{{ facts.extras }}</span>
         </template>
         <span v-for="text in unreadable" :key="text" class="mt-0.5 block text-sm text-warning">
@@ -232,14 +231,11 @@ const step = { color: 'neutral', class: 'disabled:opacity-30' } as const;
           {{ $t(`receipt.problem.${problem}`) }}
         </span>
         <span
-          v-if="unassigned && problems.length === 0"
-          class="mt-0.5 block text-sm font-medium text-warning"
+          v-if="missing && problems.length === 0"
+          class="mt-0.5 flex items-center gap-1 text-sm font-medium text-warning"
         >
-          {{
-            $t(discounted ? 'receipt.notAssignedBeforeDiscount' : 'receipt.notAssigned', {
-              amount: money(unassigned),
-            })
-          }}
+          <UIcon name="i-lucide-circle-alert" class="size-3.5 shrink-0" aria-hidden="true" />
+          {{ missing }}
         </span>
       </span>
       <span class="flex shrink-0 items-center gap-1.5 font-semibold text-highlighted tabular-nums">
@@ -253,7 +249,7 @@ const step = { color: 'neutral', class: 'disabled:opacity-30' } as const;
       </span>
     </button>
 
-    <div v-if="open" :id="editorId" class="space-y-4 bg-elevated/60 px-4 pt-1 pb-4">
+    <div v-if="open" :id="editorId" class="space-y-3 bg-elevated/60 px-4 pt-0.5 pb-3">
       <UFormField :label="$t('receipt.name')">
         <UInput
           :model-value="line.name"
@@ -267,6 +263,9 @@ const step = { color: 'neutral', class: 'disabled:opacity-30' } as const;
           :label="line.refund ? $t('receipt.refundAmount') : $t('receipt.unitPrice')"
           class="min-w-0 flex-1"
         >
+          <template v-if="line.refund" #hint>
+            <HelpTip :label="$t('receipt.depositRefund')" :text="$t('receipt.refundHelp')" />
+          </template>
           <MoneyInput
             :model-value="line.price"
             :currency="currency"
@@ -276,6 +275,9 @@ const step = { color: 'neutral', class: 'disabled:opacity-30' } as const;
           />
         </UFormField>
         <UFormField v-if="!line.refund" :label="$t('receipt.quantity')" class="w-36 shrink-0">
+          <template #hint>
+            <HelpTip :label="$t('receipt.quantity')" :text="$t('receipt.weighedHelp')" />
+          </template>
           <UInputNumber
             :model-value="line.quantity"
             :min="1"
@@ -287,9 +289,6 @@ const step = { color: 'neutral', class: 'disabled:opacity-30' } as const;
           />
         </UFormField>
       </div>
-      <p class="-mt-2 text-sm text-muted">
-        {{ line.refund ? $t('receipt.refundHelp') : $t('receipt.weighedHelp') }}
-      </p>
 
       <SegmentedControl
         :model-value="line.split.mode"
@@ -369,7 +368,7 @@ const step = { color: 'neutral', class: 'disabled:opacity-30' } as const;
       <template v-if="!line.refund">
         <button
           type="button"
-          class="-mx-4 flex min-h-12 w-[calc(100%+2rem)] cursor-pointer items-center gap-2 border-t border-default px-4 text-start text-sm font-medium text-default"
+          class="-mx-4 flex min-h-11 w-[calc(100%+2rem)] cursor-pointer items-center gap-2 border-t border-default px-4 text-start text-sm font-medium text-default"
           :aria-expanded="extrasOpen"
           :aria-controls="`${editorId}-extras`"
           @click="extrasOpen = !extrasOpen"
@@ -382,7 +381,7 @@ const step = { color: 'neutral', class: 'disabled:opacity-30' } as const;
             :class="{ 'rotate-180': extrasOpen }"
           />
         </button>
-        <div v-if="extrasOpen" :id="`${editorId}-extras`" class="-mt-1 space-y-4">
+        <div v-if="extrasOpen" :id="`${editorId}-extras`" class="-mt-1 space-y-3">
           <DiscountField
             :model-value="line.discount"
             :label="$t('receipt.lineDiscount')"
@@ -395,9 +394,11 @@ const step = { color: 'neutral', class: 'disabled:opacity-30' } as const;
 
           <UFormField
             :label="$t('receipt.depositPerUnit')"
-            :help="$t('receipt.depositHelp')"
             :error="readable('deposit') ? undefined : $t('receipt.depositUnreadable')"
           >
+            <template #hint>
+              <HelpTip :label="$t('receipt.depositPerUnit')" :text="$t('receipt.depositHelp')" />
+            </template>
             <MoneyInput
               :model-value="line.deposit"
               :currency="currency"
@@ -434,13 +435,12 @@ const step = { color: 'neutral', class: 'disabled:opacity-30' } as const;
           icon="i-lucide-trash-2"
           color="error"
           variant="ghost"
-          class="ms-auto"
           @click="emit('remove')"
         />
         <UButton
           :label="$t('receipt.done')"
           variant="soft"
-          class="me-2 px-6"
+          class="ms-auto me-2 px-6"
           @click="open = false"
         />
       </div>

@@ -22,10 +22,12 @@ const {
 }>();
 const discount = defineModel<DraftDiscount>({ required: true });
 
+const { locale } = useI18n();
+
 const kinds = computed(() =>
   (['amount', 'percent'] as const satisfies readonly Discount['kind'][]).map((value) => ({
     value,
-    label: value === 'amount' ? currency : '%',
+    label: value === 'amount' ? currencySymbol(currency, locale.value).text : '%',
   })),
 );
 const kind = computed({
@@ -45,7 +47,7 @@ const kind = computed({
       <MoneyInput
         :model-value="discount.value"
         :currency="currency"
-        suffix=""
+        bare
         :placeholder="discount.kind === 'percent' ? '0' : undefined"
         :color="error ? 'error' : undefined"
         class="min-w-0 flex-1"

@@ -17,20 +17,15 @@ import {
 // A Receipt's Line items as the Till list enters them, at the till, as one card under its
 // heading: one line after the other, each opened in place to edit it (one at a time, `openKey`),
 // then the add forms, each folded into a row until tapped: one for goods, with an optional
-// Deposit per unit, and one for a Deposit refund. An open add form is a pending line, tinted
-// and saying it isn't on the Receipt until "Add to Receipt"; `pending` tells the form while one
-// has something typed. Whatever the slot holds (the Receipt discount) closes the card. New
-// goods copy the previous goods' split when it was Even, and otherwise start Even across all
-// Participants; a Deposit refund always starts Even across all Participants.
-const {
-  participants,
-  currency,
-  discounted = false,
-} = defineProps<{
+// Deposit per unit, and one for a Deposit refund. An open add form is a pending line, tinted,
+// showing the split it will get and saying it isn't on the Receipt until "Add to Receipt" (or
+// Discard); `pending` tells the form while one has something typed. Whatever the slot holds
+// (the Receipt's sums) closes the card. New goods copy the previous goods' split when it was
+// Even, and otherwise start Even across all Participants; a Deposit refund always starts Even
+// across all Participants.
+const { participants, currency } = defineProps<{
   participants: readonly Participant[];
   currency: string;
-  /** Whether a Receipt discount applies (`TillLine`). */
-  discounted?: boolean;
 }>();
 const lineItems = defineModel<DraftLineItem[]>({ required: true });
 /** The key of the line open for editing; `null` while none is. */
@@ -40,6 +35,7 @@ const pending = defineModel<boolean>('pending', { default: false });
 
 const { t, locale } = useI18n();
 const { lineItemReason } = useDraftReasons();
+const splitText = useSplitText();
 
 // A Receipt just itemised opens on its one line, the amount carried over, as the thing to edit.
 if (openKey.value === null && lineItems.value.length === 1) openKey.value = lineItems.value[0]!.key;
@@ -74,6 +70,14 @@ const draftTotal = computed(() => {
 });
 const priceInput = useTemplateRef('price');
 
+// The split new goods get, shown before they are added.
+const goodsSplit = computed(() =>
+  newLineItemSplit(
+    lineItems.value.filter(({ refund }) => !refund),
+    everyone(),
+  ),
+);
+
 // Which add form is open. Each stays folded into one row until tapped, so the Receipt leads;
 // the goods form opens on its price, as the till prints it.
 const composing = ref<'goods' | 'refund' | null>(null);
@@ -89,10 +93,7 @@ function add(): void {
     price: adding.price,
     quantity: adding.quantity,
     deposit: adding.deposit.trim(),
-    split: newLineItemSplit(
-      lineItems.value.filter(({ refund }) => !refund),
-      everyone(),
-    ),
+    split: goodsSplit.value,
   });
   addError.value = addRefusal(line);
   if (addError.value) return;
@@ -161,7 +162,6 @@ const addRow =
           :open="openKey === line.key"
           :participants="participants"
           :currency="currency"
-          :discounted="discounted"
           :position="index + 1"
           :first="index === 0"
           :last="index === lineItems.length - 1"
@@ -190,12 +190,16 @@ const addRow =
         :class="[pendingRow, { 'border-t-0': lineItems.length === 0 }]"
       >
         <div class="flex items-center justify-between">
-          <p class="font-semibold text-highlighted">{{ $t('receipt.newLineItem') }}</p>
+          <div class="min-w-0">
+            <p class="font-semibold text-highlighted">{{ $t('receipt.newLineItem') }}</p>
+            <p class="text-sm text-muted">
+              {{ splitText(goodsSplit, participants, currency) }}
+            </p>
+          </div>
           <UButton
-            icon="i-lucide-x"
             color="neutral"
-            variant="ghost"
-            :aria-label="$t('receipt.closeAdding')"
+            variant="link"
+            :label="$t('receipt.closeAdding')"
             class="-me-3"
             @click="composing = null"
           />
@@ -272,12 +276,16 @@ const addRow =
       </button>
       <div v-else role="group" :aria-label="$t('receipt.addDepositRefund')" :class="pendingRow">
         <div class="flex items-center justify-between">
-          <p class="font-semibold text-highlighted">{{ $t('receipt.depositRefund') }}</p>
+          <div class="min-w-0">
+            <p class="font-semibold text-highlighted">{{ $t('receipt.depositRefund') }}</p>
+            <p class="text-sm text-muted">
+              {{ splitText({ mode: 'even', participantIds: everyone() }, participants) }}
+            </p>
+          </div>
           <UButton
-            icon="i-lucide-x"
             color="neutral"
-            variant="ghost"
-            :aria-label="$t('receipt.closeAdding')"
+            variant="link"
+            :label="$t('receipt.closeAdding')"
             class="-me-3"
             @click="composing = null"
           />

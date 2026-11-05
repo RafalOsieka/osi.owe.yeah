@@ -4,8 +4,9 @@ import type { BrowserSubscription } from '~/sync/db';
 // The explanation before the browser's permission prompt (#41): what notifications tell and
 // that they are only for this Trip, only on this device. "Turn on" asks the browser and
 // gives its subscription; in a sheet (`dismissible`), "Not now" asks nothing. Where the browser
-// can't ask, it says why instead: blocked, with neutral steps to unblock and "Check again",
-// which asks once more; iOS outside the installed app; or no web push.
+// can't ask, it says why instead: blocked, with neutral steps to unblock (where the setting
+// is, labelled by platform: the browser, the installed app on Android, on iPhone or iPad) and
+// "Check again", which asks once more; iOS outside the installed app; or no web push.
 const { dismissible = false } = defineProps<{
   tripName: string;
   /** Offers "Not now", for the sheet that follows a Claim; a page has its back button. */
@@ -14,6 +15,8 @@ const { dismissible = false } = defineProps<{
 const emit = defineEmits<{ subscribed: [subscription: BrowserSubscription]; notNow: [] }>();
 
 const { support, subscribe } = usePushNotifications();
+// Where the notification setting is, by platform.
+const places = ['inBrowser', 'inAndroidApp', 'inAppleApp'] as const;
 const asking = ref(false);
 const failed = ref(false);
 // Checked again while still blocked: says so, as the button changes nothing visible.
@@ -45,16 +48,27 @@ async function turnOn(): Promise<void> {
         {{ $t('notifications.blockedHelp') }}
       </p>
       <ol class="mt-2 list-decimal space-y-1.5 ps-6 text-default marker:text-muted">
-        <i18n-t keypath="notifications.blockedStep1" tag="li" scope="global">
-          <template #icon>
-            <UIcon
-              name="i-lucide-sliders-horizontal"
-              class="-mt-0.5 inline-block size-4 align-middle"
-              role="img"
-              :aria-label="$t('notifications.siteIcon')"
-            />
-          </template>
-        </i18n-t>
+        <li>
+          {{ $t('notifications.blockedStep1') }}
+          <ul class="mt-1.5 space-y-1.5">
+            <li v-for="where in places" :key="where">
+              <span class="font-medium text-highlighted">
+                {{ $t(`notifications.${where}.label`) }}
+              </span>
+              {{ ' ' }}
+              <i18n-t :keypath="`notifications.${where}.how`" tag="span" scope="global">
+                <template #icon>
+                  <UIcon
+                    name="i-lucide-sliders-horizontal"
+                    class="-mt-0.5 inline-block size-4 align-middle"
+                    role="img"
+                    :aria-label="$t('notifications.siteIcon')"
+                  />
+                </template>
+              </i18n-t>
+            </li>
+          </ul>
+        </li>
         <li>{{ $t('notifications.blockedStep2') }}</li>
         <li>{{ $t('notifications.blockedStep3') }}</li>
       </ol>

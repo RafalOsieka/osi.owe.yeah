@@ -7,7 +7,7 @@ import { toExpense } from '~/sync/local-trip';
 // currency; on top, why it is not synced yet if it isn't; at the bottom, one quiet card with
 // its History (who last edited it and when, "you" for the claimed Participant) and Delete,
 // named for what it deletes (Expense, Income or Repayment). A Conflict shows as an amber
-// notice saying the details are this device's version, with a full-width Choose version that
+// notice saying the details are this device's version, with a full-width primary Choose version that
 // opens the Conflict screen, Edit stepping back meanwhile; a rejected change is fixed with Edit
 // or discarded. Edit opens the Expense form. Delete moves it to Recently deleted, with Undo
 // for a moment. Should the Expense go (deleted, or a discarded new one), so does the page.
@@ -135,13 +135,7 @@ useHead({ title: () => expense.value?.title ?? t('expense.notFound') });
           {{ conflict.title }}
         </p>
         <p class="mt-1 ps-7.5 text-sm text-toned">{{ $t('sync.conflictShown') }}</p>
-        <UButton
-          block
-          color="warning"
-          :label="$t('sync.choose')"
-          :to="`${page}/conflict`"
-          class="mt-3"
-        />
+        <UButton block :label="$t('sync.choose')" :to="`${page}/conflict`" class="mt-3" />
       </section>
       <UAlert v-if="notSynced" v-bind="notSynced" variant="subtle" class="mb-4" />
       <ExpenseDetails :expense="expense" converted />

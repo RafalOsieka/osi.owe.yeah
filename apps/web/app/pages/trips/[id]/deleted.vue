@@ -57,21 +57,19 @@ useHead({ title: () => t('deleted.title') });
   <NuxtLayout name="form" :title="$t('deleted.title')" :parent="`${tripPage}/settings`">
     <template v-if="rows.length > 0">
       <ul class="card divide-y divide-default">
-        <li
-          v-for="row in rows"
-          :key="row.expense.id"
-          class="flex items-center gap-3 py-3 ps-4 pe-3"
-        >
-          <span class="min-w-0 flex-1 leading-snug">
-            <span class="flex items-baseline gap-3">
-              <span class="min-w-0 flex-1 truncate font-medium text-highlighted">
-                {{ row.expense.title }}
-              </span>
-              <span class="shrink-0 font-semibold text-highlighted tabular-nums">
-                {{ row.total }}
-              </span>
+        <!-- Title and total on top, the total at the row's right edge as in every list; who
+             deleted it and Restore under them. -->
+        <li v-for="row in rows" :key="row.expense.id" class="px-4 pt-3 pb-2.5">
+          <span class="flex items-baseline gap-3">
+            <span class="min-w-0 flex-1 truncate font-medium text-highlighted">
+              {{ row.expense.title }}
             </span>
-            <span class="mt-0.5 block text-sm text-muted">
+            <span class="shrink-0 font-semibold text-highlighted tabular-nums">
+              {{ row.total }}
+            </span>
+          </span>
+          <span class="flex items-center gap-3">
+            <span class="min-w-0 flex-1 text-sm text-muted">
               <NuxtLink
                 v-if="row.conflict"
                 :to="`${tripPage}/expenses/${row.expense.id}/conflict`"
@@ -94,13 +92,14 @@ useHead({ title: () => t('deleted.title') });
               />
               {{ row.deleted }}
             </span>
+            <UButton
+              variant="soft"
+              :label="$t('deleted.restore')"
+              :aria-label="$t('deleted.restoreTitle', { title: row.expense.title })"
+              class="shrink-0"
+              @click="restore(row.expense)"
+            />
           </span>
-          <UButton
-            variant="soft"
-            :label="$t('deleted.restore')"
-            :aria-label="$t('deleted.restoreTitle', { title: row.expense.title })"
-            @click="restore(row.expense)"
-          />
         </li>
       </ul>
       <p class="mt-3 px-4 text-sm text-muted">{{ $t('deleted.kept') }}</p>

@@ -823,7 +823,7 @@ async function capture(scheme: 'light' | 'dark'): Promise<void> {
     await offer.getByRole('button', { name: 'Not now' }).click();
     await offer.waitFor({ state: 'hidden' });
     await go(base);
-    await page.getByText('Add Owe Yeah to your Home Screen').waitFor();
+    await page.getByText('Install Owe Yeah').waitFor();
     await snap('a10-my-trips-install-nudge');
     await go(`${croatia.page}/notifications`);
     await page.getByText('only the installed app gets notifications').waitFor();
@@ -934,7 +934,7 @@ async function capture(scheme: 'light' | 'dark'): Promise<void> {
   await newExpense();
   await snap('c01-new-expense', true);
   await button('Save Expense').click();
-  await text('Add a title').waitFor();
+  await text('Enter a title').waitFor();
   await snap('c02-new-expense-errors', true);
   await newExpense();
   await page.getByRole('textbox', { name: 'Amount', exact: true }).fill('86.40');
@@ -958,7 +958,7 @@ async function capture(scheme: 'light' | 'dark'): Promise<void> {
   await page.getByRole('textbox', { name: 'Amount', exact: true }).fill('32000');
   await page.getByRole('textbox', { name: 'Contribution from Tomek' }).fill('8000');
   await page.getByRole('textbox', { name: 'Amount charged in EUR' }).fill('80.50');
-  await text('€80.50').waitFor();
+  await text('Rate: 1 EUR ≈').waitFor();
   await snap('c06-new-expense-foreign-currency', true);
   await newExpense();
   await button(/^When:/).click();
@@ -1083,7 +1083,7 @@ async function capture(scheme: 'light' | 'dark'): Promise<void> {
   await text('Last changed by Ania').waitFor();
   await snap('a31-trip-details', true);
   await go(`${croatia.page}/deleted`);
-  await text('Deleted by Kasia').waitFor();
+  await text('Kasia · ').waitFor();
   await snap('a32-recently-deleted', true);
   await go(`${croatia.page}/notifications`);
   await button('Turn on').waitFor();

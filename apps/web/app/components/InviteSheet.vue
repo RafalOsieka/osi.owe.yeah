@@ -1,8 +1,9 @@
 <script setup lang="ts">
 // Invite: passes on the Trip link to someone joining the Trip, by a QR code made on this
 // device (no signal needed), the share sheet, or copying the link, which the sheet shows
-// shortened. Only once the Trip has synced (`link` set): until the server has the Trip, its link
-// opens nothing, so the sheet says why instead. Done closes it.
+// shortened. Centred, header to caption, around the code. Only once the Trip has synced
+// (`link` set): until the server has the Trip, its link opens nothing, so the sheet says why
+// instead. Done closes it.
 const open = defineModel<boolean>('open', { required: true });
 const { tripName, link } = defineProps<{ tripName: string; link: string | null }>();
 
@@ -39,7 +40,7 @@ async function copy(url: string): Promise<void> {
     v-model:open="open"
     :title="$t('invite.title', { name: tripName })"
     :description="$t('invite.help')"
-    :ui="{ description: 'text-pretty' }"
+    :ui="{ header: 'text-center', description: 'text-balance' }"
   >
     <template #body>
       <div v-if="link" class="space-y-4">
@@ -50,7 +51,9 @@ async function copy(url: string): Promise<void> {
             {{ $t('invite.qrHelp') }}
           </figcaption>
         </figure>
-        <div class="flex items-center gap-2 rounded-xl bg-elevated/60 py-1 ps-3.5 pe-1">
+        <div
+          class="flex items-center gap-2 rounded-xl bg-elevated py-1 ps-3.5 pe-1 ring-1 ring-default ring-inset"
+        >
           <UIcon name="i-lucide-link" class="size-4 shrink-0 text-dimmed" aria-hidden="true" />
           <span class="min-w-0 flex-1 truncate text-sm text-toned">{{ shownLink }}</span>
           <UButton
@@ -81,9 +84,10 @@ async function copy(url: string): Promise<void> {
         @click="share(link)"
       />
       <UButton
-        variant="ghost"
         color="neutral"
+        variant="soft"
         block
+        size="xl"
         :label="$t('form.done')"
         @click="open = false"
       />

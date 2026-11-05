@@ -86,12 +86,7 @@ const action =
               <ParticipantAvatar :participant="participant" size="md" />
               <span class="min-w-0 flex-1 wrap-anywhere text-highlighted">
                 {{ participant.name }}
-                <UBadge
-                  v-if="participant.id === claim?.id"
-                  :label="$t('participants.you')"
-                  variant="subtle"
-                  class="ms-1 align-middle"
-                />
+                <YouBadge v-if="participant.id === claim?.id" />
               </span>
               <UIcon name="i-lucide-chevron-right" :class="chevron" />
             </button>
@@ -166,12 +161,13 @@ const action =
           </span>
           <UIcon name="i-lucide-chevron-right" :class="chevron" />
         </NuxtLink>
-        <!-- Last and quiet: it only clears this device, and asks first. -->
+        <!-- Last and quiet, like any row: only the sheet's confirmation is red. -->
         <button type="button" :class="row" @click="forgetting = true">
           <span class="min-w-0 flex-1">
-            <span class="block font-medium text-error">{{ $t('trip.forget.title') }}</span>
+            <span class="block text-highlighted">{{ $t('trip.forget.title') }}</span>
             <span class="block text-sm text-muted">{{ $t('trip.forget.row') }}</span>
           </span>
+          <UIcon name="i-lucide-chevron-right" :class="chevron" />
         </button>
       </div>
     </section>
@@ -182,7 +178,7 @@ const action =
       v-model:open="adding"
       :title="$t('participants.addParticipant')"
       :description="$t('participants.addHelp')"
-      :ui="{ description: 'text-pretty' }"
+      :ui="{ description: 'text-pretty', footer: 'pb-2' }"
     >
       <template #body>
         <ParticipantNameForm
@@ -202,18 +198,25 @@ const action =
       </template>
     </UDrawer>
 
-    <UDrawer v-model:open="pickedOpen">
+    <!-- What it says sits right under the name, as the sheet's description. -->
+    <UDrawer
+      v-model:open="pickedOpen"
+      :description="
+        referencing > 0
+          ? $t('participants.referenced', referencing, { named: { name: picked?.name ?? '' } })
+          : $t('participants.removeHelp')
+      "
+      :ui="{
+        description: referencing > 0 ? 'mt-3 text-base text-default' : 'mt-3 text-pretty',
+        footer: 'pt-2',
+      }"
+    >
       <template #title>
         <span v-if="picked" class="flex items-center gap-3">
           <ParticipantAvatar :participant="picked" size="lg" />
           <span class="min-w-0 wrap-anywhere">{{ picked.name }}</span>
+          <YouBadge v-if="picked.id === claim?.id" class="ms-0" />
         </span>
-      </template>
-      <template #body>
-        <p v-if="referencing > 0">
-          {{ $t('participants.referenced', referencing, { named: { name: picked?.name ?? '' } }) }}
-        </p>
-        <p v-else class="text-muted">{{ $t('participants.removeHelp') }}</p>
       </template>
       <template #footer>
         <template v-if="referencing === 0">
@@ -249,19 +252,15 @@ const action =
       v-model:open="forgetting"
       :title="$t('trip.forget.title')"
       :description="$t('trip.forget.help', { name: trip.name })"
-      :ui="{ description: 'text-pretty' }"
+      :ui="{ description: 'text-pretty', footer: 'pb-2' }"
     >
-      <template #body>
-        <div class="space-y-3">
-          <UAlert
-            v-if="unsynced > 0"
-            color="warning"
-            variant="subtle"
-            icon="i-lucide-cloud-off"
-            :title="$t('trip.forget.unsynced', unsynced)"
-          />
-          <p class="text-sm text-muted">{{ $t('trip.forget.linkNeeded') }}</p>
-        </div>
+      <template v-if="unsynced > 0" #body>
+        <UAlert
+          color="warning"
+          variant="subtle"
+          icon="i-lucide-cloud-off"
+          :title="$t('trip.forget.unsynced', unsynced)"
+        />
       </template>
       <template #footer>
         <UButton

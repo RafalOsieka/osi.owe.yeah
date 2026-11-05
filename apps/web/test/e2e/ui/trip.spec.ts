@@ -307,7 +307,7 @@ test('Remind shares a message while the debtor cannot be notified, then sends on
   await page.getByRole('link', { name: 'Balances' }).click();
   const toSettle = page.getByRole('region', { name: 'To settle' });
   const row = toSettle.getByRole('listitem');
-  await expect(row).toContainText(/Ania pays you\s*€12.25/);
+  await expect(row).toContainText(/Ania → you\s*€12.25/);
 
   // No device of Ania's can be notified: the list says so once, and Remind shares a message.
   await expect(toSettle).toContainText("Ania can't get notifications, so Remind shares a message");
@@ -511,12 +511,12 @@ test('a Receipt entered offline at the till, Line item by Line item, reaches a s
   await expect(line('Water')).toContainText('6 × €0.29 · Even · for all 3');
   await line('Water').getByRole('button', { name: /Water/ }).click();
   await line('Water').getByRole('button', { name: 'Units' }).click();
-  await expect(line('Water')).toContainText('€1.74 not assigned yet');
+  await expect(line('Water')).toContainText('6 of 6 units unassigned');
   await line('Water').getByLabel('Units for Kasia').fill('3');
   await line('Water').getByLabel('Units for Ania').fill('3');
   await line('Water').getByLabel('Units for Ania').blur();
   await expect(line('Water')).toContainText('6 of 6 units assigned');
-  await expect(line('Water')).not.toContainText('not assigned yet');
+  await expect(line('Water')).not.toContainText('unassigned');
 
   // After a Units split the next line starts Even across everyone; nobody had it yet.
   await addLine('0,89', 'Chocolate');
@@ -536,14 +536,12 @@ test('a Receipt entered offline at the till, Line item by Line item, reaches a s
   await expect(lines).toHaveText([/Bread/, /Chocolate/, /Water/]);
 
   await expect(page.getByRole('status', { name: 'Receipt total' })).toHaveText('€5.12');
-  await expect(page.getByRole('main')).toContainText(
-    "€0.89 not assigned yet, counted as Kasia's until it is.",
-  );
+  await expect(page.getByRole('main')).toContainText('€0.89 unassigned · yours for now');
   await page.getByRole('button', { name: 'Save Expense' }).click();
   const row = page.getByRole('link', { name: /Lidl Rovinj/ });
   await expect(row).toContainText('not synced');
   await expect(row).toContainText('1 item unassigned');
-  await expect(row).toContainText('Receipt · 3 items');
+  await expect(row).toContainText('Kasia paid');
 
   await context.setOffline(false);
   await expect(row).not.toContainText('not synced');
@@ -600,7 +598,7 @@ test('a Line discount follows the Units and a Receipt discount is shared by what
     .getByRole('button', { name: '%' })
     .click();
   await expect(total).toHaveText('€8.10');
-  await expect(page.getByRole('main')).toContainText(/Receipt discount\s*−10% · −€0\.90/);
+  await expect(page.getByRole('main')).toContainText('10% off · −€0.90');
   await page.getByRole('button', { name: 'Save Expense' }).click();
   const row = page.getByRole('link', { name: /Konoba/ });
   await expect(row).not.toContainText('not synced');
@@ -614,9 +612,9 @@ test('a Line discount follows the Units and a Receipt discount is shared by what
   await expect(otherRow).toContainText('your share €3.24');
   await otherRow.click();
   const main = otherPage.getByRole('main');
-  await expect(main).toContainText('Discount −€1.00');
+  await expect(main).toContainText('Discount −€1.00 included');
   await expect(main).toContainText('Receipt discount');
-  await expect(main).toContainText('−10% · −€0.90');
+  await expect(main).toContainText('10% off · −€0.90');
   await other.close();
 });
 
@@ -815,7 +813,7 @@ test('a Manual rate: the amount the card charged in the Trip currency', async ({
   await expect(typeManual.or(manualRate)).toBeVisible();
   if (await typeManual.isVisible()) await typeManual.click();
   await manualRate.fill('92');
-  await expect(page.getByRole('main')).toContainText('€92.00');
+  await expect(page.getByRole('main')).toContainText('Rate: 1 EUR ≈ 1.087 USD');
   await page.getByRole('button', { name: 'Save Expense' }).click();
 
   const row = page.getByRole('link', { name: /Dinner in USD/ });
@@ -954,8 +952,8 @@ test('settle up: Income, then the suggested Repayments, until the Trip is Settle
   await expect(main).toContainText('Trip total €24.00');
   const toSettle = page.getByRole('region', { name: 'To settle' }).getByRole('listitem');
   await expect(toSettle).toHaveCount(2);
-  await expect(toSettle.nth(0)).toContainText(/Ola pays yous*€14.00/);
-  await expect(toSettle.nth(1)).toContainText(/Ania pays yous*€8.00/);
+  await expect(toSettle.nth(0)).toContainText(/Ola → you\s*€14\.00/);
+  await expect(toSettle.nth(1)).toContainText(/Ania → you\s*€8\.00/);
 
   // Recording from a suggestion fills it in; the amount can be lowered for a partial one.
   await toSettle.nth(0).getByRole('link', { name: 'Record Repayment' }).click();
@@ -972,8 +970,8 @@ test('settle up: Income, then the suggested Repayments, until the Trip is Settle
 
   // Back on Balances: Ola still owes 4.00, and Repayments are not spending.
   await expect(toSettle).toHaveCount(2);
-  await expect(toSettle.nth(0)).toContainText(/Ania pays yous*€8.00/);
-  await expect(toSettle.nth(1)).toContainText(/Ola pays yous*€4.00/);
+  await expect(toSettle.nth(0)).toContainText(/Ania → you\s*€8\.00/);
+  await expect(toSettle.nth(1)).toContainText(/Ola → you\s*€4\.00/);
   await expect(main).toContainText('Trip total €24.00');
 
   await toSettle.first().getByRole('link', { name: 'Record Repayment' }).click();
@@ -1179,7 +1177,8 @@ test('delete an Expense, bring it back from Recently deleted, and restore an old
   await page.getByRole('link', { name: 'Trip', exact: true }).click();
   await page.getByRole('link', { name: 'Recently deleted' }).click();
   await expect(page.getByRole('heading', { name: 'Recently deleted' })).toBeVisible();
-  await expect(main.getByRole('listitem')).toContainText('€45.00 · Deleted by Kasia');
+  await expect(main.getByRole('listitem')).toContainText('€45.00');
+  await expect(main.getByRole('listitem')).toContainText('Kasia · ');
   await page.getByRole('button', { name: 'Restore Ferry' }).click();
   await expect(main).toContainText('Nothing deleted');
 

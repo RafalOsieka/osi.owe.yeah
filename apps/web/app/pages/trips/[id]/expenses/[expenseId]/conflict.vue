@@ -3,15 +3,16 @@ import { findExpense } from '~/sync/local-trip';
 
 // The Conflict screen, opened from the notice on an Expense's detail page: this device's
 // version of the Expense and the one the server has, each a card named for whose it is ("Your
-// version", "Tomek's version") with what differs highlighted, marked when it deletes the
-// Expense, and ending in its own equal choice, with what that choice does to the other
-// version. Keep yours sends this device's version again on top of theirs, which stays in the
-// Expense's History; keep theirs drops this device's changes, which never reached the server,
-// for good. Either returns to the detail page.
+// version", "Tomek's version", when he changed it) with what differs highlighted, marked
+// when it deletes the Expense, and ending in its own equal choice, after what that choice
+// does to the other version: quiet where Tomek's stays in History, a restrained amber warning
+// where yours is lost for good. Keep yours sends this device's version again on top of
+// theirs, which stays in the Expense's History; keep theirs drops this device's changes, which
+// never reached the server, for good. Either returns to the detail page.
 definePageMeta({ viewTransition: { toTypes: ['forward'], fromTypes: ['back'] } });
 
 const { trip, claim, keepMine, discardChanges } = useOpenTrip();
-const { t } = useI18n();
+const { t, locale } = useI18n();
 const route = useRoute();
 const back = useBack();
 
@@ -23,10 +24,17 @@ const conflict = computed(() => {
   if (mine?.unsynced?.status !== 'conflict') return null;
   const held = mine.unsynced;
   const author = trip.value.participants.find(({ id }) => id === held.currentClaimId)?.name;
+  const at = held.current.edited?.at;
   return {
     mine,
     theirs: held.current,
     author,
+    // When the other version was made, by the server's clock.
+    theirsWhen: at
+      ? t('conflict.changedWhen', {
+          when: formatTimeAgo(at, new Date(), locale.value, t('history.justNow')),
+        })
+      : undefined,
     changed: changedFields(held.current, mine),
   };
 });
@@ -65,6 +73,14 @@ useHead({ title: () => t('conflict.title') });
           :claim-id="claim?.id ?? null"
           :participants="trip.participants"
         >
+          <p class="mb-2.5 flex gap-2 px-1 text-sm text-muted">
+            <UIcon name="i-lucide-history" class="mt-0.5 size-4 shrink-0" aria-hidden="true" />
+            {{
+              conflict.author
+                ? $t('conflict.keepMineHelpNamed', { name: conflict.author })
+                : $t('conflict.keepMineHelp')
+            }}
+          </p>
           <UButton
             block
             size="xl"
@@ -73,13 +89,6 @@ useHead({ title: () => t('conflict.title') });
             :label="$t('conflict.keepMine')"
             @click="resolve(keepMine)"
           />
-          <p class="mt-2 text-center text-sm text-muted">
-            {{
-              conflict.author
-                ? $t('conflict.keepMineHelpNamed', { name: conflict.author })
-                : $t('conflict.keepMineHelp')
-            }}
-          </p>
         </ExpenseVersion>
         <ExpenseVersion
           :heading="
@@ -87,12 +96,21 @@ useHead({ title: () => t('conflict.title') });
               ? $t('conflict.theirsNamed', { name: conflict.author })
               : $t('conflict.theirs')
           "
+          :subtitle="conflict.theirsWhen"
           :expense="conflict.theirs"
           :deleted="conflict.theirs.deleted"
           :changed="conflict.changed"
           :claim-id="claim?.id ?? null"
           :participants="trip.participants"
         >
+          <p class="mb-2.5 flex gap-2 rounded-lg bg-warning/10 px-3 py-2 text-sm text-highlighted">
+            <UIcon
+              name="i-lucide-triangle-alert"
+              class="mt-0.5 size-4 shrink-0 text-warning"
+              aria-hidden="true"
+            />
+            {{ $t('conflict.keepTheirsHelp') }}
+          </p>
           <UButton
             block
             size="xl"
@@ -105,7 +123,6 @@ useHead({ title: () => t('conflict.title') });
             "
             @click="resolve(discardChanges)"
           />
-          <p class="mt-2 text-center text-sm text-muted">{{ $t('conflict.keepTheirsHelp') }}</p>
         </ExpenseVersion>
       </div>
     </template>

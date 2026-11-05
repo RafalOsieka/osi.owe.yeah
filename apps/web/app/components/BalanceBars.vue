@@ -76,13 +76,7 @@ const rows = computed(() => {
             <ParticipantAvatar v-if="row.participant" :participant="row.participant" size="md" />
             <span class="min-w-0 flex-1 truncate text-highlighted">
               {{ row.name }}
-              <UBadge
-                v-if="row.participantId === claimId"
-                :label="$t('participants.you')"
-                variant="subtle"
-                size="md"
-                class="ms-1.5 align-middle text-[0.8125rem]"
-              />
+              <YouBadge v-if="row.participantId === claimId" />
             </span>
             <span class="shrink-0 font-medium tabular-nums" :class="row.tone">
               {{ row.amount }}

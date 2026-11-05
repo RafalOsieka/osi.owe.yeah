@@ -15,15 +15,17 @@ import {
 import type { LocalExpense, LocalTrip } from '~/sync/local-trip';
 
 // The Trip's Expenses, newest first, under a heading for each Expense's own local day with
-// what was spent that day in the Trip currency (net of Income, without Repayments; "≈" when an
-// Expense of the day uses a Provisional rate). Each row shows the Expense in its own currency
+// what was spent that day in the Trip currency ("spent €54.00": net of Income, without
+// Repayments, as a line under the list says; "≈" when an Expense of the day uses a
+// Provisional rate). Each row shows the Expense in its own currency
 // (Income as the money received, without a minus), with its payer's avatar (a Repayment, which
 // is not spending, a quiet arrow instead), opens its detail page and, with a Claim, says what
 // the Expense means for the claimed Participant. Every row keeps to two lines, its title cut
 // short if need be, so rows stay even: what needs attention leads the second line in amber (a
-// Conflict, a Provisional rate or none yet), a Receipt reads "Receipt · N items" or, while
-// Line items are not fully assigned yet, "N items unassigned", and a small cloud by the
-// amount marks a row not synced yet. The Expense `highlightId` names, e.g. the one a tapped
+// Conflict, a Provisional rate or none yet, Line items not fully assigned yet: "1 item
+// unassigned"), then who paid and for how many; a small receipt glyph starts a Receipt's
+// line; and a cloud with an amber dot by the amount, as in the header, marks a row not
+// synced yet. The Expense `highlightId` names, e.g. the one a tapped
 // notification was about, is scrolled to and marked.
 const {
   trip,
@@ -84,19 +86,10 @@ function flagOf(expense: LocalExpense): string | null {
   return rate.provisional ? t('rate.provisionalBadge') : null;
 }
 
-// A row's summary by the Expense's kind, e.g. "Kasia paid · for all 4" or "Receipt · 6 items".
-function summaryOf(
-  expense: LocalExpense,
-  payer: string,
-  forWhom: string,
-  items: number,
-  unassigned: number,
-): string {
+// A row's summary by the Expense's kind, e.g. "Kasia paid · for all 4" or "Kasia → Marta".
+function summaryOf(expense: LocalExpense, payer: string, forWhom: string): string {
   const kinded = expenseKind(expense);
   switch (kinded.kind) {
-    case 'receipt':
-      // While units are unassigned, the warning says it all: "1 item unassigned".
-      return unassigned > 0 ? '' : t('receipt.summary', items);
     case 'repayment': {
       const recipient = participants.value.get(kinded.expense.recipientId)?.name ?? '?';
       return t('repayment.fromTo', { payer, recipient });
@@ -104,6 +97,7 @@ function summaryOf(
     case 'income':
       return t('expense.receivedFor', { name: payer, forWhom });
     case 'plain':
+    case 'receipt':
       return t('expense.paidFor', { name: payer, forWhom });
   }
 }
@@ -125,7 +119,8 @@ const days = computed(() =>
         total: total.numerator < 0n ? negate(total) : total,
         payer: participants.value.get(expense.mainPayerId),
         repayment: expenseKind(expense).kind === 'repayment',
-        summary: summaryOf(expense, payer, forWhom, lineItems.length, unassigned),
+        receipt: expenseKind(expense).kind === 'receipt',
+        summary: summaryOf(expense, payer, forWhom),
         unassigned,
         flag: flagOf(expense),
         notSynced: !!expense.unsynced && expense.unsynced.status !== 'conflict',
@@ -137,7 +132,9 @@ const days = computed(() =>
     const approximate = rateSummary(ofDay).provisional > 0;
     return {
       day,
-      total: formatMoney(total, trip.currency, locale.value, 'currency', approximate),
+      total: t('expense.daySpent', {
+        amount: formatMoney(total, trip.currency, locale.value, 'currency', approximate),
+      }),
       rows,
     };
   }),
@@ -203,14 +200,19 @@ function dayHeading(day: string): string {
                   class="flex shrink-0 items-center gap-1.5 self-center font-semibold tabular-nums"
                   :class="row.repayment ? 'text-muted' : 'text-highlighted'"
                 >
-                  <template v-if="row.notSynced">
+                  <!-- The header's not-synced cloud, in small. -->
+                  <span v-if="row.notSynced" class="relative shrink-0">
                     <UIcon
-                      name="i-lucide-cloud-off"
-                      class="size-3.5 shrink-0 text-muted"
+                      name="i-lucide-cloud"
+                      class="block size-4 text-muted"
+                      aria-hidden="true"
+                    />
+                    <span
+                      class="absolute -end-0.5 -top-0.5 size-1.5 rounded-full bg-warning"
                       aria-hidden="true"
                     />
                     <span class="sr-only">{{ $t('sync.notSynced') }}</span>
-                  </template>
+                  </span>
                   {{ money(row.total, row.expense.currency) }}
                 </span>
               </span>
@@ -219,11 +221,20 @@ function dayHeading(day: string): string {
                 <span
                   class="min-w-0 flex-1 truncate text-muted [&>span+span]:before:mx-1 [&>span+span]:before:font-normal [&>span+span]:before:text-muted [&>span+span]:before:content-['·']"
                 >
+                  <!-- Not a span, so no " · " follows it. -->
+                  <i v-if="row.receipt" class="me-1 not-italic">
+                    <UIcon
+                      name="i-lucide-receipt-text"
+                      class="inline-block size-3.5 align-[-0.125em]"
+                      role="img"
+                      :aria-label="$t('receipt.kind')"
+                    />
+                  </i>
                   <span v-if="row.flag" class="font-medium text-warning">{{ row.flag }}</span>
-                  <span v-if="row.summary">{{ row.summary }}</span>
                   <span v-if="row.unassigned > 0" class="font-medium text-warning">
                     {{ $t('receipt.unassignedBadge', row.unassigned) }}
                   </span>
+                  <span>{{ row.summary }}</span>
                 </span>
                 <span v-if="row.forYou" class="shrink-0 tabular-nums" :class="row.forYou.tone">
                   {{ row.forYou.text }}
@@ -234,5 +245,6 @@ function dayHeading(day: string): string {
         </li>
       </ul>
     </section>
+    <p class="px-1 text-sm text-muted">{{ $t('expense.dayTotalsHelp') }}</p>
   </div>
 </template>

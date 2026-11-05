@@ -10,9 +10,10 @@ import {
 // My Trips: every Trip on this device, most recently opened first, and Settled ones in their
 // own group below the rest. Each row has the Trip's initial on its own tint, so Trips tell
 // apart at a glance, the faces of its first Participants, when its Expenses were (or "No
-// Expenses yet"), your balance there (or "Who are you?" without a Claim), and how many of your
-// changes haven't synced yet. Above them, the install nudge; below, the privacy notice and the
-// terms. A first visit gets a welcome saying what the app does, with "New Trip".
+// Expenses yet"), your balance there under the name you are in it, e.g. "Ania owes" (or "Who
+// are you?" without a Claim), and how many of your changes haven't synced yet. Above them,
+// the install nudge; below, the privacy notice and the terms. A first visit gets a welcome
+// saying what the app does, with "New Trip".
 const { t, locale } = useI18n();
 const device = useDevice();
 const trips = useLiveQuery(() => device.readAll());
@@ -29,9 +30,10 @@ const rows = computed(() =>
     const balance = (): { label: string; text: string | null; tone: string } | null => {
       if (settled || !dates) return null;
       if (!claim) return { label: t('claim.title'), text: null, tone: '' };
-      if (!mine || sign === 0) return { label: t('balances.even'), text: null, tone: '' };
+      const name = local.participants.find(({ id }) => id === claim.id)?.name ?? claim.name;
+      if (!mine || sign === 0) return { label: t('myTrips.even', { name }), text: null, tone: '' };
       return {
-        label: sign > 0 ? t('balances.owed') : t('balances.owe'),
+        label: sign > 0 ? t('myTrips.owed', { name }) : t('myTrips.owes', { name }),
         text: formatMoney(abs(mine.rounded), local.currency, locale.value),
         tone: sign > 0 ? 'text-success' : 'text-error',
       };
@@ -144,7 +146,9 @@ useHead({ title: () => t('myTrips.title') });
                 </span>
               </span>
               <span v-if="trip.balance" class="shrink-0 text-end">
-                <span class="block text-sm text-muted">{{ trip.balance.label }}</span>
+                <span class="block max-w-36 truncate text-sm text-muted">
+                  {{ trip.balance.label }}
+                </span>
                 <span
                   v-if="trip.balance.text"
                   class="block font-semibold tabular-nums"
@@ -172,7 +176,7 @@ useHead({ title: () => t('myTrips.title') });
       <p class="mt-1 text-2xl font-semibold tracking-tight text-balance text-highlighted">
         {{ $t('myTrips.welcome') }}
       </p>
-      <p class="mt-2 max-w-80 text-muted">{{ $t('myTrips.emptyHelp') }}</p>
+      <p class="mt-2 max-w-80 text-balance text-muted">{{ $t('myTrips.emptyHelp') }}</p>
       <UButton
         icon="i-lucide-plus"
         :label="$t('myTrips.create')"

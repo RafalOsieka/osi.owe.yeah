@@ -1,10 +1,12 @@
 <script setup lang="ts">
 import {
+  add,
   deviceTimeZone,
   lineItemShares,
   multiply,
   negate,
   rational,
+  type Rational,
   type SplitExpense,
 } from '@osi/owe-yeah-domain';
 import type { FormError } from '@nuxt/ui';
@@ -20,24 +22,26 @@ import {
   type SplitDraft,
 } from '~/utils/expense-draft';
 
-// The full-screen Expense form, for a new plain Expense or Income or to edit one: amount,
-// title, Main payer (who received it, for Income) with any Contributions as one ledger of who
-// pays what, who it is for (and what that comes to each), and when, then the rarer options in
-// a card at the end: whether it is money received (Income, saved with a negative amount so
-// nobody types a minus; off while there are Contributions, as Income has none) and "Itemise as
-// a Receipt", which grows the one Line item into the Till list on the same page: the amount
-// becomes the computed Receipt total, each Line item has its own split, Line discount and
-// Deposit, Deposit refunds come off it, and a Receipt discount closes the list. Under the
-// Receipt total, what went into it (the Receipt discount, and the Deposits to check against
-// those printed on the paper Receipt), and what is not assigned yet, which counts as the Main
-// payer's until it is, with a link to each line it is on. The total may go negative. A line
-// typed into the Till list's add form but not added stops Save until it is added or closed.
-// Under "Paid by", any Expense but Income takes Contributions from others; the Main payer
-// covers the rest, so a price edit changes only their part, and someone with a Contribution
-// can't be picked as Main payer. The Expense has its own currency, any in circulation, picked
-// from the pill under the amount: a new one starts in the currency of the Expense saved last on
-// this device, or else the Trip currency. Every amount is entered in it, and the pill says what
-// the total comes to in the Trip currency, at a Manual rate if one is typed (`ExpenseCurrency`).
+// The full-screen Expense form, for a new plain Expense or Income or to edit one: amount with
+// its currency beside it, title, Main payer (who received it, for Income) with any
+// Contributions as one ledger of who pays what, who it is for (and what that comes to each),
+// and when, then the rarer options in a card at the end: whether it is money received (Income,
+// saved with a negative amount so nobody types a minus; off while there are Contributions, as
+// Income has none) and "Itemise as a Receipt", which grows the one Line item into the Till list
+// on the same page: the amount becomes the computed Receipt total, each Line item has its own
+// split, Line discount and Deposit, and Deposit refunds come off it. The Till list closes with
+// the Receipt's sums as the detail page shows them: Subtotal (the goods after their Line
+// discounts), Deposit refunds, the Receipt discount (typed there, its one place), Deposits (to
+// check against the paper Receipt) and the Receipt total. Under the total on top, what is not
+// assigned yet, headed as on the detail page (in units where it can be, and whose it is for
+// now: the Main payer's), then each line it is on, with a link to it. The total may go negative. A line typed
+// into the Till list's add form but not added greys out Save, saying why, until it is added or
+// discarded. Under "Paid by", any Expense but Income takes Contributions from others; the Main
+// payer covers the rest, so a price edit changes only their part, and someone with a
+// Contribution can't be picked as Main payer. The Expense has its own currency, any in
+// circulation: a new one starts in the currency of the Expense saved last on this device, or
+// else the Trip currency. Every amount is entered in it, and under the amount shows what the
+// total comes to in the Trip currency, at a Manual rate if one is typed (`ExpenseCurrency`).
 // What is typed is read as an Expense draft (`readDraft`): a Trip rule the Expense would break
 // shows at its field while the form is filled in. Saving keeps the Expense's full new state on
 // the device, to sync later, and returns to `parent`'s screen, or wherever the form was opened
@@ -52,6 +56,7 @@ const { trip, claim, lastCurrency, saveExpense } = useOpenTrip();
 const { t, locale } = useI18n();
 const back = useBack();
 const { draftReason, formErrors, problemAt } = useDraftReasons();
+const discountText = useDiscountText();
 
 // Read once: the form is mounted afresh each time it opens.
 const state = reactive<SplitDraft>(
@@ -67,6 +72,8 @@ const state = reactive<SplitDraft>(
 
 // What is typed, read live and when saving.
 const reading = computed(() => readDraft(state, trip.value));
+
+const money = (amount: Rational) => formatMoney(amount, state.currency, locale.value);
 
 const allTicked = computed(() => state.participantIds.length === trip.value.participants.length);
 
@@ -88,7 +95,7 @@ const splitSummary = computed(() => {
   const { total } = reading.value;
   if (!total || total.numerator === 0n) return t('expense.splitBetween', { count });
   const each = multiply(total.numerator < 0n ? negate(total) : total, rational(1n, BigInt(count)));
-  return t('expense.splitEach', { amount: formatMoney(each, state.currency, locale.value) });
+  return t('expense.splitEach', { amount: money(each) });
 });
 
 const discountError = computed(() => {
@@ -124,23 +131,70 @@ function itemiseReceipt(): void {
   Object.assign(state, itemise(state, trip.value));
 }
 
-const payerName = computed(
-  () => trip.value.participants.find(({ id }) => id === state.mainPayerId)?.name ?? '?',
-);
-
-// The lines with value not assigned yet, by name, for the Receipt total to point at.
-const unassignedLines = computed(() =>
+// The Receipt's readable lines, each with its shares, in order.
+const lines = computed(() =>
   (state.lineItems ?? []).flatMap((line, index) => {
     const { lineItem } = readLineItem(line, state.currency);
-    if (!lineItem || lineItemShares(lineItem, state.currency).unassigned.numerator === 0n) {
-      return [];
-    }
+    return lineItem
+      ? [{ line, index, lineItem, shares: lineItemShares(lineItem, state.currency) }]
+      : [];
+  }),
+);
+
+// The goods after their Line discounts, and the Deposit refunds, as the Receipt's sums show
+// them: refunds are their own row, not part of the Subtotal.
+const sums = computed(() => {
+  const zero = rational(0n);
+  return lines.value.reduce(
+    (sums, { line, shares }) =>
+      line.refund
+        ? { ...sums, refunds: add(sums.refunds, shares.net) }
+        : { ...sums, subtotal: add(sums.subtotal, shares.net) },
+    { subtotal: zero, refunds: zero },
+  );
+});
+
+// The lines with value not assigned yet, by name and how many of their units, for the Receipt
+// total to point at.
+const unassignedLines = computed(() =>
+  lines.value.flatMap(({ line, index, lineItem, shares }) => {
+    if (shares.unassigned.numerator === 0n) return [];
     const name =
       line.name.trim() ||
       (line.refund ? t('receipt.depositRefund') : t('receipt.unnamed', { position: index + 1 }));
-    return [{ key: line.key, name }];
+    const units =
+      lineItem.split.mode === 'units'
+        ? lineItem.quantity - lineItem.split.parts.reduce((sum, part) => sum + part.units, 0)
+        : null;
+    return [{ key: line.key, name, units }];
   }),
 );
+
+// What is not assigned yet in all, as the detail page heads it: in units while every line it
+// is on has them ("1 unit unassigned"), the value otherwise, and whose it is for now; with the
+// value after it in units.
+const unassignedSummary = computed(() => {
+  const unassigned = reading.value.receipt?.unassigned;
+  if (!unassigned || unassigned.numerator === 0n) return null;
+  const counts = unassignedLines.value.map(({ units }) => units);
+  const units = counts.every((count) => count !== null)
+    ? counts.reduce<number>((sum, count) => sum + (count ?? 0), 0)
+    : null;
+  const payer = trip.value.participants.find(({ id }) => id === state.mainPayerId);
+  const whose =
+    payer && payer.id === claim.value?.id
+      ? t('receipt.countedAsYours')
+      : t('receipt.countedAs', { name: payer?.name ?? '?' });
+  return {
+    text: [
+      units === null
+        ? t('receipt.amountUnassigned', { amount: money(unassigned) })
+        : t('receipt.unitsUnassignedTotal', units),
+      whose,
+    ].join(' · '),
+    value: units === null ? null : money(unassigned),
+  };
+});
 
 async function showLine(key: string): Promise<void> {
   openLine.value = key;
@@ -159,19 +213,14 @@ const texts = computed(() => {
   return { heading: expense ? t('expense.edit') : t('expense.new'), save: t('expense.save') };
 });
 
-// The draft's reasons, and a line typed but not added, which would otherwise be lost on save.
+// The draft's reasons, and a line typed but not added, which would otherwise be lost on save
+// (Save is greyed out then, but Enter in a field still submits).
 function validate(): FormError[] {
   const errors = formErrors(reading.value.reasons, state);
   return pendingLine.value
     ? [...errors, { name: 'lineItems', message: t('receipt.pendingRefused') }]
     : errors;
 }
-
-// Whether the last save stopped on a line not added yet; it says so above Save while it stands.
-const pendingRefused = ref(false);
-watch(pendingLine, (pending) => {
-  if (!pending) pendingRefused.value = false;
-});
 
 // Which Trip rules the last save broke; the Expense itself stays as it was.
 const refusals = ref<string[]>([]);
@@ -192,104 +241,70 @@ async function submit(): Promise<void> {
 
 <template>
   <NuxtLayout name="form" :title="texts.heading" :parent="parent" :close="!expense">
-    <UForm
-      id="expense-form"
-      :state="state"
-      :validate="validate"
-      class="space-y-5"
-      @submit="submit"
-      @error="pendingRefused = pendingLine"
-    >
-      <div v-if="reading.receipt" class="card px-4 py-5">
-        <div class="text-center">
-          <p id="receipt-total-label" class="text-sm text-muted">{{ $t('receipt.total') }}</p>
-          <output
-            aria-labelledby="receipt-total-label"
-            class="mt-1 block text-5xl font-semibold tracking-tight text-highlighted tabular-nums"
-          >
-            {{ formatMoney(reading.receipt.total, state.currency, locale) }}
-          </output>
+    <UForm id="expense-form" :state="state" :validate="validate" class="space-y-5" @submit="submit">
+      <div v-if="reading.receipt" class="card px-4 pt-3 pb-4">
+        <div class="flex items-end justify-between gap-3">
+          <div class="min-w-0">
+            <p id="receipt-total-label" class="text-sm font-medium text-muted">
+              {{ $t('receipt.total') }}
+            </p>
+            <output
+              aria-labelledby="receipt-total-label"
+              class="block truncate text-[2.75rem] leading-tight font-semibold tracking-tight text-highlighted tabular-nums"
+            >
+              {{ money(reading.receipt.total) }}
+            </output>
+          </div>
+          <CurrencyPill v-model="state.currency" class="mb-1.5" />
         </div>
         <ExpenseCurrency
           v-model:currency="state.currency"
           v-model:manual-rate="state.manualRate"
           :reading="reading"
           :error="problemAt(reading.reasons, 'manualRate')"
-          class="mt-3"
         />
-        <!-- What went into the total, to check against the paper Receipt. -->
-        <dl
-          v-if="reading.receipt.discount || reading.receipt.deposits.numerator !== 0n"
-          class="mt-4 space-y-1 border-t border-default pt-3 text-sm"
-        >
-          <div v-if="reading.receipt.discount" class="flex justify-between gap-3">
-            <dt class="text-muted">{{ $t('receipt.receiptDiscount') }}</dt>
-            <dd class="text-default tabular-nums">
-              {{
-                formatDiscount(
-                  reading.receipt.discount,
-                  reading.receipt.discountOff,
-                  state.currency,
-                  locale,
-                )
-              }}
-            </dd>
-          </div>
-          <div v-if="reading.receipt.deposits.numerator !== 0n" class="flex justify-between gap-3">
-            <dt class="text-muted">{{ $t('receipt.deposits') }}</dt>
-            <dd class="text-default tabular-nums">
-              {{ formatMoney(reading.receipt.deposits, state.currency, locale) }}
-            </dd>
-          </div>
-        </dl>
         <div
-          v-if="reading.receipt.unassigned.numerator !== 0n"
-          class="mt-4 flex gap-2.5 rounded-xl bg-warning/10 px-3 py-2.5 text-sm"
+          v-if="unassignedSummary"
+          class="mt-3 flex gap-2.5 rounded-xl bg-warning/10 px-3 py-2.5 text-sm"
         >
           <UIcon name="i-lucide-circle-alert" class="mt-0.5 size-4 shrink-0 text-warning" />
           <div class="min-w-0 flex-1">
-            <p class="text-highlighted">
-              {{
-                $t('receipt.unassignedTotal', {
-                  amount: formatMoney(reading.receipt.unassigned, state.currency, locale),
-                  name: payerName,
-                })
-              }}
+            <p class="font-medium text-highlighted">{{ unassignedSummary.text }}</p>
+            <p v-if="unassignedSummary.value" class="text-muted tabular-nums">
+              {{ unassignedSummary.value }}
             </p>
-            <div class="-ms-1 mt-0.5 flex flex-wrap gap-x-1">
-              <button
-                v-for="line in unassignedLines"
-                :key="line.key"
-                type="button"
-                class="inline-flex min-h-9 cursor-pointer items-center gap-0.5 rounded-md px-1 font-medium text-warning underline-offset-2 hover:underline"
-                @click="showLine(line.key)"
-              >
-                {{ $t('receipt.openLine', { name: line.name }) }}
-                <UIcon name="i-lucide-chevron-right" class="size-4" />
-              </button>
-            </div>
+            <button
+              v-for="line in unassignedLines"
+              :key="line.key"
+              type="button"
+              class="-mb-1 flex min-h-10 w-full cursor-pointer items-center gap-1 text-start font-medium text-warning"
+              @click="showLine(line.key)"
+            >
+              <span class="min-w-0 flex-1">{{ $t('receipt.openLine', { name: line.name }) }}</span>
+              <UIcon name="i-lucide-chevron-right" class="size-4 shrink-0" />
+            </button>
           </div>
         </div>
       </div>
 
-      <div v-else class="card px-4 pt-3 pb-4">
+      <div v-else class="card relative px-4 pt-3 pb-4">
         <UFormField
           name="amount"
           :label="$t('expense.amount')"
-          :ui="{
-            labelWrapper: 'justify-center',
-            label: 'text-sm font-medium text-muted',
-            error: 'mt-1.5 text-center text-balance',
-          }"
+          :ui="{ label: 'text-sm font-medium text-muted', error: 'mt-1.5' }"
         >
           <AmountInput v-model="state.amount" :currency="state.currency" />
         </UFormField>
+        <!-- Over the amount's end, outside its field. -->
+        <CurrencyPill
+          v-model="state.currency"
+          class="absolute end-6.5 top-[3.125rem] bg-default shadow-xs"
+        />
         <ExpenseCurrency
           v-model:currency="state.currency"
           v-model:manual-rate="state.manualRate"
           :reading="reading"
           :error="problemAt(reading.reasons, 'manualRate')"
-          class="mt-3"
         />
       </div>
 
@@ -310,14 +325,46 @@ async function submit(): Promise<void> {
           v-model:pending="pendingLine"
           :participants="trip.participants"
           :currency="state.currency"
-          :discounted="!!reading.receipt?.discount"
         >
-          <DiscountField
-            v-model="state.discount"
-            :label="$t('receipt.receiptDiscount')"
-            :currency="state.currency"
-            :error="discountError"
-          />
+          <!-- The Receipt's sums, as its detail page shows them. -->
+          <div v-if="reading.receipt" class="space-y-3 tabular-nums">
+            <dl class="flex justify-between gap-3 text-sm">
+              <dt class="text-muted">{{ $t('receipt.subtotal') }}</dt>
+              <dd>{{ money(sums.subtotal) }}</dd>
+            </dl>
+            <dl v-if="sums.refunds.numerator !== 0n" class="flex justify-between gap-3 text-sm">
+              <dt class="text-muted">{{ $t('receipt.depositRefunds') }}</dt>
+              <dd>{{ money(sums.refunds) }}</dd>
+            </dl>
+            <DiscountField
+              v-model="state.discount"
+              :label="$t('receipt.receiptDiscount')"
+              :currency="state.currency"
+              :error="discountError"
+              :help="
+                reading.receipt.discount?.kind === 'percent'
+                  ? discountText(
+                      reading.receipt.discount,
+                      reading.receipt.discountOff,
+                      state.currency,
+                    )
+                  : undefined
+              "
+            />
+            <dl
+              v-if="reading.receipt.deposits.numerator !== 0n"
+              class="flex justify-between gap-3 text-sm"
+            >
+              <dt class="text-muted">{{ $t('receipt.deposits') }}</dt>
+              <dd>{{ money(reading.receipt.deposits) }}</dd>
+            </dl>
+            <dl
+              class="flex justify-between gap-3 border-t border-default pt-3 font-semibold text-highlighted"
+            >
+              <dt>{{ $t('receipt.total') }}</dt>
+              <dd>{{ money(reading.receipt.total) }}</dd>
+            </dl>
+          </div>
         </TillList>
       </UFormField>
 
@@ -420,8 +467,8 @@ async function submit(): Promise<void> {
 
     <template #action>
       <p
-        v-if="pendingRefused"
-        role="alert"
+        v-if="pendingLine"
+        role="status"
         class="mb-3 flex gap-2 rounded-xl bg-warning/10 px-3 py-2.5 text-sm text-highlighted"
       >
         <UIcon name="i-lucide-circle-alert" class="mt-0.5 size-4 shrink-0 text-warning" />
@@ -440,6 +487,9 @@ async function submit(): Promise<void> {
         form="expense-form"
         block
         size="xl"
+        :disabled="pendingLine"
+        :color="pendingLine ? 'neutral' : 'primary'"
+        :variant="pendingLine ? 'soft' : 'solid'"
         :loading="saving"
         :label="texts.save"
       />

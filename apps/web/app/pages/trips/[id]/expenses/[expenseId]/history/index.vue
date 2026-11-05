@@ -82,6 +82,7 @@ useHead({ title: () => t('history.title') });
               <UBadge
                 v-if="row.current"
                 :label="$t('history.current')"
+                color="neutral"
                 variant="subtle"
                 size="md"
                 class="shrink-0 text-[0.8125rem]"

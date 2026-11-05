@@ -264,7 +264,7 @@ const html = `<!DOCTYPE html>
 * { box-sizing: border-box; }
 [hidden] { display: none !important; }
 html { background: var(--bg); color: var(--ink); }
-body { margin: 0; min-height: 100vh; background: var(--bg); font: 16px/1.55 var(--sans); }
+body { margin: 0; min-height: 100vh; background: var(--bg); color: var(--ink); font: 16px/1.55 var(--sans); }
 main { max-width: 72rem; margin: 0 auto; padding: 2.5rem 1.25rem 4rem; }
 a { color: var(--accent); }
 :focus-visible { outline: 2px solid var(--accent); outline-offset: 2px; }

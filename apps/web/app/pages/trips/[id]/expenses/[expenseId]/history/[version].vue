@@ -1,10 +1,11 @@
 <script setup lang="ts">
-import { expenseShares } from '@osi/owe-yeah-domain';
+import { expenseShares, type Expense } from '@osi/owe-yeah-domain';
 import { findExpense } from '~/sync/local-trip';
 
 // One Revision of an Expense, opened from its History: the whole Expense as that change left
-// it, titled as an earlier version (or the current one), under a read-only notice saying who
-// made the change and exactly when, what the Expense is now and what differs from it. Restore
+// it, titled "Earlier Revision" (or "Current Revision"), under a read-only notice saying who
+// made the change and exactly when, and how it compares with now: the amount then and now when
+// it moved, highlighted in the header in amber, and anything else that differs. Restore
 // saves it again as a normal change on top of the current version (so it can cause a
 // Conflict), deleted or not, keeping the current version in History, as the line beside it
 // says, and opens the Expense. Not offered for a Revision that deleted the Expense, nor for
@@ -42,23 +43,32 @@ const byline = computed(() => {
   return name ? t('history.byline', { name, when }) : when;
 });
 
-// What the Expense is now, and what of it differs from this Revision.
+// How this Revision compares with the Expense now: the amount then and now when it moved,
+// and the rest of what differs.
 const now = computed(() => {
   const shown = current.value;
-  if (!revision.value || !shown || isCurrent.value) return null;
-  const fields = changedFields(revision.value.expense, shown);
+  const then = revision.value?.expense;
+  if (!then || !shown || isCurrent.value) return null;
+  const fields = changedFields(then, shown);
+  const amountMoved = fields.includes('amount') || fields.includes('currency');
+  const others = fields.filter((field) => field !== 'amount' && field !== 'currency');
+  const total = (expense: Expense) =>
+    formatMoney(expenseShares(expense).total, expense.currency, locale.value);
+  const list = (names: ExpenseField[]) =>
+    new Intl.ListFormat(locale.value).format(names.map((field) => t(`history.field.${field}`)));
   return {
-    total: t('history.nowIs', {
-      amount: formatMoney(expenseShares(shown).total, shown.currency, locale.value),
-    }),
+    fields,
+    amount: amountMoved
+      ? t('history.amountCompare', { then: total(then), now: total(shown) })
+      : null,
     differs:
-      fields.length > 0
-        ? t('history.differsFromNow', {
-            fields: new Intl.ListFormat(locale.value).format(
-              fields.map((field) => t(`history.field.${field}`)),
-            ),
-          })
-        : null,
+      others.length === 0
+        ? fields.length === 0
+          ? t('history.sameAsNow')
+          : null
+        : t(amountMoved ? 'history.alsoDiffersFromNow' : 'history.differsFromNow', {
+            fields: list(others),
+          }),
   };
 });
 
@@ -67,7 +77,7 @@ const canRestore = computed(
 );
 
 const title = computed(() =>
-  isCurrent.value ? t('history.currentVersion') : t('history.earlierVersion'),
+  isCurrent.value ? t('history.currentRevision') : t('history.earlierRevision'),
 );
 
 // Which Trip rules the restore broke; nothing was saved.
@@ -94,14 +104,12 @@ useHead({ title });
         <UIcon name="i-lucide-history" class="mt-0.5 size-5 shrink-0 text-muted" />
         <div class="min-w-0 text-sm leading-snug">
           <p class="font-medium text-highlighted">{{ byline }}</p>
-          <p class="mt-1 text-toned">
-            {{ revision.deleted ? $t('history.deletedHere') : $t('history.readOnly') }}
-            <template v-if="now">{{ now.total }}</template>
-          </p>
+          <p v-if="revision.deleted" class="mt-1 text-toned">{{ $t('history.deletedHere') }}</p>
+          <p v-if="now?.amount" class="mt-1 text-toned tabular-nums">{{ now.amount }}</p>
           <p v-if="now?.differs" class="mt-1 text-toned">{{ now.differs }}</p>
         </div>
       </section>
-      <ExpenseDetails :expense="revision.expense" />
+      <ExpenseDetails :expense="revision.expense" :changed="now?.fields ?? []" />
       <!-- Room for Restore's line, which the fixed action area grows by. -->
       <div v-if="canRestore" class="h-8" aria-hidden="true" />
     </template>

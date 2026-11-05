@@ -1,13 +1,15 @@
 <script setup lang="ts">
 // The Trip's tabs (Expenses · Balances · Trip): the Trip header on top with the sync status
-// (a cloud whose popover points at it and says what isn't synced, in the list's words) and
-// Invite, what sync has to tell (`TripNotices`) above the tab, the tab bar at the bottom and
-// an optional `#action` floating just above it. Pulling a tab down syncs the Trip. Only for
+// (the list's mark while something isn't synced: a cloud with an amber dot; its popover points
+// at it, spans the content column and dims the page under the header like a sheet's scrim) and
+// Invite, what sync has to tell (`TripNotices`) above the tab, the tab bar at the bottom and an
+// optional `#action` floating just above it. Pulling a tab down syncs the Trip. Only for
 // pages under `pages/trips/[id].vue`, which provides the open Trip.
 const { trip, claim, unsynced, sync, askWhoYouAre, invite } = useOpenTrip();
 const { t } = useI18n();
 const back = useBack();
 const { pulled, ready, refreshing } = usePullToRefresh(sync);
+const syncOpen = ref(false);
 
 const tabs = computed(() => {
   const base = `/trips/${trip.value.id}`;
@@ -47,32 +49,36 @@ const tabs = computed(() => {
         </button>
       </div>
       <UPopover
+        v-model:open="syncOpen"
         arrow
         :content="{ align: 'end', side: 'bottom', sideOffset: 4, collisionPadding: 16 }"
-        :ui="{ content: 'rounded-xl' }"
+        :ui="{ content: 'w-[min(calc(100vw-2rem),28rem)] rounded-xl' }"
       >
-        <UButton
-          color="neutral"
-          variant="ghost"
-          :aria-label="$t('sync.unsynced', unsynced)"
-          class="relative"
-        >
-          <UIcon
-            :name="unsynced > 0 ? 'i-lucide-cloud' : 'i-lucide-cloud-check'"
-            class="size-5 text-muted"
-          />
-          <span
-            v-if="unsynced > 0"
-            class="absolute end-1.5 top-1.5 size-2 rounded-full bg-warning ring-2 ring-default"
-          />
+        <UButton color="neutral" variant="ghost" :aria-label="$t('sync.unsynced', unsynced)">
+          <span class="relative">
+            <UIcon
+              :name="unsynced > 0 ? 'i-lucide-cloud' : 'i-lucide-cloud-check'"
+              class="block size-5 text-muted"
+            />
+            <span
+              v-if="unsynced > 0"
+              class="absolute -end-0.5 -top-0.5 size-2 rounded-full bg-warning"
+            />
+          </span>
         </UButton>
         <template #content>
-          <div class="flex max-w-72 gap-2.5 p-3.5">
-            <UIcon
-              :name="unsynced > 0 ? 'i-lucide-cloud-off' : 'i-lucide-cloud-check'"
-              class="mt-0.5 size-5 shrink-0"
-              :class="unsynced > 0 ? 'text-warning' : 'text-success'"
-            />
+          <div class="flex gap-3 p-4">
+            <span class="relative mt-0.5 shrink-0">
+              <UIcon
+                :name="unsynced > 0 ? 'i-lucide-cloud' : 'i-lucide-cloud-check'"
+                class="block size-5"
+                :class="unsynced > 0 ? 'text-muted' : 'text-success'"
+              />
+              <span
+                v-if="unsynced > 0"
+                class="absolute -end-0.5 -top-0.5 size-2 rounded-full bg-warning"
+              />
+            </span>
             <div>
               <p class="font-semibold text-highlighted">{{ $t('sync.unsynced', unsynced) }}</p>
               <p v-if="unsynced > 0" class="mt-0.5 text-sm text-muted">
@@ -91,6 +97,12 @@ const tabs = computed(() => {
       />
     </div>
   </header>
+  <!-- Below the header (z-10), above the page: the popover's scrim. -->
+  <div
+    v-if="syncOpen"
+    class="fixed inset-0 z-[9] bg-stone-950/20 dark:bg-black/60"
+    aria-hidden="true"
+  />
   <div
     v-if="pulled > 0 || refreshing"
     class="flex items-center justify-center gap-2 overflow-hidden text-xs text-muted"

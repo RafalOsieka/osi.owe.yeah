@@ -11,8 +11,7 @@
   "install": {
     "title": "Install Owe Yeah",
     "why": "It opens like an app, straight from your home screen.",
-    "iosTitle": "Add Owe Yeah to your Home Screen",
-    "ios": "Tap {share}, then {addToHomeScreen}. It opens like an app, and Safari won't clear your Trips after a while without a visit.",
+    "ios": "Tap {share}, then {addToHomeScreen} for quicker access.",
     "share": "Share",
     "addToHomeScreen": "Add to Home Screen",
     "action": "Install"
@@ -27,6 +26,9 @@
     "emptyHelp": "Add what everyone paid, share the Trip link, and see who owes whom. It works offline too.",
     "create": "New Trip",
     "noExpenses": "No Expenses yet",
+    "owes": "{name} owes",
+    "owed": "{name} is owed",
+    "even": "{name} is even",
     "settledHeading": "Settled"
   },
   "trip": {
@@ -63,17 +65,16 @@
       "title": "Name and Trip currency",
       "row": "{name} · {currency}",
       "save": "Save",
-      "currencyHelp": "All balances are kept and settled in it. Changing it changes no Expense: each is converted at its own day's rate.",
-      "currencyChange": "Balances and Suggested Repayments will be in {currency}, each Expense converted at its own day's rate. No Expense changes.",
+      "currencyHelp": "Balances are shown and settled in this currency. Changing it keeps every Expense as entered; each is converted at its own day's rate.",
+      "currencyChange": "Balances will be recalculated in {currency}. Every Expense keeps its amount and currency; each is converted at its own day's rate.",
       "lastChangedBy": "Last changed by {name}, {when}",
       "lastChanged": "Last changed {when}"
     },
     "forget": {
       "title": "Forget this Trip",
-      "help": "{name} is removed from this device only. You and the other Participants stay in the Trip.",
+      "help": "{name} is removed from this device only. You and the other Participants stay in the Trip. To open it again, you'll need its Trip link.",
       "row": "Only from this device. The Trip stays for everyone else.",
       "unsynced": "Everything is synced. | 1 change on this device hasn't synced yet. Forgetting the Trip loses it. | {count} changes on this device haven't synced yet. Forgetting the Trip loses them.",
-      "linkNeeded": "To open the Trip again, you'll need its Trip link.",
       "confirm": "Forget",
       "anyway": "Forget | Forget and lose 1 change | Forget and lose {count} changes",
       "keep": "Keep Trip"
@@ -129,7 +130,7 @@
     "editIncome": "Edit Income",
     "title": "Title",
     "titlePlaceholder": "e.g. Dinner or groceries",
-    "titleMissing": "Add a title.",
+    "titleMissing": "Enter a title.",
     "titleInvalid": "Keep the title to 100 characters or fewer.",
     "amount": "Amount",
     "amountMissing": "Enter an amount.",
@@ -188,16 +189,18 @@
     "undo": "Undo",
     "deleteRefused": "The Expense was not deleted",
     "youOwe": "you owe {amount}",
-    "deleteIncome": "Delete Income"
+    "deleteIncome": "Delete Income",
+    "daySpent": "spent {amount}",
+    "dayTotalsHelp": "Each day shows what was spent: Income counts against it, Repayments don't count."
   },
   "receipt": {
+    "kind": "Receipt",
     "itemise": "Itemise as a Receipt",
     "total": "Receipt total",
     "lineItems": "Line items",
     "shares": "Shares",
     "summary": "Receipt · no items | Receipt · 1 item | Receipt · {count} items",
     "unassignedBadge": "{count} items unassigned | {count} item unassigned | {count} items unassigned",
-    "unassignedTotal": "{amount} not assigned yet, counted as {name}'s until it is.",
     "notAssigned": "{amount} not assigned yet",
     "nobodyYet": "nobody yet",
     "unnamed": "Line item {position}",
@@ -213,8 +216,6 @@
     "discountKind": "{label}: amount or percent",
     "discountUnreadable": "Check the discount.",
     "perUnitDiscountHelp": "For the whole line, not per unit.",
-    "lineDiscountFact": "Discount {discount}",
-    "receiptDiscountFact": "Receipt discount {discount}",
     "receiptDiscountExceeds": "The discount is larger than the Line items after their own discounts.",
     "splitMode": "Split mode",
     "mode": {
@@ -243,7 +244,7 @@
     "newLineItem": "New Line item",
     "lineTotal": "Line total",
     "pendingHelp": "Not on the Receipt until you add it.",
-    "pendingRefused": "Add the new Line item to the Receipt, or close it, before saving.",
+    "pendingRefused": "Add or discard the pending Line item first.",
     "openLine": "Open {name}",
     "lineItemsMissing": "Add at least one Line item.",
     "lineItemsUnreadable": "Check the prices, Deposits and Amounts of the Line items marked.",
@@ -253,23 +254,27 @@
     "amountsUnreadable": "Check the Amounts.",
     "depositFact": "Deposit {deposit}",
     "deposits": "Deposits",
-    "depositsFact": "Deposits {amount}",
     "newDeposit": "New Line item Deposit per unit",
-    "depositPlaceholder": "Deposit per unit",
     "depositRefund": "Deposit refund",
     "addDepositRefund": "Add a Deposit refund",
     "newRefundAmount": "Deposit refund amount",
-    "refundPlaceholder": "Voucher amount",
     "refundAmount": "Amount",
     "refundHelp": "Money back for returned packaging, often a voucher used at the till. It comes off the total, is split on its own and is never discounted.",
     "checkAmount": "Check the amount.",
     "done": "Done",
-    "closeAdding": "Close",
-    "notAssignedBeforeDiscount": "{amount} not assigned yet, before the Receipt discount",
+    "closeAdding": "Discard",
     "extras": "Line discount and Deposit",
     "unitsUnassigned": "{unassigned} of {quantity} units unassigned",
     "subtotal": "Subtotal",
-    "includesUnassigned": "incl. {amount} unassigned"
+    "depositRefunds": "Deposit refunds",
+    "includesUnassigned": "incl. {amount} unassigned (payer's for now)",
+    "percentOff": "{percent} off · {amount}",
+    "lineDiscountAmount": "Discount {amount} included",
+    "lineDiscountPercent": "{discount} included",
+    "unitsUnassignedTotal": "{count} units unassigned | {count} unit unassigned | {count} units unassigned",
+    "amountUnassigned": "{amount} unassigned",
+    "countedAs": "{name}'s for now",
+    "countedAsYours": "yours for now"
   },
   "contribution": {
     "title": "Contributions",
@@ -310,17 +315,18 @@
     "owes": "owes",
     "isOwed": "is owed",
     "toSettle": "To settle",
-    "paysYou": "{name} pays you",
-    "youPay": "You pay {name}",
-    "pays": "{payer} pays {recipient}",
+    "paysYou": "{name} → you",
+    "youPay": "You → {name}",
+    "pays": "{payer} → {recipient}",
     "otherSuggestions": "Other suggested Repayments",
     "suggestions": "Suggested Repayments",
     "record": "Record",
     "recordLabel": "Record Repayment: {what} {amount}",
-    "recordAnother": "Record another Repayment",
     "allSettled": "All settled",
     "allSettledHelp": "Everyone's balance is zero.",
-    "recordOne": "Record a Repayment"
+    "recordOne": "Record a Repayment",
+    "recordWhenPaid": "After you've paid, record it here.",
+    "recordWhenReceived": "Once you've got the money, record it here."
   },
   "reminder": {
     "remind": "Remind",
@@ -361,8 +367,10 @@
     "owes": "{name} owes",
     "isOwed": "{name} is owed",
     "isEven": "{name} is even",
-    "done": "Done",
-    "roundedParts": "Parts are rounded to the cent, so they may not add up to the share exactly."
+    "roundedParts": "Parts are rounded to the cent, so they may not add up to the share exactly.",
+    "unassignedTheirs": "Unassigned, counted as {name}'s for now",
+    "unassignedYours": "Unassigned, counted as yours for now",
+    "unassignedRule": "What nobody has taken yet counts towards whoever paid, until someone takes it."
   },
   "rate": {
     "currency": "Currency",
@@ -374,7 +382,7 @@
     "missingBadge": "no rate yet",
     "provisionalCount": "No Provisional rates | 1 Provisional rate | {count} Provisional rates",
     "missingCount": "No Expenses left out | 1 Expense left out: no rate yet | {count} Expenses left out: no rate yet",
-    "manual": "Manual rate",
+    "conversion": "Currency conversion",
     "manualKind": "Manual rate: amount charged or rate",
     "kindCharged": "Amount charged",
     "kindRate": "Exchange rate",
@@ -383,9 +391,9 @@
     "typeManual": "Type a Manual rate",
     "noAutomatic": "There's no automatic rate for {from} yet.",
     "askManual": "There's no automatic rate for {from} yet. Type one, or this stays out of balances until it arrives.",
-    "chargedHelp": "What your card or bank actually took. If you change the amount later, this stays as typed and the rate follows.",
+    "chargedHelp": "What your card or bank actually took. The {to} amount stays fixed if you change the {from} amount.",
     "rateHelp": "How much 1 {from} was in {to}, e.g. at an exchange office.",
-    "derivedRate": "That's 1 {from} = {rate} {to}.",
+    "derivedRate": "Rate: {rate}",
     "rateInvalid": "Enter a rate above zero.",
     "chargedWithoutTotal": "An amount charged needs a total other than zero.",
     "manualTypedRate": "Manual rate: 1 {from} = {rate} {to}",
@@ -445,7 +453,8 @@
     "keepMineHelp": "Their version stays in History.",
     "keepMineHelpNamed": "{name}'s version stays in History.",
     "keepTheirsHelp": "Your changes are dropped for good.",
-    "alsoDiffers": "Also differs: {fields}"
+    "alsoDiffers": "Also differs: {fields}",
+    "changedWhen": "Changed {when}"
   },
   "colorMode": {
     "title": "Color mode",
@@ -457,7 +466,8 @@
     "back": "Back",
     "close": "Close",
     "done": "Done",
-    "optional": "Optional"
+    "optional": "Optional",
+    "moreInfo": "About {label}"
   },
   "history": {
     "title": "History",
@@ -494,16 +504,17 @@
       "rate": "Manual rate"
     },
     "was": "was {amount}",
-    "earlierVersion": "Earlier version",
-    "currentVersion": "Current version",
-    "readOnly": "This is how the Expense looked after this change.",
-    "nowIs": "It's {amount} now.",
     "differsFromNow": "Differs from now: {fields}.",
-    "restoreHelp": "Restoring adds it as a new change. The current version stays in History."
+    "restoreHelp": "Restoring adds it as a new Revision. The current one stays in History.",
+    "earlierRevision": "Earlier Revision",
+    "currentRevision": "Current Revision",
+    "amountCompare": "Amount in this Revision {then} · now {now}",
+    "alsoDiffersFromNow": "Also differs from now: {fields}.",
+    "sameAsNow": "Same as the Expense now."
   },
   "deleted": {
     "title": "Recently deleted",
-    "by": "Deleted by {name}, {when}",
+    "by": "{name} · {when}",
     "at": "Deleted {when}",
     "restore": "Restore",
     "restoreTitle": "Restore {title}",
@@ -512,9 +523,10 @@
     "kept": "Deleted Expenses stay here until someone restores them."
   },
   "notices": {
-    "participantRestored": "{name} was removed while you were offline. Your Expense “{title}” brought them back.",
+    "participantRestored": "{name} was removed while you were offline. Your Expense {title} brought them back.",
     "removalRefused": "{name} wasn't removed: they're on an Expense now.",
-    "removalRefusedBy": "{name} wasn't removed: “{title}” includes them now.",
+    "removalRefusedBy": "{name} wasn't removed: {title} includes them now.",
+    "quoted": "“{title}”",
     "showExpense": "Show Expense"
   },
   "notifications": {
@@ -536,7 +548,19 @@
     "turnOff": "Turn off",
     "failed": "Notifications couldn't be turned on. Check your connection and try again.",
     "blockedHelp": "Notifications for Owe Yeah are blocked in this browser. To unblock them:",
-    "blockedStep1": "In the browser, tap {icon} next to the address and open the site's settings. In the installed app, long-press its icon and open App info.",
+    "blockedStep1": "Open the notification settings for Owe Yeah:",
+    "inBrowser": {
+      "label": "In the browser:",
+      "how": "tap {icon} next to the address, then open the site's settings."
+    },
+    "inAndroidApp": {
+      "label": "Installed app on Android:",
+      "how": "long-press its icon, then tap App info."
+    },
+    "inAppleApp": {
+      "label": "Installed app on iPhone or iPad:",
+      "how": "open Settings, then Notifications, then Owe Yeah."
+    },
     "blockedStep2": "Allow notifications.",
     "blockedStep3": "Come back here and tap Check again.",
     "siteIcon": "the site settings icon",

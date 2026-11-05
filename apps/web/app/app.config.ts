@@ -19,8 +19,16 @@ export default defineAppConfig({
           xl: { base: 'min-h-12 min-w-12 justify-center px-5' },
         },
       },
-      // A disabled solid button greys out, so it can't pass for a live one.
+      // A solid primary button is the same deep green with white text in both themes: the
+      // brighter dark-mode primary stays for text and marks. A disabled solid button greys
+      // out, so it can't pass for a live one.
       compoundVariants: [
+        {
+          color: 'primary',
+          variant: 'solid',
+          class:
+            'dark:bg-primary-700 dark:text-white dark:hover:bg-primary-600 dark:active:bg-primary-600',
+        },
         {
           variant: 'solid',
           class:
@@ -68,7 +76,7 @@ export default defineAppConfig({
     // rounder top corners than the cards on the page.
     drawer: {
       slots: {
-        overlay: 'bg-black/30 dark:bg-black/60',
+        overlay: 'bg-stone-950/20 dark:bg-black/60',
         content: 'mx-auto max-w-120 rounded-t-3xl! ring-0',
         container: 'gap-5 px-5 pb-[calc(1.25rem+env(safe-area-inset-bottom))]',
         title: 'text-lg',
@@ -76,7 +84,7 @@ export default defineAppConfig({
       },
     },
     modal: {
-      slots: { overlay: 'bg-black/30 dark:bg-black/60', content: 'rounded-3xl ring-0' },
+      slots: { overlay: 'bg-stone-950/20 dark:bg-black/60', content: 'rounded-3xl ring-0' },
     },
   },
 });

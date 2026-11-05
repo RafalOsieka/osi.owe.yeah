@@ -4,9 +4,9 @@ import type { Participant } from '@osi/owe-yeah-domain';
 // A Participant as a chip with their avatar, tinted when chosen, filling its cell of the
 // pickers' grid. Its mark says how the field picks: a round radio for one choice ("Paid by"),
 // a square checkbox for several ("For whom"), each empty until chosen. A real input covers the
-// chip, so it is announced and works from the keyboard like any other. `disabled` greys out
-// someone who can't be picked here, e.g. who paid a Repayment as its recipient. Long names are
-// cut at the chip's maximum width.
+// chip, so it is announced and works from the keyboard like any other. The claimed Participant
+// is marked "you". `disabled` greys out someone who can't be picked here, e.g. who paid a
+// Repayment as its recipient. Long names are cut at the chip's maximum width.
 const {
   participant,
   type,
@@ -20,6 +20,8 @@ const {
   disabled?: boolean;
 }>();
 const checked = defineModel<boolean>('checked', { required: true });
+
+const { claim } = useOpenTrip();
 
 function change(event: Event): void {
   // SAFETY: the listener sits on the <input> itself.
@@ -40,7 +42,10 @@ function change(event: Event): void {
       @change="change"
     />
     <ParticipantAvatar :participant="participant" size="xs" class="ring-2 ring-(--ui-bg)" />
-    <span class="min-w-0 flex-1 truncate">{{ participant.name }}</span>
+    <span class="flex min-w-0 flex-1 items-center">
+      <span class="truncate">{{ participant.name }}</span>
+      <YouBadge v-if="participant.id === claim?.id" />
+    </span>
     <span
       v-if="type === 'radio'"
       class="grid size-5 shrink-0 place-items-center rounded-full ring-2 ring-neutral-300 ring-inset group-has-checked:ring-primary dark:ring-neutral-600"
@@ -52,7 +57,7 @@ function change(event: Event): void {
     </span>
     <span
       v-else
-      class="grid size-5 shrink-0 place-items-center rounded-md ring-2 ring-neutral-300 ring-inset transition-colors group-has-checked:bg-primary group-has-checked:ring-primary dark:ring-neutral-600"
+      class="grid size-5 shrink-0 place-items-center rounded-[0.25rem] ring-2 ring-neutral-300 ring-inset transition-colors group-has-checked:bg-primary group-has-checked:ring-primary dark:ring-neutral-600"
       aria-hidden="true"
     >
       <UIcon

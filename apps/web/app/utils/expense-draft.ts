@@ -214,24 +214,27 @@ function draftFromDiscount(discount: Discount | undefined, currency: string): Dr
     : { kind: 'percent', value: String(discount.basisPoints / 100) };
 }
 
+/** A saved split as the Till list edits it: Amounts as typed in `currency`. */
+export function draftSplit(split: Split, currency: string): DraftSplit {
+  return split.mode === 'amounts'
+    ? {
+        mode: 'amounts',
+        parts: split.parts.map(({ participantId, amount }) => ({
+          participantId,
+          amount: typedMoney(amount, currency),
+        })),
+      }
+    : structuredClone(split);
+}
+
 function draftFromLineItem(item: LineItem, currency: string): DraftLineItem {
-  const { split } = item;
   return draftLineItem({
     name: item.name,
     price: typedMoney(Math.abs(item.unitPrice), currency),
     quantity: item.quantity,
     refund: isDepositRefund(item),
     deposit: item.depositPerUnit ? typedMoney(item.depositPerUnit, currency) : '',
-    split:
-      split.mode === 'amounts'
-        ? {
-            mode: 'amounts',
-            parts: split.parts.map(({ participantId, amount }) => ({
-              participantId,
-              amount: typedMoney(amount, currency),
-            })),
-          }
-        : structuredClone(split),
+    split: draftSplit(item.split, currency),
     discount: draftFromDiscount(item.discount, currency),
   });
 }
