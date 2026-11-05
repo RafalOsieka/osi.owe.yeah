@@ -52,7 +52,7 @@
     "typescript": "^6.0.3",
     "vite-plus": "catalog:",
     "vitest": "catalog:",
-    "vue-tsc": "^3.3.13",
+    "vue-tsc": "^3.3.14",
     "workbox-core": "^7.4.1",
     "workbox-precaching": "^7.4.1",
     "workbox-routing": "^7.4.1"
