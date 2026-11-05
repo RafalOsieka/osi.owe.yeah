@@ -138,8 +138,10 @@ const themeSwitch = () =>
         )
         .join('')}</div>`;
 
-const shotButton = (round, theme, screen, label) => `
-  <button type="button" class="shot" data-full="${shotPath(round, theme, screen)}" data-label="${esc(label)} · ${esc(theme)} · round ${round.n}">
+// A thumbnail that opens the viewer on `screen` in `theme`, comparing round `open` with the round
+// before it. `open` is the section's round, so a round-2 shot in round 3's pairs opens 2 | 3.
+const shotButton = (round, theme, screen, label, open = round) => `
+  <button type="button" class="shot" data-screen="${esc(screen)}" data-theme="${esc(theme)}" data-round="${open.n}" aria-label="Compare ${esc(label)}, ${esc(theme)}, round ${open.n} with the round before">
     <img src="${shotPath(round, theme, screen)}" alt="${esc(label)}, ${esc(theme)}, round ${round.n}" loading="lazy" decoding="async">
   </button>`;
 
@@ -173,7 +175,7 @@ function comparison(round, before) {
         <div class="pair-shots">
           <div>${
             shotExists(before, theme, screen)
-              ? shotButton(before, theme, screen, label)
+              ? shotButton(before, theme, screen, label, round)
               : '<p class="new">New this round</p>'
           }<span class="tag">Round ${before.n}</span></div>
           <div>${shotButton(round, theme, screen, label)}<span class="tag now">Round ${round.n}</span></div>
@@ -233,6 +235,28 @@ const rounds = data.rounds
   })
   .join('');
 
+// What the viewer needs: each round with shots, the round it is compared with, and its shots
+// by theme and screen. Embedded as JSON; `<` is escaped so no label can close the script.
+const viewerData = {
+  screens,
+  themes,
+  rounds: data.rounds.filter(hasShots).map((round, i, withShots) => ({
+    n: round.n,
+    before: i > 0 ? withShots[i - 1].n : null,
+    shots: Object.fromEntries(
+      themes.map((theme) => [
+        theme,
+        Object.fromEntries(
+          screens
+            .filter(([screen]) => shotExists(round, theme, screen))
+            .map(([screen]) => [screen, shotPath(round, theme, screen)]),
+        ),
+      ]),
+    ),
+  })),
+};
+const viewerJson = JSON.stringify(viewerData).replaceAll('<', '\\u003c');
+
 const scored = (round) =>
   data.delegates.map(({ key, name }) => `${name} ${shown(scoreOf(round, key))}`).join(', ');
 const goal = data.rounds.find((r) => data.delegates.every(({ key }) => passes(scoreOf(r, key))));
@@ -253,20 +277,18 @@ const html = `<!DOCTYPE html>
 <meta name="viewport" content="width=device-width, initial-scale=1">
 <title>${esc(data.title)}</title>
 <style>
+/* Dark only: the page frames screenshots of both themes, and a dark frame is easier on the eyes. */
 :root {
-  --bg: #f5f5f4; --surface: #fff; --ink: #1c1917; --soft: #57534e; --rule: #e7e5e4;
-  --accent: #059669; --accent-soft: #d1fae5; --bar: #a8a29e;
+  color-scheme: dark;
+  --bg: #0c0a09; --surface: #1c1917; --ink: #f5f5f4; --soft: #a8a29e; --rule: #292524;
+  --accent: #10b981; --accent-soft: #064e3b; --bar: #57534e;
   --sans: ui-sans-serif, system-ui, -apple-system, "Segoe UI", sans-serif;
   --mono: ui-monospace, "SF Mono", Menlo, Consolas, monospace;
-}
-@media (prefers-color-scheme: dark) {
-  :root { --bg: #0c0a09; --surface: #1c1917; --ink: #f5f5f4; --soft: #a8a29e; --rule: #292524;
-          --accent: #10b981; --accent-soft: #064e3b; --bar: #57534e; }
 }
 * { box-sizing: border-box; }
 [hidden] { display: none !important; }
 html { background: var(--bg); color: var(--ink); }
-body { margin: 0; font: 16px/1.55 var(--sans); }
+body { margin: 0; min-height: 100vh; background: var(--bg); color: var(--ink); font: 16px/1.55 var(--sans); }
 main { max-width: 72rem; margin: 0 auto; padding: 2.5rem 1.25rem 4rem; }
 a { color: var(--accent); }
 :focus-visible { outline: 2px solid var(--accent); outline-offset: 2px; }
@@ -305,7 +327,7 @@ h3.label { font-size: .85rem; color: var(--soft); font-weight: 600; margin: 1.75
 .changes { margin: 0; padding-left: 1.2rem; max-width: 75ch; }
 .theme-switch, .view-switch { display: inline-flex; border: 1px solid var(--rule); border-radius: 999px; overflow: hidden; margin: 0 .5rem .75rem 0; }
 .theme-switch button, .view-switch button { font: inherit; font-size: .85rem; border: 0; background: var(--surface); color: var(--ink); padding: .3rem .9rem; cursor: pointer; text-transform: capitalize; }
-.theme-switch button[aria-pressed="true"], .view-switch button[aria-pressed="true"] { background: var(--accent); color: #fff; }
+.theme-switch button[aria-pressed="true"], .view-switch button[aria-pressed="true"] { background: var(--accent); color: #0c0a09; }
 .strip { display: grid; grid-auto-flow: column; grid-auto-columns: 9.5rem; gap: .75rem; overflow-x: auto; padding-bottom: .5rem; }
 .strip figure { margin: 0; }
 .shot { padding: 0; border: 1px solid var(--rule); border-radius: 12px; overflow: hidden; background: var(--surface); cursor: zoom-in; display: block; width: 100%; aspect-ratio: 390 / 600; }
@@ -333,11 +355,36 @@ figcaption { font-size: .78rem; color: var(--soft); margin-top: .35rem; }
 .prose ul, .prose ol { padding-left: 1.2rem; margin: .3rem 0; }
 .prose li { margin: .25rem 0; }
 .prose p { margin: .5rem 0; }
-dialog { border: 0; padding: 0; background: transparent; max-width: 95vw; max-height: 95vh; }
-dialog::backdrop { background: rgb(0 0 0 / .7); }
-dialog img { max-height: 88vh; max-width: 95vw; display: block; border-radius: 12px; }
-dialog p { color: #fff; text-align: center; margin: .5rem 0 0; font-size: .9rem; }
-dialog .close { position: fixed; top: 1rem; right: 1rem; font: inherit; border: 0; border-radius: 999px; padding: .4rem .9rem; cursor: pointer; }
+/* The viewer: the whole viewport, a toolbar on top and one scroll box below holding both rounds
+   in a row, so they scroll together. Columns fit the width (capped at the shots' own
+   780 px, a 390 px screen at 2x) and --z scales them; never clamp the height, which is what made a tall
+   capture a sliver before. Colours are explicit: the host may restyle body. */
+body:has(#viewer[open]) { overflow: hidden; }
+#viewer { position: fixed; inset: 0; width: 100%; height: 100%; height: 100dvh; max-width: none; max-height: none; margin: 0; padding: 0; border: 0; background: var(--bg); color: var(--ink); font: 15px/1.4 var(--sans); }
+#viewer[open] { display: flex; flex-direction: column; }
+#viewer::backdrop { background: var(--bg); }
+.v-bar { display: flex; flex-wrap: wrap; align-items: center; gap: .5rem .75rem; padding: .6rem 1rem; background: var(--surface); border-bottom: 1px solid var(--rule); }
+.v-title { flex: 1 1 14rem; min-width: 0; margin: 0; font-size: 1rem; font-weight: 600; }
+.v-title small { display: block; color: var(--soft); font-weight: 400; font-size: .8rem; }
+.v-group { display: inline-flex; align-items: center; border: 1px solid var(--rule); border-radius: 999px; overflow: hidden; }
+.v-group > * + * { border-left: 1px solid var(--rule); }
+.v-bar button { font: inherit; font-size: .85rem; border: 0; background: var(--bg); color: var(--ink); padding: .35rem .75rem; cursor: pointer; min-height: 2rem; }
+.v-bar button[aria-pressed="true"] { background: var(--accent); color: #0c0a09; }
+.v-bar button:disabled { color: var(--bar); cursor: default; }
+.v-bar .v-zoom-level { min-width: 4.2em; font-variant-numeric: tabular-nums; }
+.v-bar .v-close { border: 1px solid var(--rule); border-radius: 999px; }
+.v-stage { flex: 1; overflow: auto; overscroll-behavior: contain; padding: 0 1rem 2rem; background: var(--bg); color: var(--ink); }
+.v-cols { --z: 1; --n: 2; display: flex; gap: 1rem; margin: 0 auto; width: calc(min(100%, var(--n) * 780px + (var(--n) - 1) * 1rem) * var(--z)); }
+.v-col { flex: 1 1 0; min-width: 0; }
+.v-col h3 { position: sticky; top: 0; z-index: 1; margin: 0; padding: .5rem 0; background: var(--bg); color: var(--soft); font-size: .85rem; font-weight: 600; text-align: center; }
+.v-col.now h3 { color: var(--accent); }
+.v-col img { display: block; width: 100%; height: auto; border-radius: 12px; border: 1px solid var(--rule); background: var(--surface); }
+.v-col .new { aspect-ratio: 390 / 844; }
+@media (max-width: 480px) {
+  .v-bar { padding: .5rem .75rem; }
+  .v-stage { padding: 0 .5rem 2rem; }
+  .v-cols { gap: .5rem; }
+}
 </style>
 </head>
 <body>
@@ -349,13 +396,178 @@ dialog .close { position: fixed; top: 1rem; right: 1rem; font: inherit; border: 
   <nav class="jump" aria-label="Rounds">${data.rounds.map((r) => `<a href="#round-${r.n}">Round ${r.n}${r.title ? `: ${esc(r.title)}` : ''}</a>`).join('')}</nav>
   ${rounds}
 </main>
-<dialog id="zoom" aria-label="Screenshot">
-  <button type="button" class="close">Close</button>
-  <img alt="">
-  <p></p>
+<dialog id="viewer" aria-labelledby="v-title">
+  <div class="v-bar">
+    <h2 class="v-title" id="v-title"><span class="v-screen"></span><small class="v-where"></small></h2>
+    <div class="v-group" role="group" aria-label="Screen">
+      <button type="button" class="v-prev" aria-label="Previous screen" title="Previous screen (←)">‹ Prev</button>
+      <button type="button" class="v-next" aria-label="Next screen" title="Next screen (→)">Next ›</button>
+    </div>
+    <div class="v-group v-rounds" role="group" aria-label="Rounds compared"></div>
+    <div class="v-group v-themes" role="group" aria-label="Theme"></div>
+    <div class="v-group" role="group" aria-label="Zoom">
+      <button type="button" class="v-out" aria-label="Zoom out" title="Zoom out (−)">−</button>
+      <button type="button" class="v-zoom-level" aria-label="Reset zoom to fit the width" title="Fit width (0)">100%</button>
+      <button type="button" class="v-in" aria-label="Zoom in" title="Zoom in (+)">+</button>
+    </div>
+    <button type="button" class="v-close" title="Close (Esc)">Close</button>
+  </div>
+  <div class="v-stage" tabindex="0" aria-label="Screenshots, scrollable">
+    <div class="v-cols"></div>
+  </div>
 </dialog>
+<script type="application/json" id="viewer-data">${viewerJson}</script>
 <script>
-const zoom = document.getElementById('zoom');
+// The viewer. A thumbnail opens it on its screen, theme and round; it shows that round next to
+// the round before (round 1 alone) and keeps the screen, rounds, theme and zoom as state.
+const viewer = document.getElementById('viewer');
+const DATA = JSON.parse(document.getElementById('viewer-data').textContent);
+const stage = viewer.querySelector('.v-stage');
+const cols = viewer.querySelector('.v-cols');
+const roundOf = (n) => DATA.rounds.find((r) => r.n === n);
+const labelOf = (screen) => DATA.screens.find(([id]) => id === screen)?.[1] ?? screen;
+const state = { screen: '', theme: DATA.themes[0], round: 0, zoom: 1 };
+let opener = null;
+
+// The theme shown: the one asked for when either round has it, else the first that exists.
+const themeShown = () => {
+  const round = roundOf(state.round);
+  const before = round.before === null ? null : roundOf(round.before);
+  const has = (theme) => round.shots[theme]?.[state.screen] || before?.shots[theme]?.[state.screen];
+  return has(state.theme) ? state.theme : DATA.themes.find(has) ?? state.theme;
+};
+// Screens either compared round captured, in the order the report lists them.
+const screensHere = () => {
+  const round = roundOf(state.round);
+  const before = round.before === null ? null : roundOf(round.before);
+  return DATA.screens
+    .map(([id]) => id)
+    .filter((id) => DATA.themes.some((t) => round.shots[t]?.[id] || before?.shots[t]?.[id]));
+};
+
+function column(n, theme, now) {
+  const path = roundOf(n).shots[theme]?.[state.screen];
+  const col = document.createElement('div');
+  col.className = 'v-col' + (now ? ' now' : '');
+  const title = document.createElement('h3');
+  title.textContent = 'Round ' + n;
+  col.append(title);
+  if (path) {
+    const img = document.createElement('img');
+    img.src = path;
+    img.alt = labelOf(state.screen) + ', ' + theme + ', round ' + n;
+    col.append(img);
+  } else {
+    const missing = document.createElement('p');
+    missing.className = 'new';
+    missing.textContent = now ? 'Not captured this round' : 'New in round ' + state.round;
+    col.append(missing);
+  }
+  return col;
+}
+
+function render() {
+  const round = roundOf(state.round);
+  const theme = themeShown();
+  const list = screensHere();
+  const index = list.indexOf(state.screen);
+  viewer.querySelector('.v-screen').textContent = labelOf(state.screen);
+  viewer.querySelector('.v-where').textContent =
+    (round.before === null ? 'Round ' + round.n : 'Round ' + round.before + ' | Round ' + round.n) +
+    ' · ' + theme + ' · screen ' + (index + 1) + ' of ' + list.length;
+  viewer.querySelector('.v-prev').disabled = index <= 0;
+  viewer.querySelector('.v-next').disabled = index === -1 || index >= list.length - 1;
+  const parts = round.before === null ? [column(round.n, theme, true)] : [column(round.before, theme, false), column(round.n, theme, true)];
+  cols.style.setProperty('--n', String(parts.length));
+  cols.replaceChildren(...parts);
+  viewer.querySelector('.v-rounds').replaceChildren(
+    ...DATA.rounds.map((r) => {
+      const button = document.createElement('button');
+      button.type = 'button';
+      button.dataset.round = String(r.n);
+      button.textContent = r.before === null ? 'R' + r.n : 'R' + r.before + ' | R' + r.n;
+      button.setAttribute('aria-label', r.before === null ? 'Round ' + r.n + ' alone' : 'Round ' + r.before + ' next to round ' + r.n);
+      button.setAttribute('aria-pressed', String(r.n === state.round));
+      return button;
+    }),
+  );
+  viewer.querySelector('.v-themes').replaceChildren(
+    ...(DATA.themes.length < 2 ? [] : DATA.themes.map((t) => {
+      const button = document.createElement('button');
+      button.type = 'button';
+      button.dataset.theme = t;
+      button.textContent = t;
+      button.setAttribute('aria-pressed', String(t === theme));
+      button.disabled = !(round.shots[t]?.[state.screen] || (round.before !== null && roundOf(round.before).shots[t]?.[state.screen]));
+      return button;
+    })),
+  );
+  viewer.querySelector('.v-zoom-level').textContent = Math.round(state.zoom * 100) + '%';
+}
+
+// Zoom by factor, keeping the point under (x, y) in the stage (its centre by default) in place.
+function zoomBy(factor, x = stage.clientWidth / 2, y = stage.clientHeight / 2) {
+  const next = Math.min(8, Math.max(0.25, factor === 0 ? 1 : state.zoom * factor));
+  const oldWidth = cols.offsetWidth;
+  const left = stage.scrollLeft + x;
+  const top = stage.scrollTop + y;
+  state.zoom = next;
+  cols.style.setProperty('--z', String(next));
+  const ratio = cols.offsetWidth / oldWidth;
+  stage.scrollLeft = left * ratio - x;
+  stage.scrollTop = top * ratio - y;
+  viewer.querySelector('.v-zoom-level').textContent = Math.round(next * 100) + '%';
+}
+
+function step(delta) {
+  const list = screensHere();
+  const target = list[list.indexOf(state.screen) + delta];
+  if (!target) return;
+  state.screen = target;
+  render();
+  stage.scrollTop = 0;
+  stage.scrollLeft = 0;
+}
+
+viewer.addEventListener('click', (event) => {
+  const button = event.target.closest('button');
+  if (!button || button.disabled) return;
+  if (button.matches('.v-close')) viewer.close();
+  else if (button.matches('.v-prev')) step(-1);
+  else if (button.matches('.v-next')) step(1);
+  else if (button.matches('.v-in')) zoomBy(1.25);
+  else if (button.matches('.v-out')) zoomBy(0.8);
+  else if (button.matches('.v-zoom-level')) zoomBy(0);
+  else if (button.dataset.round) {
+    state.round = Number(button.dataset.round);
+    render();
+  } else if (button.dataset.theme) {
+    state.theme = button.dataset.theme;
+    render();
+  }
+});
+viewer.addEventListener('keydown', (event) => {
+  if (event.altKey || event.metaKey) return;
+  const key = event.key;
+  if (key === 'ArrowLeft' || key === 'ArrowRight') {
+    if (event.ctrlKey) return;
+    event.preventDefault();
+    step(key === 'ArrowLeft' ? -1 : 1);
+  } else if (key === '+' || key === '=' || key === '-' || key === '_' || key === '0') {
+    // Ctrl/Cmd + and − too: browser zoom cannot grow a fit-to-width shot, the viewer's zoom can.
+    event.preventDefault();
+    zoomBy(key === '0' ? 0 : key === '-' || key === '_' ? 0.8 : 1.25);
+  }
+});
+// Ctrl + wheel, which is also how a trackpad pinch arrives, zooms around the pointer.
+stage.addEventListener('wheel', (event) => {
+  if (!event.ctrlKey) return;
+  event.preventDefault();
+  const box = stage.getBoundingClientRect();
+  zoomBy(Math.exp(-event.deltaY / 300), event.clientX - box.left, event.clientY - box.top);
+}, { passive: false });
+viewer.addEventListener('close', () => opener?.focus());
+
 const pick = (round, attribute, value) => {
   for (const button of round.querySelectorAll('[data-' + attribute + '-pick]')) {
     button.setAttribute('aria-pressed', String(button.dataset[attribute + 'Pick'] === value));
@@ -364,13 +576,16 @@ const pick = (round, attribute, value) => {
 document.addEventListener('click', (event) => {
   const shot = event.target.closest('.shot');
   if (shot) {
-    zoom.querySelector('img').src = shot.dataset.full;
-    zoom.querySelector('img').alt = shot.dataset.label;
-    zoom.querySelector('p').textContent = shot.dataset.label;
-    zoom.showModal();
+    opener = shot;
+    Object.assign(state, { screen: shot.dataset.screen, theme: shot.dataset.theme, round: Number(shot.dataset.round), zoom: 1 });
+    cols.style.setProperty('--z', '1');
+    render();
+    viewer.showModal();
+    stage.scrollTop = 0;
+    stage.scrollLeft = 0;
+    stage.focus();
     return;
   }
-  if (event.target.closest('.close') || event.target === zoom) zoom.close();
   const round = event.target.closest('.round');
   const theme = event.target.closest('[data-theme-pick]');
   if (theme && round) {

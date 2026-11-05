@@ -1,67 +1,118 @@
 <script setup lang="ts">
 import { expenseKind, expenseShares, type Expense, type Participant } from '@osi/owe-yeah-domain';
+import type { ExpenseField } from '~/utils/revisions';
 
-// One version of an Expense on the Conflict screen, as a card under `heading`: who made it
-// (`authorId`, the Claim sent with the change, when known), whether it deletes the Expense,
-// its title, total, when it was paid, who paid and who it is for.
-const { expense, heading, deleted, authorId, participants } = defineProps<{
+// One version of an Expense on the Conflict screen, as a card under `heading` (and
+// `subtitle`, e.g. when it was made): whether it
+// deletes the Expense, its title, total, when it was paid, who paid and who it is for, the
+// claimed Participant as "you". What differs from the other version (`changed`) is
+// highlighted and the rest stays quiet, with a line for differences it doesn't show (Line
+// items, a Manual rate). The default slot ends the card, for the choice that keeps it.
+const {
+  expense,
+  heading,
+  subtitle = '',
+  deleted,
+  changed,
+  claimId,
+  participants,
+} = defineProps<{
   expense: Expense;
   heading: string;
+  subtitle?: string;
   deleted: boolean;
-  authorId: string | null;
+  changed: readonly ExpenseField[];
+  claimId: string | null;
   participants: readonly Participant[];
 }>();
 
-const { locale } = useI18n();
+const { t, locale } = useI18n();
 const headingId = useId();
 
-const nameOf = (id: string) => participants.find((participant) => participant.id === id)?.name;
+const nameOf = (id: string) =>
+  id === claimId ? t('participants.you') : participants.find((p) => p.id === id)?.name;
 
 const shown = computed(() => {
   const { total, shares } = expenseShares(expense);
+  const hidden = changed.filter((field) => field === 'lineItems' || field === 'rate');
   return {
-    author: authorId === null ? undefined : nameOf(authorId),
     total: formatMoney(total, expense.currency, locale.value),
     when: formatExpenseTime(expense.time, locale.value),
     payer: nameOf(expense.mainPayerId) ?? '?',
     income: expenseKind(expense).kind === 'income',
     // In the Trip's order.
-    forWhom: new Intl.ListFormat(locale.value).format(
-      participants.filter(({ id }) => shares.has(id)).map(({ name }) => name),
-    ),
+    // "For all 4" when it is everyone, as the Expense list says it.
+    forWhom:
+      shares.size === participants.length
+        ? t('conflict.forAll', { count: shares.size })
+        : t('conflict.forWhom', {
+            names: new Intl.ListFormat(locale.value).format(
+              participants.filter(({ id }) => shares.has(id)).map(({ id }) => nameOf(id) ?? '?'),
+            ),
+          }),
+    alsoDiffers:
+      hidden.length > 0
+        ? t('conflict.alsoDiffers', {
+            fields: new Intl.ListFormat(locale.value).format(
+              hidden.map((field) => t(`history.field.${field}`)),
+            ),
+          })
+        : null,
   };
 });
+
+// A field's look: highlighted where the versions differ, quiet where they agree.
+const look = (...fields: ExpenseField[]) =>
+  fields.some((field) => changed.includes(field))
+    ? 'rounded-sm bg-accented box-decoration-clone px-1.5 -mx-1.5 text-highlighted'
+    : 'text-muted';
 </script>
 
 <template>
   <section :aria-labelledby="headingId" class="card p-4">
     <div class="flex items-center justify-between gap-2">
-      <h2 :id="headingId" class="text-sm font-semibold text-muted">{{ heading }}</h2>
+      <div class="min-w-0">
+        <h2 :id="headingId" class="font-semibold text-highlighted">{{ heading }}</h2>
+        <p v-if="subtitle" class="text-sm text-muted">{{ subtitle }}</p>
+      </div>
       <UBadge
         v-if="deleted"
         :label="$t('conflict.deleted')"
-        color="error"
+        color="neutral"
         variant="subtle"
-        size="sm"
+        size="md"
       />
     </div>
-    <p v-if="shown.author" class="text-xs text-muted">
-      {{ $t('conflict.by', { name: shown.author }) }}
+    <p class="mt-2 font-medium wrap-anywhere">
+      <span :class="look('title')">{{ expense.title }}</span>
     </p>
-    <p class="mt-2 font-medium text-highlighted wrap-anywhere">{{ expense.title }}</p>
-    <p class="text-2xl font-semibold tracking-tight text-highlighted tabular-nums">
-      {{ shown.total }}
+    <p class="mt-0.5 text-2xl font-semibold tracking-tight tabular-nums">
+      <span :class="look('amount', 'currency')">{{ shown.total }}</span>
     </p>
-    <p class="text-sm text-muted">
-      {{ $t('expense.timeInZone', { time: shown.when, zone: zoneName(expense.time.zone) }) }}
+    <p class="mt-1 text-sm">
+      <span :class="look('when')">
+        {{ $t('expense.timeInZone', { time: shown.when, zone: zoneName(expense.time.zone) }) }}
+      </span>
     </p>
     <p class="mt-2 text-sm">
-      {{
-        shown.income
-          ? $t('conflict.receivedBy', { name: shown.payer })
-          : $t('conflict.paidBy', { name: shown.payer })
-      }}
+      <span :class="look('paidBy')">
+        {{
+          shown.income
+            ? $t('conflict.receivedBy', { name: shown.payer })
+            : $t('conflict.paidBy', { name: shown.payer })
+        }}
+      </span>
     </p>
-    <p class="text-sm wrap-anywhere">{{ $t('conflict.forWhom', { names: shown.forWhom }) }}</p>
+    <p class="mt-1 text-sm wrap-anywhere">
+      <span :class="look('forWhom')">
+        {{ shown.forWhom }}
+      </span>
+    </p>
+    <p v-if="shown.alsoDiffers" class="mt-1 text-sm">
+      <span :class="look('lineItems', 'rate')">{{ shown.alsoDiffers }}</span>
+    </p>
+    <div v-if="$slots.default" class="mt-4">
+      <slot />
+    </div>
   </section>
 </template>

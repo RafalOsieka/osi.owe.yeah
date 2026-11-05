@@ -1,14 +1,18 @@
 <script setup lang="ts">
 // Invite: passes on the Trip link to someone joining the Trip, by a QR code made on this
-// device (no signal needed), the share sheet, or copying it where there is no share sheet.
-// Only once the Trip has synced (`link` set): until the server has the Trip, its link opens
-// nothing, so the sheet says why instead.
+// device (no signal needed), the share sheet, or copying the link, which the sheet shows
+// shortened. Centred, header to caption, around the code. Only once the Trip has synced
+// (`link` set): until the server has the Trip, its link opens nothing, so the sheet says why
+// instead. Done closes it.
 const open = defineModel<boolean>('open', { required: true });
 const { tripName, link } = defineProps<{ tripName: string; link: string | null }>();
 
 const { t } = useI18n();
 const toast = useToast();
 const canShare = 'share' in navigator;
+
+// The link without its scheme, e.g. "oweyeah.app/trips/0193…", ellipsed by the layout.
+const shownLink = computed(() => link?.replace(/^https?:\/\//, '') ?? '');
 
 async function share(url: string): Promise<void> {
   try {
@@ -36,11 +40,30 @@ async function copy(url: string): Promise<void> {
     v-model:open="open"
     :title="$t('invite.title', { name: tripName })"
     :description="$t('invite.help')"
+    :ui="{ header: 'text-center', description: 'text-balance' }"
   >
     <template #body>
-      <div v-if="link">
-        <QrCode :text="link" :label="$t('invite.qr')" class="mx-auto block w-full max-w-64" />
-        <p class="mt-3 text-center text-sm text-muted">{{ $t('invite.qrHelp') }}</p>
+      <div v-if="link" class="space-y-4">
+        <!-- Framed the same in both color modes: a white plate holding the code. -->
+        <figure class="mx-auto w-full max-w-60">
+          <QrCode :text="link" :label="$t('invite.qr')" class="block w-full ring-1 ring-default" />
+          <figcaption class="mt-2.5 text-center text-sm text-muted">
+            {{ $t('invite.qrHelp') }}
+          </figcaption>
+        </figure>
+        <div
+          class="flex items-center gap-2 rounded-xl bg-elevated py-1 ps-3.5 pe-1 ring-1 ring-default ring-inset"
+        >
+          <UIcon name="i-lucide-link" class="size-4 shrink-0 text-dimmed" aria-hidden="true" />
+          <span class="min-w-0 flex-1 truncate text-sm text-toned">{{ shownLink }}</span>
+          <UButton
+            variant="ghost"
+            icon="i-lucide-copy"
+            :label="$t('invite.copyShort')"
+            :aria-label="$t('invite.copy')"
+            @click="copy(link)"
+          />
+        </div>
       </div>
       <UAlert
         v-else
@@ -51,15 +74,23 @@ async function copy(url: string): Promise<void> {
         :description="$t('invite.notSyncedHelp')"
       />
     </template>
-    <template v-if="link" #footer>
+    <template #footer>
       <UButton
-        v-if="canShare"
+        v-if="link && canShare"
         block
+        size="xl"
         icon="i-lucide-share-2"
         :label="$t('invite.share')"
         @click="share(link)"
       />
-      <UButton v-else block icon="i-lucide-copy" :label="$t('invite.copy')" @click="copy(link)" />
+      <UButton
+        color="neutral"
+        variant="soft"
+        block
+        size="xl"
+        :label="$t('form.done')"
+        @click="open = false"
+      />
     </template>
   </UDrawer>
 </template>

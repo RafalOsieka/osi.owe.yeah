@@ -1,6 +1,6 @@
 # The report page
 
-`node report/build.mjs <runDir>` turns the run folder into `<runDir>/site/`: one page with the score table, every round's reviews side by side, and for a design review each round's screenshots next to the round before (or the round alone). Publish `site/` as a private artifact (`index.html` plus `shots/`), patching in each round's new files.
+`node report/build.mjs <runDir>` turns the run folder into `<runDir>/site/`: one page with the score table, every round's reviews side by side, and for a design review each round's screenshots next to the round before (or the round alone). A screenshot opens a full-screen viewer with that screen from both rounds side by side, scrolling together, with screen, round-pair, theme and zoom controls (←/→, +/−/0, ctrl+wheel). Publish `site/` as a private artifact (`index.html` plus `shots/`), patching in each round's new files.
 
 ## `<runDir>/report.json`
 

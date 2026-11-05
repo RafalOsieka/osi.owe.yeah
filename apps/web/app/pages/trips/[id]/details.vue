@@ -4,25 +4,31 @@ import type { FormError } from '@nuxt/ui';
 
 // "Name and Trip currency", opened from the Trip tab: the last change wins, with no Conflict
 // screen, and the page says who made it and when. A new Trip currency rewrites no Expense:
-// each is converted at the rate for the new pair (ADR 0003).
+// each is converted at the rate for the new pair (ADR 0003), which the field says once another
+// currency is picked. Save waits for a change.
 definePageMeta({ viewTransition: { toTypes: ['forward'], fromTypes: ['back'] } });
 
-const { trip, everyone, saveTripDetails } = useOpenTrip();
+const { trip, claim, everyone, saveTripDetails } = useOpenTrip();
 const { t, locale } = useI18n();
 const back = useBack();
 const currencies = useCurrencyItems(TRIP_CURRENCIES);
 
 const parent = computed(() => `/trips/${trip.value.id}/settings`);
 const state = reactive<Omit<Trip, 'id'>>({ name: trip.value.name, currency: trip.value.currency });
+const changed = computed(
+  () => state.name.trim() !== trip.value.name || state.currency !== trip.value.currency,
+);
 
-// "Last changed by Kasia, 2 hr. ago", by the server's clock once it has the change.
+// "Last changed by Kasia · 2 hours ago" ("by you" for this device's Claim), by the server's
+// clock once it has the change.
 const lastChanged = computed(() => {
   const { edited } = trip.value;
   if (!edited) return null;
   const name = everyone.value.find(({ id }) => id === edited.by)?.name;
   const when = edited.at
-    ? formatTimeAgo(edited.at, new Date(), locale.value)
+    ? formatTimeAgo(edited.at, new Date(), locale.value, t('history.justNow'))
     : t('history.notSyncedYet');
+  if (edited.by === claim.value?.id) return t('trip.details.lastChangedByYou', { when });
   return name
     ? t('trip.details.lastChangedBy', { name, when })
     : t('trip.details.lastChanged', { when });
@@ -59,7 +65,11 @@ useHead({ title: () => t('trip.details.title') });
       <UFormField
         name="currency"
         :label="$t('trip.create.currency')"
-        :help="$t('trip.create.currencyHelp')"
+        :help="
+          state.currency === trip.currency
+            ? $t('trip.details.currencyHelp')
+            : $t('trip.details.currencyChange', { currency: state.currency })
+        "
       >
         <USelectMenu
           v-model="state.currency"
@@ -69,10 +79,18 @@ useHead({ title: () => t('trip.details.title') });
         />
       </UFormField>
     </UForm>
-    <p v-if="lastChanged" class="mt-3 px-1 text-sm text-muted">{{ lastChanged }}</p>
+    <p v-if="lastChanged" class="mt-3 px-4 text-sm text-muted">{{ lastChanged }}</p>
 
     <template #action>
-      <UButton type="submit" form="trip-details" block size="xl" :label="$t('trip.details.save')" />
+      <UButton
+        type="submit"
+        form="trip-details"
+        block
+        size="xl"
+        :disabled="!changed"
+        class="disabled:bg-accented disabled:text-muted disabled:opacity-100"
+        :label="$t('trip.details.save')"
+      />
     </template>
   </NuxtLayout>
 </template>

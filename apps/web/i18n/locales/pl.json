@@ -10,8 +10,10 @@
   },
   "install": {
     "title": "Zainstaluj Owe Yeah",
-    "why": "Otwiera się jak aplikacja, a przeglądarka zachowa Twoje podróże na tym urządzeniu na stałe.",
-    "ios": "Stuknij Udostępnij, a potem Do ekranu początkowego: otwiera się jak aplikacja, a Safari zachowa Twoje podróże na tym urządzeniu na stałe.",
+    "why": "Otwiera się jak aplikacja, prosto z ekranu początkowego.",
+    "ios": "Stuknij {share}, a potem {addToHomeScreen}, aby mieć szybszy dostęp.",
+    "share": "Udostępnij",
+    "addToHomeScreen": "Do ekranu początkowego",
     "action": "Zainstaluj"
   },
   "testEnvironment": {
@@ -19,15 +21,20 @@
   },
   "myTrips": {
     "title": "Moje podróże",
-    "empty": "Nie masz jeszcze żadnych podróży.",
-    "emptyHelp": "Załóż podróż, wyślij link pozostałym i zobacz, kto komu ile oddaje. Działa też offline.",
+    "empty": "Nie masz jeszcze podróży",
+    "welcome": "Podziel koszty podróży ze znajomymi",
+    "emptyHelp": "Wpisz, kto ile zapłacił, wyślij pozostałym link do podróży i zobacz, kto komu ile oddaje. Działa też offline.",
     "create": "Nowa podróż",
-    "settled": "Rozliczona"
+    "noExpenses": "Nie ma jeszcze wydatków",
+    "owes": "{name}: do oddania",
+    "owed": "{name}: do odebrania",
+    "even": "{name}: na zero",
+    "settledHeading": "Rozliczone"
   },
   "trip": {
     "create": {
       "title": "Nowa podróż",
-      "name": "Nazwa",
+      "name": "Nazwa podróży",
       "namePlaceholder": "Chorwacja {year}",
       "nameInvalid": "Nadaj podróży nazwę o długości do 100 znaków.",
       "currency": "Waluta podróży",
@@ -37,7 +44,7 @@
       "removeParticipant": "Usuń uczestnika",
       "submit": "Utwórz podróż",
       "me": "Twoje imię",
-      "meHelp": "Na tym urządzeniu będziesz tym uczestnikiem.",
+      "meHelp": "To urządzenie pokaże twój udział i saldo.",
       "mePlaceholder": "np. Ania",
       "othersPlaceholder": "np. Kasia",
       "others": "Kto jeszcze jedzie?",
@@ -58,16 +65,20 @@
       "title": "Nazwa i waluta podróży",
       "row": "{name} · {currency}",
       "save": "Zapisz",
-      "lastChangedBy": "Ostatnia zmiana: {name}, {when}",
+      "currencyHelp": "W tej walucie salda są pokazywane i rozliczane. Jej zmiana zostawia każdy wydatek tak, jak go wpisano; każdy jest przeliczany po kursie ze swojego dnia.",
+      "currencyChange": "Salda zostaną przeliczone na {currency}. Każdy wydatek zachowa swoją kwotę i walutę; każdy jest przeliczany po kursie ze swojego dnia.",
+      "lastChangedBy": "Ostatnia zmiana: {name} · {when}",
+      "lastChangedByYou": "Ostatnia zmiana: ty · {when}",
       "lastChanged": "Ostatnia zmiana: {when}"
     },
     "forget": {
       "title": "Zapomnij tę podróż",
-      "help": "{name} zniknie z moich podróży na tym urządzeniu. Jej uczestnicy, także ty, zostają w podróży dla pozostałych.",
+      "help": "{name} zniknie tylko z tego urządzenia. Ty i pozostali uczestnicy zostajecie w podróży. Aby znowu ją otworzyć, potrzebny będzie link do podróży.",
+      "row": "Tylko z tego urządzenia. Dla pozostałych podróż zostaje.",
       "unsynced": "Wszystko zsynchronizowane. | Niezsynchronizowane zmiany na tym urządzeniu: 1. Zapomnienie podróży je utraci. | Niezsynchronizowane zmiany na tym urządzeniu: {count}. Zapomnienie podróży je utraci.",
-      "linkNeeded": "Aby znowu otworzyć podróż, potrzebny będzie link do podróży.",
       "confirm": "Zapomnij",
-      "anyway": "Zapomnij mimo to | Zapomnij mimo to (utracone zmiany: 1) | Zapomnij mimo to (utracone zmiany: {count})"
+      "anyway": "Zapomnij | Zapomnij i utrać 1 zmianę | Zapomnij i utrać zmiany: {count}",
+      "keep": "Zachowaj podróż"
     }
   },
   "participants": {
@@ -77,14 +88,16 @@
     "add": "Dodaj",
     "name": "Imię",
     "addParticipant": "Dodaj uczestnika",
+    "addHelp": "Ta osoba może też dodać się sama, gdy otworzy link do podróży.",
     "you": "ty",
     "remove": "Usuń z podróży",
     "removeHelp": "Imię zostaje w starszych wersjach i usuniętych wydatkach. Wydatek, który znowu go obejmie, przywróci uczestnika.",
-    "referenced": "{name}: brak wydatków. | {name}: wydatki z tym uczestnikiem: 1, więc nie można go usunąć. | {name}: wydatki z tym uczestnikiem: {count}, więc nie można go usunąć."
+    "onExpenses": "Nie ma go w żadnym wydatku | Wydatki z tym uczestnikiem: 1 | Wydatki z tym uczestnikiem: {count}",
+    "onExpensesHelp": "Dopóki jest w wydatku, nie można go usunąć. Najpierw usuń go z tych wydatków."
   },
   "claim": {
     "title": "Kim jesteś?",
-    "help": "Wskaż siebie, a to urządzenie podpowie za ciebie domyślne wartości.",
+    "help": "Wskaż siebie, aby zobaczyć na tym urządzeniu swój udział i saldo.",
     "notListed": "Nie ma cię na liście?",
     "addMe": "Dodaj mnie",
     "youAre": "Jesteś: {name}",
@@ -93,7 +106,7 @@
     "whoYouAre": "Kim jesteś",
     "nobody": "Jeszcze nie wskazano",
     "removed": "Uczestnik {name}, wskazany na tym urządzeniu jako ty, został usunięty z podróży. Kim jesteś teraz?",
-    "noRights": "Wybór imienia nie daje żadnych dodatkowych uprawnień."
+    "noRights": "Każdy, kto ma link do podróży, może ją edytować, niezależnie od wybranego imienia."
   },
   "invite": {
     "action": "Zaproś",
@@ -103,6 +116,7 @@
     "qrHelp": "Pozwól komuś obok zeskanować go aparatem telefonu.",
     "share": "Udostępnij link do podróży",
     "copy": "Skopiuj link do podróży",
+    "copyShort": "Kopiuj",
     "copied": "Skopiowano link do podróży",
     "copyFailed": "Nie udało się skopiować linku do podróży. Spróbuj ponownie.",
     "notSynced": "Podróż nie jest jeszcze zsynchronizowana",
@@ -117,12 +131,15 @@
     "newIncome": "Nowy wpływ",
     "editIncome": "Edytuj wpływ",
     "title": "Tytuł",
-    "titlePlaceholder": "Lidl Rovinj",
-    "titleInvalid": "Nadaj wydatkowi tytuł o długości do 100 znaków.",
+    "titlePlaceholder": "np. Kolacja albo zakupy",
+    "titleMissing": "Podaj tytuł.",
+    "titleInvalid": "Tytuł może mieć najwyżej 100 znaków.",
     "amount": "Kwota",
+    "amountMissing": "Podaj kwotę.",
     "amountInvalid": "Podaj kwotę większą od zera, bez części ułamkowej. | Podaj kwotę większą od zera, z najwyżej 1 miejscem po przecinku. | Podaj kwotę większą od zera, z najwyżej {decimals} miejscami po przecinku.",
     "moneyReceived": "Otrzymane pieniądze",
     "moneyReceivedHelp": "Na zwrot kaucji albo inne pieniądze odzyskane dla grupy.",
+    "moneyReceivedWithContributions": "Niedostępne przy dopłatach: usuń je, aby zapisać otrzymane pieniądze.",
     "paidBy": "Kto zapłacił",
     "payerMissing": "Wskaż, kto zapłacił.",
     "receivedBy": "Kto otrzymał",
@@ -149,8 +166,7 @@
       "chargedWithoutTotal": "Pobrana kwota wymaga sumy różnej od zera.",
       "manualRateToOwnCurrency": "Kurs ręczny musi przeliczać na inną walutę niż waluta wydatku."
     },
-    "emptyHelp": "Kto za coś płaci, dodaje to tutaj.",
-    "addFirst": "Dodaj pierwszy wydatek",
+    "emptyHelp": "Dodaj, za co ktoś zapłacił dla grupy. Udział każdego policzy się sam.",
     "addShort": "Wydatek",
     "paidFor": "{name} płaci · {forWhom}",
     "receivedFor": "{name} otrzymuje · {forWhom}",
@@ -162,7 +178,10 @@
     "youGetBack": "odzyskujesz {amount}",
     "youRepaid": "oddajesz {amount}",
     "notForYou": "nie dotyczy ciebie",
-    "all": "Wszyscy",
+    "selectAll": "Zaznacz wszystkich",
+    "clearAll": "Wyczyść",
+    "splitEach": "Po równo · {amount} na osobę",
+    "splitPeople": "Po równo · {count} os.",
     "forWhomEven": "Za kogo · Po równo",
     "editShort": "Edytuj",
     "notFound": "Ten wydatek nie istnieje.",
@@ -170,16 +189,19 @@
     "delete": "Usuń wydatek",
     "deleted": "Usunięto „{title}”. Znajdziesz go w ostatnio usuniętych.",
     "undo": "Cofnij",
-    "deleteRefused": "Wydatek nie został usunięty"
+    "deleteRefused": "Wydatek nie został usunięty",
+    "youOwe": "masz do oddania {amount}",
+    "deleteIncome": "Usuń wpływ",
+    "daySpent": "wydano {amount}"
   },
   "receipt": {
+    "kind": "Paragon",
     "itemise": "Rozpisz jako paragon",
     "total": "Suma paragonu",
     "lineItems": "Pozycje",
     "shares": "Udziały",
     "summary": "Paragon · pozycje: {count}",
-    "unassignedBadge": "nieprzypisane: {count}",
-    "unassignedTotal": "{amount} jeszcze nieprzypisane, do tego czasu liczone jako udział: {name}.",
+    "unassignedBadge": "nieprzypisane pozycje: {count}",
     "notAssigned": "{amount} jeszcze nieprzypisane",
     "nobodyYet": "jeszcze nikt",
     "unnamed": "Pozycja {position}",
@@ -189,14 +211,12 @@
     "namePlaceholder": "Nazwa (opcjonalnie)",
     "unitPrice": "Cena jednostkowa",
     "quantity": "Ilość",
-    "weighedHelp": "Towar na wagę to jedna sztuka w cenie całej pozycji.",
+    "weighedHelp": "Na wagę? Wpisz ilość 1 i cenę całej pozycji.",
     "lineDiscount": "Rabat na pozycję",
     "receiptDiscount": "Rabat na paragon",
     "discountKind": "{label}: kwota lub procent",
     "discountUnreadable": "Sprawdź rabat.",
-    "perUnitDiscountHelp": "Rabat na sztukę wpisz dla całej pozycji: 2 × 0,20 to 0,40.",
-    "lineDiscountFact": "Rabat {discount}",
-    "receiptDiscountFact": "Rabat na paragon {discount}",
+    "perUnitDiscountHelp": "Dla całej pozycji, nie za sztukę.",
     "receiptDiscountExceeds": "Rabat jest większy niż pozycje po ich własnych rabatach.",
     "splitMode": "Sposób podziału",
     "mode": {
@@ -207,6 +227,7 @@
     "unitsFor": "Sztuki: {name}",
     "amountFor": "Kwota: {name}",
     "unitsAssigned": "Przypisane sztuki: {assigned} z {quantity}",
+    "amountsAssigned": "Przypisano {assigned} z {total}",
     "problem": {
       "negativeLineItem": "Zwrot kaucji to jedna kwota, bez rabatu i kaucji.",
       "unitsExceedQuantity": "Przypisano więcej sztuk, niż kupiono.",
@@ -220,31 +241,43 @@
     "newUnitPrice": "Cena jednostkowa nowej pozycji",
     "newQuantity": "Ilość nowej pozycji",
     "newName": "Nazwa nowej pozycji",
-    "add": "Dodaj",
+    "add": "Dodaj do paragonu",
+    "newLineItem": "Nowa pozycja",
+    "lineTotal": "Wartość pozycji",
+    "pendingHelp": "Poza paragonem, dopóki jej nie dodasz.",
+    "pendingRefused": "Najpierw dodaj albo odrzuć nową pozycję.",
+    "openLine": "Otwórz: {name}",
     "lineItemsMissing": "Dodaj co najmniej jedną pozycję.",
     "lineItemsUnreadable": "Sprawdź ceny, kaucje i kwoty oznaczonych pozycji.",
     "depositPerUnit": "Kaucja za sztukę",
-    "depositHelp": "Doliczana za sztukę opakowania zwrotnego. Dzielona tak jak pozycja, nigdy nie rabatowana.",
+    "depositHelp": "Za sztukę opakowania zwrotnego. Dzielona jak pozycja, bez rabatu.",
     "depositUnreadable": "Sprawdź kaucję.",
     "amountsUnreadable": "Sprawdź kwoty.",
     "depositFact": "Kaucja {deposit}",
     "deposits": "Kaucje",
-    "depositsFact": "Kaucje {amount}",
     "newDeposit": "Kaucja za sztukę nowej pozycji",
-    "depositPlaceholder": "Kaucja za sztukę",
     "depositRefund": "Zwrot kaucji",
     "addDepositRefund": "Dodaj zwrot kaucji",
     "newRefundAmount": "Kwota zwrotu kaucji",
-    "refundPlaceholder": "Kwota z bonu",
     "refundAmount": "Kwota",
     "refundHelp": "Pieniądze za oddane opakowania zwrotne, często bon wykorzystany przy kasie. Odejmowany od sumy, dzielony osobno i nigdy nie rabatowany.",
     "checkAmount": "Sprawdź kwotę.",
     "done": "Gotowe",
-    "closeAdding": "Zamknij",
-    "notAssignedBeforeDiscount": "{amount} jeszcze nieprzypisane, przed rabatem na paragon",
+    "closeAdding": "Odrzuć",
     "extras": "Rabat i kaucja na pozycji",
-    "draftLine": "{amount}, poza paragonem, dopóki jej nie dodasz",
-    "draftEmpty": "Poza paragonem, dopóki jej nie dodasz"
+    "unitsUnassigned": "Nieprzypisane sztuki: {unassigned} z {quantity}",
+    "subtotal": "Suma pozycji",
+    "depositRefunds": "Zwroty kaucji",
+    "includesUnassigned": "w tym {amount} nieprzypisane",
+    "percentOff": "rabat {percent} ({amount})",
+    "unitsUnassignedTotal": "nieprzypisane sztuki: {count} | nieprzypisana sztuka: {count} | nieprzypisane sztuki: {count}",
+    "amountUnassigned": "{amount} nieprzypisane",
+    "countedAs": "na razie: {name}",
+    "countedAsYours": "na razie twoje",
+    "afterReceiptDiscount": "{amount} po rabacie na paragon",
+    "forNow": "na razie",
+    "amountOff": "rabat {amount}",
+    "discountIncluded": "{discount}, wliczony"
   },
   "contribution": {
     "title": "Dopłaty",
@@ -252,10 +285,11 @@
     "add": "Dodaj dopłatę",
     "amountFrom": "Dopłata: {name}",
     "remove": "Usuń dopłatę: {name}",
-    "rest": "Resztę płaci {name}: {amount}",
+    "rest": "Resztę płaci {name}",
     "exceeds": "Dopłaty wynoszą więcej niż cały wydatek.",
     "unreadable": "Sprawdź kwoty dopłat.",
-    "payerRefused": "{name} ma dopłatę w tym wydatku. Usuń ją, aby wskazać tę osobę jako głównego płatnika."
+    "payerRefused": "{name} ma dopłatę w tym wydatku. Usuń ją, aby wskazać tę osobę jako głównego płatnika.",
+    "mainPayer": "Główny płatnik"
   },
   "repayment": {
     "title": "Spłata",
@@ -266,7 +300,13 @@
     "paidTo": "Komu",
     "recipientMissing": "Wybierz, komu oddano pieniądze.",
     "sameParticipant": "Wybierz kogoś innego niż osoba, która zapłaciła.",
-    "fromTo": "{payer} → {recipient}"
+    "fromTo": "{payer} → {recipient}",
+    "note": "Notatka",
+    "notePlaceholder": "np. Gotówka na lotnisku",
+    "settles": "Wyrównuje rozliczenie: {payer} → {recipient}.",
+    "settlesYours": "Wyrównuje twoje rozliczenie z: {recipient}.",
+    "settlesToYou": "Wyrównuje rozliczenie: {payer} → ty.",
+    "delete": "Usuń spłatę"
   },
   "balances": {
     "title": "Salda",
@@ -280,16 +320,17 @@
     "owes": "do oddania",
     "isOwed": "do odebrania",
     "toSettle": "Do spłaty",
-    "paysYou": "{name} oddaje ci",
-    "youPay": "Oddajesz: {name}",
+    "paysYou": "{name} → ty",
+    "youPay": "Ty → {name}",
     "pays": "{payer} → {recipient}",
     "otherSuggestions": "Pozostałe sugerowane spłaty",
     "suggestions": "Sugerowane spłaty",
     "record": "Zapisz",
     "recordLabel": "Zapisz spłatę: {what} {amount}",
-    "recordAnother": "Zapisz inną spłatę",
     "allSettled": "Podróż rozliczona",
-    "allSettledHelp": "Każdy wychodzi na zero."
+    "allSettledHelp": "Każdy wychodzi na zero.",
+    "recordOne": "Zapisz spłatę",
+    "recordWhenPaid": "Gdy już zapłacisz, zapisz to tutaj."
   },
   "reminder": {
     "remind": "Przypomnij",
@@ -297,31 +338,43 @@
     "pushLabel": "Przypomnij powiadomieniem: {name}",
     "shareLabel": "Przypomnij wiadomością do udostępnienia: {name}",
     "copyLabel": "Przypomnij wiadomością do skopiowania: {name}",
-    "byShare": "Bez powiadomień: udostępnisz wiadomość",
-    "byCopy": "Bez powiadomień: skopiujesz wiadomość",
     "sent": "Wysłano przypomnienie: {name}",
     "notSuggested": "To nie jest już sugerowana spłata. Odśwież i spróbuj ponownie.",
     "message": "Cześć {name}, przypominam: do oddania {amount} za podróż „{trip}”.",
     "copied": "Skopiowano przypomnienie. Wklej je do wiadomości.",
-    "copyFailed": "Nie udało się skopiować przypomnienia. Spróbuj ponownie."
+    "copyFailed": "Nie udało się skopiować przypomnienia. Spróbuj ponownie.",
+    "unreachable": {
+      "share": "Bez powiadomień: {names}. Przypomnij udostępni wiadomość, którą wyślesz.",
+      "copy": "Bez powiadomień: {names}. Przypomnij skopiuje wiadomość, którą wyślesz."
+    },
+    "offline": {
+      "share": "Jesteś offline, więc Przypomnij udostępni wiadomość, którą wyślesz.",
+      "copy": "Jesteś offline, więc Przypomnij skopiuje wiadomość, którą wyślesz."
+    }
   },
   "breakdown": {
     "title": "Udział: {name}",
     "paid": "Płatności",
     "share": "Udział",
-    "balance": "Saldo",
     "rounded": "≈ po zaokrągleniu. Dokładne udziały sumują się do całości.",
     "part": {
-      "expenses": "Wydatki",
+      "expenses": "Zwykłe wydatki",
       "goods": "Towary w pełnej cenie",
       "lineDiscounts": "Rabaty na pozycje",
       "deposits": "Kaucje",
       "depositRefunds": "Zwroty kaucji",
       "receiptDiscounts": "Rabat na paragon",
-      "unassigned": "Jeszcze nieprzypisane",
+      "unassigned": "Nieprzypisane (na razie)",
       "income": "Wpływy",
       "repayments": "Otrzymane spłaty"
-    }
+    },
+    "owes": "{name}: do oddania",
+    "isOwed": "{name}: do odebrania",
+    "isEven": "{name}: na zero",
+    "roundedParts": "Części są zaokrąglone do grosza, więc ich suma może się nieco różnić od udziału.",
+    "unassignedRule": "Nieprzypisane sztuki liczą się do udziału osoby, która zapłaciła, dopóki ktoś ich nie dostanie.",
+    "unassignedRuleYours": "Nieprzypisane sztuki liczą się do twojego udziału jako płacącego, dopóki ktoś ich nie dostanie.",
+    "balanceTitle": "Saldo: {name}"
   },
   "rate": {
     "currency": "Waluta",
@@ -333,14 +386,18 @@
     "missingBadge": "brak kursu",
     "provisionalCount": "Kursy wstępne: {count}",
     "missingCount": "Wydatki bez kursu, pominięte w saldach: {count}",
-    "manual": "Kurs ręczny",
+    "conversion": "Przeliczenie waluty",
     "manualKind": "Kurs ręczny: pobrana kwota lub kurs",
-    "kindCharged": "Pobrano",
-    "kindRate": "Kurs",
+    "kindCharged": "Pobrana kwota",
+    "kindRate": "Kurs wymiany",
+    "chargedLabel": "Kwota pobrana w {to}",
+    "rateLabel": "Kurs wymiany",
     "typeManual": "Wpisz kurs ręczny",
-    "askManual": "Brak kursu wymiany dla {from}. Wpisz kurs ręczny, inaczej kwota nie będzie wliczana do sald, dopóki kurs się nie pojawi.",
-    "chargedHelp": "Ile faktycznie pobrano w {to}, np. z karty. Nie zmienia się, gdy zmieniają się kwoty.",
+    "noAutomatic": "Nie ma jeszcze automatycznego kursu dla {from}.",
+    "askManual": "Nie ma jeszcze automatycznego kursu dla {from}. Wpisz go, inaczej kwota nie trafi do sald, dopóki kurs się nie pojawi.",
+    "chargedHelp": "Ile faktycznie pobrał bank lub karta. Kwota w {to} zostaje taka sama, gdy zmienisz kwotę w {from}.",
     "rateHelp": "Ile {to} kosztował 1 {from}, np. w kantorze.",
+    "derivedRate": "Kurs: {rate}",
     "rateInvalid": "Podaj kurs większy od zera.",
     "chargedWithoutTotal": "Pobrana kwota wymaga sumy różnej od zera.",
     "manualTypedRate": "Kurs ręczny: 1 {from} = {rate} {to}",
@@ -350,7 +407,7 @@
   "sync": {
     "status": "Stan synchronizacji",
     "unsynced": "Wszystko zsynchronizowane. | Niezsynchronizowane zmiany: 1 | Niezsynchronizowane zmiany: {count}",
-    "unsyncedHelp": "Twoje zmiany są zapisane na tym urządzeniu i zsynchronizują się same, gdy będziesz online.",
+    "unsyncedHelp": "Zapisane na tym urządzeniu. Zsynchronizują się same, gdy będziesz online.",
     "unsyncedShort": "· niezsynchronizowane: {count}",
     "notSynced": "niezsynchronizowany",
     "pending": "Jeszcze niezsynchronizowany. Pozostali zobaczą go po następnej synchronizacji.",
@@ -379,21 +436,31 @@
       "manualRateToOwnCurrency": "kurs ręczny musi przeliczać na inną walutę niż waluta wydatku."
     },
     "pullToRefresh": "Pociągnij, aby zsynchronizować",
-    "releaseToRefresh": "Puść, aby zsynchronizować"
+    "releaseToRefresh": "Puść, aby zsynchronizować",
+    "conflictShown": "Poniżej twoja wersja, jeszcze niezsynchronizowana."
   },
   "conflict": {
     "title": "Konflikt",
-    "help": "Ty i ktoś inny zmieniliście ten wydatek w tym samym czasie. Wybierz, którą zmianę zachować; druga przepadnie.",
-    "mine": "Twoja zmiana",
-    "theirs": "Zmiana innej osoby",
-    "by": "autor: {name}",
+    "help": "Ty i ktoś inny zmieniliście ten wydatek przed synchronizacją. Wybierz wersję do zachowania; różnice są podświetlone.",
+    "mine": "Twoja wersja",
+    "theirs": "Druga wersja",
     "paidBy": "Kto zapłacił: {name}",
     "receivedBy": "Kto otrzymał: {name}",
     "forWhom": "Za kogo: {names}",
-    "keepMine": "Zachowaj moją",
+    "keepMine": "Zachowaj swoją",
     "keepTheirs": "Zachowaj drugą",
     "none": "Ten wydatek nie ma konfliktu.",
-    "deleted": "Usunięty"
+    "deleted": "Usunięty",
+    "helpNamed": "Ty i {name} zmieniliście ten wydatek przed synchronizacją. Wybierz wersję do zachowania; różnice są podświetlone.",
+    "theirsNamed": "Wersja: {name}",
+    "keepTheirsNamed": "Zachowaj wersję: {name}",
+    "keepMineHelp": "Druga wersja zostanie w historii.",
+    "keepMineHelpNamed": "Wersja ({name}) zostanie w historii.",
+    "keepTheirsHelp": "Twoje zmiany przepadną na dobre.",
+    "alsoDiffers": "Różni się też: {fields}",
+    "changedWhen": "Zmiana: {when}",
+    "forAll": "Za wszystkich ({count})",
+    "mineWhen": "Zmiana na tym urządzeniu, jeszcze niezsynchronizowana"
   },
   "colorMode": {
     "title": "Motyw",
@@ -403,19 +470,24 @@
   },
   "form": {
     "back": "Wstecz",
-    "close": "Zamknij"
+    "close": "Zamknij",
+    "done": "Gotowe",
+    "optional": "Opcjonalnie",
+    "moreInfo": "Informacje: {label}"
   },
   "history": {
     "title": "Historia",
-    "lastEditedBy": "Ostatnia zmiana: {name}, {when}",
+    "lastEditedBy": "Ostatnia zmiana: {name} · {when}",
     "lastEdited": "Ostatnia zmiana: {when}",
     "notSyncedYet": "jeszcze niezsynchronizowana",
     "someone": "Ktoś",
     "offline": "Historia wymaga połączenia z internetem. Spróbuj ponownie, gdy będziesz online.",
     "empty": "Nie ma jeszcze historii. Pojawi się, gdy wydatek się zsynchronizuje.",
     "notFound": "Ta wersja nie istnieje.",
-    "version": "Wersja {version}",
     "byline": "{name} · {when}",
+    "changedBy": "Zmienione przez: {name} · {when}",
+    "changedByYou": "Zmienione przez ciebie · {when}",
+    "changedAt": "Zmienione {when}",
     "deletedHere": "Ta zmiana usunęła wydatek.",
     "restore": "Przywróć tę wersję",
     "restoreRefused": "Wydatek nie został przywrócony",
@@ -424,24 +496,52 @@
       "edited": "Zmieniono",
       "deleted": "Usunięto",
       "restored": "Przywrócono"
-    }
+    },
+    "byYou": "ty",
+    "you": "Ty",
+    "justNow": "przed chwilą",
+    "current": "Aktualna",
+    "changed": "Zmiany: {fields}",
+    "field": {
+      "title": "tytuł",
+      "amount": "kwota",
+      "currency": "waluta",
+      "when": "kiedy",
+      "paidBy": "kto zapłacił",
+      "forWhom": "za kogo",
+      "lineItems": "pozycje",
+      "rate": "kurs ręczny"
+    },
+    "was": "było {amount}",
+    "differsFromNow": "Inaczej niż teraz: {fields}.",
+    "restoreHelp": "Przywrócenie zapisze ją jako nową zmianę. Aktualna wersja zostanie w historii.",
+    "earlierRevision": "Wcześniejsza wersja",
+    "currentRevision": "Aktualna wersja",
+    "sameAsNow": "Tak samo jak teraz.",
+    "nowAmount": "teraz {amount}",
+    "amountAndShares": "kwota (a z nią część płacącego i udziały)"
   },
   "deleted": {
     "title": "Ostatnio usunięte",
-    "by": "{name} · usunięto {when}",
+    "by": "Usunięte przez: {name} · {when}",
+    "byYou": "Usunięte przez: ty · {when}",
     "at": "Usunięto {when}",
     "restore": "Przywróć",
     "restoreTitle": "Przywróć: {title}",
     "empty": "Nic nie usunięto",
     "emptyHelp": "Tu czekają usunięte wydatki, aby można je było przywrócić.",
-    "row": "{total} · {deleted}"
+    "kept": "Usunięte wydatki zostają tutaj, dopóki ktoś ich nie przywróci."
   },
   "notices": {
-    "participantRestored": "Uczestnika {name} usunięto, zanim zsynchronizował się twój wydatek „{title}”. Wydatek go przywrócił.",
-    "removalRefused": "Uczestnik {name} nie został usunięty: jest teraz w wydatku."
+    "participantRestored": "Uczestnika {name} usunięto, zanim zsynchronizował się twój wydatek {title}. Wydatek go przywrócił.",
+    "removalRefused": "Uczestnik {name} nie został usunięty: jest teraz w wydatku.",
+    "removalRefusedBy": "Uczestnik {name} nie został usunięty: obejmuje go teraz wydatek {title}.",
+    "quoted": "„{title}”",
+    "showExpense": "Pokaż wydatek"
   },
   "notifications": {
     "title": "Powiadomienia",
+    "blockedShort": "Zablokowane w tej przeglądarce",
     "on": "Włączone",
     "off": "Wyłączone",
     "pickFirst": "Najpierw wskaż, kim jesteś",
@@ -458,9 +558,25 @@
     "turnOff": "Wyłącz",
     "failed": "Nie udało się włączyć powiadomień. Sprawdź połączenie i spróbuj ponownie.",
     "blockedHelp": "Powiadomienia Owe Yeah są zablokowane w tej przeglądarce. Aby je odblokować:",
-    "blockedStep1": "Otwórz ustawienia tej strony: stuknij ikonę obok adresu albo znajdź Owe Yeah w ustawieniach witryn w ustawieniach przeglądarki.",
+    "blockedStep1": "Znajdź ustawienia powiadomień:",
+    "unblock": "Aby je odblokować:",
+    "inBrowser": {
+      "label": "W przeglądarce:",
+      "how": "stuknij {icon} obok adresu i otwórz ustawienia strony."
+    },
+    "inAndroidApp": {
+      "label": "Zainstalowana aplikacja na Androidzie:",
+      "how": "przytrzymaj jej ikonę i stuknij Informacje o aplikacji."
+    },
+    "inAppleApp": {
+      "label": "Zainstalowana aplikacja na iPhonie lub iPadzie:",
+      "how": "otwórz Ustawienia, potem Powiadomienia i Owe Yeah."
+    },
     "blockedStep2": "Zezwól na powiadomienia.",
-    "blockedStep3": "Wróć tutaj i stuknij Włącz."
+    "blockedStep3": "Wróć tutaj i stuknij Sprawdź ponownie.",
+    "siteIcon": "ikonę ustawień strony",
+    "checkAgain": "Sprawdź ponownie",
+    "stillBlocked": "Nadal zablokowane. Zezwól na powiadomienia w ustawieniach i sprawdź ponownie."
   },
   "push": {
     "added": "Nowy wydatek: „{title}” ({author})",
@@ -475,7 +591,9 @@
   },
   "legal": {
     "title": "Informacje prawne",
-    "privacyLink": "polityka prywatności"
+    "privacyLink": "polityka prywatności",
+    "contents": "Na tej stronie",
+    "backToContents": "Wróć do spisu treści"
   },
   "privacy": {
     "title": "Polityka prywatności",

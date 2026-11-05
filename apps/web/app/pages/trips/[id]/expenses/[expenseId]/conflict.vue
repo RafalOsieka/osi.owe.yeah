@@ -2,14 +2,17 @@
 import { findExpense } from '~/sync/local-trip';
 
 // The Conflict screen, opened from the notice on an Expense's detail page: this device's
-// version of the Expense next to the one the server has, each with who made it where known,
-// and marked when it deletes the Expense.
-// Keep mine sends this device's version again on top of theirs; keep theirs drops it. Either
-// returns to the detail page.
+// version of the Expense and the one the server has, each a card named for whose it is ("Your
+// version", "Tomek's version", when he changed it) with what differs highlighted, marked
+// when it deletes the Expense, and ending in its own equal choice, after what that choice
+// does to the other version: quiet where Tomek's stays in History, a restrained amber warning
+// where yours is lost for good. Keep yours sends this device's version again on top of
+// theirs, which stays in the Expense's History; keep theirs drops this device's changes, which
+// never reached the server, for good. Either returns to the detail page.
 definePageMeta({ viewTransition: { toTypes: ['forward'], fromTypes: ['back'] } });
 
-const { trip, keepMine, discardChanges } = useOpenTrip();
-const { t } = useI18n();
+const { trip, claim, keepMine, discardChanges } = useOpenTrip();
+const { t, locale } = useI18n();
 const route = useRoute();
 const back = useBack();
 
@@ -18,7 +21,22 @@ const detail = computed(() => `/trips/${trip.value.id}/expenses/${expenseId}`);
 
 const conflict = computed(() => {
   const mine = findExpense(trip.value, expenseId);
-  return mine?.unsynced?.status === 'conflict' ? { mine, held: mine.unsynced } : null;
+  if (mine?.unsynced?.status !== 'conflict') return null;
+  const held = mine.unsynced;
+  const author = trip.value.participants.find(({ id }) => id === held.currentClaimId)?.name;
+  const at = held.current.edited?.at;
+  return {
+    mine,
+    theirs: held.current,
+    author,
+    // When the other version was made, by the server's clock.
+    theirsWhen: at
+      ? t('conflict.changedWhen', {
+          when: formatTimeAgo(at, new Date(), locale.value, t('history.justNow')),
+        })
+      : undefined,
+    changed: changedFields(held.current, mine),
+  };
 });
 
 const resolving = ref(false);
@@ -39,44 +57,78 @@ useHead({ title: () => t('conflict.title') });
 <template>
   <NuxtLayout name="form" :title="$t('conflict.title')" :parent="detail">
     <template v-if="conflict">
-      <p class="mb-4 text-sm text-muted">{{ $t('conflict.help') }}</p>
+      <p class="mb-4 px-1 text-toned">
+        {{
+          conflict.author
+            ? $t('conflict.helpNamed', { name: conflict.author })
+            : $t('conflict.help')
+        }}
+      </p>
       <div class="flex flex-col gap-3">
         <ExpenseVersion
           :heading="$t('conflict.mine')"
+          :subtitle="$t('conflict.mineWhen')"
           :expense="conflict.mine"
           :deleted="conflict.mine.deleted"
-          :author-id="conflict.held.claimId"
+          :changed="conflict.changed"
+          :claim-id="claim?.id ?? null"
           :participants="trip.participants"
-        />
+        >
+          <!-- AttentionNote's shape in neutral: what is kept needs no attention. -->
+          <p
+            class="mb-2.5 flex gap-2.5 rounded-xl bg-elevated/60 px-3.5 py-3 text-sm text-toned ring-1 ring-default ring-inset"
+          >
+            <UIcon
+              name="i-lucide-history"
+              class="mt-0.5 size-4 shrink-0 text-muted"
+              aria-hidden="true"
+            />
+            {{
+              conflict.author
+                ? $t('conflict.keepMineHelpNamed', { name: conflict.author })
+                : $t('conflict.keepMineHelp')
+            }}
+          </p>
+          <UButton
+            block
+            size="xl"
+            variant="soft"
+            :disabled="resolving"
+            :label="$t('conflict.keepMine')"
+            @click="resolve(keepMine)"
+          />
+        </ExpenseVersion>
         <ExpenseVersion
-          :heading="$t('conflict.theirs')"
-          :expense="conflict.held.current"
-          :deleted="conflict.held.current.deleted"
-          :author-id="conflict.held.currentClaimId"
+          :heading="
+            conflict.author
+              ? $t('conflict.theirsNamed', { name: conflict.author })
+              : $t('conflict.theirs')
+          "
+          :subtitle="conflict.theirsWhen"
+          :expense="conflict.theirs"
+          :deleted="conflict.theirs.deleted"
+          :changed="conflict.changed"
+          :claim-id="claim?.id ?? null"
           :participants="trip.participants"
-        />
+        >
+          <AttentionNote icon="i-lucide-triangle-alert" class="mb-2.5">
+            {{ $t('conflict.keepTheirsHelp') }}
+          </AttentionNote>
+          <UButton
+            block
+            size="xl"
+            variant="soft"
+            :disabled="resolving"
+            :label="
+              conflict.author
+                ? $t('conflict.keepTheirsNamed', { name: conflict.author })
+                : $t('conflict.keepTheirs')
+            "
+            @click="resolve(discardChanges)"
+          />
+        </ExpenseVersion>
       </div>
     </template>
     <UEmpty v-else icon="i-lucide-circle-check" variant="naked" :title="$t('conflict.none')" />
-
-    <template v-if="conflict" #action>
-      <div class="flex gap-2">
-        <UButton
-          class="flex-1 justify-center"
-          size="xl"
-          variant="outline"
-          :disabled="resolving"
-          :label="$t('conflict.keepTheirs')"
-          @click="resolve(discardChanges)"
-        />
-        <UButton
-          class="flex-1 justify-center"
-          size="xl"
-          :disabled="resolving"
-          :label="$t('conflict.keepMine')"
-          @click="resolve(keepMine)"
-        />
-      </div>
-    </template>
   </NuxtLayout>
 </template>

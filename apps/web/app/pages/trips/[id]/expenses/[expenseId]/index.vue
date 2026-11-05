@@ -1,17 +1,19 @@
 <script setup lang="ts">
 import type { AlertProps } from '@nuxt/ui';
-import { isRepayment } from '@osi/owe-yeah-domain';
+import { expenseKind } from '@osi/owe-yeah-domain';
 import { toExpense } from '~/sync/local-trip';
 
 // An Expense's detail page: the Expense in full, with its total converted into the Trip
-// currency; on top, why it is not synced yet if it
-// isn't; at the bottom, who last edited it and when, its History, and Delete. A Conflict
-// opens the Conflict screen; a rejected change is fixed with Edit or discarded. Edit opens the
-// Expense form. Delete moves it to Recently deleted, with Undo for a moment. Should the
-// Expense go (deleted, or a discarded new one), so does the page.
+// currency; on top, why it is not synced yet if it isn't; at the bottom, one quiet card with
+// its History (who last edited it and when, "you" for the claimed Participant) and Delete,
+// named for what it deletes (Expense, Income or Repayment). A Conflict shows as an amber
+// notice saying the details are this device's version, with a full-width primary Choose version that
+// opens the Conflict screen, Edit stepping back meanwhile; a rejected change is fixed with Edit
+// or discarded. Edit opens the Expense form. Delete moves it to Recently deleted, with Undo
+// for a moment. Should the Expense go (deleted, or a discarded new one), so does the page.
 definePageMeta({ viewTransition: { toTypes: ['forward'], fromTypes: ['back'] } });
 
-const { trip, everyone, discardChanges, deleteExpense, saveExpense } = useOpenTrip();
+const { trip, claim, everyone, discardChanges, deleteExpense, saveExpense } = useOpenTrip();
 const { t, locale } = useI18n();
 const toast = useToast();
 const route = useRoute();
@@ -26,15 +28,42 @@ watch(expense, (now, before) => {
   if (before && !now) void back(tripPage.value);
 });
 
-// "Last edited by Kasia, 2 hr. ago", by the server's clock once it has the change.
+// "Last edited by Kasia, 2 hours ago" ("by you" for the claimed Participant), by the
+// server's clock once it has the change.
 const lastEdited = computed(() => {
   const edited = expense.value?.edited;
   if (!edited) return null;
-  const name = everyone.value.find(({ id }) => id === edited.by)?.name;
+  const name =
+    edited.by === claim.value?.id
+      ? t('history.byYou')
+      : everyone.value.find(({ id }) => id === edited.by)?.name;
   const when = edited.at
-    ? formatTimeAgo(edited.at, new Date(), locale.value)
+    ? formatTimeAgo(edited.at, new Date(), locale.value, t('history.justNow'))
     : t('history.notSyncedYet');
   return name ? t('history.lastEditedBy', { name, when }) : t('history.lastEdited', { when });
+});
+
+// What the Expense is, for Edit's and Delete's names.
+const kind = computed(() => (expense.value ? expenseKind(expense.value).kind : 'plain'));
+const labels = computed(() => {
+  switch (kind.value) {
+    case 'repayment':
+      return { edit: t('repayment.edit'), delete: t('repayment.delete') };
+    case 'income':
+      return { edit: t('expense.editIncome'), delete: t('expense.deleteIncome') };
+    default:
+      return { edit: t('expense.edit'), delete: t('expense.delete') };
+  }
+});
+
+// The Conflict, when there is one: who else changed the Expense.
+const conflict = computed(() => {
+  const unsynced = expense.value?.unsynced;
+  if (unsynced?.status !== 'conflict') return null;
+  const author = trip.value.participants.find(({ id }) => id === unsynced.currentClaimId);
+  return {
+    title: author ? t('sync.conflictBy', { name: author.name }) : t('sync.conflictBySomeone'),
+  };
 });
 
 // Which Trip rules the last delete broke; the Expense stays as it was.
@@ -63,18 +92,10 @@ const notSynced = computed((): AlertProps | null => {
   const unsynced = expense.value?.unsynced;
   switch (unsynced?.status) {
     case undefined:
+    case 'conflict':
       return null;
     case 'pending':
       return { title: t('sync.pending'), color: 'neutral', icon: 'i-lucide-cloud-off' };
-    case 'conflict': {
-      const author = trip.value.participants.find(({ id }) => id === unsynced.currentClaimId);
-      return {
-        title: author ? t('sync.conflictBy', { name: author.name }) : t('sync.conflictBySomeone'),
-        color: 'error',
-        icon: 'i-lucide-triangle-alert',
-        actions: [{ label: t('sync.choose'), to: `${page.value}/conflict` }],
-      };
-    }
     case 'rejected': {
       const reason = unsynced.problems.map((problem) => t(`sync.reason.${problem}`)).join(' ');
       return {
@@ -95,51 +116,55 @@ useHead({ title: () => expense.value?.title ?? t('expense.notFound') });
   <NuxtLayout name="form" :title="expense?.title ?? ''" :parent="tripPage" title-hidden>
     <template v-if="expense" #actions>
       <UButton
-        variant="soft"
+        :color="conflict ? 'neutral' : 'primary'"
+        :variant="conflict ? 'ghost' : 'soft'"
         icon="i-lucide-pencil"
         :label="$t('expense.editShort')"
-        :aria-label="isRepayment(expense) ? $t('repayment.edit') : $t('expense.edit')"
+        :aria-label="labels.edit"
         :to="`/trips/${trip.id}/expenses/${expense.id}/edit`"
       />
     </template>
 
     <template v-if="expense">
+      <AttentionNote v-if="conflict" icon="i-lucide-triangle-alert" class="mb-4">
+        <p class="font-medium">{{ conflict.title }}</p>
+        <p class="mt-0.5 text-toned">{{ $t('sync.conflictShown') }}</p>
+        <template #action>
+          <UButton block :label="$t('sync.choose')" :to="`${page}/conflict`" />
+        </template>
+      </AttentionNote>
       <UAlert v-if="notSynced" v-bind="notSynced" variant="subtle" class="mb-4" />
       <ExpenseDetails :expense="expense" converted />
 
-      <footer class="mt-7">
-        <div class="card overflow-hidden">
-          <NuxtLink
-            :to="`${page}/history`"
-            class="flex items-center gap-3 px-4 py-3 transition-colors hover:bg-elevated/60"
-          >
-            <UIcon name="i-lucide-history" class="size-5 shrink-0 text-muted" />
-            <span class="min-w-0 flex-1">
-              <span class="block text-highlighted">{{ $t('history.title') }}</span>
-              <span v-if="lastEdited" class="block text-sm text-muted">{{ lastEdited }}</span>
-            </span>
-            <UIcon name="i-lucide-chevron-right" class="size-5 shrink-0 text-dimmed" />
-          </NuxtLink>
-        </div>
-        <div class="card mt-4 overflow-hidden">
-          <button
-            type="button"
-            class="flex w-full cursor-pointer items-center gap-3 px-4 py-3 text-start font-medium text-error transition-colors hover:bg-error/5"
-            @click="remove"
-          >
-            <UIcon name="i-lucide-trash-2" class="size-5 shrink-0" />
-            {{ $t('expense.delete') }}
-          </button>
-        </div>
-        <UAlert
-          v-if="refusals.length > 0"
-          color="error"
-          icon="i-lucide-circle-alert"
-          :title="$t('expense.deleteRefused')"
-          :description="refusals.join(' ')"
-          class="mt-2"
-        />
+      <footer class="card mt-7 divide-y divide-default overflow-hidden">
+        <NuxtLink
+          :to="`${page}/history`"
+          class="flex items-center gap-3 px-4 py-3 transition-colors hover:bg-elevated/60"
+        >
+          <UIcon name="i-lucide-history" class="size-5 shrink-0 text-muted" />
+          <span class="min-w-0 flex-1 leading-snug">
+            <span class="block text-highlighted">{{ $t('history.title') }}</span>
+            <span v-if="lastEdited" class="block text-sm text-muted">{{ lastEdited }}</span>
+          </span>
+          <UIcon name="i-lucide-chevron-right" class="size-5 shrink-0 text-dimmed" />
+        </NuxtLink>
+        <button
+          type="button"
+          class="flex min-h-12 w-full cursor-pointer items-center gap-3 px-4 py-3 text-start text-error transition-colors hover:bg-error/5"
+          @click="remove"
+        >
+          <UIcon name="i-lucide-trash-2" class="size-5 shrink-0" />
+          {{ labels.delete }}
+        </button>
       </footer>
+      <UAlert
+        v-if="refusals.length > 0"
+        color="error"
+        icon="i-lucide-circle-alert"
+        :title="$t('expense.deleteRefused')"
+        :description="refusals.join(' ')"
+        class="mt-2"
+      />
     </template>
     <UEmpty v-else icon="i-lucide-receipt-text" variant="naked" :title="$t('expense.notFound')" />
   </NuxtLayout>

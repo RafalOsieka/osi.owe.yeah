@@ -101,33 +101,37 @@ async function create(): Promise<void> {
             {{ $t('trip.create.others') }}
           </legend>
           <UFormField v-for="(_, index) in state.others" :key="index" :name="`others.${index}`">
-            <div class="flex gap-2">
-              <UInput
-                v-model="state.others[index]"
-                :placeholder="$t('trip.create.othersPlaceholder')"
-                :aria-label="$t('trip.create.participant', { number: index + 2 })"
-                class="grow"
-              />
-              <UButton
-                v-if="state.others.length > 1"
-                color="neutral"
-                variant="ghost"
-                icon="i-lucide-x"
-                :aria-label="$t('trip.create.removeParticipant')"
-                @click="state.others.splice(index, 1)"
-              />
-            </div>
+            <!-- The remove button sits inside the field, so every field keeps one width. -->
+            <UInput
+              v-model="state.others[index]"
+              :placeholder="$t('trip.create.othersPlaceholder')"
+              :aria-label="$t('trip.create.participant', { number: index + 2 })"
+              :ui="{ trailing: 'pe-0.5' }"
+              class="w-full"
+            >
+              <template v-if="state.others.length > 1" #trailing>
+                <UButton
+                  color="neutral"
+                  variant="link"
+                  size="md"
+                  icon="i-lucide-x"
+                  class="text-dimmed hover:text-default"
+                  :aria-label="$t('trip.create.removeParticipant')"
+                  @click="state.others.splice(index, 1)"
+                />
+              </template>
+            </UInput>
           </UFormField>
-          <p class="text-sm text-muted">{{ $t('trip.create.othersHelp') }}</p>
+          <!-- Right under the fields it adds to, green like every other add, its "+" in line with
+               the names typed in them. -->
           <UButton
             variant="ghost"
-            color="neutral"
-            size="sm"
             icon="i-lucide-plus"
             :label="$t('trip.create.addParticipant')"
-            class="-mx-2 text-muted"
+            class="-ms-1"
             @click="state.others.push('')"
           />
+          <p class="text-sm text-muted">{{ $t('trip.create.othersHelp') }}</p>
         </fieldset>
       </div>
     </UForm>

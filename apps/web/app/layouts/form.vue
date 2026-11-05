@@ -21,11 +21,33 @@ const {
 }>();
 
 const back = useBack();
+
+// The page keeps clear of the fixed `#action` bar however tall it grows (a refusal or a note
+// above the button), so the end of the form never hides under it.
+const bar = useTemplateRef<HTMLElement>('bar');
+const barHeight = ref(0);
+let observer: ResizeObserver | undefined;
+onMounted(() => {
+  observer = new ResizeObserver(([entry]) => {
+    barHeight.value = entry?.borderBoxSize[0]?.blockSize ?? 0;
+  });
+  // The bar can come and go with the page's `#action`.
+  watch(
+    bar,
+    (now, before) => {
+      if (before) observer?.unobserve(before);
+      if (now) observer?.observe(now);
+      else barHeight.value = 0;
+    },
+    { immediate: true },
+  );
+});
+onBeforeUnmount(() => observer?.disconnect());
 </script>
 
 <template>
   <header
-    class="sticky top-0 z-10 border-b border-default bg-canvas/80 pt-[env(safe-area-inset-top)] backdrop-blur-xl backdrop-saturate-150"
+    class="sticky top-0 z-10 border-b border-default bg-canvas pt-[env(safe-area-inset-top)] backdrop-blur-xl backdrop-saturate-150"
   >
     <div class="flex h-14 items-center gap-1 ps-2 pe-4">
       <UButton
@@ -45,11 +67,15 @@ const back = useBack();
       <slot name="actions" />
     </div>
   </header>
-  <main class="px-4 pt-4 pb-[calc(6rem+env(safe-area-inset-bottom))]">
+  <main
+    class="px-4 pt-4 pb-[calc(6rem+env(safe-area-inset-bottom))]"
+    :style="barHeight > 0 ? { paddingBottom: `calc(${barHeight}px + 1rem)` } : undefined"
+  >
     <slot />
   </main>
   <div
     v-if="$slots.action"
+    ref="bar"
     class="fixed inset-x-0 bottom-0 mx-auto max-w-120 bg-linear-to-t from-canvas from-70% to-canvas/0 px-4 pt-6 pb-[calc(1rem+env(safe-area-inset-bottom))]"
   >
     <slot name="action" />

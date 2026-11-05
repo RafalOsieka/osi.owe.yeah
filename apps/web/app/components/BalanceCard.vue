@@ -8,10 +8,10 @@ import {
 } from '@osi/owe-yeah-domain';
 
 // Your balance, first on the Balances tab: "You're owed X" (green), "You owe X" (red) or
-// "You're even" (neutral), told by the icon, with what you paid and your share. The balance
-// shown is the rounded one settling up uses, so a fraction of a cent left over by an Even
-// split doesn't read as owing, and the share shown is what you paid less it, so the card adds
-// up. Without a Claim it shows the Trip total instead. The default slot sits under a line at
+// "You're even" (neutral), told by the icon (← owing, → owed, as the bars below point), with
+// what you paid and your share. The balance shown is the rounded one settling up uses, so a
+// fraction of a cent left over by an Even split doesn't read as owing, and the share shown is
+// what you paid less it, so the card adds up. Without a Claim it shows the Trip total instead. The default slot sits under a line at
 // the bottom, for what settles it.
 const { balance, total, currency } = defineProps<{
   /** The claimed Participant's balance, or `null` without a Claim. */
@@ -25,8 +25,8 @@ const { t, locale } = useI18n();
 const money = (amount: Rational) => formatMoney(amount, currency, locale.value);
 
 const tones = {
-  owed: { icon: 'i-lucide-arrow-down-left', chip: 'bg-success/12 text-success' },
-  owe: { icon: 'i-lucide-arrow-up-right', chip: 'bg-error/12 text-error' },
+  owed: { icon: 'i-lucide-arrow-right', chip: 'bg-success/12 text-success' },
+  owe: { icon: 'i-lucide-arrow-left', chip: 'bg-error/12 text-error' },
   even: { icon: 'i-lucide-equal', chip: 'bg-elevated text-muted' },
   total: { icon: 'i-lucide-wallet', chip: 'bg-primary/12 text-primary' },
 };
@@ -71,7 +71,7 @@ const card = computed(() => {
     >
       {{ card.amount }}
     </p>
-    <p v-if="card.sub" class="mt-3 text-sm text-muted tabular-nums">{{ card.sub }}</p>
+    <p v-if="card.sub" class="mt-3 text-sm text-muted tabular-nums">{{ keepApprox(card.sub) }}</p>
     <div v-if="$slots.default" class="-mx-5 mt-5 -mb-5 border-t border-default">
       <slot />
     </div>

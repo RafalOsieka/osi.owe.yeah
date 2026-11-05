@@ -54,7 +54,7 @@ export function useOpenTrip(): OpenTrip {
 
 /**
  * A Participant's avatar color: by their place in the open Trip's order (`avatarColorAt`), so
- * no two of its first eight share one; by their id when they are not in it, or outside a Trip.
+ * no two of its first six share one; by their id when they are not in it, or outside a Trip.
  */
 export function useAvatarColor(): (participantId: string) => AvatarColor {
   const openTrip = inject(openTripKey, null);

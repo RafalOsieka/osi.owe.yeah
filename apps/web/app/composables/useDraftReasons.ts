@@ -27,10 +27,11 @@ export function useDraftReasons() {
     draft: ExpenseDraft,
   ): string {
     switch (field) {
+      // An empty field asks for what is missing; the limits show once something breaks them.
       case 'title':
-        return t('expense.titleInvalid');
+        return code === 'missing' ? t('expense.titleMissing') : t('expense.titleInvalid');
       case 'amount':
-        return amountInvalid(draft.currency);
+        return code === 'missing' ? t('expense.amountMissing') : amountInvalid(draft.currency);
       case 'manualRate':
         return draft.manualRate.kind === 'rate'
           ? t('rate.rateInvalid')

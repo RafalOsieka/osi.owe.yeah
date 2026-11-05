@@ -9,12 +9,14 @@ const UNITS = [
 ] as const satisfies readonly (readonly [Intl.RelativeTimeFormatUnit, number])[];
 
 /**
- * How long before `now` an ISO instant was, in the largest whole unit (e.g. "2 hr. ago"), as
- * "last edited" and History say it. Under a minute is "now".
+ * How long before `now` an ISO instant was, in the largest whole unit, spelled out (e.g. "2
+ * hours ago"), as "last edited" and History say it. Under a minute is `justNow` (e.g. "just
+ * now"), or the locale's own "now" without it.
  */
-export function formatTimeAgo(at: string, now: Date, locale: string): string {
+export function formatTimeAgo(at: string, now: Date, locale: string, justNow?: string): string {
   const seconds = (new Date(at).getTime() - now.getTime()) / 1000;
-  const format = new Intl.RelativeTimeFormat(locale, { numeric: 'auto', style: 'short' });
+  const format = new Intl.RelativeTimeFormat(locale, { numeric: 'auto', style: 'long' });
   const unit = UNITS.find(([, length]) => Math.abs(seconds) >= length);
-  return unit ? format.format(Math.round(seconds / unit[1]), unit[0]) : format.format(0, 'second');
+  if (unit) return format.format(Math.round(seconds / unit[1]), unit[0]);
+  return justNow ?? format.format(0, 'second');
 }

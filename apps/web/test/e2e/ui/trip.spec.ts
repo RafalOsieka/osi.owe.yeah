@@ -111,7 +111,7 @@ async function createTrip(
   others: readonly string[],
 ): Promise<void> {
   await page.goto('/trips/new');
-  await page.getByLabel('Name', { exact: true }).fill(name);
+  await page.getByLabel('Trip name').fill(name);
   await page.getByLabel('Your name').fill(me);
   for (const [index, other] of others.entries()) {
     if (index > 0) await page.getByRole('button', { name: 'Add another' }).click();
@@ -126,7 +126,7 @@ test('a new Trip lands on its empty Expenses tab, already knowing who you are', 
 }) => {
   await page.goto('/');
   await page.getByRole('link', { name: 'New Trip' }).click();
-  await page.getByLabel('Name', { exact: true }).fill('Croatia 2026');
+  await page.getByLabel('Trip name').fill('Croatia 2026');
   await page.getByLabel('Your name').fill('Ania');
   await page.getByLabel('Participant 2').fill('Kasia');
   await page.getByRole('button', { name: 'Create Trip' }).click();
@@ -136,8 +136,9 @@ test('a new Trip lands on its empty Expenses tab, already knowing who you are', 
   await expect(header).toContainText('You are Ania · EUR');
   // The token is on the device now, not in the address bar.
   await expect(page).toHaveURL(/\/trips\/[\w-]+$/);
-  await expect(page.getByRole('link', { name: 'Add the first Expense' })).toBeVisible();
-  await expect(page.getByRole('link', { name: 'Add Expense' })).toBeHidden();
+  // The empty state's Add Expense, not the floating one as well.
+  await expect(page.getByRole('link', { name: 'Add Expense' })).toHaveCount(1);
+  await expect(page.getByText('No Expenses yet')).toBeVisible();
   await expect(page.getByRole('link', { name: 'Expenses' })).toHaveAttribute(
     'aria-current',
     'page',
@@ -146,7 +147,11 @@ test('a new Trip lands on its empty Expenses tab, already knowing who you are', 
   // Back from the Trip goes to My Trips, not to the finished form.
   await header.getByRole('button', { name: 'Back to My Trips' }).click();
   await expect(page).toHaveURL('/');
-  await expect(page.getByRole('link', { name: /Croatia 2026/ })).toContainText('You are Ania');
+  const row = page.getByRole('link', { name: /Croatia 2026/ });
+  await expect(row).toContainText('No Expenses yet');
+  // The Claim stays on the device: reopened, the Trip still knows who you are.
+  await row.click();
+  await expect(header).toContainText('You are Ania · EUR');
 });
 
 test('joining with a Trip link keeps its token on the device', async ({
@@ -154,7 +159,13 @@ test('joining with a Trip link keeps its token on the device', async ({
   request,
   browser,
 }) => {
-  const tripLink = await tripLinkFor(request, 'Tatry 2026', ['Kasia', 'Ania']);
+  // With an Expense, so My Trips has a balance to show, or asks who you are instead.
+  const tripLink = await tripWithExpenses(
+    request,
+    'Tatry 2026',
+    ['Kasia', 'Ania'],
+    [{ title: 'Hut', amount: 2000 }],
+  );
   const tripUrl = tripLink.split('#')[0]!;
 
   // The first open asks who you are; "Just looking" leaves it for later.
@@ -304,11 +315,12 @@ test('Remind shares a message while the debtor cannot be notified, then sends on
   await page.goto(tripLink);
   await page.getByRole('dialog').getByRole('button', { name: 'Kasia' }).click();
   await page.getByRole('link', { name: 'Balances' }).click();
-  const row = page.getByRole('region', { name: 'To settle' }).getByRole('listitem');
-  await expect(row).toContainText(/Ania pays you\s*€12.25/);
+  const toSettle = page.getByRole('region', { name: 'To settle' });
+  const row = toSettle.getByRole('listitem');
+  await expect(row).toContainText(/Ania → you\s*€12.25/);
 
-  // No device of Ania's can be notified: Remind says so, and shares a message instead.
-  await expect(row).toContainText("Can't be notified: you'll share a message");
+  // No device of Ania's can be notified: the list says so once, and Remind shares a message.
+  await expect(toSettle).toContainText("Ania can't get notifications, so Remind shares a message");
   await row.getByRole('button', { name: 'Remind Ania with a message you share' }).click();
   const shared = await page.evaluate(() => window.shared?.text);
   expect(shared).toBe(
@@ -326,7 +338,7 @@ test('Remind shares a message while the debtor cannot be notified, then sends on
   });
   expect(subscribed.ok()).toBe(true);
   await page.reload();
-  await expect(row).not.toContainText("Can't be notified");
+  await expect(toSettle).not.toContainText("can't get notifications");
   await row.getByRole('button', { name: 'Remind Ania with a notification' }).click();
   await expect(page.getByText('Reminder sent to Ania', { exact: true })).toBeVisible();
   await expect(row.getByRole('button', { name: 'Reminded today' })).toBeDisabled();
@@ -447,22 +459,22 @@ test('a Trip and an Expense made offline reach a second device once back online'
   await context.setOffline(true);
 
   await page.getByRole('link', { name: 'New Trip' }).click();
-  await page.getByLabel('Name', { exact: true }).fill('Mazury 2026');
+  await page.getByLabel('Trip name').fill('Mazury 2026');
   await page.getByLabel('Your name').fill('Kasia');
   await page.getByLabel('Participant 2').fill('Ania');
   await page.getByRole('button', { name: 'Create Trip' }).click();
   const header = page.getByRole('banner');
   await expect(header).toContainText('You are Kasia');
 
-  await page.getByRole('link', { name: 'Add the first Expense' }).click();
+  await page.getByRole('link', { name: 'Add Expense' }).click();
   await page.getByLabel('Amount').fill('59');
   await page.getByLabel('Title').fill('Ferry tickets');
   await page.getByRole('button', { name: 'Save Expense' }).click();
   const row = page.getByRole('link', { name: /Ferry tickets/ });
   await expect(row).toContainText('not synced');
   // The Trip, Kasia, Ania and the Expense.
-  await header.getByRole('button', { name: '4 changes not synced yet' }).click();
-  await expect(page.getByRole('dialog')).toContainText('sync on their own');
+  await header.getByRole('button', { name: '4 changes not synced' }).click();
+  await expect(header).toContainText("Will sync when you're online");
   await page.keyboard.press('Escape');
 
   await context.setOffline(false);
@@ -489,7 +501,7 @@ test('a Receipt entered offline at the till, Line item by Line item, reaches a s
   await context.setOffline(true);
   await createTrip(page, 'Istria 2026', 'Kasia', ['Ania', 'Ola']);
 
-  await page.getByRole('link', { name: 'Add the first Expense' }).click();
+  await page.getByRole('link', { name: 'Add Expense' }).click();
   await page.getByLabel('Title').fill('Lidl Rovinj');
   await page.getByRole('button', { name: 'Itemise as a Receipt' }).click();
   await page.getByRole('button', { name: 'Add a Line item' }).click();
@@ -498,7 +510,7 @@ test('a Receipt entered offline at the till, Line item by Line item, reaches a s
     await adding.getByLabel('New Line item unit price').fill(price);
     await adding.getByLabel('New Line item quantity').fill(quantity);
     await adding.getByLabel('New Line item name').fill(name);
-    await adding.getByRole('button', { name: 'Add', exact: true }).click();
+    await adding.getByRole('button', { name: 'Add to Receipt' }).click();
   };
   const lines = page.getByRole('region', { name: 'Line items' }).getByRole('listitem');
   const line = (name: string) => lines.filter({ hasText: name }).first();
@@ -509,12 +521,12 @@ test('a Receipt entered offline at the till, Line item by Line item, reaches a s
   await expect(line('Water')).toContainText('6 × €0.29 · Even · for all 3');
   await line('Water').getByRole('button', { name: /Water/ }).click();
   await line('Water').getByRole('button', { name: 'Units' }).click();
-  await expect(line('Water')).toContainText('€1.74 not assigned yet');
+  await expect(line('Water')).toContainText('6 of 6 units unassigned');
   await line('Water').getByLabel('Units for Kasia').fill('3');
   await line('Water').getByLabel('Units for Ania').fill('3');
   await line('Water').getByLabel('Units for Ania').blur();
   await expect(line('Water')).toContainText('6 of 6 units assigned');
-  await expect(line('Water')).not.toContainText('not assigned yet');
+  await expect(line('Water')).not.toContainText('unassigned');
 
   // After a Units split the next line starts Even across everyone; nobody had it yet.
   await addLine('0,89', 'Chocolate');
@@ -522,7 +534,7 @@ test('a Receipt entered offline at the till, Line item by Line item, reaches a s
   await line('Chocolate')
     .getByRole('button', { name: /Chocolate/ })
     .click();
-  await line('Chocolate').getByRole('button', { name: 'All', exact: true }).click();
+  await line('Chocolate').getByRole('button', { name: 'Clear', exact: true }).click();
   // An open line shows only its name and total; closed, it says how it is split.
   await line('Chocolate').getByRole('button', { name: 'Done' }).click();
   await expect(line('Chocolate')).toContainText('Even · nobody yet');
@@ -534,14 +546,12 @@ test('a Receipt entered offline at the till, Line item by Line item, reaches a s
   await expect(lines).toHaveText([/Bread/, /Chocolate/, /Water/]);
 
   await expect(page.getByRole('status', { name: 'Receipt total' })).toHaveText('€5.12');
-  await expect(page.getByRole('main')).toContainText(
-    "€0.89 not assigned yet, counted as Kasia's until it is.",
-  );
+  await expect(page.getByRole('main')).toContainText('€0.89 unassigned · yours for now');
   await page.getByRole('button', { name: 'Save Expense' }).click();
   const row = page.getByRole('link', { name: /Lidl Rovinj/ });
   await expect(row).toContainText('not synced');
-  await expect(row).toContainText('1 unassigned');
-  await expect(row).toContainText('Receipt · 3 items');
+  await expect(row).toContainText('1 item unassigned');
+  await expect(row).toContainText('Kasia paid');
 
   await context.setOffline(false);
   await expect(row).not.toContainText('not synced');
@@ -553,7 +563,7 @@ test('a Receipt entered offline at the till, Line item by Line item, reaches a s
   const otherRow = otherPage.getByRole('link', { name: /Lidl Rovinj/ });
   // A third of the bread and three waters: 0.83 + 0.87.
   await expect(otherRow).toContainText('your share €1.70');
-  await expect(otherRow).toContainText('1 unassigned');
+  await expect(otherRow).toContainText('1 item unassigned');
   await otherRow.click();
   const items = otherPage.getByRole('region', { name: 'Line items' }).getByRole('listitem');
   await expect(items).toHaveCount(3);
@@ -569,7 +579,7 @@ test('a Line discount follows the Units and a Receipt discount is shared by what
   await page.goto('/');
   await createTrip(page, 'Istria 2026', 'Kasia', ['Ania', 'Ola']);
 
-  await page.getByRole('link', { name: 'Add the first Expense' }).click();
+  await page.getByRole('link', { name: 'Add Expense' }).click();
   await page.getByLabel('Title').fill('Konoba');
   await page.getByRole('button', { name: 'Itemise as a Receipt' }).click();
   await page.getByRole('button', { name: 'Add a Line item' }).click();
@@ -585,10 +595,14 @@ test('a Line discount follows the Units and a Receipt discount is shared by what
   await beer.getByLabel('Units for Kasia').fill('2');
   await beer.getByLabel('Units for Ania').fill('2');
   await beer.getByLabel('Units for Ola').fill('1');
+  // The stepper takes what is typed when it loses focus; once every unit is assigned, the
+  // unassigned note above goes and the line moves up.
+  await beer.getByLabel('Units for Ola').press('Tab');
+  await expect(page.getByRole('main')).not.toContainText('unassigned');
   await beer.getByRole('button', { name: 'Line discount and Deposit' }).click();
   await beer.getByRole('textbox', { name: 'Line discount' }).fill('1');
   await beer.getByRole('button', { name: 'Done' }).click();
-  await expect(beer).toContainText('Discount −€1.00');
+  await expect(beer).toContainText('€1.00 off, included');
   const total = page.getByRole('status', { name: 'Receipt total' });
   await expect(total).toHaveText('€9.00');
 
@@ -598,7 +612,7 @@ test('a Line discount follows the Units and a Receipt discount is shared by what
     .getByRole('button', { name: '%' })
     .click();
   await expect(total).toHaveText('€8.10');
-  await expect(page.getByRole('main')).toContainText('Receipt discount −10% · −€0.90');
+  await expect(page.getByRole('main')).toContainText('10% off (−€0.90)');
   await page.getByRole('button', { name: 'Save Expense' }).click();
   const row = page.getByRole('link', { name: /Konoba/ });
   await expect(row).not.toContainText('not synced');
@@ -612,9 +626,9 @@ test('a Line discount follows the Units and a Receipt discount is shared by what
   await expect(otherRow).toContainText('your share €3.24');
   await otherRow.click();
   const main = otherPage.getByRole('main');
-  await expect(main).toContainText('Discount −€1.00');
+  await expect(main).toContainText('€1.00 off, included');
   await expect(main).toContainText('Receipt discount');
-  await expect(main).toContainText('−10% · −€0.90');
+  await expect(main).toContainText('10% off (−€0.90)');
   await other.close();
 });
 
@@ -625,7 +639,7 @@ test('a Deposit is never discounted, and a Deposit refund comes off the Receipt 
   await page.goto('/');
   await createTrip(page, 'Istria 2026', 'Kasia', ['Ania', 'Ola']);
 
-  await page.getByRole('link', { name: 'Add the first Expense' }).click();
+  await page.getByRole('link', { name: 'Add Expense' }).click();
   await page.getByLabel('Title').fill('Lidl Rovinj');
   await page.getByRole('button', { name: 'Itemise as a Receipt' }).click();
   await page.getByRole('button', { name: 'Add a Line item' }).click();
@@ -639,7 +653,7 @@ test('a Deposit is never discounted, and a Deposit refund comes off the Receipt 
   const total = page.getByRole('status', { name: 'Receipt total' });
   await expect(total).toHaveText('€7.80');
   // The Deposits total, to check against the Deposits printed on the paper Receipt.
-  await expect(page.getByRole('main')).toContainText('Deposits €2.50');
+  await expect(page.getByRole('main')).toContainText(/Deposits\s*€2\.50/);
 
   // A −10 % coupon takes 10 % of the 5.30 of water, not of its Deposit.
   await page.getByRole('textbox', { name: 'Receipt discount' }).fill('10');
@@ -683,7 +697,7 @@ test('a share on a Receipt and a bar on Balances open where the share comes from
   await page.goto('/');
   await createTrip(page, 'Istria 2026', 'Kasia', ['Ania', 'Ola']);
 
-  await page.getByRole('link', { name: 'Add the first Expense' }).click();
+  await page.getByRole('link', { name: 'Add Expense' }).click();
   await page.getByLabel('Title').fill('Lidl Rovinj');
   await page.getByRole('button', { name: 'Itemise as a Receipt' }).click();
   await page.getByRole('button', { name: 'Add a Line item' }).click();
@@ -707,10 +721,10 @@ test('a share on a Receipt and a bar on Balances open where the share comes from
   await page.getByRole('link', { name: /Lidl Rovinj/ }).click();
   await page.getByRole('region', { name: 'Shares' }).getByRole('button', { name: /Ania/ }).click();
   const sheet = page.getByRole('dialog', { name: "Ania's share" });
-  await expect(sheet).toContainText('Goods at full price≈ +€1.77');
-  await expect(sheet).toContainText('Deposits≈ +€0.83');
-  await expect(sheet).toContainText('Deposit refunds≈ −€0.33');
-  await expect(sheet).toContainText('Receipt discount≈ −€0.18');
+  await expect(sheet).toContainText('Goods at full price€1.77');
+  await expect(sheet).toContainText('Deposits€0.83');
+  await expect(sheet).toContainText('Deposit refunds−€0.33');
+  await expect(sheet).toContainText('Receipt discount−€0.18');
   await expect(sheet).toContainText('Share€2.09');
   await expect(sheet).toContainText('rounded to the cent');
 
@@ -723,10 +737,11 @@ test('a share on a Receipt and a bar on Balances open where the share comes from
     .getByRole('region', { name: 'Everyone' })
     .getByRole('button', { name: /Kasia/ })
     .click();
-  const kasia = page.getByRole('dialog', { name: "Kasia's share" });
+  const kasia = page.getByRole('dialog', { name: "Kasia's balance" });
   await expect(kasia).toContainText('Paid€6.27');
   await expect(kasia).toContainText('Share€2.09');
-  await expect(kasia).toContainText('Balance+€4.18');
+  // Kasia is who you are.
+  await expect(kasia).toContainText("You're owed€4.18");
 });
 
 test('Contributions from others: added, edited and removed, the Main payer covering the rest', async ({
@@ -735,7 +750,7 @@ test('Contributions from others: added, edited and removed, the Main payer cover
   await createTrip(page, 'Istria 2026', 'Kasia', ['Ania', 'Ola']);
 
   // Dinner on Kasia's card, and Ania leaves a cash tip.
-  await page.getByRole('link', { name: 'Add the first Expense' }).click();
+  await page.getByRole('link', { name: 'Add Expense' }).click();
   await page.getByLabel('Amount').fill('60');
   await page.getByLabel('Title').fill('Konoba Batelina');
   await page.getByRole('button', { name: 'Add a Contribution' }).click();
@@ -744,9 +759,9 @@ test('Contributions from others: added, edited and removed, the Main payer cover
   await expect(aniasContribution).toBeFocused();
   await aniasContribution.fill('6');
   const form = page.getByRole('main');
-  await expect(form).toContainText('Kasia pays the rest: €54.00');
+  await expect(form).toContainText(/Kasia pays the rest\s*you\s*€54\.00/);
   // Income has no Contributions.
-  await expect(page.getByRole('switch', { name: 'Money received' })).toBeHidden();
+  await expect(page.getByRole('switch', { name: 'Money received' })).toBeDisabled();
   await page.getByRole('button', { name: 'Save Expense' }).click();
 
   // Kasia paid 54.00 of her 20.00 share.
@@ -782,7 +797,7 @@ test('Contributions from others: added, edited and removed, the Main payer cover
 test('a Trip rule the Expense would break shows at its field before saving', async ({ page }) => {
   await createTrip(page, 'Istria 2026', 'Kasia', ['Ania']);
 
-  await page.getByRole('link', { name: 'Add the first Expense' }).click();
+  await page.getByRole('link', { name: 'Add Expense' }).click();
   await page.getByLabel('Amount').fill('10');
   await page.getByRole('button', { name: 'Add a Contribution' }).click();
   await page.getByRole('menuitem', { name: 'Ania' }).click();
@@ -795,13 +810,13 @@ test('a Trip rule the Expense would break shows at its field before saving', asy
   // It goes as soon as the Expense no longer breaks it, whichever field changed.
   await page.getByLabel('Amount').fill('20');
   await expect(aniasContribution).not.toHaveAccessibleDescription(/more than the Expense/);
-  await expect(page.getByRole('main')).toContainText('Kasia pays the rest: €5.00');
+  await expect(page.getByRole('main')).toContainText(/Kasia pays the rest\s*you\s*€5\.00/);
 });
 
 test('a Manual rate: the amount the card charged in the Trip currency', async ({ page }) => {
   await createTrip(page, 'Lisbon 2026', 'Kasia', ['Ania']);
 
-  await page.getByRole('link', { name: 'Add the first Expense' }).click();
+  await page.getByRole('link', { name: 'Add Expense' }).click();
   await page.getByLabel('Amount').fill('100');
   await page.getByLabel('Title').fill('Dinner in USD');
   await page.getByRole('button', { name: 'Currency' }).click();
@@ -809,11 +824,11 @@ test('a Manual rate: the amount the card charged in the Trip currency', async ({
   await page.getByRole('option', { name: /^USD/ }).click();
   // The field opens by itself while the device has no automatic rate for USD.
   const typeManual = page.getByRole('button', { name: 'Type a Manual rate' });
-  const manualRate = page.getByRole('textbox', { name: 'Manual rate' });
+  const manualRate = page.getByRole('textbox', { name: 'Amount charged in EUR' });
   await expect(typeManual.or(manualRate)).toBeVisible();
   if (await typeManual.isVisible()) await typeManual.click();
   await manualRate.fill('92');
-  await expect(page.getByRole('main')).toContainText('€92.00');
+  await expect(page.getByRole('main')).toContainText('Rate: 1 EUR ≈ 1.087 USD');
   await page.getByRole('button', { name: 'Save Expense' }).click();
 
   const row = page.getByRole('link', { name: /Dinner in USD/ });
@@ -837,7 +852,7 @@ test('record a plain Expense, read it, edit it, and see the balances', async ({ 
   await createTrip(page, 'Istria 2026', 'Kasia', ['Ania', 'Ola']);
 
   // The Main payer defaults to the Claim, and everyone is ticked.
-  await page.getByRole('link', { name: 'Add the first Expense' }).click();
+  await page.getByRole('link', { name: 'Add Expense' }).click();
   await expect(page.getByRole('banner')).toContainText('New Expense');
   const paidBy = page.getByRole('group', { name: 'Paid by' });
   const forWhom = page.getByRole('group', { name: 'For whom' });
@@ -845,10 +860,10 @@ test('record a plain Expense, read it, edit it, and see the balances', async ({ 
   for (const name of ['Kasia', 'Ania', 'Ola']) {
     await expect(forWhom.getByRole('checkbox', { name })).toBeChecked();
   }
-  // "All" clears everyone when everyone is ticked, and ticks everyone again.
-  await page.getByRole('button', { name: 'All' }).click();
+  // "Clear" unticks everyone when everyone is ticked, and "Select all" ticks everyone again.
+  await page.getByRole('button', { name: 'Clear' }).click();
   await expect(forWhom.getByRole('checkbox', { checked: true })).toHaveCount(0);
-  await page.getByRole('button', { name: 'All' }).click();
+  await page.getByRole('button', { name: 'Select all' }).click();
   await expect(forWhom.getByRole('checkbox', { checked: true })).toHaveCount(3);
 
   await page.getByLabel('Title').fill('Lidl Rovinj');
@@ -922,7 +937,7 @@ test('settle up: Income, then the suggested Repayments, until the Trip is Settle
 }) => {
   await createTrip(page, 'Alps 2026', 'Kasia', ['Ania', 'Ola']);
 
-  await page.getByRole('link', { name: 'Add the first Expense' }).click();
+  await page.getByRole('link', { name: 'Add Expense' }).click();
   await page.getByLabel('Amount').fill('30');
   await page.getByLabel('Title').fill('Hut');
   await page.getByRole('button', { name: 'Save Expense' }).click();
@@ -940,7 +955,8 @@ test('settle up: Income, then the suggested Repayments, until the Trip is Settle
   await page.getByRole('button', { name: 'Save Income' }).click();
   const income = page.getByRole('link', { name: /Bottles/ });
   await expect(income).toContainText('Ola received · for all 3');
-  await expect(income).toContainText('−€6.00');
+  await expect(income).toContainText('€6.00');
+  await expect(income).not.toContainText('−€6.00');
   await expect(income).toContainText('you get back €2.00');
 
   // Kasia is owed 22.00: Ola owes 14.00 and Ania 8.00. The total is net of the Income.
@@ -951,8 +967,8 @@ test('settle up: Income, then the suggested Repayments, until the Trip is Settle
   await expect(main).toContainText('Trip total €24.00');
   const toSettle = page.getByRole('region', { name: 'To settle' }).getByRole('listitem');
   await expect(toSettle).toHaveCount(2);
-  await expect(toSettle.nth(0)).toContainText(/Ola pays yous*€14.00/);
-  await expect(toSettle.nth(1)).toContainText(/Ania pays yous*€8.00/);
+  await expect(toSettle.nth(0)).toContainText(/Ola → you\s*€14\.00/);
+  await expect(toSettle.nth(1)).toContainText(/Ania → you\s*€8\.00/);
 
   // Recording from a suggestion fills it in; the amount can be lowered for a partial one.
   await toSettle.nth(0).getByRole('link', { name: 'Record Repayment' }).click();
@@ -969,8 +985,8 @@ test('settle up: Income, then the suggested Repayments, until the Trip is Settle
 
   // Back on Balances: Ola still owes 4.00, and Repayments are not spending.
   await expect(toSettle).toHaveCount(2);
-  await expect(toSettle.nth(0)).toContainText(/Ania pays yous*€8.00/);
-  await expect(toSettle.nth(1)).toContainText(/Ola pays yous*€4.00/);
+  await expect(toSettle.nth(0)).toContainText(/Ania → you\s*€8\.00/);
+  await expect(toSettle.nth(1)).toContainText(/Ola → you\s*€4\.00/);
   await expect(main).toContainText('Trip total €24.00');
 
   await toSettle.first().getByRole('link', { name: 'Record Repayment' }).click();
@@ -986,7 +1002,7 @@ test('settle up: Income, then the suggested Repayments, until the Trip is Settle
   await expect(repayment).toContainText('Ola → Kasia');
   await expect(repayment).toContainText('you received €10.00');
 
-  // My Trips marks it Settled, below a Trip that isn't, though it was opened last.
+  // My Trips puts it under Settled, below a Trip that isn't, though it was opened last.
   await createTrip(page, 'Lakes 2026', 'Kasia', ['Ania']);
   await page.getByRole('button', { name: 'Back to My Trips' }).click();
   await page.getByRole('link', { name: /Alps 2026/ }).click();
@@ -994,7 +1010,7 @@ test('settle up: Income, then the suggested Repayments, until the Trip is Settle
   const trips = page.getByRole('main').getByRole('listitem');
   await expect(trips.nth(0)).toContainText('Lakes 2026');
   await expect(trips.nth(1)).toContainText('Alps 2026');
-  await expect(trips.nth(1)).toContainText('Settled');
+  await expect(page.getByRole('region', { name: 'Settled' })).toContainText('Alps 2026');
 });
 
 test('saving a new Expense returns to the Expenses tab where it was scrolled', async ({
@@ -1076,12 +1092,11 @@ test('two devices change the same Expenses; the one that syncs second keeps its 
   await other.getByRole('button', { name: 'Save Expense' }).click();
   await other.getByRole('link', { name: 'Choose version' }).click();
   const mine = other.getByRole('region', { name: 'Your version' });
-  const theirs = other.getByRole('region', { name: 'Their version' });
+  const theirs = other.getByRole('region', { name: "Kasia's version" });
   await expect(mine).toContainText('Pizza Napoli XL');
-  await expect(mine).toContainText('by Ania');
   await expect(theirs).toContainText('Pizza Margherita');
-  await expect(theirs).toContainText('by Kasia');
-  await other.getByRole('button', { name: 'Keep mine' }).click();
+  await expect(mine).toContainText("Kasia's version stays in History");
+  await other.getByRole('button', { name: 'Keep yours' }).click();
   await expect(other.getByRole('heading', { name: 'Pizza Napoli XL' })).toBeVisible();
   await expect(main).not.toContainText('Not synced');
   await other.getByRole('button', { name: 'Back' }).click();
@@ -1089,7 +1104,7 @@ test('two devices change the same Expenses; the one that syncs second keeps its 
   // For the Ferry she keeps Kasia's.
   await other.getByRole('link').filter({ hasText: 'Ferry Ania' }).click();
   await other.getByRole('link', { name: 'Choose version' }).click();
-  await other.getByRole('button', { name: 'Keep theirs' }).click();
+  await other.getByRole('button', { name: "Keep Kasia's" }).click();
   await expect(other.getByRole('heading', { name: 'Ferry Kasia' })).toBeVisible();
   await expect(main).not.toContainText('Not synced');
   await other.getByRole('button', { name: 'Back' }).click();
@@ -1123,7 +1138,7 @@ test('a change the server rejects says why, and can be discarded or fixed', asyn
   });
   const main = page.getByRole('main');
   const add = async (title: string) => {
-    await page.getByRole('link', { name: /Add (the first )?Expense/ }).click();
+    await page.getByRole('link', { name: 'Add Expense' }).click();
     await page.getByLabel('Amount').fill('12');
     await page.getByLabel('Title').fill(title);
     await page.getByRole('button', { name: 'Save Expense' }).click();
@@ -1135,7 +1150,7 @@ test('a change the server rejects says why, and can be discarded or fixed', asyn
   // Discarded, a new Expense is gone.
   await add('Taxi');
   await page.getByRole('button', { name: 'Discard change' }).click();
-  await expect(page.getByRole('link', { name: 'Add the first Expense' })).toBeVisible();
+  await expect(page.getByRole('link', { name: 'Add Expense' })).toBeVisible();
 
   // Fixed, it syncs.
   await add('Ferry');
@@ -1169,15 +1184,16 @@ test('delete an Expense, bring it back from Recently deleted, and restore an old
   await page.getByRole('link', { name: 'Edit Expense' }).click();
   await page.getByLabel('Amount').fill('45');
   await page.getByRole('button', { name: 'Save Expense' }).click();
-  await expect(main).toContainText('Last edited by Kasia, now');
+  await expect(main).toContainText('Last edited by you · just now');
 
   // Deleted, it leaves the Expenses tab for Recently deleted.
   await page.getByRole('button', { name: 'Delete Expense' }).click();
-  await expect(page.getByRole('link', { name: 'Add the first Expense' })).toBeVisible();
+  await expect(page.getByRole('link', { name: 'Add Expense' })).toBeVisible();
   await page.getByRole('link', { name: 'Trip', exact: true }).click();
   await page.getByRole('link', { name: 'Recently deleted' }).click();
   await expect(page.getByRole('heading', { name: 'Recently deleted' })).toBeVisible();
-  await expect(main.getByRole('listitem')).toContainText('€45.00 · Deleted by Kasia');
+  await expect(main.getByRole('listitem')).toContainText('€45.00');
+  await expect(main.getByRole('listitem')).toContainText('Deleted by you · ');
   await page.getByRole('button', { name: 'Restore Ferry' }).click();
   await expect(main).toContainText('Nothing deleted');
 
@@ -1191,7 +1207,7 @@ test('delete an Expense, bring it back from Recently deleted, and restore an old
   await expect(revisions).toHaveCount(4);
   await expect(revisions.nth(0)).toContainText('Restored');
   await expect(revisions.nth(1)).toContainText('Deleted');
-  await expect(revisions.nth(2)).toContainText('€30.00 → €45.00');
+  await expect(revisions.nth(2)).toContainText(/€45\.00\s*was €30\.00/);
   await expect(revisions.nth(3)).toContainText('Added');
   await revisions.nth(3).click();
   await expect(main).toContainText('€30.00');
@@ -1218,10 +1234,8 @@ test('forgetting a Trip is blocked while its changes have not synced, unless you
   await expect(dialog).toContainText("3 changes on this device haven't synced yet.");
   await expect(dialog).toContainText("you'll need its Trip link");
   await expect(dialog.getByRole('button', { name: 'Forget', exact: true })).toHaveCount(0);
-  await expect(
-    dialog.getByRole('button', { name: 'Forget anyway (lose 3 changes)' }),
-  ).toBeVisible();
-  await dialog.getByRole('button', { name: 'Cancel' }).click();
+  await expect(dialog.getByRole('button', { name: 'Forget and lose 3 changes' })).toBeVisible();
+  await dialog.getByRole('button', { name: 'Keep Trip' }).click();
 
   // Once synced, it can be forgotten; the Trip stays on the server for the others.
   await context.setOffline(false);
@@ -1252,7 +1266,7 @@ test('an app a sync schema behind the server asks to reload, and its changes syn
   await expect(
     page.getByText('Your changes wait on this device and sync once you reload.', { exact: true }),
   ).toBeVisible();
-  await expect(page.getByRole('button', { name: '3 changes not synced yet' })).toBeVisible();
+  await expect(page.getByRole('button', { name: '3 changes not synced' })).toBeVisible();
 
   // Reloaded, the app speaks the server's sync schema again.
   await page.unroute(api);
@@ -1330,9 +1344,10 @@ test('a Participant on an Expense is not removed, one on none is; and the Trip i
 
   await participants.getByRole('button', { name: 'Ania' }).click();
   const ania = page.getByRole('dialog', { name: 'Ania' });
-  await expect(ania).toContainText("Ania is on 1 Expense, so they can't be removed.");
+  await expect(ania).toContainText('On 1 Expense');
+  await expect(ania).toContainText("they can't be removed");
   await expect(ania.getByRole('button', { name: 'Remove from Trip' })).toHaveCount(0);
-  await ania.getByRole('button', { name: 'Cancel' }).click();
+  await ania.getByRole('button', { name: 'Done' }).click();
 
   await page.getByRole('button', { name: 'Add Participant' }).click();
   await page.getByRole('dialog').getByLabel('Name').fill('Ola');
@@ -1354,7 +1369,7 @@ test('a Participant on an Expense is not removed, one on none is; and the Trip i
   );
   await expect(page.getByRole('banner')).toContainText('Rügen 2027');
   await page.getByRole('link', { name: /Name and Trip currency/ }).click();
-  await expect(page.getByRole('main')).toContainText('Last changed by Kasia');
+  await expect(page.getByRole('main')).toContainText('Last changed by you');
 });
 
 test('the tab, the home screen and the installed app all get the Owe Yeah icons', async ({

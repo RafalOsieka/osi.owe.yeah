@@ -2,24 +2,32 @@
 import type { Discount } from '@osi/owe-yeah-domain';
 import type { DraftDiscount } from '~/utils/expense-draft';
 
-// A Line or Receipt discount as typed: its value, and whether that is an amount in the
-// currency or a percentage. Empty means no discount. `error` says why it can't be used, if
-// it can't; the form reads and checks it.
+// A Line or Receipt discount as typed: its value, marked like every money input (or "%"), and
+// beside it whether that is an amount in the currency or a percentage. Empty means no discount, so
+// the field is marked optional; `help` says more under it. `error` says why it can't be used,
+// if it can't; the form reads and checks it.
 const {
   label,
   currency,
+  help = undefined,
+  optional = true,
   error = null,
 } = defineProps<{
   label: string;
   currency: string;
+  help?: string;
+  /** Marks the field optional; off where its section says so already. */
+  optional?: boolean;
   error?: string | null;
 }>();
 const discount = defineModel<DraftDiscount>({ required: true });
 
+const { locale } = useI18n();
+
 const kinds = computed(() =>
   (['amount', 'percent'] as const satisfies readonly Discount['kind'][]).map((value) => ({
     value,
-    label: value === 'amount' ? currency : '%',
+    label: value === 'amount' ? currencySymbol(currency, locale.value).text : '%',
   })),
 );
 const kind = computed({
@@ -29,21 +37,26 @@ const kind = computed({
 </script>
 
 <template>
-  <UFormField :label="label" :error="error ?? undefined">
+  <UFormField
+    :label="label"
+    :hint="optional ? $t('form.optional') : undefined"
+    :help="help"
+    :error="error ?? undefined"
+  >
     <div class="flex gap-2">
-      <UInput
+      <MoneyInput
         :model-value="discount.value"
-        inputmode="decimal"
-        placeholder="0"
+        :currency="currency"
+        :percent="discount.kind === 'percent'"
         :color="error ? 'error' : undefined"
-        class="flex-1"
-        @update:model-value="discount = { ...discount, value: String($event) }"
+        class="min-w-0 flex-1"
+        @update:model-value="discount = { ...discount, value: $event }"
       />
       <SegmentedControl
         v-model="kind"
         :options="kinds"
         :label="$t('receipt.discountKind', { label })"
-        class="shrink-0 self-stretch"
+        class="w-32 shrink-0"
       />
     </div>
   </UFormField>

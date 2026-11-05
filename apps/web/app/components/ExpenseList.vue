@@ -1,24 +1,30 @@
 <script setup lang="ts">
 import {
+  add,
   claimView,
   expenseKind,
   expenseRate,
   expenseShares,
   groupByLocalDay,
+  negate,
   rateSummary,
+  rational,
   spendingTotal,
   type Rational,
 } from '@osi/owe-yeah-domain';
 import type { LocalExpense, LocalTrip } from '~/sync/local-trip';
 
 // The Trip's Expenses, newest first, under a heading for each Expense's own local day with
-// what was spent that day in the Trip currency (net of Income, without Repayments; "≈" when an
-// Expense of the day uses a Provisional rate). Each row shows the Expense in its own currency,
-// with its payer's avatar (a Repayment, which is not spending, a quiet arrow instead), opens its
-// detail page and, with a Claim, says what the Expense means for the claimed
-// Participant. A row is marked while it is not synced, or in Conflict, and when its rate is a
-// Provisional rate or it has none yet. A Receipt reads "Receipt · N items", marked with how
-// many Line items are not fully assigned yet. The Expense `highlightId` names, e.g. the one a
+// what was spent that day in the Trip currency ("spent €54.00": net of Income, without
+// Repayments; "≈" when an Expense of the day uses a Provisional rate). Each row shows the
+// Expense in its own currency (Income as the money received, without a minus), with its
+// payer's avatar (a Repayment, which is not spending, a quiet arrow instead), opens its detail
+// page and, with a Claim, says what the Expense means for the claimed Participant. The title
+// is cut short if need be; the second line says who paid and for how many, after a small
+// receipt glyph on a Receipt and a short amber flag (a Conflict, a Provisional rate or none
+// yet); Line items not fully assigned yet get a third, amber line of their own ("1 item
+// unassigned"), so the payer stays in sight. A cloud with an amber dot by the amount, as in
+// the header, marks a row not synced yet. The Expense `highlightId` names, e.g. the one a
 // tapped notification was about, is scrolled to and marked.
 const {
   trip,
@@ -37,8 +43,9 @@ const participants = computed(() => new Map(trip.participants.map((p) => [p.id, 
 const money = (amount: Rational, currency: string) => formatMoney(amount, currency, locale.value);
 
 // What the claimed Participant sees on the right of a row, under the total: what they lent
-// or get back in green, and their share, or money that only changed hands (a Repayment, an
-// Income they received), in neutral: a share is not a debt, so red is left to owing.
+// or get back in green; their share, or money that only changed hands (a Repayment), in
+// neutral, as a share is not a debt; and, for an Income they received for others too, the
+// others' part they now owe, in red, as Balances says it.
 function forYou(expense: LocalExpense): { text: string; tone: string } | null {
   if (claimId === null) return null;
   const view = claimView(expense, claimId);
@@ -48,8 +55,19 @@ function forYou(expense: LocalExpense): { text: string; tone: string } | null {
       return { text: t('expense.youLent', { amount }), tone: 'text-success' };
     case 'share':
       return { text: t('expense.yourShare', { amount }), tone: 'text-muted' };
-    case 'received':
-      return { text: t('expense.youReceived', { amount }), tone: 'text-muted' };
+    case 'received': {
+      // A Repayment's recipient only received it. Their own part of an Income is negative
+      // (what they keep); the rest is the others'.
+      const own = expenseShares(expense).shares.get(claimId) ?? rational(0n);
+      const owed = add(view.amount, own);
+      if (expenseKind(expense).kind === 'repayment' || owed.numerator <= 0n) {
+        return { text: t('expense.youReceived', { amount }), tone: 'text-muted' };
+      }
+      return {
+        text: t('expense.youOwe', { amount: money(owed, expense.currency) }),
+        tone: 'text-error',
+      };
+    }
     case 'getBack':
       return { text: t('expense.youGetBack', { amount }), tone: 'text-success' };
     case 'repaid':
@@ -59,12 +77,19 @@ function forYou(expense: LocalExpense): { text: string; tone: string } | null {
   }
 }
 
-// A row's summary by the Expense's kind, e.g. "Kasia paid · for all 4" or "Receipt · 6 items".
-function summaryOf(expense: LocalExpense, payer: string, forWhom: string, items: number): string {
+// What needs attention about a row, leading its second line in amber: a Conflict to resolve,
+// or no rate yet, or only a Provisional one.
+function flagOf(expense: LocalExpense): string | null {
+  if (expense.unsynced?.status === 'conflict') return t('sync.conflictBadge');
+  const rate = expenseRate(expense, trip);
+  if (rate === null) return t('rate.missingBadge');
+  return rate.provisional ? t('rate.provisionalBadge') : null;
+}
+
+// A row's summary by the Expense's kind, e.g. "Kasia paid · for all 4" or "Kasia → Marta".
+function summaryOf(expense: LocalExpense, payer: string, forWhom: string): string {
   const kinded = expenseKind(expense);
   switch (kinded.kind) {
-    case 'receipt':
-      return t('receipt.summary', items);
     case 'repayment': {
       const recipient = participants.value.get(kinded.expense.recipientId)?.name ?? '?';
       return t('repayment.fromTo', { payer, recipient });
@@ -72,6 +97,7 @@ function summaryOf(expense: LocalExpense, payer: string, forWhom: string, items:
     case 'income':
       return t('expense.receivedFor', { name: payer, forWhom });
     case 'plain':
+    case 'receipt':
       return t('expense.paidFor', { name: payer, forWhom });
   }
 }
@@ -81,6 +107,7 @@ const days = computed(() =>
     const rows = expenses.map((expense) => {
       const { total, shares, lineItems } = expenseShares(expense);
       const count = shares.size;
+      const unassigned = lineItems.filter(({ unassigned }) => unassigned.numerator !== 0n).length;
       const payer = participants.value.get(expense.mainPayerId)?.name ?? '?';
       const forWhom =
         count === trip.participants.length
@@ -88,12 +115,15 @@ const days = computed(() =>
           : t('expense.forSome', { count });
       return {
         expense,
-        total,
+        // Income as the money received.
+        total: total.numerator < 0n ? negate(total) : total,
         payer: participants.value.get(expense.mainPayerId),
         repayment: expenseKind(expense).kind === 'repayment',
-        summary: summaryOf(expense, payer, forWhom, lineItems.length),
-        unassigned: lineItems.filter(({ unassigned }) => unassigned.numerator !== 0n).length,
-        rate: expenseRate(expense, trip),
+        receipt: expenseKind(expense).kind === 'receipt',
+        summary: summaryOf(expense, payer, forWhom),
+        unassigned,
+        flag: flagOf(expense),
+        notSynced: !!expense.unsynced && expense.unsynced.status !== 'conflict',
         forYou: forYou(expense),
       };
     });
@@ -102,7 +132,9 @@ const days = computed(() =>
     const approximate = rateSummary(ofDay).provisional > 0;
     return {
       day,
-      total: formatMoney(total, trip.currency, locale.value, 'currency', approximate),
+      total: t('expense.daySpent', {
+        amount: formatMoney(total, trip.currency, locale.value, 'currency', approximate),
+      }),
       rows,
     };
   }),
@@ -157,63 +189,60 @@ function dayHeading(day: string): string {
               <UIcon name="i-lucide-arrow-right-left" class="size-4.5" />
             </span>
             <ParticipantAvatar v-else-if="row.payer" :participant="row.payer" size="lg" />
+            <!-- Two lanes: the title against the amount, the summary against what it means
+                 for you, so neither line squeezes the other. -->
             <span class="min-w-0 flex-1">
-              <span class="line-clamp-2 font-medium text-highlighted wrap-anywhere">
-                {{ row.expense.title }}
+              <span class="flex items-baseline gap-3">
+                <span class="min-w-0 flex-1 truncate font-medium text-highlighted">
+                  {{ row.expense.title }}
+                </span>
+                <span
+                  class="flex shrink-0 items-center gap-1.5 self-center font-semibold tabular-nums"
+                  :class="row.repayment ? 'text-muted' : 'text-highlighted'"
+                >
+                  <!-- The header's not-synced cloud, in small. -->
+                  <span v-if="row.notSynced" class="relative shrink-0">
+                    <UIcon
+                      name="i-lucide-cloud"
+                      class="block size-4 text-muted"
+                      aria-hidden="true"
+                    />
+                    <span
+                      class="absolute -end-0.5 -top-0.5 size-1.5 rounded-full bg-warning"
+                      aria-hidden="true"
+                    />
+                    <span class="sr-only">{{ $t('sync.notSynced') }}</span>
+                  </span>
+                  {{ money(row.total, row.expense.currency) }}
+                </span>
               </span>
-              <span class="mt-0.5 flex min-w-0 flex-wrap items-center gap-1 text-sm text-muted">
-                <UBadge
-                  v-if="row.expense.unsynced?.status === 'conflict'"
-                  :label="$t('sync.conflictBadge')"
-                  color="error"
-                  variant="soft"
-                  size="sm"
-                  class="shrink-0"
-                />
-                <UBadge
-                  v-else-if="row.expense.unsynced"
-                  :label="$t('sync.notSynced')"
-                  color="neutral"
-                  variant="soft"
-                  size="sm"
-                  class="shrink-0"
-                />
-                <UBadge
-                  v-if="row.rate === null"
-                  :label="$t('rate.missingBadge')"
-                  color="warning"
-                  variant="soft"
-                  size="sm"
-                  class="shrink-0"
-                />
-                <UBadge
-                  v-else-if="row.rate.provisional"
-                  :label="$t('rate.provisionalBadge')"
-                  color="warning"
-                  variant="soft"
-                  size="sm"
-                  class="shrink-0"
-                />
-                <UBadge
-                  v-if="row.unassigned > 0"
-                  :label="$t('receipt.unassignedBadge', row.unassigned)"
-                  color="warning"
-                  variant="soft"
-                  size="sm"
-                  class="shrink-0"
-                />
-                <span class="w-full truncate">{{ row.summary }}</span>
+              <span class="mt-0.5 flex items-baseline gap-3 text-sm">
+                <!-- The parts, joined by " · " -->
+                <span
+                  class="min-w-0 flex-1 truncate text-muted [&>span+span]:before:mx-1 [&>span+span]:before:font-normal [&>span+span]:before:text-muted [&>span+span]:before:content-['·']"
+                >
+                  <!-- Not a span, so no " · " follows it. -->
+                  <i v-if="row.receipt" class="me-1 not-italic">
+                    <UIcon
+                      name="i-lucide-receipt-text"
+                      class="inline-block size-3.5 align-[-0.125em]"
+                      role="img"
+                      :aria-label="$t('receipt.kind')"
+                    />
+                  </i>
+                  <span v-if="row.flag" class="font-medium text-warning">{{ row.flag }}</span>
+                  <span>{{ row.summary }}</span>
+                </span>
+                <span v-if="row.forYou" class="shrink-0 tabular-nums" :class="row.forYou.tone">
+                  {{ row.forYou.text }}
+                </span>
               </span>
-            </span>
-            <span class="shrink-0 text-end tabular-nums">
               <span
-                class="block font-semibold"
-                :class="row.repayment ? 'text-muted' : 'text-highlighted'"
+                v-if="row.unassigned > 0"
+                class="mt-0.5 flex items-center gap-1 text-sm font-medium text-warning"
               >
-                {{ money(row.total, row.expense.currency) }}
-              </span>
-              <span v-if="row.forYou" class="mt-0.5 block text-sm" :class="row.forYou.tone">
-                {{ row.forYou.text }}
+                <UIcon name="i-lucide-circle-alert" class="size-3.5 shrink-0" aria-hidden="true" />
+                {{ $t('receipt.unassignedBadge', row.unassigned) }}
               </span>
             </span>
           </NuxtLink>

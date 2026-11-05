@@ -9,11 +9,14 @@ import {
   type RepaymentDraft,
 } from '~/utils/expense-draft';
 
-// The full-screen Repayment form, for a new Repayment or to edit one: amount, its currency
-// with a Manual rate if needed (`ExpenseCurrency`), who paid, who got the money, a title and
-// when. A new one is in the Trip currency until another is picked, and may start from a
-// Suggested Repayment (`suggested`), its amount still editable for a partial Repayment;
-// otherwise who paid defaults to the Claim. Reading and saving work like the Expense form's.
+// The full-screen Repayment form, for a new Repayment or to edit one, in the Expense form's
+// order: amount with its currency beside it and a Manual rate if needed (`ExpenseCurrency`),
+// closed by who pays whom ("Ania → Marta", "you" marked), then who paid, who got the money
+// (never who paid: picking them as payer swaps the two) and when, and last an optional note.
+// The note is the title, "Repayment" when left empty. A new one is in the Trip currency until
+// another is picked, and may start from a Suggested Repayment (`suggested`), which it says it
+// settles ("what you owe Marta" where it is yours) while it still matches; its amount stays
+// editable for a partial Repayment. Otherwise who paid defaults to the Claim. Reading and saving work like the Expense form's.
 const {
   repayment = null,
   suggested = null,
@@ -31,7 +34,10 @@ const { t } = useI18n();
 const back = useBack();
 const { formErrors, problemAt } = useDraftReasons();
 
-// Read once: the form is mounted afresh each time it opens.
+const untitled = t('repayment.title');
+
+// Read once: the form is mounted afresh each time it opens. The default title shows as an
+// empty note.
 const state = reactive<RepaymentDraft>(
   repayment
     ? draftFromExpense(repayment, trip.value)
@@ -39,13 +45,35 @@ const state = reactive<RepaymentDraft>(
         now: new Date(),
         zone: deviceTimeZone(),
         claimId: claim.value?.id ?? null,
-        title: t('repayment.title'),
+        title: '',
         suggested,
       }),
 );
+if (state.title === untitled) state.title = '';
 
-// What is typed, read live and when saving.
-const reading = computed(() => readDraft(state, trip.value));
+// What is typed, read live and when saving, with the default title for an empty note.
+const reading = computed(() =>
+  readDraft({ ...state, title: state.title.trim() || untitled }, trip.value),
+);
+
+const nameOf = (id: string) => trip.value.participants.find((participant) => participant.id === id);
+const payer = computed(() => nameOf(state.mainPayerId));
+const recipient = computed(() => nameOf(state.recipientId));
+
+// Picking who got the money as payer turns the Repayment around.
+function pickPayer(participantId: string): void {
+  if (participantId === state.recipientId) state.recipientId = state.mainPayerId;
+  state.mainPayerId = participantId;
+}
+
+// Whether it is still the Suggested Repayment it started from.
+const settles = computed(
+  () =>
+    !!suggested?.amount &&
+    suggested.payerId === state.mainPayerId &&
+    suggested.recipientId === state.recipientId &&
+    state.amount.trim() === suggested.amount,
+);
 
 // Which Trip rules the last save broke; the Repayment itself stays as it was.
 const refusals = ref<string[]>([]);
@@ -78,40 +106,93 @@ async function submit(): Promise<void> {
       class="space-y-5"
       @submit="submit"
     >
-      <UFormField name="amount" :label="$t('expense.amount')" :ui="{ label: 'sr-only' }">
-        <AmountInput v-model="state.amount" :currency="state.currency" />
-      </UFormField>
-      <ExpenseCurrency
-        v-model:currency="state.currency"
-        v-model:manual-rate="state.manualRate"
-        :reading="reading"
-        :error="problemAt(reading.reasons, 'manualRate')"
-        class="-mt-3"
-      />
-
-      <UFormField name="mainPayerId" :error="problemAt(reading.reasons, 'mainPayerId')">
-        <ParticipantPicker
-          v-model="state.mainPayerId"
-          :participants="trip.participants"
-          :label="$t('expense.paidBy')"
-          name="mainPayerId"
+      <div class="card relative px-4 pt-3 pb-4">
+        <UFormField
+          name="amount"
+          :label="$t('expense.amount')"
+          :ui="{ label: 'text-sm font-medium text-muted', error: 'mt-1.5' }"
+        >
+          <AmountInput v-model="state.amount" :currency="state.currency" />
+        </UFormField>
+        <!-- Over the amount's end, outside its field. -->
+        <CurrencyPill
+          v-model="state.currency"
+          class="absolute end-6.5 top-[3.125rem] bg-default shadow-xs"
         />
-      </UFormField>
-
-      <UFormField name="recipientId" :error="problemAt(reading.reasons, 'recipientId')">
-        <ParticipantPicker
-          v-model="state.recipientId"
-          :participants="trip.participants"
-          :label="$t('repayment.paidTo')"
-          name="recipientId"
+        <ExpenseCurrency
+          v-model:currency="state.currency"
+          v-model:manual-rate="state.manualRate"
+          :reading="reading"
+          :error="problemAt(reading.reasons, 'manualRate')"
         />
-      </UFormField>
+        <div
+          v-if="payer && recipient && payer.id !== recipient.id"
+          class="-mx-4 mt-4 border-t border-default px-4 pt-3.5 text-center"
+        >
+          <p class="sr-only">
+            {{ $t('repayment.fromTo', { payer: payer.name, recipient: recipient.name }) }}
+          </p>
+          <p
+            class="flex items-center justify-center gap-2 font-medium text-highlighted"
+            aria-hidden="true"
+          >
+            <ParticipantAvatar :participant="payer" size="xs" />
+            <span class="flex min-w-0 items-center">
+              <span class="truncate">{{ payer.name }}</span>
+              <YouBadge v-if="payer.id === claim?.id" />
+            </span>
+            <UIcon name="i-lucide-arrow-right" class="size-4 shrink-0 text-muted" />
+            <ParticipantAvatar :participant="recipient" size="xs" />
+            <span class="flex min-w-0 items-center">
+              <span class="truncate">{{ recipient.name }}</span>
+              <YouBadge v-if="recipient.id === claim?.id" />
+            </span>
+          </p>
+          <p v-if="settles" class="mt-1 text-sm text-muted">
+            {{
+              payer.id === claim?.id
+                ? $t('repayment.settlesYours', { recipient: recipient.name })
+                : recipient.id === claim?.id
+                  ? $t('repayment.settlesToYou', { payer: payer.name })
+                  : $t('repayment.settles', { payer: payer.name, recipient: recipient.name })
+            }}
+          </p>
+        </div>
+      </div>
 
-      <UFormField name="title" :label="$t('expense.title')">
-        <UInput v-model="state.title" class="w-full" />
-      </UFormField>
+      <div class="card space-y-6 p-4">
+        <UFormField name="mainPayerId" :error="problemAt(reading.reasons, 'mainPayerId')">
+          <ParticipantPicker
+            :model-value="state.mainPayerId"
+            :participants="trip.participants"
+            :label="$t('expense.paidBy')"
+            name="mainPayerId"
+            @update:model-value="pickPayer"
+          />
+        </UFormField>
 
-      <ExpenseTimeField v-model:local="state.local" v-model:zone="state.zone" />
+        <UFormField name="recipientId" :error="problemAt(reading.reasons, 'recipientId')">
+          <ParticipantPicker
+            v-model="state.recipientId"
+            :participants="trip.participants"
+            :label="$t('repayment.paidTo')"
+            :unavailable-id="state.mainPayerId"
+            name="recipientId"
+          />
+        </UFormField>
+
+        <ExpenseTimeField v-model:local="state.local" v-model:zone="state.zone" />
+      </div>
+
+      <div class="card p-4">
+        <UFormField name="title" :label="$t('repayment.note')" :hint="$t('form.optional')">
+          <UInput
+            v-model="state.title"
+            :placeholder="$t('repayment.notePlaceholder')"
+            class="w-full"
+          />
+        </UFormField>
+      </div>
     </UForm>
 
     <template #action>

@@ -1,12 +1,15 @@
 <script setup lang="ts">
 // The Trip's tabs (Expenses · Balances · Trip): the Trip header on top with the sync status
-// and Invite, what sync has to tell (`TripNotices`) above the tab, the tab bar at the bottom and an
-// optional `#action` floating just above it. Pulling a tab down syncs the Trip. Only for
-// pages under `pages/trips/[id].vue`, which provides the open Trip.
+// (the list's mark while something isn't synced: a cloud with an amber dot; its popover points
+// at it and spans the content column) and Invite, what sync has to tell (`TripNotices`) above
+// the tab, the tab bar at the bottom and an optional `#action` floating just above it. Pulling
+// a tab down syncs the Trip. Only for pages under `pages/trips/[id].vue`, which provides the
+// open Trip.
 const { trip, claim, unsynced, sync, askWhoYouAre, invite } = useOpenTrip();
 const { t } = useI18n();
 const back = useBack();
 const { pulled, ready, refreshing } = usePullToRefresh(sync);
+const syncOpen = ref(false);
 
 const tabs = computed(() => {
   const base = `/trips/${trip.value.id}`;
@@ -20,7 +23,7 @@ const tabs = computed(() => {
 
 <template>
   <header
-    class="sticky top-0 z-10 border-b border-default bg-canvas/80 pt-[env(safe-area-inset-top)] backdrop-blur-xl backdrop-saturate-150"
+    class="sticky top-0 z-10 border-b border-default bg-canvas pt-[env(safe-area-inset-top)] backdrop-blur-xl backdrop-saturate-150"
   >
     <div class="flex h-14 items-center gap-1 px-2">
       <UButton
@@ -34,7 +37,7 @@ const tabs = computed(() => {
         <h1 class="truncate text-base font-semibold text-highlighted">{{ trip.name }}</h1>
         <button
           type="button"
-          class="block max-w-full cursor-pointer truncate text-xs text-muted hover:text-default"
+          class="block max-w-full cursor-pointer truncate text-[0.8125rem] text-muted hover:text-default"
           @click="askWhoYouAre"
         >
           {{
@@ -45,29 +48,25 @@ const tabs = computed(() => {
           }}
         </button>
       </div>
-      <UPopover :content="{ align: 'end' }">
-        <UButton
-          color="neutral"
-          variant="ghost"
-          :aria-label="$t('sync.unsynced', unsynced)"
-          class="relative"
-        >
+      <UButton
+        color="neutral"
+        variant="ghost"
+        :aria-label="$t('sync.unsynced', unsynced)"
+        :aria-expanded="syncOpen"
+        aria-controls="sync-status"
+        @click="syncOpen = !syncOpen"
+      >
+        <span class="relative">
           <UIcon
             :name="unsynced > 0 ? 'i-lucide-cloud' : 'i-lucide-cloud-check'"
-            class="size-4.5 text-dimmed"
+            class="block size-5 text-muted"
           />
           <span
             v-if="unsynced > 0"
-            class="absolute end-1.5 top-1.5 size-2 rounded-full bg-warning ring-2 ring-default"
+            class="absolute -end-0.5 -top-0.5 size-2 rounded-full bg-warning"
           />
-        </UButton>
-        <template #content>
-          <div class="max-w-64 p-3 text-sm">
-            <p class="font-semibold">{{ $t('sync.unsynced', unsynced) }}</p>
-            <p v-if="unsynced > 0" class="mt-1 text-muted">{{ $t('sync.unsyncedHelp') }}</p>
-          </div>
-        </template>
-      </UPopover>
+        </span>
+      </UButton>
       <UButton
         icon="i-lucide-share-2"
         color="neutral"
@@ -75,6 +74,27 @@ const tabs = computed(() => {
         :aria-label="$t('invite.action')"
         @click="invite"
       />
+    </div>
+    <!-- The sync status opens in the header itself and pushes the page down, so it never
+         sits over the list. -->
+    <div v-if="syncOpen" id="sync-status" class="flex gap-3 border-t border-default px-4 py-3">
+      <span class="relative mt-0.5 shrink-0">
+        <UIcon
+          :name="unsynced > 0 ? 'i-lucide-cloud' : 'i-lucide-cloud-check'"
+          class="block size-5"
+          :class="unsynced > 0 ? 'text-muted' : 'text-success'"
+        />
+        <span
+          v-if="unsynced > 0"
+          class="absolute -end-0.5 -top-0.5 size-2 rounded-full bg-warning"
+        />
+      </span>
+      <div>
+        <p class="font-semibold text-highlighted">{{ $t('sync.unsynced', unsynced) }}</p>
+        <p v-if="unsynced > 0" class="mt-0.5 text-sm text-muted">
+          {{ $t('sync.unsyncedHelp') }}
+        </p>
+      </div>
     </div>
   </header>
   <div
@@ -91,7 +111,8 @@ const tabs = computed(() => {
       {{ ready ? $t('sync.releaseToRefresh') : $t('sync.pullToRefresh') }}
     </span>
   </div>
-  <main class="px-4 pt-4 pb-[calc(11rem+env(safe-area-inset-bottom))]">
+  <!-- At the end, the last card stops 1rem above the floating action (4rem tabs + 1rem + 3rem). -->
+  <main class="px-4 pt-4 pb-[calc(9rem+env(safe-area-inset-bottom))]">
     <TripNotices />
     <slot />
   </main>
@@ -105,7 +126,7 @@ const tabs = computed(() => {
   </div>
   <nav
     :aria-label="$t('trip.tabs')"
-    class="fixed inset-x-0 bottom-0 z-10 mx-auto max-w-120 border-t border-default bg-default/85 pb-[env(safe-area-inset-bottom)] backdrop-blur-xl backdrop-saturate-150"
+    class="fixed inset-x-0 bottom-0 z-10 mx-auto max-w-120 border-t border-default bg-default pb-[env(safe-area-inset-bottom)] backdrop-blur-xl backdrop-saturate-150"
   >
     <!-- Tabs replace each other in history, so back always leaves the Trip. -->
     <ul class="flex">
@@ -113,7 +134,7 @@ const tabs = computed(() => {
         <NuxtLink
           :to="tab.to"
           replace
-          class="group flex h-16 flex-col items-center justify-center gap-1 text-xs font-medium text-muted aria-[current=page]:text-highlighted"
+          class="group flex h-16 flex-col items-center justify-center gap-1 text-[0.8125rem] font-medium text-muted aria-[current=page]:text-highlighted"
         >
           <span
             class="grid h-7 w-14 place-items-center rounded-full transition-colors group-aria-[current=page]:bg-primary/12 group-aria-[current=page]:text-primary"

@@ -1,13 +1,20 @@
 <script setup lang="ts">
 import type { Participant } from '@osi/owe-yeah-domain';
 
-// Picks one Participant as avatar chips under a label, e.g. "Paid by". Sits inside a
-// `UFormField`; `name` groups the chips' radios. The parent may refuse a pick by not taking
-// it into its model; the radios then go back to the pick that stands.
-const { participants, label, name } = defineProps<{
+// Picks one Participant as radio chips under a label, e.g. "Paid by". Sits inside a
+// `UFormField`; `name` groups the chips' radios. `unavailableId` greys out someone who can't be
+// picked here, e.g. who paid, as a Repayment's recipient. The parent may refuse a pick by not
+// taking it into its model; the radios then go back to the pick that stands.
+const {
+  participants,
+  label,
+  name,
+  unavailableId = undefined,
+} = defineProps<{
   participants: readonly Participant[];
   label: string;
   name: string;
+  unavailableId?: string;
 }>();
 const picked = defineModel<string>({ required: true });
 
@@ -36,6 +43,7 @@ async function pick(participantId: string): Promise<void> {
         type="radio"
         :name="name"
         :checked="picked === participant.id"
+        :disabled="participant.id === unavailableId"
         @update:checked="pick(participant.id)"
       />
     </div>
