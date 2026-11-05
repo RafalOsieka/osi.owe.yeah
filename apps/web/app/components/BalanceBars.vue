@@ -49,8 +49,14 @@ const rows = computed(() => {
 <template>
   <div class="card overflow-hidden">
     <p class="flex justify-between px-4 pt-3 text-xs text-muted" aria-hidden="true">
-      <span>← {{ $t('balances.owes') }}</span>
-      <span>{{ $t('balances.isOwed') }} →</span>
+      <span class="flex items-center gap-1">
+        <UIcon name="i-lucide-arrow-left" class="size-3" />
+        {{ $t('balances.owes') }}
+      </span>
+      <span class="flex items-center gap-1">
+        {{ $t('balances.isOwed') }}
+        <UIcon name="i-lucide-arrow-right" class="size-3" />
+      </span>
     </p>
     <ul class="divide-y divide-default">
       <li v-for="row in rows" :key="row.participantId">

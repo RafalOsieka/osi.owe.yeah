@@ -698,7 +698,7 @@ test('a share on a Receipt and a bar on Balances open where the share comes from
   await expect(sheet).toContainText('Deposit refunds≈ -€0.33');
   await expect(sheet).toContainText('Receipt discount≈ -€0.18');
   await expect(sheet).toContainText('Share€2.09');
-  await expect(sheet).toContainText('may not add up to the total');
+  await expect(sheet).toContainText('rounded to the cent');
 
   // System back closes the sheet first, then leaves the Expense.
   await page.goBack();
@@ -866,9 +866,9 @@ test('record a plain Expense, read it, edit it, and see the balances', async ({ 
   await expect(main).toContainText('€6.67');
   await expect(main).toContainText('You paid €10.00 · your share ≈ €3.33');
   const bars = page.getByRole('region', { name: 'Everyone' }).getByRole('listitem');
-  await expect(bars.filter({ hasText: 'Kasia' })).toContainText('+6.67');
-  await expect(bars.filter({ hasText: 'Ania' })).toContainText('-3.33');
-  await expect(bars.filter({ hasText: 'Ola' })).toContainText('-3.34');
+  await expect(bars.filter({ hasText: 'Kasia' })).toContainText('+€6.67');
+  await expect(bars.filter({ hasText: 'Ania' })).toContainText('−€3.33');
+  await expect(bars.filter({ hasText: 'Ola' })).toContainText('−€3.34');
   await expect(main).toContainText('Trip total €10.00');
 
   // The detail page shows the Expense in full; edit from there.
@@ -897,9 +897,9 @@ test('record a plain Expense, read it, edit it, and see the balances', async ({ 
   await expect(row).toContainText('you lent €2.25');
 
   await page.getByRole('link', { name: 'Balances' }).click();
-  await expect(bars.filter({ hasText: 'Kasia' })).toContainText('+2.25');
-  await expect(bars.filter({ hasText: 'Ania' })).toContainText('-2.25');
-  await expect(bars.filter({ hasText: 'Ola' })).toContainText('0.00');
+  await expect(bars.filter({ hasText: 'Kasia' })).toContainText('+€2.25');
+  await expect(bars.filter({ hasText: 'Ania' })).toContainText('−€2.25');
+  await expect(bars.filter({ hasText: 'Ola' })).toContainText('€0.00');
   await expect(main).not.toContainText('≈');
 });
 

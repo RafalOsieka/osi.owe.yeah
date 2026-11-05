@@ -8,18 +8,16 @@ import type { Participant } from '@osi/owe-yeah-domain';
 const {
   participant,
   size = 'sm',
-  index,
+  index = null,
 } = defineProps<{
   participant: Participant;
   size?: AvatarProps['size'];
   /** Their place in the Trip's order, where no Trip is open (My Trips). */
-  index?: number;
+  index?: number | null;
 }>();
 
 const colorOf = useAvatarColor();
-const color = computed(() =>
-  index === undefined ? colorOf(participant.id) : avatarColorAt(index),
-);
+const color = computed(() => (index === null ? colorOf(participant.id) : avatarColorAt(index)));
 
 const initial = computed(() => Array.from(participant.name)[0]?.toLocaleUpperCase() ?? '');
 </script>
