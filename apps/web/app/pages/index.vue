@@ -2,8 +2,8 @@
 import { balances, isSettled, rational, type Rational } from '@osi/owe-yeah-domain';
 
 // My Trips: every Trip on this device, most recently opened first and Settled ones below the
-// rest, with its Claim, your balance there (or a Settled badge), and how many of your
-// changes haven't synced yet. Above them, the install nudge; below, the privacy notice and the
+// rest, with the faces of its first Participants, its Claim, your balance there (or a Settled
+// badge), and how many of your changes haven't synced yet. Above them, the install nudge; below, the privacy notice and the
 // terms. A first visit gets a welcome with "New Trip" instead.
 const { t, locale } = useI18n();
 const device = useDevice();
@@ -27,6 +27,9 @@ const rows = computed(() =>
           claim,
           unsynced,
           settled,
+          // The first few faces of who is in it.
+          people: local.participants.slice(0, 4),
+          more: Math.max(0, local.participants.length - 4),
           balance: mine && {
             text: formatMoney(abs(mine.rounded), local.currency, locale.value),
             label:
@@ -67,30 +70,45 @@ useHead({ title: () => t('myTrips.title') });
             class="grid size-12 shrink-0 place-items-center rounded-[0.875rem]"
             :class="
               trip.settled
-                ? 'bg-elevated text-muted'
+                ? 'bg-success/12 text-success'
                 : 'bg-linear-to-br from-primary-400 to-primary-600 text-white shadow-sm shadow-primary-600/25'
             "
           >
             <UIcon :name="trip.settled ? 'i-lucide-check' : 'i-lucide-plane'" class="size-6" />
           </span>
           <span class="min-w-0 flex-1">
-            <span
-              class="block truncate text-lg font-semibold tracking-tight"
-              :class="trip.settled ? 'text-muted' : 'text-highlighted'"
-            >
+            <span class="block truncate text-lg font-semibold tracking-tight text-highlighted">
               {{ trip.name }}
             </span>
-            <span class="block truncate text-sm text-muted">
-              {{ trip.claim ? $t('claim.youAre', { name: trip.claim.name }) : $t('claim.title') }}
-              <span v-if="trip.unsynced > 0" class="text-warning">
-                {{ $t('sync.unsyncedShort', { count: trip.unsynced }) }}
+            <span class="mt-1 flex min-w-0 items-center gap-2 text-sm text-muted">
+              <span class="flex shrink-0" aria-hidden="true">
+                <ParticipantAvatar
+                  v-for="(person, index) in trip.people"
+                  :key="person.id"
+                  :participant="person"
+                  size="2xs"
+                  class="ring-2 ring-(--ui-bg)"
+                  :class="{ '-ms-1.5': index > 0 }"
+                />
+                <span
+                  v-if="trip.more > 0"
+                  class="-ms-1.5 grid h-5 min-w-5 place-items-center rounded-full bg-elevated px-1 text-[0.625rem] font-semibold ring-2 ring-(--ui-bg)"
+                >
+                  +{{ trip.more }}
+                </span>
+              </span>
+              <span class="truncate">
+                {{ trip.claim ? $t('claim.youAre', { name: trip.claim.name }) : $t('claim.title') }}
+                <span v-if="trip.unsynced > 0" class="text-warning">
+                  {{ $t('sync.unsyncedShort', { count: trip.unsynced }) }}
+                </span>
               </span>
             </span>
           </span>
           <UBadge
             v-if="trip.settled"
             :label="$t('myTrips.settled')"
-            color="neutral"
+            color="success"
             variant="soft"
             icon="i-lucide-circle-check"
             class="shrink-0 rounded-full"

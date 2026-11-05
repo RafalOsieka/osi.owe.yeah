@@ -31,6 +31,6 @@ function submit(): void {
         class="w-full"
       />
     </UFormField>
-    <UButton type="submit" icon="i-lucide-user-plus" :label="submitLabel" class="mt-6" />
+    <UButton type="submit" size="xl" icon="i-lucide-user-plus" :label="submitLabel" class="mt-6" />
   </UForm>
 </template>
