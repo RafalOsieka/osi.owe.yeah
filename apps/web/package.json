@@ -48,7 +48,7 @@
     "@vue/test-utils": "^2.5.1",
     "drizzle-kit": "^0.31.11",
     "fake-indexeddb": "^6.2.7",
-    "happy-dom": "^20.14.5",
+    "happy-dom": "^21.0.4",
     "typescript": "^6.0.3",
     "vite-plus": "catalog:",
     "vitest": "catalog:",
