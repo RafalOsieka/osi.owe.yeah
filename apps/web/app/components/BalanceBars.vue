@@ -1,8 +1,8 @@
 <script setup lang="ts">
 import type { Participant, ParticipantBalance } from '@osi/owe-yeah-domain';
 
-// Everyone's balance as diverging bars, one per Participant in the Trip's order: owing to
-// the left in red, owed to the right in green, scaled to the largest balance, with the
+// Everyone's balance as diverging bars, one per Participant in the Trip's order with their
+// avatar: owing to the left in red, owed to the right in green, scaled to the largest balance, with the
 // amount at the end of the bar. Shows the rounded balances settling up uses. Tapping a bar
 // selects its Participant, to open their breakdown. Hand-built: `UChart` only draws vertical
 // bars.
@@ -23,10 +23,11 @@ const emit = defineEmits<{ select: [participantId: string] }>();
 const { locale } = useI18n();
 
 const rows = computed(() => {
-  const names = new Map(participants.map(({ id, name }) => [id, name]));
+  const byId = new Map(participants.map((participant) => [participant.id, participant]));
   const widths = barWidths(balances.map(({ rounded }) => rounded));
+  // With a true minus sign, which is as wide as the plus.
   const amounts = balances.map(({ rounded }) =>
-    formatMoney(rounded, currency, locale.value, 'signed'),
+    formatMoney(rounded, currency, locale.value, 'signedCurrency').replace('-', '−'),
   );
   // A bar shares its half with its amount, so every bar leaves room for the longest amount
   // (in `ch`: the digits are tabular) plus its padding, and all keep the same scale.
@@ -35,7 +36,8 @@ const rows = computed(() => {
     const sign = shownSign(rounded, currency);
     return {
       participantId,
-      name: names.get(participantId) ?? '?',
+      participant: byId.get(participantId),
+      name: byId.get(participantId)?.name ?? '?',
       owes: sign < 0,
       amount: amounts[index]!,
       width: `calc((100% - ${longest}ch - 0.5rem) * ${widths[index]! / 100})`,
@@ -45,37 +47,50 @@ const rows = computed(() => {
 </script>
 
 <template>
-  <div>
-    <div class="flex justify-between ps-16 text-xs text-dimmed" aria-hidden="true">
-      <span>{{ $t('balances.owes') }}</span>
-      <span>{{ $t('balances.isOwed') }}</span>
+  <div class="card px-2 py-3">
+    <div class="mb-1 grid grid-cols-[6.5rem_1fr_1fr] px-2 text-xs text-dimmed" aria-hidden="true">
+      <span />
+      <span class="pe-2 text-end">{{ $t('balances.owes') }}</span>
+      <span class="ps-2">{{ $t('balances.isOwed') }}</span>
     </div>
     <ul>
       <li v-for="row in rows" :key="row.participantId">
         <button
           type="button"
           aria-haspopup="dialog"
-          class="grid h-8 w-full cursor-pointer grid-cols-[4rem_1fr_1fr] items-center rounded-md text-start text-xs hover:bg-elevated"
+          class="grid h-11 w-full cursor-pointer grid-cols-[6.5rem_1fr_1fr] items-center rounded-lg px-2 text-start text-sm transition-colors hover:bg-elevated/60 active:bg-elevated"
           @click="emit('select', row.participantId)"
         >
-          <span
-            class="truncate pe-1"
-            :class="row.participantId === claimId ? 'font-bold' : 'font-medium'"
-          >
-            {{ row.name }}
+          <span class="flex min-w-0 items-center gap-2 pe-2">
+            <ParticipantAvatar v-if="row.participant" :participant="row.participant" size="xs" />
+            <span
+              class="truncate"
+              :class="
+                row.participantId === claimId ? 'font-semibold text-highlighted' : 'text-default'
+              "
+            >
+              {{ row.name }}
+            </span>
           </span>
           <span
-            class="flex h-full min-w-0 items-center justify-end overflow-hidden border-e-[1.5px] border-accented"
+            class="flex h-full min-w-0 items-center justify-end overflow-hidden border-e border-accented"
           >
             <template v-if="row.owes">
-              <span class="px-1 whitespace-nowrap text-muted tabular-nums">{{ row.amount }}</span>
-              <span class="h-4 shrink-0 rounded-s bg-error/85" :style="{ width: row.width }" />
+              <span class="px-1.5 text-xs whitespace-nowrap text-muted tabular-nums">
+                {{ row.amount }}
+              </span>
+              <span class="h-3 shrink-0 rounded-s-full bg-error/75" :style="{ width: row.width }" />
             </template>
           </span>
           <span class="flex h-full min-w-0 items-center overflow-hidden">
             <template v-if="!row.owes">
-              <span class="h-4 shrink-0 rounded-e bg-success/85" :style="{ width: row.width }" />
-              <span class="px-1 whitespace-nowrap text-muted tabular-nums">{{ row.amount }}</span>
+              <span
+                class="h-3 shrink-0 rounded-e-full bg-success/80"
+                :style="{ width: row.width }"
+              />
+              <span class="px-1.5 text-xs whitespace-nowrap text-muted tabular-nums">
+                {{ row.amount }}
+              </span>
             </template>
           </span>
         </button>

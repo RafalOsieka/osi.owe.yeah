@@ -20,6 +20,7 @@
   "myTrips": {
     "title": "My Trips",
     "empty": "No Trips yet.",
+    "emptyHelp": "Start a Trip, share its link with the others, and see who owes whom. It works offline too.",
     "create": "New Trip",
     "settled": "Settled"
   },

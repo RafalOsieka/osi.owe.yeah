@@ -25,10 +25,15 @@ const menu = computed<DropdownMenuItem[]>(() => [
 </script>
 
 <template>
-  <header class="sticky top-0 z-10 bg-default pt-[env(safe-area-inset-top)]">
+  <header
+    class="sticky top-0 z-10 bg-canvas/80 pt-[env(safe-area-inset-top)] backdrop-blur-xl backdrop-saturate-150"
+  >
     <div class="flex h-14 items-center gap-2 ps-4 pe-2">
-      <NuxtLink to="/" class="flex min-w-0 flex-1 items-center gap-2 text-xl font-bold">
-        <AppBrandMark />
+      <NuxtLink
+        to="/"
+        class="flex min-w-0 flex-1 items-center gap-2 text-lg font-semibold tracking-tight text-highlighted"
+      >
+        <AppBrandMark class="size-6 text-primary" />
         <span class="truncate">{{ $t('app.title') }}</span>
       </NuxtLink>
       <UDropdownMenu :items="menu" :content="{ align: 'end' }">
@@ -41,7 +46,7 @@ const menu = computed<DropdownMenuItem[]>(() => [
       </UDropdownMenu>
     </div>
   </header>
-  <main class="px-4 pt-2 pb-[calc(6rem+env(safe-area-inset-bottom))]">
+  <main class="px-4 pt-1 pb-[calc(6rem+env(safe-area-inset-bottom))]">
     <slot />
   </main>
   <div

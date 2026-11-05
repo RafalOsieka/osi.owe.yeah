@@ -20,6 +20,7 @@
   "myTrips": {
     "title": "Moje podróże",
     "empty": "Nie masz jeszcze żadnych podróży.",
+    "emptyHelp": "Załóż podróż, wyślij link pozostałym i zobacz, kto komu ile oddaje. Działa też offline.",
     "create": "Nowa podróż",
     "settled": "Rozliczona"
   },

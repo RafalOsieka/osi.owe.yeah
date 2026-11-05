@@ -1,5 +1,58 @@
 @import 'tailwindcss';
 @import '@nuxt/ui';
+/* Bundled with the app, so the font works offline and no font host sees the visitor. */
+@import '@fontsource-variable/geist';
+
+@theme {
+  --font-sans: 'Geist Variable', ui-sans-serif, system-ui, sans-serif;
+}
+
+/* `bg-canvas`: the page behind the cards. Cards and sheets are `bg-default`. */
+@theme inline {
+  --color-canvas: var(--app-canvas);
+}
+
+/*
+ * The look: a soft canvas with white cards (near-black on a darker canvas in dark mode),
+ * rounder corners, and a primary deep enough for white text on it.
+ */
+:root {
+  --ui-radius: 0.375rem;
+  --app-canvas: var(--ui-color-neutral-100);
+  --ui-primary: var(--ui-color-primary-600);
+  --ui-success: var(--ui-color-success-600);
+  --ui-error: var(--ui-color-error-600);
+  --ui-border: color-mix(in oklab, var(--ui-color-neutral-200) 80%, transparent);
+}
+
+.dark {
+  --app-canvas: var(--ui-color-neutral-950);
+  --ui-bg: color-mix(in oklab, var(--ui-color-neutral-900) 85%, var(--ui-color-neutral-800));
+  --ui-bg-elevated: var(--ui-color-neutral-800);
+  --ui-primary: var(--ui-color-primary-400);
+  --ui-success: var(--ui-color-success-400);
+  --ui-error: var(--ui-color-error-400);
+  --ui-border: color-mix(in oklab, var(--ui-color-neutral-800) 80%, transparent);
+}
+
+/* A white (dark: raised) rounded surface on the canvas, holding a list or a group of rows. */
+@utility card {
+  border-radius: var(--radius-xl);
+  background-color: var(--ui-bg);
+  box-shadow:
+    0 1px 2px rgb(0 0 0 / 0.04),
+    0 0 0 1px var(--ui-border);
+}
+
+/* A small heading above a card. */
+@utility section-heading {
+  margin-bottom: 0.5rem;
+  padding-inline: 0.25rem;
+  font-size: var(--text-sm);
+  line-height: var(--text-sm--line-height);
+  font-weight: 600;
+  color: var(--ui-text-muted);
+}
 
 /*
  * Page changes are instant, as on a phone. Form-layout pages slide in from the right and

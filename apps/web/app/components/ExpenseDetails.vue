@@ -156,95 +156,99 @@ function openBreakdown(participantId: string): void {
 
 <template>
   <div>
-    <p class="text-xl leading-tight font-bold wrap-anywhere">{{ expense.title }}</p>
-    <p class="mt-0.5 text-3xl font-bold tabular-nums">{{ money(details.total) }}</p>
-    <template v-if="conversion">
-      <p class="font-medium tabular-nums">{{ conversion.text }}</p>
-      <p v-if="conversion.manual" class="text-sm text-muted tabular-nums">
-        {{ conversion.manual }}
+    <div class="card px-5 py-6 text-center">
+      <p class="text-lg leading-snug font-medium text-toned wrap-anywhere">{{ expense.title }}</p>
+      <p class="mt-1 text-5xl font-semibold tracking-tight text-highlighted tabular-nums">
+        {{ money(details.total) }}
       </p>
-      <p v-if="conversion.help" class="text-xs text-warning">{{ conversion.help }}</p>
-    </template>
-    <p class="text-sm text-muted">
-      {{ $t('expense.timeInZone', { time: details.when, zone: expense.time.zone }) }}
-    </p>
+      <template v-if="conversion">
+        <p class="mt-2 font-medium tabular-nums">{{ conversion.text }}</p>
+        <p v-if="conversion.manual" class="text-sm text-muted tabular-nums">
+          {{ conversion.manual }}
+        </p>
+        <p v-if="conversion.help" class="text-xs text-warning">{{ conversion.help }}</p>
+      </template>
+      <p class="mt-3 text-sm text-muted">
+        {{ $t('expense.timeInZone', { time: details.when, zone: zoneName(expense.time.zone) }) }}
+      </p>
+    </div>
 
     <section aria-labelledby="paid-by-heading">
-      <h2 id="paid-by-heading" class="mt-5 mb-1 text-xs font-semibold text-muted uppercase">
+      <h2 id="paid-by-heading" class="section-heading mt-7">
         {{ details.income ? $t('expense.receivedBy') : $t('expense.paidBy') }}
       </h2>
-      <ul>
+      <ul class="card divide-y divide-default">
         <li
           v-for="{ participant, amount, contribution } in details.payers"
           :key="participant.id"
-          class="flex items-center gap-2.5 py-1.5"
+          class="flex items-center gap-3 px-4 py-3"
         >
-          <ParticipantAvatar :participant="participant" />
+          <ParticipantAvatar :participant="participant" size="md" />
           <span class="min-w-0 flex-1 leading-snug">
             <span class="block truncate">{{ participant.name }}</span>
             <span v-if="contribution" class="block text-xs text-muted">
               {{ $t('contribution.label') }}
             </span>
           </span>
-          <span class="shrink-0 tabular-nums">{{ money(amount) }}</span>
+          <span class="shrink-0 font-medium text-highlighted tabular-nums">
+            {{ money(amount) }}
+          </span>
         </li>
       </ul>
     </section>
 
     <section v-if="details.lineItems" aria-labelledby="line-items-heading">
-      <h2 id="line-items-heading" class="mt-5 mb-1 text-xs font-semibold text-muted uppercase">
+      <h2 id="line-items-heading" class="section-heading mt-7">
         {{ $t('receipt.lineItems') }}
       </h2>
-      <ol>
-        <li
-          v-for="(line, index) in details.lineItems"
-          :key="index"
-          class="flex items-start gap-2 border-b border-default py-1.5 last:border-b-0"
-        >
-          <span class="min-w-0 flex-1 leading-snug">
-            <span class="block wrap-anywhere">{{ line.name }}</span>
-            <span class="block text-xs text-muted">
-              {{
-                line.quantity > 1
-                  ? $t('receipt.facts', {
-                      quantity: line.quantity,
-                      price: line.unitPrice,
-                      split: line.split,
-                    })
-                  : line.split
-              }}
+      <div class="card divide-y divide-default">
+        <ol class="divide-y divide-default">
+          <li
+            v-for="(line, index) in details.lineItems"
+            :key="index"
+            class="flex items-start gap-3 px-4 py-3"
+          >
+            <span class="min-w-0 flex-1 leading-snug">
+              <span class="block text-highlighted wrap-anywhere">{{ line.name }}</span>
+              <span class="block text-xs text-muted">
+                {{
+                  line.quantity > 1
+                    ? $t('receipt.facts', {
+                        quantity: line.quantity,
+                        price: line.unitPrice,
+                        split: line.split,
+                      })
+                    : line.split
+                }}
+              </span>
+              <span v-if="line.discountText" class="block text-xs text-muted">
+                {{ $t('receipt.lineDiscountFact', { discount: line.discountText }) }}
+              </span>
+              <span v-if="line.deposit.numerator !== 0n" class="block text-xs text-muted">
+                {{ $t('receipt.depositFact', { deposit: money(line.deposit) }) }}
+              </span>
+              <span v-if="line.unassigned.numerator !== 0n" class="block text-xs text-warning">
+                {{ $t('receipt.notAssigned', { amount: money(line.unassigned) }) }}
+              </span>
             </span>
-            <span v-if="line.discountText" class="block text-xs text-muted">
-              {{ $t('receipt.lineDiscountFact', { discount: line.discountText }) }}
+            <span class="shrink-0 font-medium text-highlighted tabular-nums">
+              {{ money(line.net) }}
             </span>
-            <span v-if="line.deposit.numerator !== 0n" class="block text-xs text-muted">
-              {{ $t('receipt.depositFact', { deposit: money(line.deposit) }) }}
-            </span>
-            <span v-if="line.unassigned.numerator !== 0n" class="block text-xs text-warning">
-              {{ $t('receipt.notAssigned', { amount: money(line.unassigned) }) }}
-            </span>
-          </span>
-          <span class="shrink-0 tabular-nums">{{ money(line.net) }}</span>
-        </li>
-      </ol>
-      <p
-        v-if="details.discount"
-        class="flex items-start gap-2 border-t border-default py-1.5 text-sm"
-      >
-        <span class="min-w-0 flex-1">{{ $t('receipt.receiptDiscount') }}</span>
-        <span class="shrink-0 tabular-nums">{{ details.discount }}</span>
-      </p>
-      <p
-        v-if="details.deposits"
-        class="flex items-start gap-2 border-t border-default py-1.5 text-sm"
-      >
-        <span class="min-w-0 flex-1">{{ $t('receipt.deposits') }}</span>
-        <span class="shrink-0 tabular-nums">{{ money(details.deposits) }}</span>
-      </p>
+          </li>
+        </ol>
+        <p v-if="details.discount" class="flex items-start gap-3 px-4 py-3 text-sm">
+          <span class="min-w-0 flex-1">{{ $t('receipt.receiptDiscount') }}</span>
+          <span class="shrink-0 tabular-nums">{{ details.discount }}</span>
+        </p>
+        <p v-if="details.deposits" class="flex items-start gap-3 px-4 py-3 text-sm">
+          <span class="min-w-0 flex-1">{{ $t('receipt.deposits') }}</span>
+          <span class="shrink-0 tabular-nums">{{ money(details.deposits) }}</span>
+        </p>
+      </div>
     </section>
 
     <section aria-labelledby="for-whom-heading">
-      <h2 id="for-whom-heading" class="mt-5 mb-1 text-xs font-semibold text-muted uppercase">
+      <h2 id="for-whom-heading" class="section-heading mt-7">
         {{
           details.repayment
             ? $t('repayment.paidTo')
@@ -253,24 +257,26 @@ function openBreakdown(participantId: string): void {
               : $t('expense.forWhomEven')
         }}
       </h2>
-      <ul>
+      <ul class="card divide-y divide-default overflow-hidden">
         <li v-for="{ participant, share } in details.shares" :key="participant.id">
           <component
             :is="breakdowns ? 'button' : 'div'"
             :type="breakdowns ? 'button' : undefined"
             :aria-haspopup="breakdowns ? 'dialog' : undefined"
-            class="flex w-full items-center gap-2.5 py-1.5 text-start"
-            :class="{ 'cursor-pointer rounded-md hover:bg-elevated': breakdowns }"
+            class="flex w-full items-center gap-3 px-4 py-3 text-start"
+            :class="{ 'cursor-pointer transition-colors hover:bg-elevated/60': breakdowns }"
             @click="breakdowns && openBreakdown(participant.id)"
           >
-            <ParticipantAvatar :participant="participant" />
+            <ParticipantAvatar :participant="participant" size="md" />
             <span
               class="min-w-0 flex-1 truncate"
-              :class="{ 'font-semibold': participant.id === claim?.id }"
+              :class="{ 'font-semibold text-highlighted': participant.id === claim?.id }"
             >
               {{ participant.name }}
             </span>
-            <span class="shrink-0 tabular-nums">{{ money(share) }}</span>
+            <span class="shrink-0 font-medium text-highlighted tabular-nums">
+              {{ money(share) }}
+            </span>
             <UIcon
               v-if="breakdowns"
               name="i-lucide-chevron-right"
@@ -280,8 +286,10 @@ function openBreakdown(participantId: string): void {
           </component>
         </li>
       </ul>
-      <p v-if="details.rounded" class="mt-1 text-xs text-muted">{{ $t('breakdown.rounded') }}</p>
-      <p v-if="details.unassigned" class="mt-1 text-sm text-warning">
+      <p v-if="details.rounded" class="mt-2 px-1 text-xs text-muted">
+        {{ $t('breakdown.rounded') }}
+      </p>
+      <p v-if="details.unassigned" class="mt-2 px-1 text-sm text-warning">
         {{
           $t('receipt.unassignedTotal', {
             amount: money(details.unassigned),

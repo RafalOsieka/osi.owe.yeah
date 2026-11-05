@@ -65,7 +65,7 @@ const newExpense = computed(() => `/trips/${trip.value.id}/expenses/new`);
         :disabled="!canAdd"
         :to="newExpense"
         size="xl"
-        class="rounded-2xl shadow-lg"
+        class="rounded-full px-5 shadow-lg shadow-primary/30"
       />
     </template>
   </NuxtLayout>

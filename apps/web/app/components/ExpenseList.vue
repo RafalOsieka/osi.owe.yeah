@@ -38,21 +38,21 @@ const bare = (amount: Rational, currency: string) =>
   formatMoney(amount, currency, locale.value, 'number');
 
 // What the claimed Participant sees on the right of a row, under the total: what they lent
-// or get back in green, their share in red, and money that only changed hands (a Repayment,
-// an Income they received) in neutral, as it is not spending.
+// or get back in green, and their share, or money that only changed hands (a Repayment, an
+// Income they received), in neutral: a share is not a debt, so red is left to owing.
 function forYou(expense: LocalExpense): { text: string; tone: string } | null {
   if (claimId === null) return null;
   const view = claimView(expense, claimId);
   const amount = view.kind === 'notForYou' ? '' : bare(view.amount, expense.currency);
   switch (view.kind) {
     case 'lent':
-      return { text: t('expense.youLent', { amount }), tone: 'text-primary' };
+      return { text: t('expense.youLent', { amount }), tone: 'text-success' };
     case 'share':
-      return { text: t('expense.yourShare', { amount }), tone: 'text-error' };
+      return { text: t('expense.yourShare', { amount }), tone: 'text-muted' };
     case 'received':
       return { text: t('expense.youReceived', { amount }), tone: 'text-muted' };
     case 'getBack':
-      return { text: t('expense.youGetBack', { amount }), tone: 'text-primary' };
+      return { text: t('expense.youGetBack', { amount }), tone: 'text-success' };
     case 'repaid':
       return { text: t('expense.youRepaid', { amount }), tone: 'text-muted' };
     case 'notForYou':
@@ -116,87 +116,94 @@ watch(
   { immediate: true, flush: 'post' },
 );
 
-// A local day (`YYYY-MM-DD`) in words. It is a calendar date, not an instant, so it is
-// formatted in UTC to keep the device's zone from shifting it.
-
+// A local day (`YYYY-MM-DD`) in words, e.g. "Sunday, July 5", with the year only when it isn't
+// this one. It is a calendar date, not an instant, so it is formatted in UTC to keep the
+// device's zone from shifting it.
 function dayHeading(day: string): string {
-  return new Intl.DateTimeFormat(locale.value, { dateStyle: 'full', timeZone: 'UTC' }).format(
-    new Date(`${day}T00:00:00Z`),
-  );
+  const thisYear = day.startsWith(String(new Date().getFullYear()));
+  return new Intl.DateTimeFormat(locale.value, {
+    weekday: 'long',
+    month: 'long',
+    day: 'numeric',
+    year: thisYear ? undefined : 'numeric',
+    timeZone: 'UTC',
+  }).format(new Date(`${day}T00:00:00Z`));
 }
 </script>
 
 <template>
-  <div>
-    <section v-for="{ day, total, rows } in days" :key="day" class="mb-2">
-      <div
-        class="mt-3 mb-1 flex justify-between gap-2 text-xs font-semibold tracking-wide text-muted"
-      >
-        <h3 class="min-w-0 truncate uppercase">{{ dayHeading(day) }}</h3>
+  <div class="space-y-6">
+    <section v-for="{ day, total, rows } in days" :key="day">
+      <div class="section-heading flex items-baseline justify-between gap-2">
+        <h3 class="min-w-0 truncate">{{ dayHeading(day) }}</h3>
         <span class="shrink-0 font-medium tabular-nums">{{ total }}</span>
       </div>
-      <ul>
+      <ul class="card overflow-hidden">
         <li
           v-for="row in rows"
           :id="rowId(row.expense.id)"
           :key="row.expense.id"
-          class="border-b border-default last:border-b-0"
-          :class="{ '-mx-2 rounded-md bg-primary/10 px-2': row.expense.id === highlightId }"
+          class="relative after:absolute after:start-[4.25rem] after:end-0 after:bottom-0 after:h-px after:bg-(--ui-border) last:after:hidden"
+          :class="{ 'bg-primary/8': row.expense.id === highlightId }"
         >
           <NuxtLink
             :to="`/trips/${trip.id}/expenses/${row.expense.id}`"
-            class="flex items-center gap-2.5 py-2.5"
+            class="flex items-center gap-3 px-4 py-3 transition-colors hover:bg-elevated/60 active:bg-elevated"
           >
-            <ParticipantAvatar v-if="row.payer" :participant="row.payer" size="md" />
-            <span class="min-w-0 flex-1 leading-snug">
-              <span class="block truncate font-semibold">{{ row.expense.title }}</span>
-              <span class="block truncate text-xs text-muted">
+            <ParticipantAvatar v-if="row.payer" :participant="row.payer" size="lg" />
+            <span class="min-w-0 flex-1">
+              <span class="block truncate font-medium text-highlighted">
+                {{ row.expense.title }}
+              </span>
+              <span class="mt-0.5 flex min-w-0 items-center gap-1 text-sm text-muted">
                 <UBadge
                   v-if="row.expense.unsynced?.status === 'conflict'"
                   :label="$t('sync.conflictBadge')"
                   color="error"
-                  variant="subtle"
+                  variant="soft"
                   size="sm"
-                  class="me-1"
+                  class="shrink-0"
                 />
                 <UBadge
                   v-else-if="row.expense.unsynced"
                   :label="$t('sync.notSynced')"
                   color="neutral"
-                  variant="subtle"
+                  variant="soft"
                   size="sm"
-                  class="me-1"
+                  class="shrink-0"
                 />
                 <UBadge
                   v-if="row.rate === null"
                   :label="$t('rate.missingBadge')"
                   color="warning"
-                  variant="subtle"
+                  variant="soft"
                   size="sm"
-                  class="me-1"
+                  class="shrink-0"
                 />
                 <UBadge
                   v-else-if="row.rate.provisional"
                   :label="$t('rate.provisionalBadge')"
                   color="warning"
-                  variant="subtle"
+                  variant="soft"
                   size="sm"
-                  class="me-1"
+                  class="shrink-0"
                 />
                 <UBadge
                   v-if="row.unassigned > 0"
                   :label="$t('receipt.unassignedBadge', row.unassigned)"
                   color="warning"
-                  variant="subtle"
+                  variant="soft"
                   size="sm"
-                  class="me-1"
+                  class="shrink-0"
                 />
-                {{ row.summary }}
+                <span class="truncate">{{ row.summary }}</span>
               </span>
             </span>
-            <span class="shrink-0 text-right leading-snug tabular-nums">
-              <span class="block font-semibold">{{ money(row.total, row.expense.currency) }}</span>
-              <span v-if="row.forYou" class="block text-xs" :class="row.forYou.tone">
+            <span class="shrink-0 text-end tabular-nums">
+              <span class="block font-semibold text-highlighted">
+                {{ money(row.total, row.expense.currency) }}
+              </span>
+              <span v-if="row.forYou" class="mt-0.5 block text-sm" :class="row.forYou.tone">
                 {{ row.forYou.text }}
               </span>
             </span>

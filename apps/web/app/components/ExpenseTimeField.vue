@@ -1,5 +1,5 @@
 <script setup lang="ts">
-// When an Expense happened, as the forms take it: one quiet line with the local date, time
+// When an Expense happened, as the forms take it: one chip with the local date, time
 // and zone until tapped, then a `datetime-local` field with the zone picker under it. Sits
 // inside a `UForm`, as its `local` field.
 const local = defineModel<string>('local', { required: true });
@@ -40,13 +40,13 @@ const time = computed(() =>
   <button
     v-else
     type="button"
-    class="flex max-w-full cursor-pointer items-center gap-1.5 text-start text-sm text-muted hover:text-default"
+    class="inline-flex h-10 max-w-full cursor-pointer items-center gap-2 rounded-full bg-default px-3.5 text-start text-sm text-default ring ring-accented transition-colors hover:bg-elevated/60"
     @click="open = true"
   >
-    <UIcon name="i-lucide-clock" class="size-4 shrink-0" />
+    <UIcon name="i-lucide-calendar-clock" class="size-4 shrink-0 text-muted" />
     <span class="sr-only">{{ $t('expense.when') }}:</span>
-    <span class="min-w-0 truncate underline decoration-dotted underline-offset-2">
-      {{ $t('expense.timeInZone', { time, zone }) }}
+    <span class="min-w-0 truncate">
+      {{ $t('expense.timeInZone', { time, zone: zoneName(zone) }) }}
     </span>
   </button>
 </template>

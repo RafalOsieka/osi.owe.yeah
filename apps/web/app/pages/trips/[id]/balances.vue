@@ -10,8 +10,8 @@ import {
 } from '@osi/owe-yeah-domain';
 import { z } from 'zod';
 
-// The Balances tab: your balance and your own Suggested Repayments ("To settle") first, then
-// everyone's balance as diverging bars, the other Suggested Repayments (all of them without
+// The Balances tab: your balance, with your own Suggested Repayments ("To settle") on its
+// card, then everyone's balance as diverging bars, the other Suggested Repayments (all of them without
 // a Claim), Record another Repayment, and what the Trip spent. Once the Trip is Settled, "All
 // settled" replaces the balance and the suggestions. Balances are worked out exactly and
 // rounded with the largest remainder method, as settling up uses them, in the Trip currency.
@@ -100,57 +100,59 @@ const remindable = computed(
 
 <template>
   <NuxtLayout name="trip">
-    <section
-      v-if="settled"
-      class="flex items-center gap-3 rounded-2xl bg-success/10 px-4 py-3.5 text-success"
-    >
-      <UIcon name="i-lucide-circle-check" class="size-8 shrink-0" />
+    <section v-if="settled" class="card flex items-center gap-4 p-5">
+      <span
+        class="grid size-12 shrink-0 place-items-center rounded-full bg-success/12 text-success"
+      >
+        <UIcon name="i-lucide-check" class="size-6" />
+      </span>
       <div>
-        <h2 class="text-xl font-bold">{{ $t('balances.allSettled') }}</h2>
-        <p class="text-xs">{{ $t('balances.allSettledHelp') }}</p>
+        <h2 class="text-xl font-semibold tracking-tight text-highlighted">
+          {{ $t('balances.allSettled') }}
+        </h2>
+        <p class="text-sm text-muted">{{ $t('balances.allSettledHelp') }}</p>
       </div>
     </section>
     <template v-else>
-      <BalanceCard :balance="mine" :total="total" :currency="trip.currency" />
-
-      <section v-if="suggestions.own.length > 0" aria-labelledby="to-settle-heading">
-        <h2
-          id="to-settle-heading"
-          class="mt-5 mb-1 text-xs font-semibold tracking-wide text-muted uppercase"
-        >
-          {{ $t('balances.toSettle') }}
-        </h2>
-        <SuggestedRepaymentList
-          :suggestions="suggestions.own"
-          :participants="trip.participants"
-          :trip-id="trip.id"
-          :currency="trip.currency"
-          :claim-id="claim?.id"
-          :highlight="highlight"
-        >
-          <template #detail="{ suggestion }">
-            <span v-if="remindable.get(suggestion.payerId)?.hint" class="block text-xs text-muted">
-              {{ remindable.get(suggestion.payerId)?.hint }}
-            </span>
-          </template>
-          <template #action="{ suggestion }">
-            <RemindButton
-              v-if="remindable.has(suggestion.payerId)"
-              :by="remindable.get(suggestion.payerId)!.by"
-              :debtor="remindable.get(suggestion.payerId)!.debtor"
-              :sending="reminders.sending.value === suggestion.payerId"
-              @remind="reminders.remind(suggestion)"
-            />
-          </template>
-        </SuggestedRepaymentList>
-      </section>
+      <BalanceCard :balance="mine" :total="total" :currency="trip.currency">
+        <template v-if="suggestions.own.length > 0" #default>
+          <section aria-labelledby="to-settle-heading" class="pt-3">
+            <h2 id="to-settle-heading" class="px-5 text-xs font-medium text-muted">
+              {{ $t('balances.toSettle') }}
+            </h2>
+            <SuggestedRepaymentList
+              :suggestions="suggestions.own"
+              :participants="trip.participants"
+              :trip-id="trip.id"
+              :currency="trip.currency"
+              :claim-id="claim?.id"
+              :highlight="highlight"
+            >
+              <template #detail="{ suggestion }">
+                <span
+                  v-if="remindable.get(suggestion.payerId)?.hint"
+                  class="block text-xs text-muted"
+                >
+                  {{ remindable.get(suggestion.payerId)?.hint }}
+                </span>
+              </template>
+              <template #action="{ suggestion }">
+                <RemindButton
+                  v-if="remindable.has(suggestion.payerId)"
+                  :by="remindable.get(suggestion.payerId)!.by"
+                  :debtor="remindable.get(suggestion.payerId)!.debtor"
+                  :sending="reminders.sending.value === suggestion.payerId"
+                  @remind="reminders.remind(suggestion)"
+                />
+              </template>
+            </SuggestedRepaymentList>
+          </section>
+        </template>
+      </BalanceCard>
     </template>
 
     <section aria-labelledby="everyone-heading">
-      <h2
-        id="everyone-heading"
-        class="mt-5 mb-1 text-xs font-semibold tracking-wide text-muted uppercase"
-      >
+      <h2 id="everyone-heading" class="section-heading mt-7">
         {{ $t('balances.everyone') }}
       </h2>
       <BalanceBars
@@ -163,13 +165,11 @@ const remindable = computed(
     </section>
 
     <section v-if="!settled && suggestions.others.length > 0" aria-labelledby="suggestions-heading">
-      <h2
-        id="suggestions-heading"
-        class="mt-5 mb-1 text-xs font-semibold tracking-wide text-muted uppercase"
-      >
+      <h2 id="suggestions-heading" class="section-heading mt-7">
         {{ claim ? $t('balances.otherSuggestions') : $t('balances.suggestions') }}
       </h2>
       <SuggestedRepaymentList
+        class="card overflow-hidden"
         :suggestions="suggestions.others"
         :participants="trip.participants"
         :trip-id="trip.id"
@@ -180,14 +180,17 @@ const remindable = computed(
     </section>
 
     <UButton
-      variant="link"
+      variant="soft"
+      color="neutral"
       icon="i-lucide-plus"
       :label="$t('balances.recordAnother')"
       :to="`/trips/${trip.id}/repayments/new`"
-      class="mt-3 px-0"
+      block
+      size="lg"
+      class="mt-6 rounded-xl"
     />
 
-    <div class="mt-4 flex flex-wrap justify-between gap-x-3 gap-y-1 text-xs text-muted">
+    <div class="mt-5 flex flex-wrap justify-between gap-x-3 gap-y-1 px-1 text-sm text-muted">
       <p>
         {{
           $t('balances.tripTotalIs', {
