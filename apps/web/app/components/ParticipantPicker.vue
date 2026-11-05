@@ -27,8 +27,8 @@ async function pick(participantId: string): Promise<void> {
 
 <template>
   <div ref="group" role="group" :aria-labelledby="labelId">
-    <p :id="labelId" class="mb-1.5 text-sm font-medium">{{ label }}</p>
-    <div class="flex flex-wrap gap-1.5">
+    <p :id="labelId" class="mb-2 text-sm font-medium text-highlighted">{{ label }}</p>
+    <div class="grid grid-cols-2 gap-2">
       <ParticipantChip
         v-for="participant in participants"
         :key="participant.id"

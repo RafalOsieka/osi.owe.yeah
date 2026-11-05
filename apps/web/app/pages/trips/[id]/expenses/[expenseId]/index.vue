@@ -92,10 +92,11 @@ useHead({ title: () => expense.value?.title ?? t('expense.notFound') });
 </script>
 
 <template>
-  <NuxtLayout name="form" :title="expense?.title ?? ''" :parent="tripPage">
+  <NuxtLayout name="form" :title="expense?.title ?? ''" :parent="tripPage" title-hidden>
     <template v-if="expense" #actions>
       <UButton
-        variant="ghost"
+        variant="soft"
+        icon="i-lucide-pencil"
         :label="$t('expense.editShort')"
         :aria-label="isRepayment(expense) ? $t('repayment.edit') : $t('expense.edit')"
         :to="`/trips/${trip.id}/expenses/${expense.id}/edit`"
@@ -106,23 +107,30 @@ useHead({ title: () => expense.value?.title ?? t('expense.notFound') });
       <UAlert v-if="notSynced" v-bind="notSynced" variant="subtle" class="mb-4" />
       <ExpenseDetails :expense="expense" converted />
 
-      <footer class="mt-6 border-t border-default pt-3">
-        <div class="flex items-center gap-2">
-          <p v-if="lastEdited" class="min-w-0 flex-1 text-sm text-muted">{{ lastEdited }}</p>
-          <UButton
-            variant="link"
-            :label="$t('history.title')"
+      <footer class="mt-7">
+        <div class="card overflow-hidden">
+          <NuxtLink
             :to="`${page}/history`"
-            class="ms-auto shrink-0 px-0"
-          />
+            class="flex items-center gap-3 px-4 py-3 transition-colors hover:bg-elevated/60"
+          >
+            <UIcon name="i-lucide-history" class="size-5 shrink-0 text-muted" />
+            <span class="min-w-0 flex-1">
+              <span class="block text-highlighted">{{ $t('history.title') }}</span>
+              <span v-if="lastEdited" class="block text-sm text-muted">{{ lastEdited }}</span>
+            </span>
+            <UIcon name="i-lucide-chevron-right" class="size-5 shrink-0 text-dimmed" />
+          </NuxtLink>
         </div>
-        <UButton
-          color="error"
-          variant="link"
-          :label="$t('expense.delete')"
-          class="mt-2 px-0"
-          @click="remove"
-        />
+        <div class="card mt-4 overflow-hidden">
+          <button
+            type="button"
+            class="flex w-full cursor-pointer items-center gap-3 px-4 py-3 text-start font-medium text-error transition-colors hover:bg-error/5"
+            @click="remove"
+          >
+            <UIcon name="i-lucide-trash-2" class="size-5 shrink-0" />
+            {{ $t('expense.delete') }}
+          </button>
+        </div>
         <UAlert
           v-if="refusals.length > 0"
           color="error"

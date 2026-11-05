@@ -67,61 +67,69 @@ async function create(): Promise<void> {
 <template>
   <NuxtLayout name="form" :title="$t('trip.create.title')" parent="/" close>
     <UForm id="new-trip" :state="state" :validate="validate" class="space-y-4" @submit="create">
-      <UFormField name="name" :label="$t('trip.create.name')">
-        <UInput
-          v-model="state.name"
-          :placeholder="$t('trip.create.namePlaceholder', { year: new Date().getFullYear() })"
-          class="w-full"
-        />
-      </UFormField>
-      <UFormField
-        name="currency"
-        :label="$t('trip.create.currency')"
-        :help="$t('trip.create.currencyHelp')"
-      >
-        <USelectMenu
-          v-model="state.currency"
-          :items="currencies"
-          value-key="value"
-          class="w-full"
-        />
-      </UFormField>
-      <UFormField name="me" :label="$t('trip.create.me')" :help="$t('trip.create.meHelp')">
-        <UInput
-          v-model="state.me"
-          :placeholder="$t('participants.namePlaceholder')"
-          class="w-full"
-        />
-      </UFormField>
-      <fieldset class="space-y-2">
-        <legend class="text-sm font-medium">{{ $t('trip.create.others') }}</legend>
-        <UFormField v-for="(_, index) in state.others" :key="index" :name="`others.${index}`">
-          <div class="flex gap-2">
-            <UInput
-              v-model="state.others[index]"
-              :placeholder="$t('participants.namePlaceholder')"
-              :aria-label="$t('trip.create.participant', { number: index + 2 })"
-              class="grow"
-            />
-            <UButton
-              v-if="state.others.length > 1"
-              color="neutral"
-              variant="ghost"
-              icon="i-lucide-x"
-              :aria-label="$t('trip.create.removeParticipant')"
-              @click="state.others.splice(index, 1)"
-            />
-          </div>
+      <div class="card space-y-4 p-4">
+        <UFormField name="name" :label="$t('trip.create.name')">
+          <UInput
+            v-model="state.name"
+            :placeholder="$t('trip.create.namePlaceholder', { year: new Date().getFullYear() })"
+            class="w-full"
+          />
         </UFormField>
-        <p class="text-sm text-muted">{{ $t('trip.create.othersHelp') }}</p>
-        <UButton
-          variant="ghost"
-          icon="i-lucide-plus"
-          :label="$t('trip.create.addParticipant')"
-          class="-mx-2.5"
-          @click="state.others.push('')"
-        />
-      </fieldset>
+        <UFormField
+          name="currency"
+          :label="$t('trip.create.currency')"
+          :help="$t('trip.create.currencyHelp')"
+        >
+          <USelectMenu
+            v-model="state.currency"
+            :items="currencies"
+            value-key="value"
+            class="w-full"
+          />
+        </UFormField>
+      </div>
+      <div class="card space-y-4 p-4">
+        <UFormField name="me" :label="$t('trip.create.me')" :help="$t('trip.create.meHelp')">
+          <UInput
+            v-model="state.me"
+            :placeholder="$t('trip.create.mePlaceholder')"
+            class="w-full"
+          />
+        </UFormField>
+        <fieldset class="space-y-2">
+          <legend class="mb-1.5 text-sm font-medium text-default">
+            {{ $t('trip.create.others') }}
+          </legend>
+          <UFormField v-for="(_, index) in state.others" :key="index" :name="`others.${index}`">
+            <div class="flex gap-2">
+              <UInput
+                v-model="state.others[index]"
+                :placeholder="$t('trip.create.othersPlaceholder')"
+                :aria-label="$t('trip.create.participant', { number: index + 2 })"
+                class="grow"
+              />
+              <UButton
+                v-if="state.others.length > 1"
+                color="neutral"
+                variant="ghost"
+                icon="i-lucide-x"
+                :aria-label="$t('trip.create.removeParticipant')"
+                @click="state.others.splice(index, 1)"
+              />
+            </div>
+          </UFormField>
+          <p class="text-sm text-muted">{{ $t('trip.create.othersHelp') }}</p>
+          <UButton
+            variant="ghost"
+            color="neutral"
+            size="sm"
+            icon="i-lucide-plus"
+            :label="$t('trip.create.addParticipant')"
+            class="-mx-2 text-muted"
+            @click="state.others.push('')"
+          />
+        </fieldset>
+      </div>
     </UForm>
     <LegalLinks class="mt-8" />
 

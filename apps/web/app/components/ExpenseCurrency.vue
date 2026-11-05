@@ -77,7 +77,16 @@ const help = computed(() => {
     : t('rate.chargedHelp', { to: manualRate.value.currency });
 });
 
-const kinds: readonly ManualRate['kind'][] = ['charged', 'rate'];
+const kinds = computed(() =>
+  (['charged', 'rate'] as const satisfies readonly ManualRate['kind'][]).map((value) => ({
+    value,
+    label: value === 'rate' ? t('rate.kindRate') : t('rate.kindCharged'),
+  })),
+);
+const kind = computed({
+  get: () => manualRate.value.kind,
+  set: (value: ManualRate['kind']) => (manualRate.value = { ...manualRate.value, kind: value }),
+});
 </script>
 
 <template>
@@ -117,17 +126,12 @@ const kinds: readonly ManualRate['kind'][] = ['charged', 'rate'];
             <span class="text-sm text-muted">{{ manualRate.currency }}</span>
           </template>
         </UInput>
-        <UFieldGroup role="group" :aria-label="$t('rate.manualKind')">
-          <UButton
-            v-for="kind in kinds"
-            :key="kind"
-            :label="kind === 'rate' ? $t('rate.kindRate') : $t('rate.kindCharged')"
-            :aria-pressed="manualRate.kind === kind"
-            :variant="manualRate.kind === kind ? 'solid' : 'outline'"
-            color="neutral"
-            @click="manualRate = { ...manualRate, kind }"
-          />
-        </UFieldGroup>
+        <SegmentedControl
+          v-model="kind"
+          :options="kinds"
+          :label="$t('rate.manualKind')"
+          class="shrink-0"
+        />
       </div>
     </UFormField>
   </div>

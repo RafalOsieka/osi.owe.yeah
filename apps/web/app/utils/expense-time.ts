@@ -10,8 +10,13 @@ export function formatExpenseTime(time: ExpenseTime, locale: string): string {
     day: 'numeric',
     month: 'short',
     year: 'numeric',
-    hour: '2-digit',
+    hour: 'numeric',
     minute: '2-digit',
     timeZone: time.zone,
   }).format(new Date(time.instant));
+}
+
+/** A time zone as people say it: its city, e.g. "New York" for `America/New_York`. */
+export function zoneName(zone: string): string {
+  return (zone.split('/').at(-1) ?? zone).replaceAll('_', ' ');
 }

@@ -34,9 +34,9 @@ const shown = computed(() => {
 </script>
 
 <template>
-  <section :aria-labelledby="headingId" class="rounded-lg border border-default p-3">
+  <section :aria-labelledby="headingId" class="card p-4">
     <div class="flex items-center justify-between gap-2">
-      <h2 :id="headingId" class="text-xs font-semibold text-muted uppercase">{{ heading }}</h2>
+      <h2 :id="headingId" class="text-sm font-semibold text-muted">{{ heading }}</h2>
       <UBadge
         v-if="deleted"
         :label="$t('conflict.deleted')"
@@ -48,10 +48,12 @@ const shown = computed(() => {
     <p v-if="shown.author" class="text-xs text-muted">
       {{ $t('conflict.by', { name: shown.author }) }}
     </p>
-    <p class="mt-2 font-semibold wrap-anywhere">{{ expense.title }}</p>
-    <p class="text-xl font-bold tabular-nums">{{ shown.total }}</p>
+    <p class="mt-2 font-medium text-highlighted wrap-anywhere">{{ expense.title }}</p>
+    <p class="text-2xl font-semibold tracking-tight text-highlighted tabular-nums">
+      {{ shown.total }}
+    </p>
     <p class="text-sm text-muted">
-      {{ $t('expense.timeInZone', { time: shown.when, zone: expense.time.zone }) }}
+      {{ $t('expense.timeInZone', { time: shown.when, zone: zoneName(expense.time.zone) }) }}
     </p>
     <p class="mt-2 text-sm">
       {{

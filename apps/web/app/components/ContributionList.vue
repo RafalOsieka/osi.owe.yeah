@@ -123,10 +123,11 @@ const addable = computed<DropdownMenuItem[]>(() =>
     >
       <UButton
         icon="i-lucide-plus"
-        variant="link"
+        variant="ghost"
+        color="neutral"
         size="sm"
         :label="$t('contribution.add')"
-        class="p-0"
+        class="-mx-2 text-muted"
       />
     </UDropdownMenu>
   </div>

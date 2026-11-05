@@ -20,6 +20,7 @@
   "myTrips": {
     "title": "Moje podróże",
     "empty": "Nie masz jeszcze żadnych podróży.",
+    "emptyHelp": "Załóż podróż, wyślij link pozostałym i zobacz, kto komu ile oddaje. Działa też offline.",
     "create": "Nowa podróż",
     "settled": "Rozliczona"
   },
@@ -37,8 +38,10 @@
       "submit": "Utwórz podróż",
       "me": "Twoje imię",
       "meHelp": "Na tym urządzeniu będziesz tym uczestnikiem.",
+      "mePlaceholder": "np. Ania",
+      "othersPlaceholder": "np. Kasia",
       "others": "Kto jeszcze jedzie?",
-      "othersHelp": "Imiona mogą się powtarzać, a kolejnych uczestników dodasz później."
+      "othersHelp": "Kolejne osoby dodasz później."
     },
     "invalidLink": "Ten link do podróży nie działa.",
     "invalidLinkHelp": "Poproś ponownie o link do podróży.",
@@ -81,7 +84,7 @@
   },
   "claim": {
     "title": "Kim jesteś?",
-    "help": "Wskaż siebie, a to urządzenie podpowie za ciebie domyślne wartości. Nie daje to żadnych dodatkowych uprawnień.",
+    "help": "Wskaż siebie, a to urządzenie podpowie za ciebie domyślne wartości.",
     "notListed": "Nie ma cię na liście?",
     "addMe": "Dodaj mnie",
     "youAre": "Jesteś: {name}",
@@ -89,7 +92,8 @@
     "justLooking": "Tylko przeglądam",
     "whoYouAre": "Kim jesteś",
     "nobody": "Jeszcze nie wskazano",
-    "removed": "Uczestnik {name}, wskazany na tym urządzeniu jako ty, został usunięty z podróży. Kim jesteś teraz?"
+    "removed": "Uczestnik {name}, wskazany na tym urządzeniu jako ty, został usunięty z podróży. Kim jesteś teraz?",
+    "noRights": "Wybór imienia nie daje żadnych dodatkowych uprawnień."
   },
   "invite": {
     "action": "Zaproś",
@@ -157,7 +161,7 @@
     "youReceived": "otrzymujesz {amount}",
     "youGetBack": "odzyskujesz {amount}",
     "youRepaid": "oddajesz {amount}",
-    "notForYou": "nie dla ciebie",
+    "notForYou": "nie dotyczy ciebie",
     "all": "Wszyscy",
     "forWhomEven": "Za kogo · Po równo",
     "editShort": "Edytuj",
@@ -227,14 +231,20 @@
     "deposits": "Kaucje",
     "depositsFact": "Kaucje {amount}",
     "newDeposit": "Kaucja za sztukę nowej pozycji",
-    "depositPlaceholder": "Kaucja",
+    "depositPlaceholder": "Kaucja za sztukę",
     "depositRefund": "Zwrot kaucji",
     "addDepositRefund": "Dodaj zwrot kaucji",
     "newRefundAmount": "Kwota zwrotu kaucji",
     "refundPlaceholder": "Kwota z bonu",
     "refundAmount": "Kwota",
     "refundHelp": "Pieniądze za oddane opakowania zwrotne, często bon wykorzystany przy kasie. Odejmowany od sumy, dzielony osobno i nigdy nie rabatowany.",
-    "checkAmount": "Sprawdź kwotę."
+    "checkAmount": "Sprawdź kwotę.",
+    "done": "Gotowe",
+    "closeAdding": "Zamknij",
+    "notAssignedBeforeDiscount": "{amount} jeszcze nieprzypisane, przed rabatem na paragon",
+    "extras": "Rabat i kaucja na pozycji",
+    "draftLine": "{amount}, poza paragonem, dopóki jej nie dodasz",
+    "draftEmpty": "Poza paragonem, dopóki jej nie dodasz"
   },
   "contribution": {
     "title": "Dopłaty",
@@ -300,7 +310,7 @@
     "paid": "Płatności",
     "share": "Udział",
     "balance": "Saldo",
-    "rounded": "≈ oznacza kwotę zaokrągloną do wyświetlenia. Udziały liczymy dokładnie, więc po zaokrągleniu mogą nie sumować się do całości.",
+    "rounded": "≈ po zaokrągleniu. Dokładne udziały sumują się do całości.",
     "part": {
       "expenses": "Wydatki",
       "goods": "Towary w pełnej cenie",
@@ -436,7 +446,7 @@
     "off": "Wyłączone",
     "pickFirst": "Najpierw wskaż, kim jesteś",
     "pickFirstHelp": "Powiadomienia dotyczą zmian, które dotyczą ciebie, więc najpierw wskaż, kim jesteś w tej podróży.",
-    "blocked": "Zablokowane w tej przeglądarce",
+    "blocked": "Zablokowane · zezwól na nie w ustawieniach strony w przeglądarce",
     "homeScreen": "Dodaj Owe Yeah do ekranu początkowego, aby dostawać powiadomienia",
     "homeScreenHelp": "Na iPhonie i iPadzie powiadomienia dostaje tylko zainstalowana aplikacja: stuknij Udostępnij, potem Do ekranu początkowego, i otwórz Owe Yeah stamtąd.",
     "unsupported": "Ta przeglądarka nie pokazuje powiadomień.",

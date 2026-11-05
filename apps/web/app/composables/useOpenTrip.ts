@@ -3,6 +3,7 @@ import type { InjectionKey } from 'vue';
 import type { DeviceNotifications, Notice } from '~/sync/db';
 import type { TripHandle } from '~/sync/device';
 import type { LocalTrip } from '~/sync/local-trip';
+import type { AvatarColor } from '~/utils/avatar';
 
 /**
  * The Trip open on screen, as `pages/trips/[id].vue` offers it to its pages and to the Trip
@@ -49,4 +50,17 @@ export function useOpenTrip(): OpenTrip {
   const openTrip = inject(openTripKey);
   if (!openTrip) throw new Error('useOpenTrip() is only available inside an open Trip');
   return openTrip;
+}
+
+/**
+ * A Participant's avatar color: by their place in the open Trip's order (`avatarColorAt`), so
+ * no two of its first eight share one; by their id when they are not in it, or outside a Trip.
+ */
+export function useAvatarColor(): (participantId: string) => AvatarColor {
+  const openTrip = inject(openTripKey, null);
+  return (participantId) => {
+    const index =
+      openTrip?.trip.value.participants.findIndex(({ id }) => id === participantId) ?? -1;
+    return index >= 0 ? avatarColorAt(index) : avatarColor(participantId);
+  };
 }

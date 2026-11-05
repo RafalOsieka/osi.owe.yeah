@@ -18,13 +18,23 @@ import {
 // One Line item of the Till list. Collapsed, it reads as on the paper Receipt: name, quantity
 // × unit price, how it is split, its Line discount, its Deposit, its total after that
 // discount, and what is not assigned yet, or what of it can't be read (`readLineItem`). Open,
-// it is edited in place: name, unit price, quantity, Line discount, Deposit per unit, Split
+// it keeps only its name and total on top and is edited in place, closed again with Done
+// (Line discount and Deposit per unit folded under the split until wanted): name, unit price, quantity, Line discount, Deposit per unit, Split
 // mode and that mode's inputs, moving it up or down, and removing it. A Deposit refund has
 // only a name, an amount and a split, and reads as a negative amount. Switching the Split mode
 // starts that mode from scratch (`chooseSplitMode`).
-const { participants, currency, position, first, last } = defineProps<{
+const {
+  participants,
+  currency,
+  position,
+  first,
+  last,
+  discounted = false,
+} = defineProps<{
   participants: readonly Participant[];
   currency: string;
+  /** Whether a Receipt discount applies, which the line's own figures come before. */
+  discounted?: boolean;
   /** Its place on the Receipt, from 1, to name a line without a name. */
   position: number;
   first: boolean;
@@ -33,6 +43,10 @@ const { participants, currency, position, first, last } = defineProps<{
 const line = defineModel<DraftLineItem>('line', { required: true });
 const open = defineModel<boolean>('open', { required: true });
 const emit = defineEmits<{ move: [by: -1 | 1]; remove: [] }>();
+
+// Line discount and Deposit per unit, folded under the split until wanted: open from the
+// start when the line has either.
+const extrasOpen = ref(line.value.discount.value.trim() !== '' || line.value.deposit.trim() !== '');
 
 const { t, locale } = useI18n();
 const splitText = useSplitText();
@@ -74,7 +88,7 @@ const name = computed(
     (line.value.refund ? t('receipt.depositRefund') : t('receipt.unnamed', { position })),
 );
 const unitPrice = computed(() =>
-  item.value ? bare(fromMinor(item.value.unitPrice, currency)) : line.value.price,
+  item.value ? money(fromMinor(item.value.unitPrice, currency)) : line.value.price,
 );
 
 function update(change: Partial<DraftLineItem>): void {
@@ -144,19 +158,23 @@ const modes: readonly SplitMode[] = ['even', 'units', 'amounts'];
 
 <template>
   <li
-    class="rounded-lg border"
-    :class="unassigned || !item || problems.length ? 'border-warning/60' : 'border-default'"
+    class="relative"
+    :class="{
+      'before:absolute before:inset-y-2 before:start-0 before:w-0.5 before:rounded-full before:bg-warning':
+        unassigned || !item || problems.length,
+    }"
   >
     <button
       type="button"
-      class="flex w-full cursor-pointer items-start gap-2 p-2.5 text-start"
+      class="flex w-full cursor-pointer items-start gap-3 px-4 py-3 text-start transition-colors hover:bg-elevated/50"
+      :class="{ 'bg-elevated/50': open }"
       :aria-expanded="open"
       :aria-controls="editorId"
       @click="open = !open"
     >
       <span class="min-w-0 flex-1 leading-snug">
-        <span class="block truncate font-semibold">{{ name }}</span>
-        <span class="block truncate text-xs text-muted">
+        <span class="block truncate font-medium text-highlighted">{{ name }}</span>
+        <span v-if="!open" class="block truncate text-xs text-muted">
           {{
             line.quantity > 1
               ? $t('receipt.facts', {
@@ -167,10 +185,10 @@ const modes: readonly SplitMode[] = ['even', 'units', 'amounts'];
               : splitText(line.split, participants)
           }}
         </span>
-        <span v-if="discountText" class="block truncate text-xs text-muted">
+        <span v-if="discountText && !open" class="block truncate text-xs text-muted">
           {{ $t('receipt.lineDiscountFact', { discount: discountText }) }}
         </span>
-        <span v-if="depositText" class="block truncate text-xs text-muted">
+        <span v-if="depositText && !open" class="block truncate text-xs text-muted">
           {{ $t('receipt.depositFact', { deposit: depositText }) }}
         </span>
         <span v-for="text in unreadable" :key="text" class="block text-xs text-warning">
@@ -180,15 +198,25 @@ const modes: readonly SplitMode[] = ['even', 'units', 'amounts'];
           {{ $t(`receipt.problem.${problem}`) }}
         </span>
         <span v-if="unassigned && problems.length === 0" class="block text-xs text-warning">
-          {{ $t('receipt.notAssigned', { amount: money(unassigned) }) }}
+          {{
+            $t(discounted ? 'receipt.notAssignedBeforeDiscount' : 'receipt.notAssigned', {
+              amount: money(unassigned),
+            })
+          }}
         </span>
       </span>
-      <span class="shrink-0 font-semibold tabular-nums">
+      <span class="flex shrink-0 items-center gap-1.5 font-semibold text-highlighted tabular-nums">
         {{ shares && money(shares.net) }}
+        <UIcon
+          name="i-lucide-chevron-down"
+          class="size-4 text-dimmed transition-transform"
+          :class="{ 'rotate-180': open }"
+          aria-hidden="true"
+        />
       </span>
     </button>
 
-    <div v-if="open" :id="editorId" class="space-y-3 border-t border-default p-2.5">
+    <div v-if="open" :id="editorId" class="space-y-4 bg-elevated/50 px-4 pt-1 pb-4">
       <UFormField :label="$t('receipt.name')">
         <UInput
           :model-value="line.name"
@@ -223,68 +251,29 @@ const modes: readonly SplitMode[] = ['even', 'units', 'amounts'];
           />
         </UFormField>
       </div>
-      <p v-if="line.refund" class="text-xs text-muted">{{ $t('receipt.refundHelp') }}</p>
-      <template v-else>
-        <p class="text-xs text-muted">{{ $t('receipt.weighedHelp') }}</p>
+      <p v-if="line.refund" class="text-sm text-muted">{{ $t('receipt.refundHelp') }}</p>
+      <p v-else class="-mt-2 text-sm text-muted">{{ $t('receipt.weighedHelp') }}</p>
 
-        <div>
-          <DiscountField
-            :model-value="line.discount"
-            :label="$t('receipt.lineDiscount')"
-            :currency="currency"
-            :error="discountError"
-            @update:model-value="update({ discount: $event })"
-          />
-          <p class="mt-1 text-xs text-muted">{{ $t('receipt.perUnitDiscountHelp') }}</p>
-        </div>
-
-        <UFormField
-          :label="$t('receipt.depositPerUnit')"
-          :help="$t('receipt.depositHelp')"
-          :error="readable('deposit') ? undefined : $t('receipt.depositUnreadable')"
-        >
-          <UInput
-            :model-value="line.deposit"
-            inputmode="decimal"
-            placeholder="0"
-            class="w-full"
-            @update:model-value="update({ deposit: String($event) })"
-          >
-            <template #trailing>
-              <span class="text-xs text-muted">{{ currency }}</span>
-            </template>
-          </UInput>
-        </UFormField>
-      </template>
-
-      <div role="group" :aria-label="$t('receipt.splitMode')">
-        <UFieldGroup class="w-full">
-          <UButton
-            v-for="mode in modes"
-            :key="mode"
-            :label="$t(`receipt.mode.${mode}`)"
-            :aria-pressed="line.split.mode === mode"
-            :variant="line.split.mode === mode ? 'solid' : 'outline'"
-            color="neutral"
-            size="sm"
-            class="flex-1 justify-center"
-            @click="chooseMode(mode)"
-          />
-        </UFieldGroup>
-      </div>
+      <SegmentedControl
+        :model-value="line.split.mode"
+        :options="modes.map((mode) => ({ value: mode, label: $t(`receipt.mode.${mode}`) }))"
+        :label="$t('receipt.splitMode')"
+        class="flex w-full"
+        @update:model-value="chooseMode"
+      />
 
       <div v-if="line.split.mode === 'even'" role="group" :aria-label="$t('expense.forWhom')">
-        <div class="mb-1.5 flex justify-end">
+        <div class="mb-2 flex justify-end">
           <UButton
-            variant="link"
-            size="sm"
+            variant="soft"
+            size="xs"
             :label="$t('expense.all')"
             :aria-pressed="allTicked"
-            class="p-0"
+            class="px-2.5"
             @click="toggleAll"
           />
         </div>
-        <div class="flex flex-wrap gap-1.5">
+        <div class="grid grid-cols-2 gap-2">
           <ParticipantChip
             v-for="row in rows"
             :key="row.participant.id"
@@ -297,10 +286,10 @@ const modes: readonly SplitMode[] = ['even', 'units', 'amounts'];
         </div>
       </div>
 
-      <ul v-else class="space-y-1.5">
-        <li v-for="row in rows" :key="row.participant.id" class="flex items-center gap-2">
-          <ParticipantAvatar :participant="row.participant" size="2xs" />
-          <span class="min-w-0 flex-1 truncate text-sm">{{ row.participant.name }}</span>
+      <ul v-else class="space-y-2">
+        <li v-for="row in rows" :key="row.participant.id" class="flex items-center gap-3">
+          <ParticipantAvatar :participant="row.participant" size="sm" />
+          <span class="min-w-0 flex-1 truncate">{{ row.participant.name }}</span>
           <UInputNumber
             v-if="line.split.mode === 'units'"
             :model-value="row.units"
@@ -320,26 +309,73 @@ const modes: readonly SplitMode[] = ['even', 'units', 'amounts'];
             @update:model-value="setAmount(row.participant.id, String($event))"
           />
         </li>
-        <li v-if="line.split.mode === 'units'" class="text-xs text-muted">
+        <li v-if="line.split.mode === 'units'" class="text-sm text-muted">
           {{ $t('receipt.unitsAssigned', { assigned: assignedUnits, quantity: line.quantity }) }}
         </li>
       </ul>
 
-      <div class="flex items-center gap-1">
+      <template v-if="!line.refund">
+        <button
+          type="button"
+          class="flex w-full cursor-pointer items-center justify-between gap-2 border-t border-default pt-3 text-sm font-medium text-default"
+          :aria-expanded="extrasOpen"
+          :aria-controls="`${editorId}-extras`"
+          @click="extrasOpen = !extrasOpen"
+        >
+          {{ $t('receipt.extras') }}
+          <UIcon
+            name="i-lucide-chevron-down"
+            class="size-4 text-dimmed transition-transform"
+            :class="{ 'rotate-180': extrasOpen }"
+          />
+        </button>
+        <div v-if="extrasOpen" :id="`${editorId}-extras`" class="space-y-4">
+          <div>
+            <DiscountField
+              :model-value="line.discount"
+              :label="$t('receipt.lineDiscount')"
+              :currency="currency"
+              :error="discountError"
+              @update:model-value="update({ discount: $event })"
+            />
+            <p class="mt-2 text-sm text-muted">{{ $t('receipt.perUnitDiscountHelp') }}</p>
+          </div>
+
+          <UFormField
+            :label="$t('receipt.depositPerUnit')"
+            :help="$t('receipt.depositHelp')"
+            :error="readable('deposit') ? undefined : $t('receipt.depositUnreadable')"
+          >
+            <UInput
+              :model-value="line.deposit"
+              inputmode="decimal"
+              placeholder="0"
+              class="w-full"
+              @update:model-value="update({ deposit: String($event) })"
+            >
+              <template #trailing>
+                <span class="text-xs text-muted">{{ currency }}</span>
+              </template>
+            </UInput>
+          </UFormField>
+        </div>
+      </template>
+
+      <div class="flex items-center gap-1 border-t border-default pt-3">
         <UButton
+          v-if="!(first && last)"
           icon="i-lucide-arrow-up"
           color="neutral"
           variant="ghost"
-          size="sm"
           :disabled="first"
           :aria-label="$t('receipt.moveUp')"
           @click="emit('move', -1)"
         />
         <UButton
+          v-if="!(first && last)"
           icon="i-lucide-arrow-down"
           color="neutral"
           variant="ghost"
-          size="sm"
           :disabled="last"
           :aria-label="$t('receipt.moveDown')"
           @click="emit('move', 1)"
@@ -349,10 +385,10 @@ const modes: readonly SplitMode[] = ['even', 'units', 'amounts'];
           icon="i-lucide-trash-2"
           color="error"
           variant="ghost"
-          size="sm"
           class="ms-auto"
           @click="emit('remove')"
         />
+        <UButton :label="$t('receipt.done')" variant="soft" @click="open = false" />
       </div>
     </div>
   </li>

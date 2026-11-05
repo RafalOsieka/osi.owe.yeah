@@ -5,7 +5,7 @@ const pages = ['privacy', 'terms'] as const;
 </script>
 
 <template>
-  <nav :aria-label="$t('legal.title')" class="flex justify-center gap-3 text-sm text-muted">
+  <nav :aria-label="$t('legal.title')" class="flex justify-center gap-4 text-xs text-dimmed">
     <NuxtLink
       v-for="page in pages"
       :key="page"

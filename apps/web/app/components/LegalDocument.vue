@@ -23,7 +23,7 @@ defineProps<{
       :aria-labelledby="`${doc}-${id}`"
       class="space-y-2"
     >
-      <h2 :id="`${doc}-${id}`" class="text-base font-semibold">
+      <h2 :id="`${doc}-${id}`" class="text-base font-semibold text-highlighted">
         {{ $t(`${doc}.${id}.title`) }}
       </h2>
       <template v-for="(block, index) in blocks" :key="index">

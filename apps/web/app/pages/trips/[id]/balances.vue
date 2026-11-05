@@ -10,10 +10,10 @@ import {
 } from '@osi/owe-yeah-domain';
 import { z } from 'zod';
 
-// The Balances tab: your balance and your own Suggested Repayments ("To settle") first, then
-// everyone's balance as diverging bars, the other Suggested Repayments (all of them without
-// a Claim), Record another Repayment, and what the Trip spent. Once the Trip is Settled, "All
-// settled" replaces the balance and the suggestions. Balances are worked out exactly and
+// The Balances tab: your balance, with your own Suggested Repayments ("To settle") on its
+// card, then everyone's balance as diverging bars, headed by what the Trip spent, the other
+// Suggested Repayments (all of them without a Claim), and Record another Repayment. Once the
+// Trip is Settled, "All settled" replaces the balance and the suggestions. Balances are worked out exactly and
 // rounded with the largest remainder method, as settling up uses them, in the Trip currency.
 // The footer warns how many Expenses use a Provisional rate, so balances may still move a
 // little (settling up stays allowed), and how many are left out without any rate. Tapping a
@@ -100,59 +100,69 @@ const remindable = computed(
 
 <template>
   <NuxtLayout name="trip">
-    <section
-      v-if="settled"
-      class="flex items-center gap-3 rounded-2xl bg-success/10 px-4 py-3.5 text-success"
-    >
-      <UIcon name="i-lucide-circle-check" class="size-8 shrink-0" />
+    <section v-if="settled" class="card flex items-center gap-4 p-5">
+      <span
+        class="grid size-12 shrink-0 place-items-center rounded-full bg-success/12 text-success"
+      >
+        <UIcon name="i-lucide-check" class="size-6" />
+      </span>
       <div>
-        <h2 class="text-xl font-bold">{{ $t('balances.allSettled') }}</h2>
-        <p class="text-xs">{{ $t('balances.allSettledHelp') }}</p>
+        <h2 class="text-xl font-semibold tracking-tight text-highlighted">
+          {{ $t('balances.allSettled') }}
+        </h2>
+        <p class="text-sm text-muted">{{ $t('balances.allSettledHelp') }}</p>
       </div>
     </section>
     <template v-else>
-      <BalanceCard :balance="mine" :total="total" :currency="trip.currency" />
-
-      <section v-if="suggestions.own.length > 0" aria-labelledby="to-settle-heading">
-        <h2
-          id="to-settle-heading"
-          class="mt-5 mb-1 text-xs font-semibold tracking-wide text-muted uppercase"
-        >
-          {{ $t('balances.toSettle') }}
-        </h2>
-        <SuggestedRepaymentList
-          :suggestions="suggestions.own"
-          :participants="trip.participants"
-          :trip-id="trip.id"
-          :currency="trip.currency"
-          :claim-id="claim?.id"
-          :highlight="highlight"
-        >
-          <template #detail="{ suggestion }">
-            <span v-if="remindable.get(suggestion.payerId)?.hint" class="block text-xs text-muted">
-              {{ remindable.get(suggestion.payerId)?.hint }}
-            </span>
-          </template>
-          <template #action="{ suggestion }">
-            <RemindButton
-              v-if="remindable.has(suggestion.payerId)"
-              :by="remindable.get(suggestion.payerId)!.by"
-              :debtor="remindable.get(suggestion.payerId)!.debtor"
-              :sending="reminders.sending.value === suggestion.payerId"
-              @remind="reminders.remind(suggestion)"
-            />
-          </template>
-        </SuggestedRepaymentList>
-      </section>
+      <BalanceCard :balance="mine" :total="total" :currency="trip.currency">
+        <template v-if="suggestions.own.length > 0" #default>
+          <section aria-labelledby="to-settle-heading" class="pt-3">
+            <h2 id="to-settle-heading" class="px-5 text-xs font-medium text-muted">
+              {{ $t('balances.toSettle') }}
+            </h2>
+            <SuggestedRepaymentList
+              :suggestions="suggestions.own"
+              :amount-shown="suggestions.own.length > 1"
+              :participants="trip.participants"
+              :trip-id="trip.id"
+              :currency="trip.currency"
+              :claim-id="claim?.id"
+              :highlight="highlight"
+            >
+              <template #detail="{ suggestion }">
+                <span
+                  v-if="remindable.get(suggestion.payerId)?.hint"
+                  class="block text-xs text-muted"
+                >
+                  {{ remindable.get(suggestion.payerId)?.hint }}
+                </span>
+              </template>
+              <template #action="{ suggestion }">
+                <RemindButton
+                  v-if="remindable.has(suggestion.payerId)"
+                  :by="remindable.get(suggestion.payerId)!.by"
+                  :debtor="remindable.get(suggestion.payerId)!.debtor"
+                  :sending="reminders.sending.value === suggestion.payerId"
+                  @remind="reminders.remind(suggestion)"
+                />
+              </template>
+            </SuggestedRepaymentList>
+          </section>
+        </template>
+      </BalanceCard>
     </template>
 
     <section aria-labelledby="everyone-heading">
-      <h2
-        id="everyone-heading"
-        class="mt-5 mb-1 text-xs font-semibold tracking-wide text-muted uppercase"
-      >
-        {{ $t('balances.everyone') }}
-      </h2>
+      <div class="section-heading mt-7 flex items-baseline justify-between gap-2">
+        <h2 id="everyone-heading">{{ $t('balances.everyone') }}</h2>
+        <p class="font-normal tabular-nums">
+          {{
+            $t('balances.tripTotalIs', {
+              amount: formatMoney(total, trip.currency, locale, 'currency', rates.provisional > 0),
+            })
+          }}
+        </p>
+      </div>
       <BalanceBars
         :balances="everyone"
         :participants="trip.participants"
@@ -163,13 +173,11 @@ const remindable = computed(
     </section>
 
     <section v-if="!settled && suggestions.others.length > 0" aria-labelledby="suggestions-heading">
-      <h2
-        id="suggestions-heading"
-        class="mt-5 mb-1 text-xs font-semibold tracking-wide text-muted uppercase"
-      >
+      <h2 id="suggestions-heading" class="section-heading mt-7">
         {{ claim ? $t('balances.otherSuggestions') : $t('balances.suggestions') }}
       </h2>
       <SuggestedRepaymentList
+        class="card overflow-hidden"
         :suggestions="suggestions.others"
         :participants="trip.participants"
         :trip-id="trip.id"
@@ -179,27 +187,25 @@ const remindable = computed(
       />
     </section>
 
-    <UButton
-      variant="link"
-      icon="i-lucide-plus"
-      :label="$t('balances.recordAnother')"
+    <NuxtLink
       :to="`/trips/${trip.id}/repayments/new`"
-      class="mt-3 px-0"
-    />
+      class="card mt-6 flex items-center gap-3 px-4 py-3 font-medium text-primary transition-colors hover:bg-elevated/60"
+    >
+      <span class="grid size-8 place-items-center rounded-full bg-primary/10">
+        <UIcon name="i-lucide-plus" class="size-4" />
+      </span>
+      {{ $t('balances.recordAnother') }}
+    </NuxtLink>
 
-    <div class="mt-4 flex flex-wrap justify-between gap-x-3 gap-y-1 text-xs text-muted">
-      <p>
-        {{
-          $t('balances.tripTotalIs', {
-            amount: formatMoney(total, trip.currency, locale, 'currency', rates.provisional > 0),
-          })
-        }}
-      </p>
-      <p v-if="rates.provisional > 0" class="flex items-center gap-1">
+    <div
+      v-if="rates.provisional > 0 || rates.missing > 0"
+      class="mt-5 space-y-1 px-1 text-sm text-muted"
+    >
+      <p v-if="rates.provisional > 0" class="flex items-center gap-1.5">
         <UIcon name="i-lucide-triangle-alert" class="size-4 shrink-0 text-warning" />
         {{ $t('rate.provisionalCount', rates.provisional) }}
       </p>
-      <p v-if="rates.missing > 0" class="flex items-center gap-1">
+      <p v-if="rates.missing > 0" class="flex items-center gap-1.5">
         <UIcon name="i-lucide-triangle-alert" class="size-4 shrink-0 text-warning" />
         {{ $t('rate.missingCount', rates.missing) }}
       </p>

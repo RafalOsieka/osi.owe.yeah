@@ -12,12 +12,12 @@ import {
 } from '~/utils/expense-draft';
 
 // The full-screen Expense form, for a new plain Expense or Income or to edit one: amount,
-// whether it is money received (Income, saved with a negative amount so nobody types a minus),
-// title, Main payer (who received it, for Income), who it is for, and when. "Itemise as a
-// Receipt" grows the one Line item into the Till list on the same page: the amount becomes the
-// computed Receipt total, each Line item has its own split, Line discount and Deposit, Deposit
-// refunds come off it, and a Receipt discount below "Paid by" comes off the goods. The
-// Deposits total shows under the Receipt total, to check against the Deposits printed on the
+// title, Main payer (who received it, for Income), who it is for, and when, then the rarer
+// options in a card at the end: whether it is money received (Income, saved with a negative
+// amount so nobody types a minus) and "Itemise as a Receipt", which grows the one Line item
+// into the Till list on the same page: the amount becomes the computed Receipt total, each
+// Line item has its own split, Line discount and Deposit, Deposit refunds come off it, and a
+// Receipt discount right under the lines comes off the goods. The Deposits total shows under the Receipt total, to check against the Deposits printed on the
 // paper Receipt, and the total may go negative. A Receipt may be saved with value not
 // assigned yet, which counts as the Main payer's until it is. Under "Paid by", any Expense
 // but Income takes Contributions from others (so the Income switch hides while there are
@@ -140,9 +140,12 @@ async function submit(): Promise<void> {
       class="space-y-5"
       @submit="submit"
     >
-      <div v-if="reading.receipt" class="text-center">
+      <div v-if="reading.receipt" class="card px-4 py-5 text-center">
         <p id="receipt-total-label" class="text-sm text-muted">{{ $t('receipt.total') }}</p>
-        <output aria-labelledby="receipt-total-label" class="block text-4xl font-bold tabular-nums">
+        <output
+          aria-labelledby="receipt-total-label"
+          class="mt-1 block text-5xl font-semibold tracking-tight text-highlighted tabular-nums"
+        >
           {{ formatMoney(reading.receipt.total, state.currency, locale) }}
         </output>
         <ExpenseCurrency
@@ -171,7 +174,10 @@ async function submit(): Promise<void> {
             })
           }}
         </p>
-        <p v-if="reading.receipt.unassigned.numerator !== 0n" class="mt-1 text-sm text-warning">
+        <p
+          v-if="reading.receipt.unassigned.numerator !== 0n"
+          class="mt-1 text-sm text-balance text-warning"
+        >
           {{
             $t('receipt.unassignedTotal', {
               amount: formatMoney(reading.receipt.unassigned, state.currency, locale),
@@ -181,8 +187,12 @@ async function submit(): Promise<void> {
         </p>
       </div>
 
-      <template v-else>
-        <UFormField name="amount" :label="$t('expense.amount')" :ui="{ label: 'sr-only' }">
+      <div v-else class="card px-4 pt-3 pb-3.5">
+        <UFormField
+          name="amount"
+          :label="$t('expense.amount')"
+          :ui="{ labelWrapper: 'justify-center', label: 'text-sm font-medium text-muted' }"
+        >
           <AmountInput v-model="state.amount" :currency="state.currency" />
         </UFormField>
         <ExpenseCurrency
@@ -190,109 +200,120 @@ async function submit(): Promise<void> {
           v-model:manual-rate="state.manualRate"
           :reading="reading"
           :error="problemAt(reading.reasons, 'manualRate')"
-          class="-mt-3"
+          class="mt-2"
+        />
+      </div>
+
+      <div class="card space-y-5 p-4">
+        <UFormField name="title" :label="$t('expense.title')">
+          <UInput
+            v-model="state.title"
+            :placeholder="$t('expense.titlePlaceholder')"
+            class="w-full"
+          />
+        </UFormField>
+
+        <UFormField v-if="state.lineItems" name="lineItems">
+          <TillList
+            v-model="state.lineItems"
+            :participants="trip.participants"
+            :currency="state.currency"
+            :discounted="!!reading.receipt?.discount"
+          />
+        </UFormField>
+
+        <DiscountField
+          v-if="state.lineItems"
+          v-model="state.discount"
+          :label="$t('receipt.receiptDiscount')"
+          :currency="state.currency"
+          :error="discountError"
         />
 
+        <UFormField
+          name="mainPayerId"
+          :error="payerRefusal ?? problemAt(reading.reasons, 'mainPayerId')"
+        >
+          <ParticipantPicker
+            :model-value="state.mainPayerId"
+            :participants="trip.participants"
+            :label="state.received ? $t('expense.receivedBy') : $t('expense.paidBy')"
+            name="mainPayerId"
+            @update:model-value="pickPayer"
+          />
+        </UFormField>
+
+        <UFormField
+          v-if="!state.received"
+          name="contributions"
+          :error="problemAt(reading.reasons, 'contributions')"
+        >
+          <ContributionList
+            v-model="state.contributions"
+            :participants="trip.participants"
+            :main-payer-id="state.mainPayerId"
+            :currency="state.currency"
+            :rest="reading.mainPayerPart"
+          />
+        </UFormField>
+
+        <UFormField
+          v-if="!state.lineItems"
+          name="participantIds"
+          :error="problemAt(reading.reasons, 'participantIds')"
+        >
+          <div role="group" aria-labelledby="for-whom-label">
+            <div class="mb-2 flex items-center justify-between gap-2">
+              <p id="for-whom-label" class="text-sm font-medium text-highlighted">
+                {{ $t('expense.forWhom') }}
+              </p>
+              <UButton
+                variant="soft"
+                size="xs"
+                :label="$t('expense.all')"
+                :aria-pressed="allTicked"
+                class="px-2.5"
+                @click="toggleAll"
+              />
+            </div>
+            <div class="grid grid-cols-2 gap-2">
+              <ParticipantChip
+                v-for="participant in trip.participants"
+                :key="participant.id"
+                :participant="participant"
+                type="checkbox"
+                name="participantIds"
+                :checked="state.participantIds.includes(participant.id)"
+                @update:checked="tick(participant.id, $event)"
+              />
+            </div>
+          </div>
+        </UFormField>
+
+        <ExpenseTimeField v-model:local="state.local" v-model:zone="state.zone" />
+      </div>
+
+      <div
+        v-if="!reading.receipt && (state.contributions.length === 0 || !state.received)"
+        class="card divide-y divide-default overflow-hidden"
+      >
         <USwitch
           v-if="state.contributions.length === 0"
           v-model="state.received"
           :label="$t('expense.moneyReceived')"
           :description="$t('expense.moneyReceivedHelp')"
+          class="px-4 py-3.5"
         />
-      </template>
-
-      <UFormField name="title" :label="$t('expense.title')">
-        <UInput
-          v-model="state.title"
-          :placeholder="$t('expense.titlePlaceholder')"
-          class="w-full"
-        />
-      </UFormField>
-
-      <UFormField v-if="state.lineItems" name="lineItems">
-        <TillList
-          v-model="state.lineItems"
-          :participants="trip.participants"
-          :currency="state.currency"
-        />
-      </UFormField>
-
-      <UFormField
-        name="mainPayerId"
-        :error="payerRefusal ?? problemAt(reading.reasons, 'mainPayerId')"
-      >
-        <ParticipantPicker
-          :model-value="state.mainPayerId"
-          :participants="trip.participants"
-          :label="state.received ? $t('expense.receivedBy') : $t('expense.paidBy')"
-          name="mainPayerId"
-          @update:model-value="pickPayer"
-        />
-      </UFormField>
-
-      <UFormField
-        v-if="!state.received"
-        name="contributions"
-        :error="problemAt(reading.reasons, 'contributions')"
-      >
-        <ContributionList
-          v-model="state.contributions"
-          :participants="trip.participants"
-          :main-payer-id="state.mainPayerId"
-          :currency="state.currency"
-          :rest="reading.mainPayerPart"
-        />
-      </UFormField>
-
-      <DiscountField
-        v-if="state.lineItems"
-        v-model="state.discount"
-        :label="$t('receipt.receiptDiscount')"
-        :currency="state.currency"
-        :error="discountError"
-      />
-
-      <UFormField
-        v-if="!state.lineItems"
-        name="participantIds"
-        :error="problemAt(reading.reasons, 'participantIds')"
-      >
-        <div role="group" aria-labelledby="for-whom-label">
-          <div class="mb-1.5 flex items-center justify-between gap-2">
-            <p id="for-whom-label" class="text-sm font-medium">{{ $t('expense.forWhom') }}</p>
-            <UButton
-              variant="link"
-              size="sm"
-              :label="$t('expense.all')"
-              :aria-pressed="allTicked"
-              class="p-0"
-              @click="toggleAll"
-            />
-          </div>
-          <div class="flex flex-wrap gap-1.5">
-            <ParticipantChip
-              v-for="participant in trip.participants"
-              :key="participant.id"
-              :participant="participant"
-              type="checkbox"
-              name="participantIds"
-              :checked="state.participantIds.includes(participant.id)"
-              @update:checked="tick(participant.id, $event)"
-            />
-          </div>
-        </div>
-      </UFormField>
-
-      <ExpenseTimeField v-model:local="state.local" v-model:zone="state.zone" />
-
-      <UButton
-        v-if="!state.lineItems && !state.received"
-        icon="i-lucide-plus"
-        :label="$t('receipt.itemise')"
-        variant="soft"
-        block
-        @click="itemiseReceipt"
-      />
+        <button
+          v-if="!state.lineItems && !state.received"
+          type="button"
+          class="flex w-full cursor-pointer items-center gap-3 px-4 py-3.5 text-start font-medium text-primary transition-colors hover:bg-elevated/60"
+          @click="itemiseReceipt"
+        >
+          <UIcon name="i-lucide-list-plus" class="size-5 shrink-0" />
+          {{ $t('receipt.itemise') }}
+        </button>
+      </div>
     </UForm>
 
     <template #action>

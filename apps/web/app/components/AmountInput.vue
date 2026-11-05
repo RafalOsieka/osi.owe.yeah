@@ -1,6 +1,7 @@
 <script setup lang="ts">
-// The large amount field that opens the Expense and Repayment forms: centred, with the
-// currency after it and a decimal keypad on phones. What is typed is read leniently
+// The large amount field that opens the Expense and Repayment forms: centred, with a decimal
+// keypad on phones. The currency picker under it names the currency; `currency` labels the
+// field for screen readers. What is typed is read leniently
 // (`parseMoney`) by the Expense draft the form reads (`readDraft`).
 const { currency } = defineProps<{ currency: string }>();
 const amount = defineModel<string>({ required: true });
@@ -12,14 +13,10 @@ const amount = defineModel<string>({ required: true });
     inputmode="decimal"
     placeholder="0"
     variant="none"
+    :aria-description="currency"
     class="w-full"
     :ui="{
-      base: 'h-16 text-center text-4xl font-bold tabular-nums',
-      trailing: 'pe-2',
+      base: 'h-16 text-center text-5xl font-semibold tracking-tight text-highlighted tabular-nums placeholder:text-dimmed',
     }"
-  >
-    <template #trailing>
-      <span class="text-xl font-semibold text-muted">{{ currency }}</span>
-    </template>
-  </UInput>
+  />
 </template>

@@ -1,5 +1,5 @@
 <script setup lang="ts">
-// When an Expense happened, as the forms take it: one quiet line with the local date, time
+// When an Expense happened, as the forms take it: one chip with the local date, time
 // and zone until tapped, then a `datetime-local` field with the zone picker under it. Sits
 // inside a `UForm`, as its `local` field.
 const local = defineModel<string>('local', { required: true });
@@ -12,15 +12,22 @@ const open = ref(false);
 const zones = computed(() => [...new Set([zone.value, ...Intl.supportedValuesOf('timeZone')])]);
 // A local date and time is not an instant, so it is formatted in UTC to keep the device's
 // zone from shifting it.
-const time = computed(() =>
-  local.value
-    ? new Intl.DateTimeFormat(locale.value, {
-        dateStyle: 'medium',
-        timeStyle: 'short',
-        timeZone: 'UTC',
-      }).format(new Date(`${local.value}:00Z`))
-    : '',
-);
+// Today's date reads "Today".
+const time = computed(() => {
+  if (!local.value) return '';
+  const at = new Date(`${local.value}:00Z`);
+  const today = local.value.slice(0, 10) === new Date().toLocaleDateString('sv');
+  if (!today) {
+    return new Intl.DateTimeFormat(locale.value, {
+      dateStyle: 'medium',
+      timeStyle: 'short',
+      timeZone: 'UTC',
+    }).format(at);
+  }
+  const day = new Intl.RelativeTimeFormat(locale.value, { numeric: 'auto' }).format(0, 'day');
+  const clock = new Intl.DateTimeFormat(locale.value, { timeStyle: 'short', timeZone: 'UTC' });
+  return `${day.charAt(0).toLocaleUpperCase(locale.value)}${day.slice(1)}, ${clock.format(at)}`;
+});
 </script>
 
 <template>
@@ -37,16 +44,20 @@ const time = computed(() =>
       />
     </template>
   </UFormField>
-  <button
-    v-else
-    type="button"
-    class="flex max-w-full cursor-pointer items-center gap-1.5 text-start text-sm text-muted hover:text-default"
-    @click="open = true"
-  >
-    <UIcon name="i-lucide-clock" class="size-4 shrink-0" />
-    <span class="sr-only">{{ $t('expense.when') }}:</span>
-    <span class="min-w-0 truncate underline decoration-dotted underline-offset-2">
-      {{ $t('expense.timeInZone', { time, zone }) }}
-    </span>
-  </button>
+  <div v-else>
+    <p class="mb-2 text-sm font-medium text-highlighted" aria-hidden="true">
+      {{ $t('expense.when') }}
+    </p>
+    <button
+      type="button"
+      class="inline-flex h-10 max-w-full cursor-pointer items-center gap-2 rounded-full bg-elevated px-3.5 text-start text-sm text-default transition-colors hover:bg-accented/70"
+      @click="open = true"
+    >
+      <UIcon name="i-lucide-calendar-clock" class="size-4 shrink-0 text-muted" />
+      <span class="sr-only">{{ $t('expense.when') }}:</span>
+      <span class="min-w-0 truncate">
+        {{ $t('expense.timeInZone', { time, zone: zoneName(zone) }) }}
+      </span>
+    </button>
+  </div>
 </template>
