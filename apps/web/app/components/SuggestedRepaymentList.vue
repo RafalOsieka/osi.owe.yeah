@@ -93,7 +93,12 @@ watch(
         </template>
       </span>
       <span class="min-w-0 flex-1">
-        <span class="block truncate text-sm text-muted">{{ row.text }}</span>
+        <span
+          class="block truncate"
+          :class="amountShown ? 'text-sm text-muted' : 'font-medium text-highlighted'"
+        >
+          {{ row.text }}
+        </span>
         <span
           class="block font-semibold text-highlighted tabular-nums"
           :class="{ 'sr-only': !amountShown }"

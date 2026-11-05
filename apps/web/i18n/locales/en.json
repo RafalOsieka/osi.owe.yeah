@@ -41,7 +41,7 @@
       "mePlaceholder": "e.g. Ania",
       "othersPlaceholder": "e.g. Kasia",
       "others": "Who else is coming?",
-      "othersHelp": "Names may repeat, and you can add more later."
+      "othersHelp": "You can add more people later."
     },
     "invalidLink": "This Trip link doesn't work.",
     "invalidLinkHelp": "Ask for the Trip link again.",
@@ -84,7 +84,7 @@
   },
   "claim": {
     "title": "Who are you?",
-    "help": "Pick yourself, so this device can fill in defaults for you. It gives you no extra rights.",
+    "help": "Pick your name, so this device can fill in defaults for you.",
     "notListed": "Not on the list?",
     "addMe": "Add me",
     "youAre": "You are {name}",
@@ -92,7 +92,8 @@
     "justLooking": "Just looking",
     "whoYouAre": "Who you are",
     "nobody": "Not said yet",
-    "removed": "{name}, who you were on this device, was removed from the Trip. Who are you now?"
+    "removed": "{name}, who you were on this device, was removed from the Trip. Who are you now?",
+    "noRights": "Picking a name gives you no extra rights."
   },
   "invite": {
     "action": "Invite",
@@ -160,7 +161,7 @@
     "youReceived": "you received {amount}",
     "youGetBack": "you get back {amount}",
     "youRepaid": "you paid {amount}",
-    "notForYou": "not for you",
+    "notForYou": "doesn't involve you",
     "all": "All",
     "forWhomEven": "For whom · Even",
     "editShort": "Edit",
@@ -439,7 +440,7 @@
     "off": "Off",
     "pickFirst": "Pick who you are first",
     "pickFirstHelp": "Notifications are about changes that involve you, so pick who you are in this Trip first.",
-    "blocked": "Blocked in this browser",
+    "blocked": "Blocked · allow them in your browser's site settings",
     "homeScreen": "Add Owe Yeah to your Home Screen to get notifications",
     "homeScreenHelp": "On iPhone and iPad, only the installed app gets notifications: tap Share, then Add to Home Screen, and open Owe Yeah from there.",
     "unsupported": "This browser can't show notifications.",

@@ -29,7 +29,7 @@ function change(event: Event): void {
       class="absolute inset-0 cursor-pointer appearance-none rounded-full opacity-0"
       @change="change"
     />
-    <ParticipantAvatar :participant="participant" size="xs" />
+    <ParticipantAvatar :participant="participant" size="xs" class="ring-2 ring-(--ui-bg)" />
     <span class="min-w-0 flex-1 truncate">{{ participant.name }}</span>
     <UIcon
       name="i-lucide-check"

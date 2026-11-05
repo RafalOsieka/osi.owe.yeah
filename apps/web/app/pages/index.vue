@@ -150,7 +150,7 @@ useHead({ title: () => t('myTrips.title') });
       class="flex min-h-[calc(100dvh-12rem)] flex-col items-center justify-center px-4 text-center"
     >
       <span
-        class="grid size-24 place-items-center rounded-[1.75rem] bg-linear-to-br from-primary-400 to-primary-600 text-white shadow-xl shadow-primary-600/25 dark:shadow-none"
+        class="grid size-24 place-items-center rounded-[1.75rem] bg-linear-to-br from-primary-400 to-primary-600 text-white shadow-lg shadow-black/10 dark:shadow-none"
         aria-hidden="true"
       >
         <UIcon name="i-lucide-luggage" class="size-12" />
@@ -158,13 +158,13 @@ useHead({ title: () => t('myTrips.title') });
       <p class="mt-8 text-2xl font-semibold tracking-tight text-highlighted">
         {{ $t('myTrips.empty') }}
       </p>
-      <p class="mt-2 max-w-72 text-muted">{{ $t('myTrips.emptyHelp') }}</p>
+      <p class="mt-2 max-w-72 text-balance text-muted">{{ $t('myTrips.emptyHelp') }}</p>
       <UButton
         icon="i-lucide-plus"
         :label="$t('myTrips.create')"
         to="/trips/new"
         size="xl"
-        class="mt-8 rounded-full px-6 shadow-lg shadow-primary/25 dark:shadow-none"
+        class="mt-8 rounded-full px-6 shadow-md shadow-black/10 dark:shadow-none"
       />
     </div>
     <LegalLinks class="mt-auto pt-10" />
@@ -175,7 +175,7 @@ useHead({ title: () => t('myTrips.title') });
         :label="$t('myTrips.create')"
         to="/trips/new"
         size="xl"
-        class="rounded-full px-5 shadow-lg shadow-primary/30 dark:shadow-black/40"
+        class="rounded-full px-5 shadow-lg shadow-black/15 dark:shadow-black/40"
       />
     </template>
   </NuxtLayout>

@@ -1,10 +1,18 @@
 <script setup lang="ts">
-import { rational, type ParticipantBalance, type Rational } from '@osi/owe-yeah-domain';
+import {
+  compare,
+  rational,
+  subtract,
+  type ParticipantBalance,
+  type Rational,
+} from '@osi/owe-yeah-domain';
 
 // Your balance, first on the Balances tab: "You're owed X" (green), "You owe X" (red) or
-// "You're even" (neutral), told by the icon, with what you paid and your share. Without a Claim it shows the
-// Trip total instead. The default slot sits under a line at the bottom, for what settles it. The balance shown is the rounded one settling up uses, so a fraction of
-// a cent left over by an Even split doesn't read as owing.
+// "You're even" (neutral), told by the icon, with what you paid and your share. The balance
+// shown is the rounded one settling up uses, so a fraction of a cent left over by an Even
+// split doesn't read as owing, and the share shown is what you paid less it, so the card adds
+// up. Without a Claim it shows the Trip total instead. The default slot sits under a line at
+// the bottom, for what settles it.
 const { balance, total, currency } = defineProps<{
   /** The claimed Participant's balance, or `null` without a Claim. */
   balance: ParticipantBalance | null;
@@ -30,9 +38,18 @@ const card = computed(() => {
   const { numerator, denominator } = balance.rounded;
   const sign = shownSign(balance.rounded, currency);
   const amount = money(rational(numerator < 0n ? -numerator : numerator, denominator));
+  // The share as paid less the rounded balance, so the three amounts on the card add up; "≈"
+  // while it differs from the exact share.
+  const shown = subtract(balance.paid, balance.rounded);
   const sub = t('balances.paidAndShare', {
     paid: money(balance.paid),
-    share: money(balance.share),
+    share: formatMoney(
+      shown,
+      currency,
+      locale.value,
+      'currency',
+      compare(shown, balance.share) !== 0,
+    ),
   });
   if (sign > 0) return { ...tones.owed, label: t('balances.owed'), amount, sub };
   if (sign < 0) return { ...tones.owe, label: t('balances.owe'), amount, sub };

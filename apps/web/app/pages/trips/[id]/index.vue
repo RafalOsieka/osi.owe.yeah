@@ -51,7 +51,7 @@ const newExpense = computed(() => `/trips/${trip.value.id}/expenses/new`);
           :disabled="!canAdd"
           :to="newExpense"
           size="lg"
-          class="shadow-md shadow-primary/20 dark:shadow-none"
+          class="shadow-md shadow-black/10 dark:shadow-none"
         />
         <UButton
           icon="i-lucide-share-2"
@@ -73,7 +73,7 @@ const newExpense = computed(() => `/trips/${trip.value.id}/expenses/new`);
         :disabled="!canAdd"
         :to="newExpense"
         size="xl"
-        class="rounded-full px-5 shadow-lg shadow-primary/30 dark:shadow-black/40"
+        class="rounded-full px-5 shadow-lg shadow-black/15 dark:shadow-black/40"
       />
     </template>
   </NuxtLayout>

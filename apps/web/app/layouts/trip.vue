@@ -91,7 +91,7 @@ const tabs = computed(() => {
       {{ ready ? $t('sync.releaseToRefresh') : $t('sync.pullToRefresh') }}
     </span>
   </div>
-  <main class="px-4 pt-4 pb-[calc(10rem+env(safe-area-inset-bottom))]">
+  <main class="px-4 pt-4 pb-[calc(11rem+env(safe-area-inset-bottom))]">
     <TripNotices />
     <slot />
   </main>

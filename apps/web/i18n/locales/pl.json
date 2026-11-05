@@ -41,7 +41,7 @@
       "mePlaceholder": "np. Ania",
       "othersPlaceholder": "np. Kasia",
       "others": "Kto jeszcze jedzie?",
-      "othersHelp": "Imiona mogą się powtarzać, a kolejnych uczestników dodasz później."
+      "othersHelp": "Kolejne osoby dodasz później."
     },
     "invalidLink": "Ten link do podróży nie działa.",
     "invalidLinkHelp": "Poproś ponownie o link do podróży.",
@@ -84,7 +84,7 @@
   },
   "claim": {
     "title": "Kim jesteś?",
-    "help": "Wskaż siebie, a to urządzenie podpowie za ciebie domyślne wartości. Nie daje to żadnych dodatkowych uprawnień.",
+    "help": "Wskaż siebie, a to urządzenie podpowie za ciebie domyślne wartości.",
     "notListed": "Nie ma cię na liście?",
     "addMe": "Dodaj mnie",
     "youAre": "Jesteś: {name}",
@@ -92,7 +92,8 @@
     "justLooking": "Tylko przeglądam",
     "whoYouAre": "Kim jesteś",
     "nobody": "Jeszcze nie wskazano",
-    "removed": "Uczestnik {name}, wskazany na tym urządzeniu jako ty, został usunięty z podróży. Kim jesteś teraz?"
+    "removed": "Uczestnik {name}, wskazany na tym urządzeniu jako ty, został usunięty z podróży. Kim jesteś teraz?",
+    "noRights": "Wybór imienia nie daje żadnych dodatkowych uprawnień."
   },
   "invite": {
     "action": "Zaproś",
@@ -160,7 +161,7 @@
     "youReceived": "otrzymujesz {amount}",
     "youGetBack": "odzyskujesz {amount}",
     "youRepaid": "oddajesz {amount}",
-    "notForYou": "nie dla ciebie",
+    "notForYou": "nie dotyczy ciebie",
     "all": "Wszyscy",
     "forWhomEven": "Za kogo · Po równo",
     "editShort": "Edytuj",
@@ -439,7 +440,7 @@
     "off": "Wyłączone",
     "pickFirst": "Najpierw wskaż, kim jesteś",
     "pickFirstHelp": "Powiadomienia dotyczą zmian, które dotyczą ciebie, więc najpierw wskaż, kim jesteś w tej podróży.",
-    "blocked": "Zablokowane w tej przeglądarce",
+    "blocked": "Zablokowane · zezwól na nie w ustawieniach strony w przeglądarce",
     "homeScreen": "Dodaj Owe Yeah do ekranu początkowego, aby dostawać powiadomienia",
     "homeScreenHelp": "Na iPhonie i iPadzie powiadomienia dostaje tylko zainstalowana aplikacja: stuknij Udostępnij, potem Do ekranu początkowego, i otwórz Owe Yeah stamtąd.",
     "unsupported": "Ta przeglądarka nie pokazuje powiadomień.",

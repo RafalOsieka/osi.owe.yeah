@@ -43,21 +43,24 @@ const description = computed(() => {
         @not-now="open = false"
       />
       <div v-else class="space-y-4">
-        <ul v-if="participants.length > 0" class="grid grid-cols-2 gap-2">
-          <li v-for="participant in participants" :key="participant.id" class="min-w-0">
-            <UButton
-              :variant="participant.id === current?.id ? 'soft' : 'outline'"
-              color="neutral"
-              size="lg"
-              block
-              class="justify-start"
-              @click="emit('claim', participant)"
-            >
-              <ParticipantAvatar :participant="participant" size="xs" />
-              <span class="truncate">{{ participant.name }}</span>
-            </UButton>
-          </li>
-        </ul>
+        <div v-if="participants.length > 0">
+          <ul class="grid grid-cols-2 gap-2">
+            <li v-for="participant in participants" :key="participant.id" class="min-w-0">
+              <UButton
+                :variant="participant.id === current?.id ? 'soft' : 'outline'"
+                color="neutral"
+                size="lg"
+                block
+                class="justify-start"
+                @click="emit('claim', participant)"
+              >
+                <ParticipantAvatar :participant="participant" size="xs" />
+                <span class="truncate">{{ participant.name }}</span>
+              </UButton>
+            </li>
+          </ul>
+          <p class="mt-2 text-xs text-muted">{{ $t('claim.noRights') }}</p>
+        </div>
         <ParticipantNameForm
           :label="$t('claim.notListed')"
           :submit-label="$t('claim.addMe')"

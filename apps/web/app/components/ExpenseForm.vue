@@ -184,7 +184,7 @@ async function submit(): Promise<void> {
         </p>
       </div>
 
-      <div v-else class="card px-4 pt-4 pb-4">
+      <div v-else class="card px-4 pt-3 pb-3.5">
         <UFormField
           name="amount"
           :label="$t('expense.amount')"

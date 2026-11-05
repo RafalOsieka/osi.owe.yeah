@@ -1,4 +1,4 @@
-export { add, multiply, negate, rational } from './rational.ts';
+export { add, compare, multiply, negate, rational, subtract } from './rational.ts';
 export type { Rational } from './rational.ts';
 export { parseAmount } from './amount.ts';
 export { fromMinor, minorUnits, parseMoney, roundMoney } from './money.ts';
