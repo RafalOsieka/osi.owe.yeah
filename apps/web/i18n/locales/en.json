@@ -269,7 +269,7 @@
     "subtotal": "Subtotal",
     "depositRefunds": "Deposit refunds",
     "includesUnassigned": "incl. {amount} unassigned",
-    "percentOff": "{percent} off · {amount}",
+    "percentOff": "{percent} off ({amount})",
     "unitsUnassignedTotal": "{count} units unassigned | {count} unit unassigned | {count} units unassigned",
     "amountUnassigned": "{amount} unassigned",
     "countedAs": "{name}'s for now",

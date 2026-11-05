@@ -219,19 +219,32 @@ const step = { color: 'neutral', class: 'disabled:opacity-30' } as const;
   >
     <button
       type="button"
-      class="flex w-full cursor-pointer items-start gap-3 px-4 py-3.5 text-start transition-colors hover:bg-elevated/50"
+      class="grid w-full cursor-pointer grid-cols-[minmax(0,1fr)_auto] items-start gap-x-3 px-4 py-3.5 text-start leading-snug transition-colors hover:bg-elevated/50"
       :class="{ 'bg-elevated/60': open }"
       :aria-expanded="open"
       :aria-controls="editorId"
       @click="open = !open"
     >
-      <span class="min-w-0 flex-1 leading-snug">
+      <!-- The name and the total share the first row; what the line is runs under both, the
+           full width, so a list of names never wraps one alone onto a line. -->
+      <span class="min-w-0">
         <span class="block font-medium break-words text-highlighted" :class="{ 'sr-only': open }">
           {{ name }}
         </span>
         <span v-if="open" class="block text-sm text-muted" aria-hidden="true">
           {{ $t('receipt.lineTotal') }}
         </span>
+      </span>
+      <span class="flex shrink-0 items-center gap-1.5 font-semibold text-highlighted tabular-nums">
+        {{ shares && money(shares.net) }}
+        <UIcon
+          name="i-lucide-chevron-down"
+          class="size-4 text-dimmed transition-transform"
+          :class="{ 'rotate-180': open }"
+          aria-hidden="true"
+        />
+      </span>
+      <span class="col-span-2 min-w-0">
         <template v-if="!open">
           <span class="mt-0.5 block text-sm text-muted">
             <UIcon
@@ -257,15 +270,6 @@ const step = { color: 'neutral', class: 'disabled:opacity-30' } as const;
           <UIcon name="i-lucide-circle-alert" class="size-3.5 shrink-0" aria-hidden="true" />
           {{ missing }}
         </span>
-      </span>
-      <span class="flex shrink-0 items-center gap-1.5 font-semibold text-highlighted tabular-nums">
-        {{ shares && money(shares.net) }}
-        <UIcon
-          name="i-lucide-chevron-down"
-          class="size-4 text-dimmed transition-transform"
-          :class="{ 'rotate-180': open }"
-          aria-hidden="true"
-        />
       </span>
     </button>
 

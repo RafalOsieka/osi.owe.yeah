@@ -39,21 +39,10 @@ export function avatarColor(id: string): AvatarColor {
 
 /**
  * Tints for a set of ids that don't repeat while a free one is left, e.g. the Trip tiles on
- * My Trips. The ids go in order (UUIDv7s, so oldest first): each takes its hashed tint
- * (`avatarColor`) or, if taken, the next free one; once all are taken, the hashed one. A
- * newer id never changes the tint of an older one.
+ * My Trips. The ids go in order (UUIDv7s, so oldest first) and take the palette in its order,
+ * so the first few are as far apart in hue as it allows; once all are taken, the hashed one
+ * (`avatarColor`). A newer id never changes the tint of an older one.
  */
 export function distinctAvatarColors(ids: readonly string[]): Map<string, AvatarColor> {
-  const tints = new Map<string, AvatarColor>();
-  const taken = new Set<AvatarColor>();
-  for (const id of ids.toSorted()) {
-    const hashed = AVATAR_COLORS.indexOf(avatarColor(id));
-    const free = AVATAR_COLORS.map(
-      (_, step) => AVATAR_COLORS[(hashed + step) % AVATAR_COLORS.length]!,
-    ).find((tint) => !taken.has(tint));
-    const tint = free ?? avatarColor(id);
-    taken.add(tint);
-    tints.set(id, tint);
-  }
-  return tints;
+  return new Map(ids.toSorted().map((id, index) => [id, AVATAR_COLORS[index] ?? avatarColor(id)]));
 }

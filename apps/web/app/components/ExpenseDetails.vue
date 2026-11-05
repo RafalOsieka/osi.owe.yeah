@@ -64,10 +64,11 @@ const other = computed(() => {
   return { fields: changedFields(expense, against), now, paid, shares };
 });
 
-// The marker for what differs, a neutral highlight, as the Conflict screen uses it; lighter on
-// the header's large title and total, so it doesn't weigh on them.
+// The marker for what differs, a neutral highlight, as the Conflict screen uses it; on the
+// header's large title and total a thin underline instead, so it doesn't weigh on them.
 const MARK = 'rounded-sm bg-accented box-decoration-clone px-1.5';
-const HEADER_MARK = 'rounded-sm bg-elevated box-decoration-clone px-2';
+const HEADER_MARK =
+  'underline decoration-(--ui-border-accented) decoration-2 underline-offset-[0.2em]';
 const marked = (...fields: ExpenseField[]) =>
   fields.some((field) => other.value?.fields.includes(field)) ? HEADER_MARK : '';
 // A payer's part or a share marked where the other version has a different one.

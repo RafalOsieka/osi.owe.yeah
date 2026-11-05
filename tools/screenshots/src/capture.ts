@@ -912,7 +912,10 @@ async function capture(scheme: 'light' | 'dark'): Promise<void> {
   };
   await detail('Dinner at Konoba Fetivi', 'b01-expense-detail');
   await detail('Konzum groceries', 'b02-receipt-detail');
-  await page.getByRole('region', { name: 'Shares' }).getByRole('button', { name: /Ania/ }).click();
+  // The tapped share row in the middle of the screen, behind the sheet.
+  const ania = page.getByRole('region', { name: 'Shares' }).getByRole('button', { name: /Ania/ });
+  await ania.evaluate((row) => row.scrollIntoView({ block: 'center' }));
+  await ania.click();
   await page.getByRole('dialog', { name: "Ania's share" }).waitFor();
   await snap('b03-share-breakdown');
   await close();

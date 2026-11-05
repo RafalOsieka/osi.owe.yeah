@@ -269,7 +269,7 @@
     "subtotal": "Suma pozycji",
     "depositRefunds": "Zwroty kaucji",
     "includesUnassigned": "w tym {amount} nieprzypisane",
-    "percentOff": "rabat {percent} · {amount}",
+    "percentOff": "rabat {percent} ({amount})",
     "unitsUnassignedTotal": "nieprzypisane sztuki: {count} | nieprzypisana sztuka: {count} | nieprzypisane sztuki: {count}",
     "amountUnassigned": "{amount} nieprzypisane",
     "countedAs": "na razie: {name}",

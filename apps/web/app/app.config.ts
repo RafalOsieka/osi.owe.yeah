@@ -53,10 +53,13 @@ export default defineAppConfig({
       },
     },
     // Off reads as a control, not as a gap.
-    // Off reads as a live control (a 3:1 track); disabled fades well below it.
+    // Off is an outlined track with a grey knob (3:1), light enough not to pass for on;
+    // disabled fades well below it.
     switch: {
       slots: {
-        base: 'data-[state=unchecked]:bg-(--ui-border-accented) disabled:opacity-40',
+        base: 'data-[state=unchecked]:bg-default data-[state=unchecked]:ring-2 data-[state=unchecked]:ring-(--ui-border-accented) data-[state=unchecked]:ring-inset disabled:opacity-40',
+        thumb:
+          'data-[state=unchecked]:bg-(--ui-border-accented) data-[state=unchecked]:shadow-none',
       },
     },
     // Fields are 44 px, like the buttons beside them.

@@ -608,7 +608,7 @@ test('a Line discount follows the Units and a Receipt discount is shared by what
     .getByRole('button', { name: '%' })
     .click();
   await expect(total).toHaveText('€8.10');
-  await expect(page.getByRole('main')).toContainText('10% off · −€0.90');
+  await expect(page.getByRole('main')).toContainText('10% off (−€0.90)');
   await page.getByRole('button', { name: 'Save Expense' }).click();
   const row = page.getByRole('link', { name: /Konoba/ });
   await expect(row).not.toContainText('not synced');
@@ -624,7 +624,7 @@ test('a Line discount follows the Units and a Receipt discount is shared by what
   const main = otherPage.getByRole('main');
   await expect(main).toContainText('€1.00 off, included');
   await expect(main).toContainText('Receipt discount');
-  await expect(main).toContainText('10% off · −€0.90');
+  await expect(main).toContainText('10% off (−€0.90)');
   await other.close();
 });
 
