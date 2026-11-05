@@ -4,7 +4,7 @@
   "version": "0.0.0",
   "private": true,
   "type": "module",
-  "description": "The app's screenshot set for design reviews: seeds Trips into a running app and captures 13 screens, light and dark",
+  "description": "The app's screenshot set for design reviews: seeds Trips into a running app and walks every page and its options and captures 42 screens (12 also in dark), with screens.json describing each",
   "scripts": {
     "capture": "node src/capture.ts",
     "type-check": "tsc -p tsconfig.json"

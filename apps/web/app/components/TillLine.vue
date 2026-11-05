@@ -367,6 +367,8 @@ const modes: readonly SplitMode[] = ['even', 'units', 'amounts'];
           icon="i-lucide-arrow-up"
           color="neutral"
           variant="ghost"
+          size="lg"
+          square
           :disabled="first"
           :aria-label="$t('receipt.moveUp')"
           @click="emit('move', -1)"
@@ -376,6 +378,8 @@ const modes: readonly SplitMode[] = ['even', 'units', 'amounts'];
           icon="i-lucide-arrow-down"
           color="neutral"
           variant="ghost"
+          size="lg"
+          square
           :disabled="last"
           :aria-label="$t('receipt.moveDown')"
           @click="emit('move', 1)"

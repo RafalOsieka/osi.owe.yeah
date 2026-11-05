@@ -43,7 +43,7 @@ const sections = [
 </script>
 
 <template>
-  <NuxtLayout name="form" :title="$t('privacy.title')" parent="/">
+  <NuxtLayout name="form" :title="$t('privacy.title')" parent="/" title-hidden>
     <LegalDocument doc="privacy" :sections="sections" />
   </NuxtLayout>
 </template>

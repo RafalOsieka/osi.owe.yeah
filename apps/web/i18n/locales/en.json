@@ -173,6 +173,7 @@
     "deleteRefused": "The Expense was not deleted"
   },
   "receipt": {
+    "kind": "Receipt",
     "itemise": "Itemise as a Receipt",
     "total": "Receipt total",
     "lineItems": "Line items",
@@ -442,6 +443,7 @@
   },
   "notifications": {
     "title": "Notifications",
+    "blockedShort": "Blocked in this browser",
     "on": "On",
     "off": "Off",
     "pickFirst": "Pick who you are first",

@@ -17,8 +17,8 @@ import type { LocalExpense, LocalTrip } from '~/sync/local-trip';
 // with its payer's avatar (a Repayment, which is not spending, a quiet arrow instead), opens its
 // detail page and, with a Claim, says what the Expense means for the claimed
 // Participant. A row is marked while it is not synced, or in Conflict, and when its rate is a
-// Provisional rate or it has none yet. A Receipt reads "Receipt · N items", marked with how
-// many Line items are not fully assigned yet. The Expense `highlightId` names, e.g. the one a
+// Provisional rate or it has none yet. A Receipt reads "Receipt · N items", or, while Line
+// items are not fully assigned yet, "Receipt · N unassigned", so the row keeps to two lines. The Expense `highlightId` names, e.g. the one a
 // tapped notification was about, is scrolled to and marked.
 const {
   trip,
@@ -60,11 +60,17 @@ function forYou(expense: LocalExpense): { text: string; tone: string } | null {
 }
 
 // A row's summary by the Expense's kind, e.g. "Kasia paid · for all 4" or "Receipt · 6 items".
-function summaryOf(expense: LocalExpense, payer: string, forWhom: string, items: number): string {
+function summaryOf(
+  expense: LocalExpense,
+  payer: string,
+  forWhom: string,
+  items: number,
+  unassigned: number,
+): string {
   const kinded = expenseKind(expense);
   switch (kinded.kind) {
     case 'receipt':
-      return t('receipt.summary', items);
+      return unassigned > 0 ? t('receipt.kind') : t('receipt.summary', items);
     case 'repayment': {
       const recipient = participants.value.get(kinded.expense.recipientId)?.name ?? '?';
       return t('repayment.fromTo', { payer, recipient });
@@ -81,6 +87,7 @@ const days = computed(() =>
     const rows = expenses.map((expense) => {
       const { total, shares, lineItems } = expenseShares(expense);
       const count = shares.size;
+      const unassigned = lineItems.filter(({ unassigned }) => unassigned.numerator !== 0n).length;
       const payer = participants.value.get(expense.mainPayerId)?.name ?? '?';
       const forWhom =
         count === trip.participants.length
@@ -91,8 +98,8 @@ const days = computed(() =>
         total,
         payer: participants.value.get(expense.mainPayerId),
         repayment: expenseKind(expense).kind === 'repayment',
-        summary: summaryOf(expense, payer, forWhom, lineItems.length),
-        unassigned: lineItems.filter(({ unassigned }) => unassigned.numerator !== 0n).length,
+        summary: summaryOf(expense, payer, forWhom, lineItems.length, unassigned),
+        unassigned,
         rate: expenseRate(expense, trip),
         forYou: forYou(expense),
       };
@@ -194,15 +201,15 @@ function dayHeading(day: string): string {
                   size="sm"
                   class="shrink-0"
                 />
-                <UBadge
-                  v-if="row.unassigned > 0"
-                  :label="$t('receipt.unassignedBadge', row.unassigned)"
-                  color="warning"
-                  variant="soft"
-                  size="sm"
-                  class="shrink-0"
-                />
-                <span class="w-full truncate">{{ row.summary }}</span>
+                <span class="min-w-0 flex-1 truncate">
+                  {{ row.summary }}
+                  <template v-if="row.unassigned > 0">
+                    ·
+                    <span class="font-medium text-warning">
+                      {{ $t('receipt.unassignedBadge', row.unassigned) }}
+                    </span>
+                  </template>
+                </span>
               </span>
             </span>
             <span class="shrink-0 text-end tabular-nums">

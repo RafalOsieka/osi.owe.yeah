@@ -78,40 +78,48 @@ async function submit(): Promise<void> {
       class="space-y-5"
       @submit="submit"
     >
-      <UFormField name="amount" :label="$t('expense.amount')" :ui="{ label: 'sr-only' }">
-        <AmountInput v-model="state.amount" :currency="state.currency" />
-      </UFormField>
-      <ExpenseCurrency
-        v-model:currency="state.currency"
-        v-model:manual-rate="state.manualRate"
-        :reading="reading"
-        :error="problemAt(reading.reasons, 'manualRate')"
-        class="-mt-3"
-      />
-
-      <UFormField name="mainPayerId" :error="problemAt(reading.reasons, 'mainPayerId')">
-        <ParticipantPicker
-          v-model="state.mainPayerId"
-          :participants="trip.participants"
-          :label="$t('expense.paidBy')"
-          name="mainPayerId"
+      <div class="card px-4 pt-3 pb-3.5">
+        <UFormField
+          name="amount"
+          :label="$t('expense.amount')"
+          :ui="{ labelWrapper: 'justify-center', label: 'text-sm font-medium text-muted' }"
+        >
+          <AmountInput v-model="state.amount" :currency="state.currency" />
+        </UFormField>
+        <ExpenseCurrency
+          v-model:currency="state.currency"
+          v-model:manual-rate="state.manualRate"
+          :reading="reading"
+          :error="problemAt(reading.reasons, 'manualRate')"
+          class="mt-2"
         />
-      </UFormField>
+      </div>
 
-      <UFormField name="recipientId" :error="problemAt(reading.reasons, 'recipientId')">
-        <ParticipantPicker
-          v-model="state.recipientId"
-          :participants="trip.participants"
-          :label="$t('repayment.paidTo')"
-          name="recipientId"
-        />
-      </UFormField>
+      <div class="card space-y-5 p-4">
+        <UFormField name="mainPayerId" :error="problemAt(reading.reasons, 'mainPayerId')">
+          <ParticipantPicker
+            v-model="state.mainPayerId"
+            :participants="trip.participants"
+            :label="$t('expense.paidBy')"
+            name="mainPayerId"
+          />
+        </UFormField>
 
-      <UFormField name="title" :label="$t('expense.title')">
-        <UInput v-model="state.title" class="w-full" />
-      </UFormField>
+        <UFormField name="recipientId" :error="problemAt(reading.reasons, 'recipientId')">
+          <ParticipantPicker
+            v-model="state.recipientId"
+            :participants="trip.participants"
+            :label="$t('repayment.paidTo')"
+            name="recipientId"
+          />
+        </UFormField>
 
-      <ExpenseTimeField v-model:local="state.local" v-model:zone="state.zone" />
+        <UFormField name="title" :label="$t('expense.title')">
+          <UInput v-model="state.title" class="w-full" />
+        </UFormField>
+
+        <ExpenseTimeField v-model:local="state.local" v-model:zone="state.zone" />
+      </div>
     </UForm>
 
     <template #action>

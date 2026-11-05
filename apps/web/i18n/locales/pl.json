@@ -173,6 +173,7 @@
     "deleteRefused": "Wydatek nie został usunięty"
   },
   "receipt": {
+    "kind": "Paragon",
     "itemise": "Rozpisz jako paragon",
     "total": "Suma paragonu",
     "lineItems": "Pozycje",
@@ -442,6 +443,7 @@
   },
   "notifications": {
     "title": "Powiadomienia",
+    "blockedShort": "Zablokowane w tej przeglądarce",
     "on": "Włączone",
     "off": "Wyłączone",
     "pickFirst": "Najpierw wskaż, kim jesteś",

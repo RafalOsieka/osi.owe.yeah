@@ -24,9 +24,9 @@ async function turnOn(): Promise<void> {
 
 <template>
   <div class="space-y-4">
-    <div class="space-y-2 text-sm">
-      <p>{{ $t('notifications.what') }}</p>
-      <p class="text-muted">{{ $t('notifications.where', { name: tripName }) }}</p>
+    <div class="space-y-1.5">
+      <p class="text-highlighted">{{ $t('notifications.what') }}</p>
+      <p class="text-sm text-muted">{{ $t('notifications.where', { name: tripName }) }}</p>
     </div>
 
     <UAlert
