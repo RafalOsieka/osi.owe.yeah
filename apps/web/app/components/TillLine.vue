@@ -144,18 +144,22 @@ const modes: readonly SplitMode[] = ['even', 'units', 'amounts'];
 
 <template>
   <li
-    class="rounded-lg border"
-    :class="unassigned || !item || problems.length ? 'border-warning/60' : 'border-default'"
+    class="relative"
+    :class="{
+      'before:absolute before:inset-y-2 before:start-0 before:w-0.5 before:rounded-full before:bg-warning':
+        unassigned || !item || problems.length,
+    }"
   >
     <button
       type="button"
-      class="flex w-full cursor-pointer items-start gap-2 p-2.5 text-start"
+      class="flex w-full cursor-pointer items-start gap-3 px-4 py-3 text-start transition-colors hover:bg-elevated/50"
+      :class="{ 'bg-elevated/50': open }"
       :aria-expanded="open"
       :aria-controls="editorId"
       @click="open = !open"
     >
       <span class="min-w-0 flex-1 leading-snug">
-        <span class="block truncate font-semibold">{{ name }}</span>
+        <span class="block truncate font-medium text-highlighted">{{ name }}</span>
         <span class="block truncate text-xs text-muted">
           {{
             line.quantity > 1
@@ -183,12 +187,18 @@ const modes: readonly SplitMode[] = ['even', 'units', 'amounts'];
           {{ $t('receipt.notAssigned', { amount: money(unassigned) }) }}
         </span>
       </span>
-      <span class="shrink-0 font-semibold tabular-nums">
+      <span class="flex shrink-0 items-center gap-1.5 font-semibold text-highlighted tabular-nums">
         {{ shares && money(shares.net) }}
+        <UIcon
+          name="i-lucide-chevron-down"
+          class="size-4 text-dimmed transition-transform"
+          :class="{ 'rotate-180': open }"
+          aria-hidden="true"
+        />
       </span>
     </button>
 
-    <div v-if="open" :id="editorId" class="space-y-3 border-t border-default p-2.5">
+    <div v-if="open" :id="editorId" class="space-y-4 bg-elevated/50 px-4 pt-1 pb-4">
       <UFormField :label="$t('receipt.name')">
         <UInput
           :model-value="line.name"
@@ -257,34 +267,26 @@ const modes: readonly SplitMode[] = ['even', 'units', 'amounts'];
         </UFormField>
       </template>
 
-      <div role="group" :aria-label="$t('receipt.splitMode')">
-        <UFieldGroup class="w-full">
-          <UButton
-            v-for="mode in modes"
-            :key="mode"
-            :label="$t(`receipt.mode.${mode}`)"
-            :aria-pressed="line.split.mode === mode"
-            :variant="line.split.mode === mode ? 'solid' : 'outline'"
-            color="neutral"
-            size="sm"
-            class="flex-1 justify-center"
-            @click="chooseMode(mode)"
-          />
-        </UFieldGroup>
-      </div>
+      <SegmentedControl
+        :model-value="line.split.mode"
+        :options="modes.map((mode) => ({ value: mode, label: $t(`receipt.mode.${mode}`) }))"
+        :label="$t('receipt.splitMode')"
+        class="flex w-full"
+        @update:model-value="chooseMode"
+      />
 
       <div v-if="line.split.mode === 'even'" role="group" :aria-label="$t('expense.forWhom')">
-        <div class="mb-1.5 flex justify-end">
+        <div class="mb-2 flex justify-end">
           <UButton
-            variant="link"
-            size="sm"
+            variant="soft"
+            size="xs"
             :label="$t('expense.all')"
             :aria-pressed="allTicked"
-            class="p-0"
+            class="px-2.5"
             @click="toggleAll"
           />
         </div>
-        <div class="flex flex-wrap gap-1.5">
+        <div class="grid grid-cols-2 gap-2">
           <ParticipantChip
             v-for="row in rows"
             :key="row.participant.id"
@@ -297,10 +299,10 @@ const modes: readonly SplitMode[] = ['even', 'units', 'amounts'];
         </div>
       </div>
 
-      <ul v-else class="space-y-1.5">
-        <li v-for="row in rows" :key="row.participant.id" class="flex items-center gap-2">
-          <ParticipantAvatar :participant="row.participant" size="2xs" />
-          <span class="min-w-0 flex-1 truncate text-sm">{{ row.participant.name }}</span>
+      <ul v-else class="space-y-2">
+        <li v-for="row in rows" :key="row.participant.id" class="flex items-center gap-3">
+          <ParticipantAvatar :participant="row.participant" size="sm" />
+          <span class="min-w-0 flex-1 truncate">{{ row.participant.name }}</span>
           <UInputNumber
             v-if="line.split.mode === 'units'"
             :model-value="row.units"

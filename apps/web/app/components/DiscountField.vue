@@ -16,7 +16,16 @@ const {
 }>();
 const discount = defineModel<DraftDiscount>({ required: true });
 
-const kinds: readonly Discount['kind'][] = ['amount', 'percent'];
+const kinds = computed(() =>
+  (['amount', 'percent'] as const satisfies readonly Discount['kind'][]).map((value) => ({
+    value,
+    label: value === 'amount' ? currency : '%',
+  })),
+);
+const kind = computed({
+  get: () => discount.value.kind,
+  set: (value: Discount['kind']) => (discount.value = { ...discount.value, kind: value }),
+});
 </script>
 
 <template>
@@ -30,17 +39,12 @@ const kinds: readonly Discount['kind'][] = ['amount', 'percent'];
         class="flex-1"
         @update:model-value="discount = { ...discount, value: String($event) }"
       />
-      <UFieldGroup role="group" :aria-label="$t('receipt.discountKind', { label })">
-        <UButton
-          v-for="kind in kinds"
-          :key="kind"
-          :label="kind === 'amount' ? currency : '%'"
-          :aria-pressed="discount.kind === kind"
-          :variant="discount.kind === kind ? 'solid' : 'outline'"
-          color="neutral"
-          @click="discount = { ...discount, kind }"
-        />
-      </UFieldGroup>
+      <SegmentedControl
+        v-model="kind"
+        :options="kinds"
+        :label="$t('receipt.discountKind', { label })"
+        class="shrink-0 self-center"
+      />
     </div>
   </UFormField>
 </template>
