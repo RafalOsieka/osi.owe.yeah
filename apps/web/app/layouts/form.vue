@@ -27,7 +27,7 @@ const back = useBack();
   <header
     class="sticky top-0 z-10 border-b border-default bg-canvas/80 pt-[env(safe-area-inset-top)] backdrop-blur-xl backdrop-saturate-150"
   >
-    <div class="flex h-14 items-center gap-1 px-2">
+    <div class="flex h-14 items-center gap-1 ps-2 pe-4">
       <UButton
         :icon="close ? 'i-lucide-x' : 'i-lucide-chevron-left'"
         color="neutral"

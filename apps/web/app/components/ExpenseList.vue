@@ -152,9 +152,9 @@ function dayHeading(day: string): string {
           >
             <span
               v-if="row.repayment"
-              class="grid size-10 shrink-0 place-items-center rounded-full bg-elevated text-muted"
+              class="grid size-9 shrink-0 place-items-center rounded-full bg-elevated text-muted"
             >
-              <UIcon name="i-lucide-arrow-right-left" class="size-5" />
+              <UIcon name="i-lucide-arrow-right-left" class="size-4.5" />
             </span>
             <ParticipantAvatar v-else-if="row.payer" :participant="row.payer" size="lg" />
             <span class="min-w-0 flex-1">

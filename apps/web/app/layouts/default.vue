@@ -46,7 +46,9 @@ const menu = computed<DropdownMenuItem[]>(() => [
       </UDropdownMenu>
     </div>
   </header>
-  <main class="px-4 pt-1 pb-[calc(6rem+env(safe-area-inset-bottom))]">
+  <main
+    class="flex min-h-[calc(100dvh-3.5rem-env(safe-area-inset-top))] flex-col px-4 pt-1 pb-[calc(6rem+env(safe-area-inset-bottom))]"
+  >
     <slot />
   </main>
   <div

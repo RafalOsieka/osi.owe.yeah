@@ -38,6 +38,8 @@
       "submit": "Utwórz podróż",
       "me": "Twoje imię",
       "meHelp": "Na tym urządzeniu będziesz tym uczestnikiem.",
+      "mePlaceholder": "np. Ania",
+      "othersPlaceholder": "np. Kasia",
       "others": "Kto jeszcze jedzie?",
       "othersHelp": "Imiona mogą się powtarzać, a kolejnych uczestników dodasz później."
     },
@@ -301,7 +303,7 @@
     "paid": "Płatności",
     "share": "Udział",
     "balance": "Saldo",
-    "rounded": "≈ oznacza kwotę zaokrągloną do wyświetlenia. Udziały liczymy dokładnie, więc po zaokrągleniu mogą nie sumować się do całości.",
+    "rounded": "≈ po zaokrągleniu. Dokładne udziały sumują się do całości.",
     "part": {
       "expenses": "Wydatki",
       "goods": "Towary w pełnej cenie",

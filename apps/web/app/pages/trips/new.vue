@@ -90,7 +90,11 @@ async function create(): Promise<void> {
       </div>
       <div class="card space-y-4 p-4">
         <UFormField name="me" :label="$t('trip.create.me')" :help="$t('trip.create.meHelp')">
-          <UInput v-model="state.me" class="w-full" />
+          <UInput
+            v-model="state.me"
+            :placeholder="$t('trip.create.mePlaceholder')"
+            class="w-full"
+          />
         </UFormField>
         <fieldset class="space-y-2">
           <legend class="mb-1.5 text-sm font-medium text-default">
@@ -100,7 +104,7 @@ async function create(): Promise<void> {
             <div class="flex gap-2">
               <UInput
                 v-model="state.others[index]"
-                :placeholder="$t('participants.namePlaceholder')"
+                :placeholder="$t('trip.create.othersPlaceholder')"
                 :aria-label="$t('trip.create.participant', { number: index + 2 })"
                 class="grow"
               />

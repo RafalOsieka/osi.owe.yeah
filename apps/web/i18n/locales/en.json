@@ -38,6 +38,8 @@
       "submit": "Create Trip",
       "me": "Your name",
       "meHelp": "You will be this Participant on this device.",
+      "mePlaceholder": "e.g. Ania",
+      "othersPlaceholder": "e.g. Kasia",
       "others": "Who else is coming?",
       "othersHelp": "Names may repeat, and you can add more later."
     },
@@ -301,7 +303,7 @@
     "paid": "Paid",
     "share": "Share",
     "balance": "Balance",
-    "rounded": "≈ marks an amount rounded to show it. Shares stay exact, so the rounded ones may not add up to the total.",
+    "rounded": "≈ rounded to the cent. The exact shares add up to the total.",
     "part": {
       "expenses": "Expenses",
       "goods": "Goods at full price",

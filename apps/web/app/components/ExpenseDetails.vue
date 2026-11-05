@@ -273,7 +273,7 @@ function openBreakdown(participantId: string): void {
               <UBadge
                 v-if="participant.id === claim?.id"
                 :label="$t('participants.you')"
-                variant="soft"
+                variant="subtle"
                 size="sm"
                 class="ms-1 align-middle"
               />

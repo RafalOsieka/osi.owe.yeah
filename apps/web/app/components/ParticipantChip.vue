@@ -20,7 +20,7 @@ function change(event: Event): void {
 
 <template>
   <label
-    class="group relative flex h-11 min-w-0 items-center gap-2 rounded-full bg-default ps-1.5 pe-3.5 text-sm font-medium text-default ring ring-accented transition-colors has-checked:bg-primary/10 has-checked:text-highlighted has-checked:ring-primary/50 has-focus-visible:outline-2 has-focus-visible:outline-offset-2 has-focus-visible:outline-primary"
+    class="group relative flex h-11 min-w-0 items-center gap-2 rounded-full bg-default ps-1.5 pe-3.5 text-sm font-medium text-default ring ring-accented transition-colors has-checked:bg-primary/10 has-checked:text-highlighted has-checked:ring-primary/50 dark:has-checked:bg-primary/18 dark:has-checked:ring-primary/70 has-focus-visible:outline-2 has-focus-visible:outline-offset-2 has-focus-visible:outline-primary"
   >
     <input
       :type="type"

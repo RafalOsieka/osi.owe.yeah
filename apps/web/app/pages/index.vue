@@ -134,7 +134,6 @@ useHead({ title: () => t('myTrips.title') });
             :label="$t('myTrips.settled')"
             color="success"
             variant="soft"
-            icon="i-lucide-circle-check"
             class="shrink-0 rounded-full"
           />
           <span v-else-if="trip.balance" class="shrink-0 text-end">
@@ -168,7 +167,7 @@ useHead({ title: () => t('myTrips.title') });
         class="mt-8 rounded-full px-6 shadow-lg shadow-primary/25 dark:shadow-none"
       />
     </div>
-    <LegalLinks class="mt-10" />
+    <LegalLinks class="mt-auto pt-10" />
 
     <template v-if="rows.length > 0" #action>
       <UButton

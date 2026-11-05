@@ -54,7 +54,7 @@ const tabs = computed(() => {
         >
           <UIcon
             :name="unsynced > 0 ? 'i-lucide-cloud' : 'i-lucide-cloud-check'"
-            class="size-5 text-dimmed"
+            class="size-4.5 text-dimmed"
           />
           <span
             v-if="unsynced > 0"

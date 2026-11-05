@@ -16,7 +16,7 @@ const amount = defineModel<string>({ required: true });
     :aria-description="currency"
     class="w-full"
     :ui="{
-      base: 'h-20 text-center text-6xl font-semibold tracking-tight text-highlighted tabular-nums placeholder:text-dimmed',
+      base: 'h-16 text-center text-5xl font-semibold tracking-tight text-highlighted tabular-nums placeholder:text-dimmed',
     }"
   />
 </template>

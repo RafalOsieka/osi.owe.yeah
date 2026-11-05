@@ -82,13 +82,14 @@ async function forgetTrip(): Promise<void> {
               <ParticipantAvatar :participant="participant" size="md" />
               <span class="min-w-0 flex-1 wrap-anywhere text-highlighted">
                 {{ participant.name }}
+                <UBadge
+                  v-if="participant.id === claim?.id"
+                  :label="$t('participants.you')"
+                  variant="subtle"
+                  size="sm"
+                  class="ms-1 align-middle"
+                />
               </span>
-              <UBadge
-                v-if="participant.id === claim?.id"
-                :label="$t('participants.you')"
-                variant="soft"
-                class="rounded-full"
-              />
             </button>
           </li>
         </ul>

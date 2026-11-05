@@ -122,6 +122,7 @@ const remindable = computed(
             </h2>
             <SuggestedRepaymentList
               :suggestions="suggestions.own"
+              :amount-shown="suggestions.own.length > 1"
               :participants="trip.participants"
               :trip-id="trip.id"
               :currency="trip.currency"

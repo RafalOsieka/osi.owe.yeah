@@ -15,6 +15,7 @@ const {
   currency,
   claimId = null,
   highlight = null,
+  amountShown = true,
 } = defineProps<{
   suggestions: readonly SuggestedRepayment[];
   participants: readonly Participant[];
@@ -22,6 +23,8 @@ const {
   currency: string;
   claimId?: string | null;
   highlight?: string | null;
+  /** Off where the amount already shows just above (the balance hero): read out, not shown. */
+  amountShown?: boolean;
 }>();
 
 const { t, locale } = useI18n();
@@ -91,13 +94,18 @@ watch(
       </span>
       <span class="min-w-0 flex-1">
         <span class="block truncate text-sm text-muted">{{ row.text }}</span>
-        <span class="block font-semibold text-highlighted tabular-nums">{{ row.money }}</span>
+        <span
+          class="block font-semibold text-highlighted tabular-nums"
+          :class="{ 'sr-only': !amountShown }"
+        >
+          {{ row.money }}
+        </span>
         <slot name="detail" :suggestion="row.suggestion" />
       </span>
       <slot name="action" :suggestion="row.suggestion" />
       <UButton
         :to="row.record"
-        :variant="row.own ? 'solid' : 'soft'"
+        :variant="row.own ? 'solid' : 'subtle'"
         :label="$t('balances.record')"
         :aria-label="$t('balances.recordLabel', { what: row.text, amount: row.money })"
         class="shrink-0 rounded-full px-3.5"

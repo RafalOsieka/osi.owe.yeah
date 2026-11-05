@@ -184,8 +184,12 @@ async function submit(): Promise<void> {
         </p>
       </div>
 
-      <div v-else class="card px-4 pt-5 pb-4">
-        <UFormField name="amount" :label="$t('expense.amount')" :ui="{ label: 'sr-only' }">
+      <div v-else class="card px-4 pt-4 pb-4">
+        <UFormField
+          name="amount"
+          :label="$t('expense.amount')"
+          :ui="{ labelWrapper: 'justify-center', label: 'text-sm font-medium text-muted' }"
+        >
           <AmountInput v-model="state.amount" :currency="state.currency" />
         </UFormField>
         <ExpenseCurrency
@@ -197,91 +201,93 @@ async function submit(): Promise<void> {
         />
       </div>
 
-      <UFormField name="title" :label="$t('expense.title')">
-        <UInput
-          v-model="state.title"
-          :placeholder="$t('expense.titlePlaceholder')"
-          class="w-full"
-        />
-      </UFormField>
+      <div class="card space-y-5 p-4">
+        <UFormField name="title" :label="$t('expense.title')">
+          <UInput
+            v-model="state.title"
+            :placeholder="$t('expense.titlePlaceholder')"
+            class="w-full"
+          />
+        </UFormField>
 
-      <UFormField v-if="state.lineItems" name="lineItems">
-        <TillList
-          v-model="state.lineItems"
-          :participants="trip.participants"
-          :currency="state.currency"
-        />
-      </UFormField>
+        <UFormField v-if="state.lineItems" name="lineItems">
+          <TillList
+            v-model="state.lineItems"
+            :participants="trip.participants"
+            :currency="state.currency"
+          />
+        </UFormField>
 
-      <UFormField
-        name="mainPayerId"
-        :error="payerRefusal ?? problemAt(reading.reasons, 'mainPayerId')"
-      >
-        <ParticipantPicker
-          :model-value="state.mainPayerId"
-          :participants="trip.participants"
-          :label="state.received ? $t('expense.receivedBy') : $t('expense.paidBy')"
+        <UFormField
           name="mainPayerId"
-          @update:model-value="pickPayer"
-        />
-      </UFormField>
+          :error="payerRefusal ?? problemAt(reading.reasons, 'mainPayerId')"
+        >
+          <ParticipantPicker
+            :model-value="state.mainPayerId"
+            :participants="trip.participants"
+            :label="state.received ? $t('expense.receivedBy') : $t('expense.paidBy')"
+            name="mainPayerId"
+            @update:model-value="pickPayer"
+          />
+        </UFormField>
 
-      <UFormField
-        v-if="!state.received"
-        name="contributions"
-        :error="problemAt(reading.reasons, 'contributions')"
-      >
-        <ContributionList
-          v-model="state.contributions"
-          :participants="trip.participants"
-          :main-payer-id="state.mainPayerId"
+        <UFormField
+          v-if="!state.received"
+          name="contributions"
+          :error="problemAt(reading.reasons, 'contributions')"
+        >
+          <ContributionList
+            v-model="state.contributions"
+            :participants="trip.participants"
+            :main-payer-id="state.mainPayerId"
+            :currency="state.currency"
+            :rest="reading.mainPayerPart"
+          />
+        </UFormField>
+
+        <DiscountField
+          v-if="state.lineItems"
+          v-model="state.discount"
+          :label="$t('receipt.receiptDiscount')"
           :currency="state.currency"
-          :rest="reading.mainPayerPart"
+          :error="discountError"
         />
-      </UFormField>
 
-      <DiscountField
-        v-if="state.lineItems"
-        v-model="state.discount"
-        :label="$t('receipt.receiptDiscount')"
-        :currency="state.currency"
-        :error="discountError"
-      />
-
-      <UFormField
-        v-if="!state.lineItems"
-        name="participantIds"
-        :error="problemAt(reading.reasons, 'participantIds')"
-      >
-        <div role="group" aria-labelledby="for-whom-label">
-          <div class="mb-2 flex items-center justify-between gap-2">
-            <p id="for-whom-label" class="text-sm font-medium text-highlighted">
-              {{ $t('expense.forWhom') }}
-            </p>
-            <UButton
-              variant="link"
-              size="sm"
-              :label="$t('expense.all')"
-              :aria-pressed="allTicked"
-              class="p-0"
-              @click="toggleAll"
-            />
+        <UFormField
+          v-if="!state.lineItems"
+          name="participantIds"
+          :error="problemAt(reading.reasons, 'participantIds')"
+        >
+          <div role="group" aria-labelledby="for-whom-label">
+            <div class="mb-2 flex items-center justify-between gap-2">
+              <p id="for-whom-label" class="text-sm font-medium text-highlighted">
+                {{ $t('expense.forWhom') }}
+              </p>
+              <UButton
+                variant="soft"
+                size="xs"
+                :label="$t('expense.all')"
+                :aria-pressed="allTicked"
+                class="px-2.5"
+                @click="toggleAll"
+              />
+            </div>
+            <div class="grid grid-cols-2 gap-2">
+              <ParticipantChip
+                v-for="participant in trip.participants"
+                :key="participant.id"
+                :participant="participant"
+                type="checkbox"
+                name="participantIds"
+                :checked="state.participantIds.includes(participant.id)"
+                @update:checked="tick(participant.id, $event)"
+              />
+            </div>
           </div>
-          <div class="grid grid-cols-2 gap-2">
-            <ParticipantChip
-              v-for="participant in trip.participants"
-              :key="participant.id"
-              :participant="participant"
-              type="checkbox"
-              name="participantIds"
-              :checked="state.participantIds.includes(participant.id)"
-              @update:checked="tick(participant.id, $event)"
-            />
-          </div>
-        </div>
-      </UFormField>
+        </UFormField>
 
-      <ExpenseTimeField v-model:local="state.local" v-model:zone="state.zone" />
+        <ExpenseTimeField v-model:local="state.local" v-model:zone="state.zone" />
+      </div>
 
       <div
         v-if="!reading.receipt && (state.contributions.length === 0 || !state.received)"
