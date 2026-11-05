@@ -52,7 +52,10 @@ const tabs = computed(() => {
           :aria-label="$t('sync.unsynced', unsynced)"
           class="relative"
         >
-          <UIcon :name="unsynced > 0 ? 'i-lucide-cloud' : 'i-lucide-cloud-check'" class="size-5" />
+          <UIcon
+            :name="unsynced > 0 ? 'i-lucide-cloud' : 'i-lucide-cloud-check'"
+            class="size-5 text-dimmed"
+          />
           <span
             v-if="unsynced > 0"
             class="absolute end-1.5 top-1.5 size-2 rounded-full bg-warning ring-2 ring-default"

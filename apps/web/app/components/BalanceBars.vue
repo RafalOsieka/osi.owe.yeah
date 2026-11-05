@@ -1,11 +1,11 @@
 <script setup lang="ts">
 import type { Participant, ParticipantBalance } from '@osi/owe-yeah-domain';
 
-// Everyone's balance as diverging bars, one per Participant in the Trip's order with their
-// avatar: owing to the left in red, owed to the right in green, scaled to the largest balance, with the
-// amount at the end of the bar. Shows the rounded balances settling up uses. Tapping a bar
-// selects its Participant, to open their breakdown. Hand-built: `UChart` only draws vertical
-// bars.
+// Everyone's balance, one row per Participant in the Trip's order: their avatar, name and
+// signed amount, over a full-width track with a diverging bar from its centre, owing to the
+// left in red and owed to the right in green, scaled to the largest balance. Shows the
+// rounded balances settling up uses. Tapping a row selects its Participant, to open their
+// breakdown. Hand-built: `UChart` only draws vertical bars.
 const {
   balances,
   participants,
@@ -25,76 +25,56 @@ const { locale } = useI18n();
 const rows = computed(() => {
   const byId = new Map(participants.map((participant) => [participant.id, participant]));
   const widths = barWidths(balances.map(({ rounded }) => rounded));
-  // With a true minus sign, which is as wide as the plus.
-  const amounts = balances.map(({ rounded }) =>
-    formatMoney(rounded, currency, locale.value, 'signedCurrency').replace('-', '−'),
-  );
-  // A bar shares its half with its amount, so every bar leaves room for the longest amount
-  // (in `ch`: the digits are tabular) plus its padding, and all keep the same scale.
-  const longest = Math.max(0, ...amounts.map((amount) => amount.length));
   return balances.map(({ participantId, rounded }, index) => {
     const sign = shownSign(rounded, currency);
+    // Half the track at most, from its centre.
+    const half = widths[index]! / 2;
     return {
       participantId,
       participant: byId.get(participantId),
       name: byId.get(participantId)?.name ?? '?',
-      owes: sign < 0,
-      amount: amounts[index]!,
-      width: `calc((100% - ${longest}ch - 0.5rem) * ${widths[index]! / 100})`,
+      // With a true minus sign, which is as wide as the plus.
+      amount: formatMoney(rounded, currency, locale.value, 'signedCurrency').replace('-', '−'),
+      tone: sign < 0 ? 'text-error' : sign > 0 ? 'text-success' : 'text-muted',
+      bar: {
+        class: sign < 0 ? 'rounded-s-full bg-error/80' : 'rounded-e-full bg-success',
+        style: { insetInlineStart: sign < 0 ? `${50 - half}%` : '50%', width: `${half}%` },
+      },
     };
   });
 });
 </script>
 
 <template>
-  <div class="card px-2 py-3">
-    <div class="mb-1 grid grid-cols-[6.5rem_1fr_1fr] px-2 text-xs text-dimmed" aria-hidden="true">
-      <span />
-      <span class="pe-2 text-end">{{ $t('balances.owes') }}</span>
-      <span class="ps-2">{{ $t('balances.isOwed') }}</span>
-    </div>
-    <ul>
-      <li v-for="row in rows" :key="row.participantId">
-        <button
-          type="button"
-          aria-haspopup="dialog"
-          class="grid h-11 w-full cursor-pointer grid-cols-[6.5rem_1fr_1fr] items-center rounded-lg px-2 text-start text-sm transition-colors hover:bg-elevated/60 active:bg-elevated"
-          @click="emit('select', row.participantId)"
-        >
-          <span class="flex min-w-0 items-center gap-2 pe-2">
-            <ParticipantAvatar v-if="row.participant" :participant="row.participant" size="xs" />
-            <span
-              class="truncate"
-              :class="
-                row.participantId === claimId ? 'font-semibold text-highlighted' : 'text-default'
-              "
-            >
-              {{ row.name }}
-            </span>
+  <ul class="card divide-y divide-default overflow-hidden">
+    <li v-for="row in rows" :key="row.participantId">
+      <button
+        type="button"
+        aria-haspopup="dialog"
+        class="w-full cursor-pointer px-4 py-3 text-start transition-colors hover:bg-elevated/60 active:bg-elevated"
+        @click="emit('select', row.participantId)"
+      >
+        <span class="flex items-center gap-3">
+          <ParticipantAvatar v-if="row.participant" :participant="row.participant" size="xs" />
+          <span class="min-w-0 flex-1 truncate text-highlighted">
+            {{ row.name }}
+            <UBadge
+              v-if="row.participantId === claimId"
+              :label="$t('participants.you')"
+              variant="soft"
+              size="sm"
+              class="ms-1 align-middle"
+            />
           </span>
-          <span
-            class="flex h-full min-w-0 items-center justify-end overflow-hidden border-e border-accented"
-          >
-            <template v-if="row.owes">
-              <span class="px-1.5 text-xs whitespace-nowrap text-muted tabular-nums">
-                {{ row.amount }}
-              </span>
-              <span class="h-3 shrink-0 rounded-s-full bg-error/75" :style="{ width: row.width }" />
-            </template>
+          <span class="shrink-0 font-medium tabular-nums" :class="row.tone">
+            {{ row.amount }}
           </span>
-          <span class="flex h-full min-w-0 items-center overflow-hidden">
-            <template v-if="!row.owes">
-              <span
-                class="h-3 shrink-0 rounded-e-full bg-success/80"
-                :style="{ width: row.width }"
-              />
-              <span class="px-1.5 text-xs whitespace-nowrap text-muted tabular-nums">
-                {{ row.amount }}
-              </span>
-            </template>
-          </span>
-        </button>
-      </li>
-    </ul>
-  </div>
+        </span>
+        <span class="relative mt-2.5 block h-1.5 rounded-full bg-elevated" aria-hidden="true">
+          <span class="absolute inset-y-0 start-1/2 w-px bg-accented" />
+          <span class="absolute inset-y-0" :class="row.bar.class" :style="row.bar.style" />
+        </span>
+      </button>
+    </li>
+  </ul>
 </template>

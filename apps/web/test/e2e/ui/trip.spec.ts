@@ -412,7 +412,7 @@ test('the longest texts never make a page scroll sideways at 360 px', async ({ p
   await page.getByRole('button', { name: 'Back' }).click();
   await page.getByRole('button', { name: 'Back' }).click();
   await page.getByRole('link', { name: 'Balances' }).click();
-  await expect(page.getByRole('region', { name: 'Everyone' })).toContainText('+61,728.39');
+  await expect(page.getByRole('region', { name: 'Everyone' })).toContainText('+€61,728.39');
   expect(await scrollsSideways()).toBe(false);
 
   await page.getByRole('link', { name: 'Trip', exact: true }).click();
@@ -546,7 +546,7 @@ test('a Receipt entered offline at the till, Line item by Line item, reaches a s
   await otherPage.getByRole('dialog').getByRole('button', { name: 'Ania' }).click();
   const otherRow = otherPage.getByRole('link', { name: /Lidl Rovinj/ });
   // A third of the bread and three waters: 0.83 + 0.87.
-  await expect(otherRow).toContainText('your share 1.70');
+  await expect(otherRow).toContainText('your share €1.70');
   await expect(otherRow).toContainText('1 unassigned');
   await otherRow.click();
   const items = otherPage.getByRole('region', { name: 'Line items' }).getByRole('listitem');
@@ -600,7 +600,7 @@ test('a Line discount follows the Units and a Receipt discount is shared by what
   await otherPage.getByRole('dialog').getByRole('button', { name: 'Ania' }).click();
   const otherRow = otherPage.getByRole('link', { name: /Konoba/ });
   // Two beers at 1.80 after the Line discount, less 10 %.
-  await expect(otherRow).toContainText('your share 3.24');
+  await expect(otherRow).toContainText('your share €3.24');
   await otherRow.click();
   const main = otherPage.getByRole('main');
   await expect(main).toContainText('Discount -€1.00');
@@ -656,7 +656,7 @@ test('a Deposit is never discounted, and a Deposit refund comes off the Receipt 
   await otherPage.getByRole('dialog').getByRole('button', { name: 'Ania' }).click();
   const otherRow = otherPage.getByRole('link', { name: /Lidl Rovinj/ });
   // Water, Deposit and the refund are all split Even, so a third of 6.27 each.
-  await expect(otherRow).toContainText('your share 2.09');
+  await expect(otherRow).toContainText('your share €2.09');
   await otherRow.click();
   const main = otherPage.getByRole('main');
   await expect(main).toContainText('Deposit €2.50');
@@ -737,7 +737,7 @@ test('Contributions from others: added, edited and removed, the Main payer cover
 
   // Kasia paid 54.00 of her 20.00 share.
   const row = page.getByRole('link', { name: /Konoba Batelina/ });
-  await expect(row).toContainText('you lent 34.00');
+  await expect(row).toContainText('you lent €34.00');
   await row.click();
   const payers = page.getByRole('region', { name: 'Paid by' }).getByRole('listitem');
   await expect(payers).toHaveCount(2);
@@ -849,12 +849,13 @@ test('record a plain Expense, read it, edit it, and see the balances', async ({ 
     'aria-current',
     'page',
   );
-  await expect(page.getByRole('heading', { name: 'Tuesday, July 14, 2026' })).toBeVisible();
+  // The year shows only when it isn't this one.
+  await expect(page.getByRole('heading', { name: /^Tuesday, July 14(, 2026)?$/ })).toBeVisible();
   const row = page.getByRole('link', { name: /Lidl Rovinj/ });
   await expect(row).toContainText('Kasia paid · for all 3');
   await expect(row).toContainText('€10.00');
   // 10.00 for three doesn't split into whole cents.
-  await expect(row).toContainText('you lent ≈ 6.67');
+  await expect(row).toContainText('you lent ≈ €6.67');
   await expect(page.getByRole('link', { name: 'Add Expense' })).toBeVisible();
 
   await page.getByRole('link', { name: 'Balances' }).click();
@@ -893,7 +894,7 @@ test('record a plain Expense, read it, edit it, and see the balances', async ({ 
   await expect(shares).toHaveCount(2);
   await page.getByRole('button', { name: 'Back' }).click();
   await expect(row).toContainText('€4.50');
-  await expect(row).toContainText('you lent 2.25');
+  await expect(row).toContainText('you lent €2.25');
 
   await page.getByRole('link', { name: 'Balances' }).click();
   await expect(bars.filter({ hasText: 'Kasia' })).toContainText('+2.25');
@@ -926,7 +927,7 @@ test('settle up: Income, then the suggested Repayments, until the Trip is Settle
   const income = page.getByRole('link', { name: /Bottles/ });
   await expect(income).toContainText('Ola received · for all 3');
   await expect(income).toContainText('-€6.00');
-  await expect(income).toContainText('you get back 2.00');
+  await expect(income).toContainText('you get back €2.00');
 
   // Kasia is owed 22.00: Ola owes 14.00 and Ania 8.00. The total is net of the Income.
   await page.getByRole('link', { name: 'Balances' }).click();
@@ -969,7 +970,7 @@ test('settle up: Income, then the suggested Repayments, until the Trip is Settle
   await page.getByRole('link', { name: 'Expenses' }).click();
   const repayment = page.getByRole('link', { name: /Repayment/ }).filter({ hasText: '€10.00' });
   await expect(repayment).toContainText('Ola → Kasia');
-  await expect(repayment).toContainText('you received 10.00');
+  await expect(repayment).toContainText('you received €10.00');
 
   // My Trips marks it Settled, below a Trip that isn't, though it was opened last.
   await createTrip(page, 'Lakes 2026', 'Kasia', ['Ania']);

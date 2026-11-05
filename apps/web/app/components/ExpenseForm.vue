@@ -267,7 +267,7 @@ async function submit(): Promise<void> {
               @click="toggleAll"
             />
           </div>
-          <div class="flex flex-wrap gap-2">
+          <div class="grid grid-cols-2 gap-2">
             <ParticipantChip
               v-for="participant in trip.participants"
               :key="participant.id"

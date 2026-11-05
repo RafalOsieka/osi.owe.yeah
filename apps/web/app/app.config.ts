@@ -9,7 +9,13 @@ export default defineAppConfig({
     },
     // One corner scale: pill buttons, 12px fields, 18px cards (`card` in `main.css`), and
     // touch-sized fields everywhere; a page can still ask for a smaller one.
-    button: { slots: { base: 'rounded-full' } },
+    button: { slots: { base: 'rounded-full font-semibold' } },
+    // Off reads as a control, not as a gap.
+    switch: {
+      slots: {
+        base: 'data-[state=unchecked]:bg-neutral-300 dark:data-[state=unchecked]:bg-neutral-700',
+      },
+    },
     input: { slots: { base: 'rounded-lg' }, defaultVariants: { size: 'xl' } },
     selectMenu: { slots: { base: 'rounded-lg' }, defaultVariants: { size: 'xl' } },
     // Sheets open from the bottom of the app's centered column, not the whole window, with

@@ -95,7 +95,8 @@ useHead({ title: () => expense.value?.title ?? t('expense.notFound') });
   <NuxtLayout name="form" :title="expense?.title ?? ''" :parent="tripPage" title-hidden>
     <template v-if="expense" #actions>
       <UButton
-        variant="ghost"
+        variant="soft"
+        icon="i-lucide-pencil"
         :label="$t('expense.editShort')"
         :aria-label="isRepayment(expense) ? $t('repayment.edit') : $t('expense.edit')"
         :to="`/trips/${trip.id}/expenses/${expense.id}/edit`"
@@ -107,7 +108,7 @@ useHead({ title: () => expense.value?.title ?? t('expense.notFound') });
       <ExpenseDetails :expense="expense" converted />
 
       <footer class="mt-7">
-        <div class="card divide-y divide-default overflow-hidden">
+        <div class="card overflow-hidden">
           <NuxtLink
             :to="`${page}/history`"
             class="flex items-center gap-3 px-4 py-3 transition-colors hover:bg-elevated/60"
@@ -119,6 +120,8 @@ useHead({ title: () => expense.value?.title ?? t('expense.notFound') });
             </span>
             <UIcon name="i-lucide-chevron-right" class="size-5 shrink-0 text-dimmed" />
           </NuxtLink>
+        </div>
+        <div class="card mt-4 overflow-hidden">
           <button
             type="button"
             class="flex w-full cursor-pointer items-center gap-3 px-4 py-3 text-start font-medium text-error transition-colors hover:bg-error/5"

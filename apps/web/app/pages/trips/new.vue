@@ -90,14 +90,10 @@ async function create(): Promise<void> {
       </div>
       <div class="card space-y-4 p-4">
         <UFormField name="me" :label="$t('trip.create.me')" :help="$t('trip.create.meHelp')">
-          <UInput
-            v-model="state.me"
-            :placeholder="$t('participants.namePlaceholder')"
-            class="w-full"
-          />
+          <UInput v-model="state.me" class="w-full" />
         </UFormField>
         <fieldset class="space-y-2">
-          <legend class="mb-1.5 text-sm font-medium text-highlighted">
+          <legend class="mb-1.5 text-sm font-medium text-default">
             {{ $t('trip.create.others') }}
           </legend>
           <UFormField v-for="(_, index) in state.others" :key="index" :name="`others.${index}`">

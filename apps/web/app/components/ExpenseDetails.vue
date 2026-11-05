@@ -17,8 +17,8 @@ import {
 // An Expense in full, as its detail page and an old Revision show it: the full title, total,
 // when it was paid in its own zone, the Main payer (who received it, for Income) with their
 // part, then each Contribution from others, and each Participant's share, the claimed
-// Participant's in bold. A Repayment shows who paid whom. A Receipt also lists its Line items,
-// with how each is split, its Line discount, its Deposit, and what is not assigned yet,
+// Participant's marked "you". A Repayment shows who paid whom. A Receipt also lists its Line
+// items, with how each is split, its Line discount, its Deposit, and what is not assigned yet,
 // Deposit refunds as negative lines, and then its Receipt discount and its Deposits total.
 // On a Receipt, tapping a share opens where it comes from (`ShareBreakdownSheet`). Shares are
 // rounded only to show them, so a note explains "≈" when they don't add up to the total. All
@@ -186,7 +186,7 @@ function openBreakdown(participantId: string): void {
           <ParticipantAvatar :participant="participant" size="md" />
           <span class="min-w-0 flex-1 leading-snug">
             <span class="block truncate">{{ participant.name }}</span>
-            <span v-if="contribution" class="block text-xs text-muted">
+            <span v-if="contribution" class="block text-sm text-muted">
               {{ $t('contribution.label') }}
             </span>
           </span>
@@ -206,11 +206,11 @@ function openBreakdown(participantId: string): void {
           <li
             v-for="(line, index) in details.lineItems"
             :key="index"
-            class="flex items-start gap-3 px-4 py-3"
+            class="flex items-center gap-3 px-4 py-3"
           >
             <span class="min-w-0 flex-1 leading-snug">
               <span class="block text-highlighted wrap-anywhere">{{ line.name }}</span>
-              <span class="block text-xs text-muted">
+              <span class="block text-sm text-muted">
                 {{
                   line.quantity > 1
                     ? $t('receipt.facts', {
@@ -221,13 +221,13 @@ function openBreakdown(participantId: string): void {
                     : line.split
                 }}
               </span>
-              <span v-if="line.discountText" class="block text-xs text-muted">
+              <span v-if="line.discountText" class="block text-sm text-muted">
                 {{ $t('receipt.lineDiscountFact', { discount: line.discountText }) }}
               </span>
-              <span v-if="line.deposit.numerator !== 0n" class="block text-xs text-muted">
+              <span v-if="line.deposit.numerator !== 0n" class="block text-sm text-muted">
                 {{ $t('receipt.depositFact', { deposit: money(line.deposit) }) }}
               </span>
-              <span v-if="line.unassigned.numerator !== 0n" class="block text-xs text-warning">
+              <span v-if="line.unassigned.numerator !== 0n" class="block text-sm text-warning">
                 {{ $t('receipt.notAssigned', { amount: money(line.unassigned) }) }}
               </span>
             </span>
@@ -236,11 +236,11 @@ function openBreakdown(participantId: string): void {
             </span>
           </li>
         </ol>
-        <p v-if="details.discount" class="flex items-start gap-3 px-4 py-3 text-sm">
+        <p v-if="details.discount" class="flex items-center gap-3 px-4 py-3 text-sm">
           <span class="min-w-0 flex-1">{{ $t('receipt.receiptDiscount') }}</span>
           <span class="shrink-0 tabular-nums">{{ details.discount }}</span>
         </p>
-        <p v-if="details.deposits" class="flex items-start gap-3 px-4 py-3 text-sm">
+        <p v-if="details.deposits" class="flex items-center gap-3 px-4 py-3 text-sm">
           <span class="min-w-0 flex-1">{{ $t('receipt.deposits') }}</span>
           <span class="shrink-0 tabular-nums">{{ money(details.deposits) }}</span>
         </p>
@@ -268,11 +268,15 @@ function openBreakdown(participantId: string): void {
             @click="breakdowns && openBreakdown(participant.id)"
           >
             <ParticipantAvatar :participant="participant" size="md" />
-            <span
-              class="min-w-0 flex-1 truncate"
-              :class="{ 'font-semibold text-highlighted': participant.id === claim?.id }"
-            >
+            <span class="min-w-0 flex-1 truncate text-highlighted">
               {{ participant.name }}
+              <UBadge
+                v-if="participant.id === claim?.id"
+                :label="$t('participants.you')"
+                variant="soft"
+                size="sm"
+                class="ms-1 align-middle"
+              />
             </span>
             <span class="shrink-0 font-medium text-highlighted tabular-nums">
               {{ money(share) }}

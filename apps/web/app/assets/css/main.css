@@ -29,8 +29,8 @@
   --app-canvas: var(--ui-color-neutral-950);
   --ui-bg: color-mix(in oklab, var(--ui-color-neutral-900) 85%, var(--ui-color-neutral-800));
   --ui-bg-elevated: var(--ui-color-neutral-800);
-  --ui-primary: var(--ui-color-primary-400);
-  --ui-success: var(--ui-color-success-400);
+  --ui-primary: var(--ui-color-primary-500);
+  --ui-success: var(--ui-color-success-500);
   --ui-error: var(--ui-color-error-400);
   --ui-border: color-mix(in oklab, var(--ui-color-neutral-800) 80%, transparent);
 }

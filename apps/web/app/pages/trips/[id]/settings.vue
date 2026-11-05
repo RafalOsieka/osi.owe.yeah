@@ -201,6 +201,7 @@ async function forgetTrip(): Promise<void> {
           class="flex w-full items-center gap-3 px-4 py-3 text-start transition-colors hover:bg-elevated/60 active:bg-elevated cursor-pointer font-medium text-error"
           @click="forgetting = true"
         >
+          <UIcon name="i-lucide-log-out" class="size-5 shrink-0" />
           {{ $t('trip.forget.title') }}
         </button>
       </div>

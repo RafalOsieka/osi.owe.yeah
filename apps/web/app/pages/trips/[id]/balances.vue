@@ -11,9 +11,9 @@ import {
 import { z } from 'zod';
 
 // The Balances tab: your balance, with your own Suggested Repayments ("To settle") on its
-// card, then everyone's balance as diverging bars, the other Suggested Repayments (all of them without
-// a Claim), Record another Repayment, and what the Trip spent. Once the Trip is Settled, "All
-// settled" replaces the balance and the suggestions. Balances are worked out exactly and
+// card, then everyone's balance as diverging bars, headed by what the Trip spent, the other
+// Suggested Repayments (all of them without a Claim), and Record another Repayment. Once the
+// Trip is Settled, "All settled" replaces the balance and the suggestions. Balances are worked out exactly and
 // rounded with the largest remainder method, as settling up uses them, in the Trip currency.
 // The footer warns how many Expenses use a Provisional rate, so balances may still move a
 // little (settling up stays allowed), and how many are left out without any rate. Tapping a
@@ -152,9 +152,16 @@ const remindable = computed(
     </template>
 
     <section aria-labelledby="everyone-heading">
-      <h2 id="everyone-heading" class="section-heading mt-7">
-        {{ $t('balances.everyone') }}
-      </h2>
+      <div class="section-heading mt-7 flex items-baseline justify-between gap-2">
+        <h2 id="everyone-heading">{{ $t('balances.everyone') }}</h2>
+        <p class="font-normal tabular-nums">
+          {{
+            $t('balances.tripTotalIs', {
+              amount: formatMoney(total, trip.currency, locale, 'currency', rates.provisional > 0),
+            })
+          }}
+        </p>
+      </div>
       <BalanceBars
         :balances="everyone"
         :participants="trip.participants"
@@ -179,30 +186,25 @@ const remindable = computed(
       />
     </section>
 
-    <UButton
-      variant="soft"
-      color="neutral"
-      icon="i-lucide-plus"
-      :label="$t('balances.recordAnother')"
+    <NuxtLink
       :to="`/trips/${trip.id}/repayments/new`"
-      block
-      size="lg"
-      class="mt-6 rounded-xl"
-    />
+      class="card mt-6 flex items-center gap-3 px-4 py-3 font-medium text-primary transition-colors hover:bg-elevated/60"
+    >
+      <span class="grid size-8 place-items-center rounded-full bg-primary/10">
+        <UIcon name="i-lucide-plus" class="size-4" />
+      </span>
+      {{ $t('balances.recordAnother') }}
+    </NuxtLink>
 
-    <div class="mt-5 flex flex-wrap justify-between gap-x-3 gap-y-1 px-1 text-sm text-muted">
-      <p>
-        {{
-          $t('balances.tripTotalIs', {
-            amount: formatMoney(total, trip.currency, locale, 'currency', rates.provisional > 0),
-          })
-        }}
-      </p>
-      <p v-if="rates.provisional > 0" class="flex items-center gap-1">
+    <div
+      v-if="rates.provisional > 0 || rates.missing > 0"
+      class="mt-5 space-y-1 px-1 text-sm text-muted"
+    >
+      <p v-if="rates.provisional > 0" class="flex items-center gap-1.5">
         <UIcon name="i-lucide-triangle-alert" class="size-4 shrink-0 text-warning" />
         {{ $t('rate.provisionalCount', rates.provisional) }}
       </p>
-      <p v-if="rates.missing > 0" class="flex items-center gap-1">
+      <p v-if="rates.missing > 0" class="flex items-center gap-1.5">
         <UIcon name="i-lucide-triangle-alert" class="size-4 shrink-0 text-warning" />
         {{ $t('rate.missingCount', rates.missing) }}
       </p>

@@ -1,23 +1,32 @@
 /**
- * The avatar colors a Participant can get: a soft tint with its initial in a deeper shade of
- * the same hue, in light and dark mode. Written out in full so Tailwind finds the classes;
- * emerald is left to the primary color.
+ * The avatar colors a Participant can get, in an order that keeps neighbours far apart on the
+ * colour wheel: an opaque soft tint with the initial in a deeper shade of the same hue, in
+ * light and dark mode. Written out in full so Tailwind finds the classes; emerald is left to
+ * the primary color and rose to owing.
  */
 export const AVATAR_COLORS = [
-  'bg-sky-100 text-sky-700 dark:bg-sky-400/15 dark:text-sky-300',
-  'bg-amber-100 text-amber-800 dark:bg-amber-400/15 dark:text-amber-300',
-  'bg-violet-100 text-violet-700 dark:bg-violet-400/15 dark:text-violet-300',
-  'bg-pink-100 text-pink-700 dark:bg-pink-400/15 dark:text-pink-300',
-  'bg-orange-100 text-orange-700 dark:bg-orange-400/15 dark:text-orange-300',
-  'bg-teal-100 text-teal-700 dark:bg-teal-400/15 dark:text-teal-300',
-  'bg-indigo-100 text-indigo-700 dark:bg-indigo-400/15 dark:text-indigo-300',
-  'bg-lime-100 text-lime-800 dark:bg-lime-400/15 dark:text-lime-300',
+  'bg-sky-100 text-sky-800 dark:bg-sky-900 dark:text-sky-200',
+  'bg-amber-100 text-amber-800 dark:bg-amber-900 dark:text-amber-200',
+  'bg-violet-100 text-violet-800 dark:bg-violet-900 dark:text-violet-200',
+  'bg-lime-100 text-lime-800 dark:bg-lime-900 dark:text-lime-200',
+  'bg-pink-100 text-pink-800 dark:bg-pink-900 dark:text-pink-200',
+  'bg-teal-100 text-teal-800 dark:bg-teal-900 dark:text-teal-200',
+  'bg-orange-100 text-orange-800 dark:bg-orange-900 dark:text-orange-200',
+  'bg-indigo-100 text-indigo-800 dark:bg-indigo-900 dark:text-indigo-200',
 ] as const;
 
 export type AvatarColor = (typeof AVATAR_COLORS)[number];
 
 /**
- * A Participant's avatar color, picked from their id alone, so every device shows the
+ * The avatar color of the Participant at `index` in their Trip's order, which every device
+ * shares: the first eight in a Trip never share one.
+ */
+export function avatarColorAt(index: number): AvatarColor {
+  return AVATAR_COLORS[index % AVATAR_COLORS.length]!;
+}
+
+/**
+ * A Participant's avatar color, picked from their id alone, for one no longer in the Trip, so every device shows the
  * same one. The whole id is hashed: ids created in the same millisecond share their start.
  */
 export function avatarColor(participantId: string): AvatarColor {
