@@ -486,6 +486,7 @@
     "notFound": "Ta wersja nie istnieje.",
     "byline": "{name} · {when}",
     "changedBy": "Zmienione przez: {name} · {when}",
+    "changedByYou": "Zmienione przez ciebie · {when}",
     "changedAt": "Zmienione {when}",
     "deletedHere": "Ta zmiana usunęła wydatek.",
     "restore": "Przywróć tę wersję",

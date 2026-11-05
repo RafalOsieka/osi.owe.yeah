@@ -30,17 +30,19 @@ const isCurrent = computed(() => {
   return !!shown && 'version' in shown.base && shown.base.version === version && !shown.deleted;
 });
 
+const formatWhen = (at: string) =>
+  new Intl.DateTimeFormat(locale.value, { dateStyle: 'medium', timeStyle: 'short' }).format(
+    new Date(at),
+  );
+
 // Who made the change and exactly when, e.g. "Changed by Kasia · Jul 5, 2026, 9:14 PM", so it
 // isn't read as the Expense's own date in the header below.
 const byline = computed(() => {
   if (!revision.value) return '';
   const { by, at } = revision.value.edited;
-  const name =
-    by === claim.value?.id ? t('history.you') : everyone.value.find(({ id }) => id === by)?.name;
-  const when = new Intl.DateTimeFormat(locale.value, {
-    dateStyle: 'medium',
-    timeStyle: 'short',
-  }).format(new Date(at));
+  if (by === claim.value?.id) return t('history.changedByYou', { when: formatWhen(at) });
+  const name = everyone.value.find(({ id }) => id === by)?.name;
+  const when = formatWhen(at);
   return name ? t('history.changedBy', { name, when }) : t('history.changedAt', { when });
 });
 

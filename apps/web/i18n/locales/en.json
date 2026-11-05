@@ -486,6 +486,7 @@
     "notFound": "This Revision doesn't exist.",
     "byline": "{name} · {when}",
     "changedBy": "Changed by {name} · {when}",
+    "changedByYou": "Changed by you · {when}",
     "changedAt": "Changed {when}",
     "deletedHere": "This change deleted the Expense.",
     "restore": "Restore this Revision",
