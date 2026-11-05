@@ -253,12 +253,9 @@ const action =
       :ui="{ description: 'text-pretty', footer: 'pb-2' }"
     >
       <template v-if="unsynced > 0" #body>
-        <UAlert
-          color="warning"
-          variant="subtle"
-          icon="i-lucide-cloud-off"
-          :title="$t('trip.forget.unsynced', unsynced)"
-        />
+        <AttentionNote icon="i-lucide-cloud-off">
+          {{ $t('trip.forget.unsynced', unsynced) }}
+        </AttentionNote>
       </template>
       <template #footer>
         <UButton

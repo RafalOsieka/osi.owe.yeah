@@ -1,7 +1,8 @@
 <script setup lang="ts">
 // When an Expense happened, as the forms take it: one chip with the local date, time and zone
-// city until tapped, then a `datetime-local` field with the zone picker under it, listing each
-// zone by its city and UTC offset, and Done to fold it back into the chip. Times follow the
+// city until tapped, then a `datetime-local` field (its icon on the left, as the zone's) with
+// the zone picker under it, listing each zone by its city and UTC offset, and Done to fold it
+// back into the chip. The native picker button stays where the browser puts it, unseen. Times follow the
 // device's 12- or 24-hour clock, as the field does. Sits inside a `UForm`, as its `local` field.
 const local = defineModel<string>('local', { required: true });
 const zone = defineModel<string>('zone', { required: true });
@@ -48,7 +49,13 @@ const time = computed(() => {
     <template #hint>
       <UButton variant="link" :label="$t('form.done')" class="-my-3 -me-4" @click="open = false" />
     </template>
-    <UInput v-model="local" type="datetime-local" class="w-full dark:scheme-dark" />
+    <UInput
+      v-model="local"
+      type="datetime-local"
+      icon="i-lucide-calendar-clock"
+      class="w-full dark:scheme-dark"
+      :ui="{ base: '[&::-webkit-calendar-picker-indicator]:opacity-0' }"
+    />
     <USelectMenu
       v-model="zone"
       :items="zones"

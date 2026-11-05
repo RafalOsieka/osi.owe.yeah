@@ -126,17 +126,13 @@ useHead({ title: () => expense.value?.title ?? t('expense.notFound') });
     </template>
 
     <template v-if="expense">
-      <section
-        v-if="conflict"
-        class="mb-4 rounded-xl bg-warning/10 p-4 ring-1 ring-warning/30 ring-inset"
-      >
-        <p class="flex gap-2.5 font-medium text-highlighted">
-          <UIcon name="i-lucide-triangle-alert" class="mt-0.5 size-5 shrink-0 text-warning" />
-          {{ conflict.title }}
-        </p>
-        <p class="mt-1 ps-7.5 text-sm text-toned">{{ $t('sync.conflictShown') }}</p>
-        <UButton block :label="$t('sync.choose')" :to="`${page}/conflict`" class="mt-3" />
-      </section>
+      <AttentionNote v-if="conflict" icon="i-lucide-triangle-alert" class="mb-4">
+        <p class="font-medium">{{ conflict.title }}</p>
+        <p class="mt-0.5 text-toned">{{ $t('sync.conflictShown') }}</p>
+        <template #action>
+          <UButton block :label="$t('sync.choose')" :to="`${page}/conflict`" />
+        </template>
+      </AttentionNote>
       <UAlert v-if="notSynced" v-bind="notSynced" variant="subtle" class="mb-4" />
       <ExpenseDetails :expense="expense" converted />
 

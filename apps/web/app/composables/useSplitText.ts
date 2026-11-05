@@ -59,8 +59,8 @@ export function useSplitText() {
  * line: the units for a Units split ("1 of 4 units unassigned"), the amount otherwise; `null`
  * once all of it is. With `withValue`, the units are followed by what they come to, and
  * `after`, when given, by what the Receipt's unassigned value comes to after its Receipt
- * discount, so the line meets the Main payer's share ("1 of 4 units unassigned · ≈ €1.12,
- * ≈ €1.06 after the Receipt discount").
+ * discount, so the line meets the Main payer's share ("1 of 4 units unassigned · ≈ €1.12
+ * (≈ €1.06 after the Receipt discount)").
  */
 export function useUnassignedText() {
   const { t, locale } = useI18n();
@@ -76,7 +76,7 @@ export function useUnassignedText() {
     const discounted = after && t('receipt.afterReceiptDiscount', { amount: money(after) });
     if (item.split.mode !== 'units') {
       const text = t('receipt.notAssigned', { amount: money(shares.unassigned) });
-      return discounted ? `${text}, ${discounted}` : text;
+      return discounted ? `${text} (${discounted})` : text;
     }
     const assigned = item.split.parts.reduce((sum, { units }) => sum + units, 0);
     const text = t('receipt.unitsUnassigned', {
@@ -85,14 +85,15 @@ export function useUnassignedText() {
     });
     if (!withValue) return text;
     const value = money(shares.unassigned);
-    return `${text} · ${discounted ? `${value}, ${discounted}` : value}`;
+    return `${text} · ${discounted ? `${value} (${discounted})` : value}`;
   };
 }
 
 /**
  * A discount as the Receipt reads it, on its form as on its detail page: "25% off · −€1.49",
- * or "−€1.00" for an amount; `asLine` says it as a Line item's fact ("Discount −€1.00
- * included", "25% off · −€1.49, included").
+ * or "−€1.00" for an amount, as a summary row's value; `asLine` says it as a Line item's fact,
+ * one shape for both kinds: what is off, then that it is included ("€1.00 off, included",
+ * "25% off · −€1.49, included").
  */
 export function useDiscountText() {
   const { t, locale } = useI18n();
@@ -100,13 +101,15 @@ export function useDiscountText() {
   return (discount: Discount, off: Rational, currency: string, asLine = false): string => {
     const amount = formatMoney(negate(off), currency, locale.value);
     if (discount.kind === 'amount') {
-      return asLine ? t('receipt.lineDiscountAmount', { amount }) : amount;
+      if (!asLine) return amount;
+      const what = t('receipt.amountOff', { amount: formatMoney(off, currency, locale.value) });
+      return t('receipt.discountIncluded', { discount: what });
     }
     const percent = new Intl.NumberFormat(locale.value, {
       style: 'percent',
       maximumFractionDigits: 2,
     }).format(discount.basisPoints / 10_000);
     const text = t('receipt.percentOff', { percent, amount });
-    return asLine ? t('receipt.lineDiscountPercent', { discount: text }) : text;
+    return asLine ? t('receipt.discountIncluded', { discount: text }) : text;
   };
 }

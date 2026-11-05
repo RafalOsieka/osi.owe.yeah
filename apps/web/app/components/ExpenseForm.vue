@@ -286,28 +286,24 @@ async function submit(): Promise<void> {
           :reading="reading"
           :error="problemAt(reading.reasons, 'manualRate')"
         />
-        <div
-          v-if="unassignedSummary"
-          class="mt-3 flex gap-2.5 rounded-xl bg-warning/10 px-3 py-2.5 text-sm"
-        >
-          <UIcon name="i-lucide-circle-alert" class="mt-0.5 size-4 shrink-0 text-warning" />
-          <div class="min-w-0 flex-1">
-            <p class="font-medium text-highlighted">{{ unassignedSummary.text }}</p>
-            <p v-if="unassignedSummary.value" class="text-muted tabular-nums">
-              {{ unassignedSummary.value }}
-            </p>
+        <AttentionNote v-if="unassignedSummary" class="mt-3">
+          <p class="font-medium">{{ unassignedSummary.text }}</p>
+          <p v-if="unassignedSummary.value" class="text-muted tabular-nums">
+            {{ unassignedSummary.value }}
+          </p>
+          <template #action>
             <button
               v-for="line in unassignedLines"
               :key="line.key"
               type="button"
-              class="-mb-1 flex min-h-10 w-full cursor-pointer items-center gap-1 text-start font-medium text-warning"
+              class="-my-1.5 flex min-h-10 w-full cursor-pointer items-center gap-1 text-start font-medium text-warning"
               @click="showLine(line.key)"
             >
               <span class="min-w-0 flex-1">{{ $t('receipt.openLine', { name: line.name }) }}</span>
               <UIcon name="i-lucide-chevron-right" class="size-4 shrink-0" />
             </button>
-          </div>
-        </div>
+          </template>
+        </AttentionNote>
       </div>
 
       <div v-else class="card relative px-4 pt-3 pb-4">
@@ -490,14 +486,9 @@ async function submit(): Promise<void> {
     </UForm>
 
     <template #action>
-      <p
-        v-if="pendingLine"
-        role="status"
-        class="mb-3 flex gap-2 rounded-xl bg-warning/10 px-3 py-2.5 text-sm text-highlighted"
-      >
-        <UIcon name="i-lucide-circle-alert" class="mt-0.5 size-4 shrink-0 text-warning" />
+      <AttentionNote v-if="pendingLine" role="status" class="mb-3">
         {{ $t('receipt.pendingRefused') }}
-      </p>
+      </AttentionNote>
       <UAlert
         v-if="refusals.length > 0"
         color="error"

@@ -22,7 +22,7 @@ const tabs = computed(() => {
 
 <template>
   <header
-    class="sticky top-0 z-10 border-b border-default bg-canvas/95 pt-[env(safe-area-inset-top)] backdrop-blur-xl backdrop-saturate-150"
+    class="sticky top-0 z-10 border-b border-default bg-canvas pt-[env(safe-area-inset-top)] backdrop-blur-xl backdrop-saturate-150"
   >
     <div class="flex h-14 items-center gap-1 px-2">
       <UButton
@@ -124,7 +124,7 @@ const tabs = computed(() => {
   </div>
   <nav
     :aria-label="$t('trip.tabs')"
-    class="fixed inset-x-0 bottom-0 z-10 mx-auto max-w-120 border-t border-default bg-default/95 pb-[env(safe-area-inset-bottom)] backdrop-blur-xl backdrop-saturate-150"
+    class="fixed inset-x-0 bottom-0 z-10 mx-auto max-w-120 border-t border-default bg-default pb-[env(safe-area-inset-bottom)] backdrop-blur-xl backdrop-saturate-150"
   >
     <!-- Tabs replace each other in history, so back always leaves the Trip. -->
     <ul class="flex">

@@ -47,7 +47,7 @@ onBeforeUnmount(() => observer?.disconnect());
 
 <template>
   <header
-    class="sticky top-0 z-10 border-b border-default bg-canvas/95 pt-[env(safe-area-inset-top)] backdrop-blur-xl backdrop-saturate-150"
+    class="sticky top-0 z-10 border-b border-default bg-canvas pt-[env(safe-area-inset-top)] backdrop-blur-xl backdrop-saturate-150"
   >
     <div class="flex h-14 items-center gap-1 ps-2 pe-4">
       <UButton

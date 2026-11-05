@@ -270,14 +270,14 @@
     "depositRefunds": "Deposit refunds",
     "includesUnassigned": "incl. {amount} unassigned",
     "percentOff": "{percent} off · {amount}",
-    "lineDiscountAmount": "Discount {amount} included",
-    "lineDiscountPercent": "{discount} included",
     "unitsUnassignedTotal": "{count} units unassigned | {count} unit unassigned | {count} units unassigned",
     "amountUnassigned": "{amount} unassigned",
     "countedAs": "{name}'s for now",
     "countedAsYours": "yours for now",
     "afterReceiptDiscount": "{amount} after the Receipt discount",
-    "forNow": "for now"
+    "forNow": "for now",
+    "amountOff": "{amount} off",
+    "discountIncluded": "{discount}, included"
   },
   "contribution": {
     "title": "Contributions",
@@ -372,8 +372,8 @@
     "isOwed": "{name} is owed",
     "isEven": "{name} is even",
     "roundedParts": "Parts are rounded to the cent, so they may not add up to the share exactly.",
-    "unassignedRule": "Unassigned units count towards whoever paid until someone takes them.",
-    "unassignedRuleYours": "Unassigned units count towards your share, as you paid, until someone takes them.",
+    "unassignedRule": "Unassigned units count towards whoever paid until they're assigned.",
+    "unassignedRuleYours": "Unassigned units count towards your share, as you paid, until they're assigned.",
     "balanceTitle": "{name}'s balance"
   },
   "rate": {

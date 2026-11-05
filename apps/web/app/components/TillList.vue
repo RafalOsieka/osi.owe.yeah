@@ -147,9 +147,8 @@ function remove(index: number): void {
   lineItems.value = lineItems.value.toSpliced(index, 1);
 }
 
-// The tint and edge of a pending line, so it can't pass for one on the Receipt.
-const pendingRow =
-  'space-y-3 border-t border-default bg-primary/6 px-4 pt-3 pb-4 dark:bg-primary/10';
+// The neutral draft tint of a pending line, so it can't pass for one on the Receipt.
+const pendingRow = 'space-y-3 border-t border-default bg-elevated/70 px-4 pt-3 pb-4';
 // A folded add form.
 const addRow =
   'flex min-h-14 w-full cursor-pointer items-center gap-3 border-t border-default px-4 text-start font-medium text-primary transition-colors hover:bg-elevated/50';

@@ -1117,6 +1117,8 @@ async function capture(scheme: 'light' | 'dark'): Promise<void> {
   await go(croatia.page);
   const gelato = page.getByRole('link').filter({ hasText: 'Gelato and lemonade' });
   await gelato.waitFor();
+  // At the end of the list, as a phone left there would be: the tab keeps its scroll.
+  await page.evaluate(() => window.scrollTo(0, document.documentElement.scrollHeight));
   await banner.getByRole('button', { name: '1 change not synced' }).click();
   await sheet.getByText('1 change not synced').waitFor();
   await snap('a16-sync-unsynced');

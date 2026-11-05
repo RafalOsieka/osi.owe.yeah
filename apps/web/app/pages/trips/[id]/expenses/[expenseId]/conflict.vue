@@ -74,8 +74,15 @@ useHead({ title: () => t('conflict.title') });
           :claim-id="claim?.id ?? null"
           :participants="trip.participants"
         >
-          <p class="mb-2.5 flex gap-2 px-1 text-sm text-muted">
-            <UIcon name="i-lucide-history" class="mt-0.5 size-4 shrink-0" aria-hidden="true" />
+          <!-- AttentionNote's shape in neutral: what is kept needs no attention. -->
+          <p
+            class="mb-2.5 flex gap-2.5 rounded-xl bg-elevated/60 px-3.5 py-3 text-sm text-toned ring-1 ring-default ring-inset"
+          >
+            <UIcon
+              name="i-lucide-history"
+              class="mt-0.5 size-4 shrink-0 text-muted"
+              aria-hidden="true"
+            />
             {{
               conflict.author
                 ? $t('conflict.keepMineHelpNamed', { name: conflict.author })
@@ -104,14 +111,9 @@ useHead({ title: () => t('conflict.title') });
           :claim-id="claim?.id ?? null"
           :participants="trip.participants"
         >
-          <p class="mb-2.5 flex gap-2 rounded-lg bg-warning/10 px-3 py-2 text-sm text-highlighted">
-            <UIcon
-              name="i-lucide-triangle-alert"
-              class="mt-0.5 size-4 shrink-0 text-warning"
-              aria-hidden="true"
-            />
+          <AttentionNote icon="i-lucide-triangle-alert" class="mb-2.5">
             {{ $t('conflict.keepTheirsHelp') }}
-          </p>
+          </AttentionNote>
           <UButton
             block
             size="xl"

@@ -270,14 +270,14 @@
     "depositRefunds": "Zwroty kaucji",
     "includesUnassigned": "w tym {amount} nieprzypisane",
     "percentOff": "rabat {percent} · {amount}",
-    "lineDiscountAmount": "Rabat {amount} wliczony",
-    "lineDiscountPercent": "{discount}, wliczony",
     "unitsUnassignedTotal": "nieprzypisane sztuki: {count} | nieprzypisana sztuka: {count} | nieprzypisane sztuki: {count}",
     "amountUnassigned": "{amount} nieprzypisane",
     "countedAs": "na razie: {name}",
     "countedAsYours": "na razie twoje",
     "afterReceiptDiscount": "{amount} po rabacie na paragon",
-    "forNow": "na razie"
+    "forNow": "na razie",
+    "amountOff": "rabat {amount}",
+    "discountIncluded": "{discount}, wliczony"
   },
   "contribution": {
     "title": "Dopłaty",
@@ -372,8 +372,8 @@
     "isOwed": "{name}: do odebrania",
     "isEven": "{name}: na zero",
     "roundedParts": "Części są zaokrąglone do grosza, więc ich suma może się nieco różnić od udziału.",
-    "unassignedRule": "Nieprzypisane sztuki liczą się do udziału osoby, która zapłaciła, dopóki ktoś ich nie weźmie.",
-    "unassignedRuleYours": "Nieprzypisane sztuki liczą się do twojego udziału jako płacącego, dopóki ktoś ich nie weźmie.",
+    "unassignedRule": "Nieprzypisane sztuki liczą się do udziału osoby, która zapłaciła, dopóki ktoś ich nie dostanie.",
+    "unassignedRuleYours": "Nieprzypisane sztuki liczą się do twojego udziału jako płacącego, dopóki ktoś ich nie dostanie.",
     "balanceTitle": "Saldo: {name}"
   },
   "rate": {

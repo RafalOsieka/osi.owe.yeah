@@ -598,7 +598,7 @@ test('a Line discount follows the Units and a Receipt discount is shared by what
   await beer.getByRole('button', { name: 'Line discount and Deposit' }).click();
   await beer.getByRole('textbox', { name: 'Line discount' }).fill('1');
   await beer.getByRole('button', { name: 'Done' }).click();
-  await expect(beer).toContainText('Discount −€1.00');
+  await expect(beer).toContainText('€1.00 off, included');
   const total = page.getByRole('status', { name: 'Receipt total' });
   await expect(total).toHaveText('€9.00');
 
@@ -622,7 +622,7 @@ test('a Line discount follows the Units and a Receipt discount is shared by what
   await expect(otherRow).toContainText('your share €3.24');
   await otherRow.click();
   const main = otherPage.getByRole('main');
-  await expect(main).toContainText('Discount −€1.00 included');
+  await expect(main).toContainText('€1.00 off, included');
   await expect(main).toContainText('Receipt discount');
   await expect(main).toContainText('10% off · −€0.90');
   await other.close();

@@ -29,6 +29,13 @@ export default defineAppConfig({
           class:
             'dark:bg-primary-700 dark:text-white dark:hover:bg-primary-600 dark:active:bg-primary-600',
         },
+        // A destructive confirm is a deep red with white text, in both themes.
+        {
+          color: 'error',
+          variant: 'solid',
+          class:
+            'bg-error-800 text-white hover:bg-error-700 active:bg-error-700 dark:bg-error-800 dark:hover:bg-error-700',
+        },
         {
           variant: 'solid',
           class:

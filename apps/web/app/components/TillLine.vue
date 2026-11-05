@@ -21,8 +21,8 @@ import {
 // in full rather than cut short: name, quantity × unit price, how it is split, its Line
 // discount and Deposit, its total after that discount, and what is not assigned yet (by units
 // and their value where it has them, as on the detail page), or what of it can't be read
-// (`readLineItem`). A Deposit refund is marked so. Open, its header keeps only its total (the
-// name is in the field below) and it is edited in place, closed again with Done: name, unit
+// (`readLineItem`). A Deposit refund is marked so. Open, its header keeps only its "Line total"
+// (the name is in the field below) and it is edited in place, closed again with Done: name, unit
 // price, quantity, Split mode and that mode's inputs ("you" marked) with how much of the line
 // they assign, then the Line discount and Deposit per unit (folded until wanted), moving it up
 // or down, and removing it. A Deposit refund has only a name, an amount and a split, and reads
@@ -228,6 +228,9 @@ const step = { color: 'neutral', class: 'disabled:opacity-30' } as const;
       <span class="min-w-0 flex-1 leading-snug">
         <span class="block font-medium break-words text-highlighted" :class="{ 'sr-only': open }">
           {{ name }}
+        </span>
+        <span v-if="open" class="block text-sm text-muted" aria-hidden="true">
+          {{ $t('receipt.lineTotal') }}
         </span>
         <template v-if="!open">
           <span class="mt-0.5 block text-sm text-muted">

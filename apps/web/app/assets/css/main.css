@@ -46,9 +46,9 @@
   --ui-bg: color-mix(in oklab, var(--ui-color-neutral-900) 85%, var(--ui-color-neutral-800));
   --ui-bg-elevated: var(--ui-color-neutral-800);
   --ui-primary: var(--ui-color-primary-500);
-  --ui-success: color-mix(in oklab, var(--ui-color-success-500) 80%, var(--ui-color-neutral-300));
+  --ui-success: color-mix(in oklab, var(--ui-color-success-500) 70%, var(--ui-color-neutral-300));
   /* Red and green a notch quieter than their 400/500 shades, for late-night use. */
-  --ui-error: color-mix(in oklab, var(--ui-color-error-400) 80%, var(--ui-color-neutral-300));
+  --ui-error: color-mix(in oklab, var(--ui-color-error-400) 70%, var(--ui-color-neutral-300));
   --ui-warning: oklch(0.8 0.14 72);
   --ui-border: color-mix(in oklab, var(--ui-color-neutral-800) 80%, transparent);
   /* Field outlines: clear on the raised dark cards. */

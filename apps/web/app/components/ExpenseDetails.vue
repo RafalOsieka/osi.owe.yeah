@@ -64,10 +64,12 @@ const other = computed(() => {
   return { fields: changedFields(expense, against), now, paid, shares };
 });
 
-// The marker for what differs, a neutral highlight, as the Conflict screen uses it.
+// The marker for what differs, a neutral highlight, as the Conflict screen uses it; lighter on
+// the header's large title and total, so it doesn't weigh on them.
 const MARK = 'rounded-sm bg-accented box-decoration-clone px-1.5';
+const HEADER_MARK = 'rounded-sm bg-elevated box-decoration-clone px-2';
 const marked = (...fields: ExpenseField[]) =>
-  fields.some((field) => other.value?.fields.includes(field)) ? MARK : '';
+  fields.some((field) => other.value?.fields.includes(field)) ? HEADER_MARK : '';
 // A payer's part or a share marked where the other version has a different one.
 const markedAmount = (amount: Rational, theirs: Rational | undefined) =>
   other.value && (!theirs || compare(amount, theirs) !== 0) ? MARK : '';
@@ -310,7 +312,7 @@ function openBreakdown(participantId: string): void {
       </p>
       <p
         v-if="other && marked('amount', 'currency')"
-        class="mt-2 text-sm font-medium text-toned tabular-nums"
+        class="mt-3 text-sm font-medium text-toned tabular-nums"
       >
         {{ $t('history.nowAmount', { amount: other.now }) }}
       </p>
