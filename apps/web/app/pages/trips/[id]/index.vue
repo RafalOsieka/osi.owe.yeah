@@ -33,28 +33,36 @@ const newExpense = computed(() => `/trips/${trip.value.id}/expenses/new`);
       :claim-id="claim?.id"
       :highlight-id="highlight"
     />
-    <UEmpty
-      v-else
-      icon="i-lucide-receipt-text"
-      variant="naked"
-      :title="$t('expense.empty')"
-      :description="$t('expense.emptyHelp')"
-      :actions="[
-        {
-          label: $t('expense.addFirst'),
-          icon: 'i-lucide-plus',
-          disabled: !canAdd,
-          to: newExpense,
-        },
-        {
-          label: $t('invite.action'),
-          icon: 'i-lucide-share-2',
-          variant: 'outline',
-          onClick: invite,
-        },
-      ]"
-      class="pt-16"
-    />
+    <div v-else class="flex flex-col items-center px-4 pt-16 text-center">
+      <span
+        class="grid size-20 place-items-center rounded-3xl bg-primary/10 text-primary"
+        aria-hidden="true"
+      >
+        <UIcon name="i-lucide-receipt-text" class="size-9" />
+      </span>
+      <p class="mt-6 text-xl font-semibold tracking-tight text-highlighted">
+        {{ $t('expense.empty') }}
+      </p>
+      <p class="mt-1.5 max-w-72 text-muted">{{ $t('expense.emptyHelp') }}</p>
+      <div class="mt-7 flex flex-wrap justify-center gap-2.5">
+        <UButton
+          icon="i-lucide-plus"
+          :label="$t('expense.addFirst')"
+          :disabled="!canAdd"
+          :to="newExpense"
+          size="lg"
+          class="shadow-md shadow-primary/20"
+        />
+        <UButton
+          icon="i-lucide-share-2"
+          :label="$t('invite.action')"
+          color="neutral"
+          variant="outline"
+          size="lg"
+          @click="invite"
+        />
+      </div>
+    </div>
 
     <!-- While the list is empty, the empty state offers the button instead. -->
     <template v-if="trip.expenses.length > 0" #action>

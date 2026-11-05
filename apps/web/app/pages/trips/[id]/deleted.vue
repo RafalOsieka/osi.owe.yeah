@@ -56,15 +56,11 @@ useHead({ title: () => t('deleted.title') });
 
 <template>
   <NuxtLayout name="form" :title="$t('deleted.title')" :parent="`${tripPage}/settings`">
-    <ul v-if="rows.length > 0">
-      <li
-        v-for="row in rows"
-        :key="row.expense.id"
-        class="flex items-center gap-2.5 border-b border-default py-2.5 last:border-b-0"
-      >
+    <ul v-if="rows.length > 0" class="card divide-y divide-default">
+      <li v-for="row in rows" :key="row.expense.id" class="flex items-center gap-3 px-4 py-3">
         <span class="min-w-0 flex-1 leading-snug">
-          <span class="block truncate font-semibold">{{ row.expense.title }}</span>
-          <span class="block truncate text-xs text-muted">
+          <span class="block truncate font-medium text-highlighted">{{ row.expense.title }}</span>
+          <span class="block truncate text-sm text-muted">
             <NuxtLink
               v-if="row.conflict"
               :to="`${tripPage}/expenses/${row.expense.id}/conflict`"
@@ -84,8 +80,7 @@ useHead({ title: () => t('deleted.title') });
           </span>
         </span>
         <UButton
-          variant="outline"
-          size="sm"
+          variant="soft"
           :label="$t('deleted.restore')"
           :aria-label="$t('deleted.restoreTitle', { title: row.expense.title })"
           @click="restore(row.expense)"

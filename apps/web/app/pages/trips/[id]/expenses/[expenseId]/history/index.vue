@@ -36,14 +36,17 @@ useHead({ title: () => t('history.title') });
 
 <template>
   <NuxtLayout name="form" :title="$t('history.title')" :parent="detail">
-    <ul v-if="rows.length > 0">
-      <li v-for="row in rows" :key="row.version" class="border-b border-default last:border-b-0">
-        <NuxtLink :to="`${detail}/history/${row.version}`" class="flex items-center gap-2.5 py-2.5">
-          <ParticipantAvatar v-if="row.author" :participant="row.author" />
-          <UIcon v-else name="i-lucide-user-round" class="size-6 shrink-0 text-dimmed" />
+    <ul v-if="rows.length > 0" class="card divide-y divide-default overflow-hidden">
+      <li v-for="row in rows" :key="row.version">
+        <NuxtLink
+          :to="`${detail}/history/${row.version}`"
+          class="flex items-center gap-3 px-4 py-3 transition-colors hover:bg-elevated/60"
+        >
+          <ParticipantAvatar v-if="row.author" :participant="row.author" size="md" />
+          <UIcon v-else name="i-lucide-user-round" class="size-8 shrink-0 text-dimmed" />
           <span class="min-w-0 flex-1 leading-snug">
-            <span class="block truncate font-semibold">{{ row.kind }}</span>
-            <span class="block truncate text-xs text-muted">
+            <span class="block truncate font-medium text-highlighted">{{ row.kind }}</span>
+            <span class="block truncate text-sm text-muted">
               {{
                 $t('history.byline', {
                   name: row.author?.name ?? $t('history.someone'),
@@ -52,7 +55,7 @@ useHead({ title: () => t('history.title') });
               }}
             </span>
           </span>
-          <span class="shrink-0 text-sm tabular-nums">{{ row.total }}</span>
+          <span class="shrink-0 font-medium text-highlighted tabular-nums">{{ row.total }}</span>
         </NuxtLink>
       </li>
     </ul>

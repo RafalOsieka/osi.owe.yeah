@@ -46,7 +46,13 @@ useHead({ title: () => t('trip.details.title') });
 
 <template>
   <NuxtLayout name="form" :title="$t('trip.details.title')" :parent="parent">
-    <UForm id="trip-details" :state="state" :validate="validate" class="space-y-4" @submit="save">
+    <UForm
+      id="trip-details"
+      :state="state"
+      :validate="validate"
+      class="card space-y-4 p-4"
+      @submit="save"
+    >
       <UFormField name="name" :label="$t('trip.create.name')">
         <UInput v-model="state.name" class="w-full" />
       </UFormField>
@@ -63,7 +69,7 @@ useHead({ title: () => t('trip.details.title') });
         />
       </UFormField>
     </UForm>
-    <p v-if="lastChanged" class="mt-6 text-sm text-muted">{{ lastChanged }}</p>
+    <p v-if="lastChanged" class="mt-3 px-1 text-sm text-muted">{{ lastChanged }}</p>
 
     <template #action>
       <UButton type="submit" form="trip-details" block size="xl" :label="$t('trip.details.save')" />
