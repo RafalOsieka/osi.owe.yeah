@@ -1077,12 +1077,17 @@ test('leaving a half-entered Receipt asks first, and Keep editing returns to it 
     3,
   );
 
-  // System back asks too; back again only closes the sheet, and a third back asks again.
+  // System back asks too; back again only closes the sheet, back where the person was, and a
+  // third back asks again.
+  const discount = page.getByRole('textbox', { name: 'Receipt discount' });
+  await discount.focus();
   await page.goBack();
   await expect(sheet).toBeVisible();
   await page.goBack();
   await expect(sheet).toBeHidden();
   await expect(page).toHaveURL(formUrl);
+  await expect(discount).toBeFocused();
+  expect(await page.evaluate(() => window.scrollY)).toBe(scrolled);
   await page.goBack();
   await expect(sheet).toBeVisible();
 
