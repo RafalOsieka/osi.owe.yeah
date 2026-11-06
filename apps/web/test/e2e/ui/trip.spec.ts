@@ -1395,8 +1395,11 @@ test('the tab, the home screen and the installed app all get the Owe Yeah icons'
     '512x512 any',
     '512x512 maskable',
   ]);
+  // The SPA answers a missing file with its index page, so `ok()` alone would pass (#161).
   for (const href of [...head, ...manifest.icons.map(({ src }) => src)]) {
-    expect((await request.get(href)).ok(), href).toBe(true);
+    const response = await request.get(href);
+    expect(response.ok(), href).toBe(true);
+    expect(response.headers()['content-type'], href).toMatch(/^image\//);
   }
 });
 

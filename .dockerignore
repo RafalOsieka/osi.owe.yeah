@@ -22,7 +22,7 @@
 !packages/domain/package.json
 !packages/domain/src
 
-# Web app (Nuxt): config, source, locales
+# Web app (Nuxt): config, source, locales, and the public files served as-is (icons)
 !apps/web/package.json
 !apps/web/nuxt.config.ts
 !apps/web/tsconfig.json
@@ -31,6 +31,7 @@
 !apps/web/app
 !apps/web/i18n
 !apps/web/server
+!apps/web/public
 
 # Never let these through even when nested inside an allowed directory
 **/node_modules
