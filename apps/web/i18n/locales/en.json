@@ -22,7 +22,7 @@
   "myTrips": {
     "title": "My Trips",
     "empty": "No Trips yet",
-    "welcome": "Split a Trip's costs with friends",
+    "welcome": "Split a Trip's Expenses among its Participants",
     "emptyHelp": "Add what everyone paid, share the Trip link, and see who owes whom. It works offline too.",
     "create": "New Trip",
     "noExpenses": "No Expenses yet",
@@ -91,7 +91,7 @@
     "addHelp": "They can also add themselves when they open the Trip link.",
     "you": "you",
     "remove": "Remove from Trip",
-    "removeHelp": "Their name stays on older versions and deleted Expenses. An Expense that includes them again brings them back.",
+    "removeHelp": "Their name stays on older Revisions and deleted Expenses. An Expense that includes them again brings them back.",
     "onExpenses": "On no Expenses | On 1 Expense | On {count} Expenses",
     "onExpensesHelp": "While they're on an Expense, they can't be removed. Take them off those Expenses first."
   },
@@ -131,14 +131,14 @@
     "newIncome": "New Income",
     "editIncome": "Edit Income",
     "title": "Title",
-    "titlePlaceholder": "e.g. Dinner or groceries",
+    "titlePlaceholder": "e.g. Dinner or Lidl Rovinj",
     "titleMissing": "Enter a title.",
     "titleInvalid": "Keep the title to 100 characters or fewer.",
     "amount": "Amount",
     "amountMissing": "Enter an amount.",
     "amountInvalid": "Enter a whole amount above zero. | Enter an amount above zero with at most 1 decimal place. | Enter an amount above zero with at most {decimals} decimal places.",
     "moneyReceived": "Money received",
-    "moneyReceivedHelp": "For a Deposit refund or other money someone got back for the group.",
+    "moneyReceivedHelp": "For a Deposit refund or other money someone got back on behalf of others.",
     "moneyReceivedWithContributions": "Not with Contributions: remove them to record money received.",
     "paidBy": "Paid by",
     "payerMissing": "Pick who paid.",
@@ -166,7 +166,7 @@
       "chargedWithoutTotal": "The amount charged needs a total other than zero.",
       "manualRateToOwnCurrency": "The Manual rate must convert into a currency other than the Expense's own."
     },
-    "emptyHelp": "Add what anyone paid for the group. Everyone's share is worked out for you.",
+    "emptyHelp": "Add what anyone paid on the Trip. Everyone's share is worked out for you.",
     "addShort": "Expense",
     "paidFor": "{name} paid · {forWhom}",
     "receivedFor": "{name} received · {forWhom}",
@@ -304,9 +304,9 @@
     "fromTo": "{payer} → {recipient}",
     "note": "Note",
     "notePlaceholder": "e.g. Cash at the airport",
-    "settles": "Settles what {payer} owes {recipient}.",
-    "settlesYours": "Settles what you owe {recipient}.",
-    "settlesToYou": "Settles what {payer} owes you.",
+    "settles": "Covers the Suggested Repayment {payer} → {recipient}.",
+    "settlesYours": "Covers the Suggested Repayment you → {recipient}.",
+    "settlesToYou": "Covers the Suggested Repayment {payer} → you.",
     "delete": "Delete Repayment"
   },
   "balances": {
@@ -374,8 +374,8 @@
     "isEven": "{name} is even",
     "roundedParts": "Parts are rounded to the cent, so they may not add up to the share exactly.",
     "provisional": "≈ Provisional rate: some of these amounts are converted at a rate that isn't final yet. They update by themselves once it is.",
-    "unassignedRule": "Unassigned units count towards whoever paid until they're assigned.",
-    "unassignedRuleYours": "Unassigned units count towards your share, as you paid, until they're assigned.",
+    "unassignedRule": "Unassigned value counts towards the Main payer's share until it's assigned.",
+    "unassignedRuleYours": "Unassigned value counts towards your share, as the Main payer, until it's assigned.",
     "balanceTitle": "{name}'s balance"
   },
   "rate": {
@@ -415,9 +415,9 @@
     "pending": "Not synced yet. The others will see it after the next sync.",
     "rejected": "Not synced: {reason}",
     "conflictBadge": "Conflict",
-    "conflictBy": "{name} changed this Expense too. Choose which version to keep.",
-    "conflictBySomeone": "Someone else changed this Expense too. Choose which version to keep.",
-    "choose": "Choose version",
+    "conflictBy": "{name} changed this Expense too. Choose whose change to keep.",
+    "conflictBySomeone": "Someone else changed this Expense too. Choose whose change to keep.",
+    "choose": "Choose a change",
     "rejectedHelp": "Edit it to fix it, or discard your change.",
     "discard": "Discard change",
     "reason": {
@@ -439,13 +439,13 @@
     },
     "pullToRefresh": "Pull to sync",
     "releaseToRefresh": "Release to sync",
-    "conflictShown": "Below is your version, not synced yet."
+    "conflictShown": "Below is your change, not synced yet."
   },
   "conflict": {
     "title": "Conflict",
-    "help": "You and someone else changed this Expense before it synced. Pick the version to keep; what differs is highlighted.",
-    "mine": "Your version",
-    "theirs": "Their version",
+    "help": "You and someone else changed this Expense before it synced. Pick whose change to keep; what differs is highlighted.",
+    "mine": "Your change",
+    "theirs": "Their change",
     "paidBy": "Paid by {name}",
     "receivedBy": "Received by {name}",
     "forWhom": "For {names}",
@@ -453,11 +453,11 @@
     "keepTheirs": "Keep theirs",
     "none": "This Expense has no Conflict.",
     "deleted": "Deleted",
-    "helpNamed": "You and {name} changed this Expense before it synced. Pick the version to keep; what differs is highlighted.",
-    "theirsNamed": "{name}'s version",
+    "helpNamed": "You and {name} changed this Expense before it synced. Pick whose change to keep; what differs is highlighted.",
+    "theirsNamed": "{name}'s change",
     "keepTheirsNamed": "Keep {name}'s",
-    "keepMineHelp": "Their version stays in History.",
-    "keepMineHelpNamed": "{name}'s version stays in History.",
+    "keepMineHelp": "Their change stays in History.",
+    "keepMineHelpNamed": "{name}'s change stays in History.",
     "keepTheirsHelp": "Your changes are dropped for good.",
     "alsoDiffers": "Also differs: {fields}",
     "changedWhen": "Changed {when}",
@@ -521,7 +521,7 @@
     "currentRevision": "Current Revision",
     "sameAsNow": "Same as the Expense now.",
     "nowAmount": "now {amount}",
-    "amountAndShares": "amount (and so the payer's part and the shares)"
+    "amountAndShares": "amount (and so the Main payer's part and the shares)"
   },
   "deleted": {
     "title": "Recently deleted",

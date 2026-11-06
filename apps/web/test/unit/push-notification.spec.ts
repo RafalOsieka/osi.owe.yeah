@@ -40,7 +40,7 @@ describe('notificationFor', () => {
     } satisfies ActivityMessage;
 
     expect(notificationFor(deleted, 0, 'pl').options.body).toBe(
-      `Usunięty wydatek: „Lidl Rovinj” (ktoś)\nTwój udział +15,00${nbsp}€ · Twoja płatność -30,00${nbsp}€`,
+      `Usunięty wydatek: „Lidl Rovinj” (ktoś)\nTwój udział +15,00${nbsp}€ · Zapłacone przez ciebie -30,00${nbsp}€`,
     );
   });
 

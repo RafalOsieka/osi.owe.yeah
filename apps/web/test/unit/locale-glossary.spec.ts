@@ -59,23 +59,6 @@ const PLAIN_SENSE = new Set([
   'terms.content.sensitive: tożsamość', // legal wording, not a Claim
 ]);
 
-// Slips the UI polish left behind. #145 fixes them, removing each line with its fix.
-const KNOWN_SLIPS = new Set([
-  'myTrips.welcome: znajomy',
-  'myTrips.welcome: koszt',
-  'expense.titlePlaceholder: zakup',
-  'expense.moneyReceivedHelp: grupa',
-  'expense.emptyHelp: grupa',
-  'repayment.settles: rozliczenie',
-  'repayment.settlesYours: rozliczenie',
-  'repayment.settlesToYou: rozliczenie',
-  'balances.paidAndShare: płatność',
-  'breakdown.paid: płatność',
-  'push.paid: płatność',
-  'breakdown.unassignedRuleYours: płacący',
-  'history.amountAndShares: płacący',
-]);
-
 function isMessage(entry: string | Catalog): entry is string {
   return typeof entry === 'string';
 }
@@ -103,10 +86,6 @@ describe('pl catalog against GLOSSARY.md', () => {
   });
 
   it('uses no avoided word for a domain concept', () => {
-    expect(slips.filter((slip) => !PLAIN_SENSE.has(slip) && !KNOWN_SLIPS.has(slip))).toEqual([]);
-  });
-
-  it('still has every known slip, so a fixed one leaves the list', () => {
-    expect([...KNOWN_SLIPS].filter((slip) => !slips.includes(slip))).toEqual([]);
+    expect(slips.filter((slip) => !PLAIN_SENSE.has(slip))).toEqual([]);
   });
 });

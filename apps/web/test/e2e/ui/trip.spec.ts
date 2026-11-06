@@ -1083,19 +1083,19 @@ test('two devices change the same Expenses; the one that syncs second keeps its 
   await expect(pizza).toContainText('Conflict');
   await expect(other.getByRole('link').filter({ hasText: 'Ferry Ania' })).toContainText('Conflict');
 
-  // An edit during the Conflict stays on Ania's version, which she then keeps.
+  // An edit during the Conflict stays on Ania's change, which she then keeps.
   await pizza.click();
   const main = other.getByRole('main');
   await expect(main).toContainText('Kasia changed this Expense too.');
   await other.getByRole('link', { name: 'Edit Expense' }).click();
   await other.getByLabel('Title').fill('Pizza Napoli XL');
   await other.getByRole('button', { name: 'Save Expense' }).click();
-  await other.getByRole('link', { name: 'Choose version' }).click();
-  const mine = other.getByRole('region', { name: 'Your version' });
-  const theirs = other.getByRole('region', { name: "Kasia's version" });
+  await other.getByRole('link', { name: 'Choose a change' }).click();
+  const mine = other.getByRole('region', { name: 'Your change' });
+  const theirs = other.getByRole('region', { name: "Kasia's change" });
   await expect(mine).toContainText('Pizza Napoli XL');
   await expect(theirs).toContainText('Pizza Margherita');
-  await expect(mine).toContainText("Kasia's version stays in History");
+  await expect(mine).toContainText("Kasia's change stays in History");
   await other.getByRole('button', { name: 'Keep yours' }).click();
   await expect(other.getByRole('heading', { name: 'Pizza Napoli XL' })).toBeVisible();
   await expect(main).not.toContainText('Not synced');
@@ -1103,7 +1103,7 @@ test('two devices change the same Expenses; the one that syncs second keeps its 
 
   // For the Ferry she keeps Kasia's.
   await other.getByRole('link').filter({ hasText: 'Ferry Ania' }).click();
-  await other.getByRole('link', { name: 'Choose version' }).click();
+  await other.getByRole('link', { name: 'Choose a change' }).click();
   await other.getByRole('button', { name: "Keep Kasia's" }).click();
   await expect(other.getByRole('heading', { name: 'Ferry Kasia' })).toBeVisible();
   await expect(main).not.toContainText('Not synced');
