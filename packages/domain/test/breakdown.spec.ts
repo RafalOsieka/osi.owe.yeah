@@ -1,10 +1,12 @@
 import { describe, expect, it } from 'vite-plus/test';
 import {
+  add,
   balances,
   rational,
   shareBreakdown,
   shareBreakdowns,
   type Expense,
+  type Rational,
 } from '@osi/owe-yeah-domain';
 
 const rafal = '019a2b3c-4d5e-7f00-8a1b-000000000001';
@@ -98,6 +100,58 @@ describe('shareBreakdown of a Receipt', () => {
       ],
     });
     expect(breakdown.get(kuba)?.share).toEqual(cents(115n));
+  });
+
+  it('gives out a percent Receipt discount to the cent, so the Shares add up to the total', () => {
+    const everyone = [rafal, ania, kuba, ola];
+    const lidl = {
+      ...receipt(
+        {
+          name: 'Bread',
+          unitPrice: 249,
+          quantity: 1,
+          split: { mode: 'even', participantIds: everyone },
+        },
+        {
+          name: 'Water 1.5l',
+          unitPrice: 29,
+          quantity: 6,
+          depositPerUnit: 7,
+          split: { mode: 'even', participantIds: [rafal, ania, kuba] },
+        },
+        {
+          name: 'Olive oil',
+          unitPrice: 1299,
+          quantity: 1,
+          split: { mode: 'even', participantIds: [ania, kuba] },
+        },
+        {
+          name: 'Tomatoes',
+          unitPrice: 635,
+          quantity: 1,
+          split: { mode: 'even', participantIds: [ola] },
+        },
+        {
+          name: 'Bottle voucher',
+          unitPrice: -70,
+          quantity: 1,
+          split: { mode: 'even', participantIds: everyone },
+        },
+      ),
+      discount: { kind: 'percent' as const, basisPoints: 1000 },
+    };
+
+    const breakdown = [...shareBreakdown(lidl).values()];
+    const sum = (amounts: Rational[]) => amounts.reduce(add, rational(0n));
+
+    expect(sum(breakdown.map(({ share }) => share))).toEqual(cents(2093n));
+    expect(
+      sum(
+        breakdown.flatMap(({ parts }) =>
+          parts.filter(({ part }) => part === 'receiptDiscounts').map(({ amount }) => amount),
+        ),
+      ),
+    ).toEqual(cents(-236n));
   });
 
   it('shows the value not assigned yet as part of the Main payer’s share', () => {

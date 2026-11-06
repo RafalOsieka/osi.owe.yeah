@@ -1,6 +1,6 @@
 import { z } from 'zod';
 import { parseAmount } from './amount.ts';
-import { compare, divide, multiply, rational, type Rational } from './rational.ts';
+import { compare, multiply, rational, roundHalfAwayFromZero, type Rational } from './rational.ts';
 
 /** A whole, positive number as JSON keeps it exactly. */
 const positiveIntSchema = z.number().int().positive().max(Number.MAX_SAFE_INTEGER);
@@ -38,12 +38,18 @@ export function parsePercent(text: string): number | null {
     : null;
 }
 
-/** What a discount takes off `base`, both in minor units; nothing without a discount. */
+/**
+ * What a discount takes off `base`, both in minor units; nothing without a discount. A
+ * percentage takes off a whole number of minor units, rounded half up as a till does, so a
+ * Line or Receipt discounted by one still comes to an exact amount.
+ */
 export function takenOff(discount: Discount | undefined, base: Rational): Rational {
   if (!discount) return zero;
-  return discount.kind === 'amount'
-    ? rational(BigInt(discount.amount))
-    : multiply(base, divide(rational(BigInt(discount.basisPoints)), rational(10_000n)));
+  return rational(
+    discount.kind === 'amount'
+      ? BigInt(discount.amount)
+      : roundHalfAwayFromZero(multiply(base, rational(BigInt(discount.basisPoints), 10_000n))),
+  );
 }
 
 /**

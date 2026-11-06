@@ -1,11 +1,13 @@
 import { describe, expect, it } from 'vite-plus/test';
 import {
+  add,
   balances,
   expenseKind,
   expenseProblems,
   expenseShares,
   newLineItemSplit,
   rational,
+  roundMoney,
   splitFromScratch,
   type Expense,
 } from '@osi/owe-yeah-domain';
@@ -111,7 +113,7 @@ describe('a Line item split by Amounts', () => {
 });
 
 describe('Line discounts', () => {
-  it('takes a percent off the full-price Line total', () => {
+  it('takes a percent off the full-price Line total, rounded to the cent', () => {
     const wine = receipt({
       name: 'Wine',
       unitPrice: 1999,
@@ -122,9 +124,26 @@ describe('Line discounts', () => {
 
     const { total, shares, lineItems } = expenseShares(wine);
 
-    expect(lineItems[0]!.discountOff).toEqual(rational(19_99n, 400n));
-    expect(total).toEqual(rational(5997n, 400n));
-    expect([...shares.values()]).toEqual([rational(5997n, 800n), rational(5997n, 800n)]);
+    // 25 % of 19.99 is 4.9975.
+    expect(lineItems[0]!.discountOff).toEqual(rational(5n));
+    expect(total).toEqual(rational(1499n, 100n));
+    expect([...shares.values()]).toEqual([rational(1499n, 200n), rational(1499n, 200n)]);
+  });
+
+  it('rounds a percent half up, as a till does', () => {
+    const offOf = (unitPrice: number) =>
+      expenseShares(
+        receipt({
+          name: 'Peach',
+          unitPrice,
+          quantity: 1,
+          discount: { kind: 'percent', basisPoints: 1000 },
+          split: even(everyone),
+        }),
+      ).lineItems[0]!.discountOff;
+
+    expect(offOf(125)).toEqual(rational(13n, 100n));
+    expect(offOf(124)).toEqual(rational(12n, 100n));
   });
 
   it('may take off the whole Line total, and not a cent more', () => {
@@ -136,7 +155,9 @@ describe('Line discounts', () => {
     expect(expenseProblems(melon({ kind: 'amount', amount: 399 }), trip)).toEqual([
       'lineDiscountExceedsLineTotal',
     ]);
-    expect(expenseProblems(melon({ kind: 'percent', basisPoints: 10_001 }), trip)).toEqual([
+    // 100.12 % of 3.98 takes off 3.98, 100.13 % takes off 3.99.
+    expect(expenseProblems(melon({ kind: 'percent', basisPoints: 10_012 }), trip)).toEqual([]);
+    expect(expenseProblems(melon({ kind: 'percent', basisPoints: 10_013 }), trip)).toEqual([
       'lineDiscountExceedsLineTotal',
     ]);
   });
@@ -168,6 +189,34 @@ describe('Receipt discounts', () => {
         [kuba, rational(9n)],
       ]);
     }
+  });
+
+  it('takes a percent off to the cent, so the total is what the till charged', () => {
+    const lidl = {
+      ...receipt(
+        { name: 'Bread', unitPrice: 249, quantity: 1, split: even(everyone) },
+        {
+          name: 'Water 1.5l',
+          unitPrice: 29,
+          quantity: 6,
+          depositPerUnit: 7,
+          split: even([rafal, ania, kuba]),
+        },
+        { name: 'Olive oil', unitPrice: 1299, quantity: 1, split: even([ania, kuba]) },
+        { name: 'Tomatoes', unitPrice: 635, quantity: 1, split: even([ola]) },
+        { name: 'Bottle voucher', unitPrice: -70, quantity: 1, split: even(everyone) },
+      ),
+      discount: { kind: 'percent', basisPoints: 1000 },
+    } satisfies Expense;
+
+    const { total, discountOff, shares } = expenseShares(lidl);
+
+    // 10 % of the 23.57 of goods is 2.357; the till took off 2.36.
+    expect(discountOff).toEqual(rational(236n, 100n));
+    // 23.57 − 2.36 + 0.42 − 0.70.
+    expect(total).toEqual(rational(2093n, 100n));
+    expect(roundMoney(total, 'EUR')).toEqual({ decimal: '20.93', exact: true });
+    expect([...shares.values()].reduce(add)).toEqual(total);
   });
 
   it('may take off everything after Line discounts, and not a cent more', () => {
