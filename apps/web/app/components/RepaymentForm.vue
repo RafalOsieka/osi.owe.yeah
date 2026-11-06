@@ -5,8 +5,11 @@ import type { LocalExpense } from '~/sync/local-trip';
 import {
   draftFromExpense,
   newRepaymentDraft,
+  pickMainPayer,
   readDraft,
+  stillSuggested,
   type RepaymentDraft,
+  type RepaymentSuggestion,
 } from '~/utils/expense-draft';
 
 // The full-screen Repayment form, for a new Repayment or to edit one, in the Expense form's
@@ -16,7 +19,9 @@ import {
 // The note is the title, "Repayment" when left empty. A new one is in the Trip currency until
 // another is picked, and may start from a Suggested Repayment (`suggested`), which it says it
 // settles ("what you owe Marta" where it is yours) while it still matches; its amount stays
-// editable for a partial Repayment. Otherwise who paid defaults to the Claim. Reading and saving work like the Expense form's.
+// editable for a partial Repayment. Otherwise who paid defaults to the Claim. Reading and
+// saving work like the Expense form's. The rules live in the Expense draft (`pickMainPayer`,
+// `RepaymentDraft`, `stillSuggested`); the form only renders and forwards.
 const {
   repayment = null,
   suggested = null,
@@ -24,7 +29,7 @@ const {
 } = defineProps<{
   repayment?: Extract<LocalExpense, Repayment> | null;
   /** What a new Repayment starts with; any part may be missing. */
-  suggested?: { payerId?: string; recipientId?: string; amount?: string } | null;
+  suggested?: RepaymentSuggestion | null;
   /** The screen above the form, for back when it was opened from a link. */
   parent: RouteLocationRaw;
 }>();
@@ -34,46 +39,33 @@ const { t } = useI18n();
 const back = useBack();
 const { formErrors, problemAt } = useDraftReasons();
 
-const untitled = t('repayment.title');
+const defaultTitle = t('repayment.title');
 
-// Read once: the form is mounted afresh each time it opens. The default title shows as an
-// empty note.
+// Read once: the form is mounted afresh each time it opens.
 const state = reactive<RepaymentDraft>(
   repayment
-    ? draftFromExpense(repayment, trip.value)
+    ? draftFromExpense(repayment, trip.value, defaultTitle)
     : newRepaymentDraft(trip.value, {
         now: new Date(),
         zone: deviceTimeZone(),
         claimId: claim.value?.id ?? null,
-        title: '',
+        defaultTitle,
         suggested,
       }),
 );
-if (state.title === untitled) state.title = '';
 
-// What is typed, read live and when saving, with the default title for an empty note.
-const reading = computed(() =>
-  readDraft({ ...state, title: state.title.trim() || untitled }, trip.value),
-);
+// What is typed, read live and when saving.
+const reading = computed(() => readDraft(state, trip.value));
 
 const nameOf = (id: string) => trip.value.participants.find((participant) => participant.id === id);
 const payer = computed(() => nameOf(state.mainPayerId));
 const recipient = computed(() => nameOf(state.recipientId));
 
-// Picking who got the money as payer turns the Repayment around.
 function pickPayer(participantId: string): void {
-  if (participantId === state.recipientId) state.recipientId = state.mainPayerId;
-  state.mainPayerId = participantId;
+  Object.assign(state, pickMainPayer(state, participantId));
 }
 
-// Whether it is still the Suggested Repayment it started from.
-const settles = computed(
-  () =>
-    !!suggested?.amount &&
-    suggested.payerId === state.mainPayerId &&
-    suggested.recipientId === state.recipientId &&
-    state.amount.trim() === suggested.amount,
-);
+const settles = computed(() => stillSuggested(state, suggested));
 
 // Which Trip rules the last save broke; the Repayment itself stays as it was.
 const refusals = ref<string[]>([]);
