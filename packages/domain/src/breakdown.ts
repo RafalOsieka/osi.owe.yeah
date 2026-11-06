@@ -31,28 +31,42 @@ export const BREAKDOWN_PARTS = [
 
 export type BreakdownPart = (typeof BREAKDOWN_PARTS)[number];
 
-/** A Participant's share and the parts it comes from, exact and unrounded. */
+/**
+ * A Participant's share and the parts it comes from, exact and unrounded. A part is
+ * `provisional` when it includes an amount converted at a Provisional rate, so it is approximate.
+ */
 export type ShareBreakdown = {
   share: Rational;
   /** The parts that are not zero, in `BREAKDOWN_PARTS` order; they add up to `share`. */
-  parts: readonly { part: BreakdownPart; amount: Rational }[];
+  parts: readonly { part: BreakdownPart; amount: Rational; provisional: boolean }[];
 };
 
+type PartTotal = { amount: Rational; provisional: boolean };
+
 /** Each Participant's running total of every part, by id. */
-type PartTotals = Map<string, Map<BreakdownPart, Rational>>;
+type PartTotals = Map<string, Map<BreakdownPart, PartTotal>>;
 
 const zero = rational(0n);
 
 /**
- * Adds an Expense's parts to `totals`, converted at `rate` (1 in its own currency). Spreads
+ * Adds an Expense's parts to `totals`, converted at `rate` (1 in its own currency), marking
+ * them `provisional` when that is a Provisional rate. Spreads
  * every amount by its Line item's split as `receiptShares` does, so the parts add up to the
  * shares `expenseShares` gives.
  */
-function addExpense(totals: PartTotals, expense: Expense, rate = rational(1n)): void {
+function addExpense(
+  totals: PartTotals,
+  expense: Expense,
+  { rate, provisional } = { rate: rational(1n), provisional: false },
+): void {
   const credit = (part: BreakdownPart, amounts: ReadonlyMap<string, Rational>) => {
     for (const [id, amount] of amounts) {
-      const parts = totals.get(id) ?? new Map<BreakdownPart, Rational>();
-      parts.set(part, add(parts.get(part) ?? zero, multiply(amount, rate)));
+      const parts = totals.get(id) ?? new Map<BreakdownPart, PartTotal>();
+      const sum = parts.get(part) ?? { amount: zero, provisional: false };
+      parts.set(part, {
+        amount: add(sum.amount, multiply(amount, rate)),
+        provisional: sum.provisional || (provisional && amount.numerator !== 0n),
+      });
       totals.set(id, parts);
     }
   };
@@ -88,10 +102,10 @@ function addExpense(totals: PartTotals, expense: Expense, rate = rational(1n)): 
   if (unassigned.numerator !== 0n) credit('unassigned', new Map([[mainPayerId, unassigned]]));
 }
 
-function toBreakdown(parts: ReadonlyMap<BreakdownPart, Rational> | undefined): ShareBreakdown {
+function toBreakdown(parts: ReadonlyMap<BreakdownPart, PartTotal> | undefined): ShareBreakdown {
   const listed = BREAKDOWN_PARTS.flatMap((part) => {
-    const amount = parts?.get(part) ?? zero;
-    return amount.numerator === 0n ? [] : [{ part, amount }];
+    const total = parts?.get(part);
+    return !total || total.amount.numerator === 0n ? [] : [{ part, ...total }];
   });
   return { share: listed.reduce((sum, { amount }) => add(sum, amount), zero), parts: listed };
 }
@@ -115,6 +129,6 @@ export function shareBreakdown(expense: Expense): ReadonlyMap<string, ShareBreak
  */
 export function shareBreakdowns(trip: TripExpenses): ReadonlyMap<string, ShareBreakdown> {
   const totals: PartTotals = new Map();
-  for (const { expense, rate } of convertible(trip)) addExpense(totals, expense, rate);
+  for (const { expense, ...rate } of convertible(trip)) addExpense(totals, expense, rate);
   return new Map(trip.participants.map(({ id }) => [id, toBreakdown(totals.get(id))]));
 }

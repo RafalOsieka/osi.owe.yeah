@@ -48,6 +48,7 @@ describe('balances', () => {
       [kasia, ania, ola].map(({ id }) => ({
         participantId: id,
         paid: zero,
+        paidProvisional: false,
         share: zero,
         balance: zero,
         rounded: zero,
@@ -74,6 +75,7 @@ describe('balances', () => {
       {
         participantId: kasia.id,
         paid: rational(10n),
+        paidProvisional: false,
         share: rational(10n, 3n),
         balance: rational(20n, 3n),
         rounded: rational(667n, 100n),
@@ -81,6 +83,7 @@ describe('balances', () => {
       {
         participantId: ania.id,
         paid: rational(9n, 2n),
+        paidProvisional: false,
         share: rational(67n, 12n),
         balance: rational(-13n, 12n),
         rounded: rational(-108n, 100n),
@@ -88,6 +91,7 @@ describe('balances', () => {
       {
         participantId: ola.id,
         paid: rational(0n),
+        paidProvisional: false,
         share: rational(67n, 12n),
         balance: rational(-67n, 12n),
         rounded: rational(-559n, 100n),

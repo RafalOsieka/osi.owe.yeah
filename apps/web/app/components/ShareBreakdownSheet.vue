@@ -21,7 +21,9 @@ import {
 // there being what they paid less that balance, as the balance card shows it, so the three add
 // up. Amounts stay exact and are only rounded to show them: the parts are shown rounded, a
 // note says so when rounding changed any, and "≈" marks the share alone, when it is not exact
-// itself. Done closes it.
+// itself. "≈" also marks every amount that includes one converted at a Provisional rate (a
+// part, the share, what they paid, the balance), and a note says the rate is provisional. Done
+// closes it.
 const {
   participant,
   breakdown,
@@ -29,6 +31,7 @@ const {
   claimId = null,
   context = null,
   paid = null,
+  paidProvisional = false,
   balance = null,
 } = defineProps<{
   participant: Participant;
@@ -39,6 +42,8 @@ const {
   context?: string | null;
   /** What they paid, on the Balances tab. */
   paid?: Rational | null;
+  /** Whether what they paid includes an amount converted at a Provisional rate. */
+  paidProvisional?: boolean;
   /** Their rounded balance, as their bar shows it, on the Balances tab. */
   balance?: Rational | null;
 }>();
@@ -61,9 +66,16 @@ const ORDER = [
 ] as const satisfies readonly BreakdownPart[];
 const place = (part: BreakdownPart) => ORDER.indexOf(part);
 
-// An amount as rounded to show it, without "≈": the sheet marks rounding once, on the share.
-const rounded = (amount: Rational) =>
-  formatMoney(decimal(roundMoney(amount, currency).decimal), currency, locale.value);
+// An amount as rounded to show it, with "≈" only when it is `provisional`: the sheet marks
+// rounding once, on the share.
+const rounded = (amount: Rational, provisional = false) =>
+  formatMoney(
+    decimal(roundMoney(amount, currency).decimal),
+    currency,
+    locale.value,
+    'currency',
+    provisional,
+  );
 
 // "Kasia's balance" on the Balances tab, where it ends in it; "Kasia's share" on a Receipt.
 const title = computed(() =>
@@ -76,30 +88,34 @@ const sheet = computed(() => {
   const inexact = (amount: Rational) => !roundMoney(amount, currency).exact;
   // On the Balances tab, the share that adds up with what they paid and their balance.
   const share = paid && balance ? subtract(paid, balance) : breakdown.share;
-  // "≈" on the share only when it is not exactly what it shows.
-  const approximate = compare(share, breakdown.share) !== 0 || inexact(share);
+  // Whether the share includes an amount converted at a Provisional rate.
+  const provisional = breakdown.parts.some((part) => part.provisional);
+  // "≈" on the share when it is not exactly what it shows, or includes a Provisional-rate amount.
+  const roundedShare = compare(share, breakdown.share) !== 0 || inexact(share);
   const partsRounded =
-    approximate ||
+    roundedShare ||
     (paid !== null && inexact(paid)) ||
     breakdown.parts.some(({ amount }) => inexact(amount));
   return {
     parts: breakdown.parts
       .toSorted((a, b) => place(a.part) - place(b.part))
-      .map(({ part, amount }) => ({
+      .map(({ part, amount, provisional }) => ({
         label: t(`breakdown.part.${part}`),
-        amount: rounded(amount),
+        amount: rounded(amount, provisional),
         // What is not assigned yet, in amber as everywhere.
         tone: part === 'unassigned' ? 'text-warning' : '',
       })),
     unassigned: breakdown.parts.some(({ part }) => part === 'unassigned'),
-    share: formatMoney(share, currency, locale.value, 'currency', approximate),
+    share: formatMoney(share, currency, locale.value, 'currency', provisional || roundedShare),
     partsRounded,
-    outcome: balance && outcomeOf(balance),
+    provisional: provisional || paidProvisional,
+    outcome: balance && outcomeOf(balance, provisional || paidProvisional),
   };
 });
 
-// Their balance as a sentence's start and an unsigned amount, toned as on the Balances tab.
-function outcomeOf(rounded: Rational) {
+// Their balance as a sentence's start and an unsigned amount, toned as on the Balances tab,
+// with "≈" when it is `provisional`.
+function outcomeOf(rounded: Rational, provisional: boolean) {
   const sign = shownSign(rounded, currency);
   const you = participant.id === claimId;
   const name = participant.name;
@@ -107,6 +123,8 @@ function outcomeOf(rounded: Rational) {
     rounded.numerator < 0n ? negate(rounded) : rounded,
     currency,
     locale.value,
+    'currency',
+    provisional,
   );
   if (sign < 0) {
     return {
@@ -159,7 +177,7 @@ function outcomeOf(rounded: Rational) {
         <template v-if="paid && sheet.outcome">
           <div class="mt-3 flex justify-between gap-3 py-1.5">
             <dt>{{ $t('breakdown.paid') }}</dt>
-            <dd class="shrink-0">{{ rounded(paid) }}</dd>
+            <dd class="shrink-0">{{ rounded(paid, paidProvisional) }}</dd>
           </div>
           <div
             class="mt-1 flex justify-between gap-3 border-t border-default pt-2.5 pb-1.5 font-semibold"
@@ -178,6 +196,9 @@ function outcomeOf(rounded: Rational) {
       </p>
       <p v-if="sheet.partsRounded" class="mt-2 text-sm text-muted">
         {{ $t('breakdown.roundedParts') }}
+      </p>
+      <p v-if="sheet.provisional" class="mt-2 text-sm text-muted">
+        {{ $t('breakdown.provisional') }}
       </p>
     </template>
     <template #footer>

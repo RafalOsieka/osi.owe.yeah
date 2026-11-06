@@ -373,6 +373,7 @@
     "isOwed": "{name}: do odebrania",
     "isEven": "{name}: na zero",
     "roundedParts": "Części są zaokrąglone do grosza, więc ich suma może się nieco różnić od udziału.",
+    "provisional": "≈ Kurs wstępny: część tych kwot przeliczono po kursie, który nie jest jeszcze ostateczny. Zaktualizują się same, gdy będzie znany.",
     "unassignedRule": "Nieprzypisane sztuki liczą się do udziału osoby, która zapłaciła, dopóki ktoś ich nie dostanie.",
     "unassignedRuleYours": "Nieprzypisane sztuki liczą się do twojego udziału jako płacącego, dopóki ktoś ich nie dostanie.",
     "balanceTitle": "Saldo: {name}"

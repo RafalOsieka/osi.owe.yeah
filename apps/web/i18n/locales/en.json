@@ -373,6 +373,7 @@
     "isOwed": "{name} is owed",
     "isEven": "{name} is even",
     "roundedParts": "Parts are rounded to the cent, so they may not add up to the share exactly.",
+    "provisional": "≈ Provisional rate: some of these amounts are converted at a rate that isn't final yet. They update by themselves once it is.",
     "unassignedRule": "Unassigned units count towards whoever paid until they're assigned.",
     "unassignedRuleYours": "Unassigned units count towards your share, as you paid, until they're assigned.",
     "balanceTitle": "{name}'s balance"
