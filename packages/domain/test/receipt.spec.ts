@@ -194,6 +194,19 @@ describe('Receipt discounts', () => {
       [ania, rational(18n)],
     ]);
   });
+
+  it('gives each line its part of the value not assigned yet, adding up to it', () => {
+    const nobody = { split: even([]) };
+
+    const { unassigned, unassignedByLine, lineItems } = expenseShares({
+      ...receipt({ ...dinner, ...nobody }, { ...wine, ...nobody }),
+      discount: { kind: 'amount', amount: 500 },
+    });
+
+    expect(lineItems.map((line) => line.unassigned)).toEqual([rational(40n), rational(10n)]);
+    expect(unassignedByLine).toEqual([rational(36n), rational(9n)]);
+    expect(unassigned).toEqual(rational(45n));
+  });
 });
 
 describe('Deposits', () => {

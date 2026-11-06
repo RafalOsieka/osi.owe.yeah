@@ -54,6 +54,11 @@ export type ReceiptShares = {
   assigned: ReadonlyMap<string, Rational>;
   /** The value not assigned to anyone yet: non-zero for an incomplete Receipt. */
   unassigned: Rational;
+  /**
+   * Each Line item's part of `unassigned`, after the Receipt discount, in the Receipt's order:
+   * what its own `unassigned` comes to once the Receipt discount is off, adding up to it.
+   */
+  unassignedByLine: readonly Rational[];
   /** Each Line item's shares before the Receipt discount, in the Receipt's order. */
   lineItems: readonly LineItemShares[];
 };
@@ -133,23 +138,23 @@ export function receiptShares({
   const unit = fromMinor(1, currency);
 
   const assigned = new Map<string, Rational>();
-  let unassigned = zero;
   let deposits = zero;
-  lineItems.forEach((item, index) => {
+  const unassignedByLine = lineItems.map((item, index) => {
     const { net, deposit } = lines[index]!;
     // A Deposit refund is not goods, so the Receipt discount leaves it whole.
     const left = add(isDepositRefund(item) ? net : multiply(net, kept), deposit);
     const parts = spread(item, left);
     for (const [id, part] of parts.shares) assigned.set(id, add(assigned.get(id) ?? zero, part));
-    unassigned = add(unassigned, parts.unassigned);
     deposits = add(deposits, deposit);
+    return parts.unassigned;
   });
   return {
     total: multiply(receiptTotalMinor(lineItems, discount), unit),
     discountOff: multiply(off, unit),
     deposits,
     assigned,
-    unassigned,
+    unassigned: unassignedByLine.reduce(add, zero),
+    unassignedByLine,
     lineItems: lines,
   };
 }
@@ -172,6 +177,7 @@ export function expenseShares(expense: Expense): ExpenseShares {
       paid: new Map([[mainPayerId, amount]]),
       shares: new Map([[expense.recipientId, amount]]),
       unassigned: zero,
+      unassignedByLine: [],
       lineItems: [],
     };
   }
