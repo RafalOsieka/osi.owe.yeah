@@ -1038,6 +1038,149 @@ test('saving a new Expense returns to the Expenses tab where it was scrolled', a
   await expect.poll(() => page.evaluate(() => window.scrollY)).toBe(scrolled);
 });
 
+test('leaving a half-entered Receipt asks first, and Keep editing returns to it as it was', async ({
+  page,
+}) => {
+  await page.setViewportSize({ width: 390, height: 640 });
+  await createTrip(page, 'Pula 2026', 'Kasia', ['Ania']);
+  const tripUrl = page.url();
+
+  await page.getByRole('link', { name: 'Add Expense' }).click();
+  await page.getByLabel('Title').fill('Konzum Pula');
+  const formUrl = page.url();
+  await page.getByRole('button', { name: 'Itemise as a Receipt' }).click();
+  // The add form stays open for the next line, as at a till.
+  await page.getByRole('button', { name: 'Add a Line item' }).click();
+  const adding = page.getByRole('group', { name: 'Add a Line item' });
+  for (const [name, price] of [
+    ['Bread', '1,50'],
+    ['Milk', '1,20'],
+    ['Apples', '3,35'],
+  ] as const) {
+    await adding.getByLabel('New Line item unit price').fill(price);
+    await adding.getByLabel('New Line item name').fill(name);
+    await adding.getByRole('button', { name: 'Add to Receipt' }).click();
+  }
+  await page.getByRole('textbox', { name: 'Receipt discount' }).focus();
+  const scrolled = await page.evaluate(() => window.scrollY);
+  expect(scrolled).toBeGreaterThan(0);
+
+  // ✕ asks, saying what would be lost; Keep editing is the default.
+  const sheet = page.getByRole('dialog', { name: 'Discard this Expense?' });
+  await page.getByRole('button', { name: 'Close' }).click();
+  await expect(sheet).toContainText('Konzum Pula · €6.05 · 3 Line items');
+  await expect(sheet.getByRole('button', { name: 'Keep editing' })).toBeFocused();
+  await sheet.getByRole('button', { name: 'Keep editing' }).click();
+  await expect(sheet).toBeHidden();
+  expect(await page.evaluate(() => window.scrollY)).toBe(scrolled);
+  await expect(page.getByRole('region', { name: 'Line items' }).getByRole('listitem')).toHaveCount(
+    3,
+  );
+
+  // System back asks too; back again only closes the sheet, back where the person was, and a
+  // third back asks again.
+  const discount = page.getByRole('textbox', { name: 'Receipt discount' });
+  await discount.focus();
+  await page.goBack();
+  await expect(sheet).toBeVisible();
+  await page.goBack();
+  await expect(sheet).toBeHidden();
+  await expect(page).toHaveURL(formUrl);
+  await expect(discount).toBeFocused();
+  expect(await page.evaluate(() => window.scrollY)).toBe(scrolled);
+  await page.goBack();
+  await expect(sheet).toBeVisible();
+
+  // Discard goes back where back was going, and the history is as it was.
+  await sheet.getByRole('button', { name: 'Discard' }).click();
+  await expect(page).toHaveURL(tripUrl);
+  await expect(page.getByRole('main')).not.toContainText('Konzum Pula');
+  await page.goForward();
+  await expect(page).toHaveURL(formUrl);
+
+  // An untouched form closes at once.
+  await page.getByRole('button', { name: 'Close' }).click();
+  await expect(page).toHaveURL(tripUrl);
+  await expect(sheet).toBeHidden();
+});
+
+test('an edit changed back closes at once, while a changed edit, a Line item not added yet and a new Repayment ask first', async ({
+  page,
+}) => {
+  await createTrip(page, 'Rovinj 2026', 'Kasia', ['Ania']);
+  const tripUrl = page.url();
+
+  // Saving never asks.
+  await page.getByRole('link', { name: 'Add Expense' }).click();
+  await page.getByLabel('Title').fill('Lidl Rovinj');
+  await page.getByRole('button', { name: 'Itemise as a Receipt' }).click();
+  await page.getByRole('button', { name: 'Add a Line item' }).click();
+  const adding = page.getByRole('group', { name: 'Add a Line item' });
+  await adding.getByLabel('New Line item unit price').fill('2');
+  await adding.getByLabel('New Line item name').fill('Bread');
+  await adding.getByRole('button', { name: 'Add' }).click();
+  await page.getByRole('button', { name: 'Save Expense' }).click();
+  await expect(page).toHaveURL(tripUrl);
+
+  await page.getByRole('link', { name: /Lidl Rovinj/ }).click();
+  const edit = page.getByRole('link', { name: 'Edit Expense' });
+  await expect(edit).toBeVisible();
+  const detailUrl = page.url();
+  const changes = page.getByRole('dialog', { name: 'Discard your changes?' });
+
+  // Changed back to how it was, nothing would be lost.
+  await edit.click();
+  await page.getByLabel('Title').fill('Lidl');
+  await page.getByLabel('Title').fill('Lidl Rovinj');
+  await page.getByRole('button', { name: 'Back' }).click();
+  await expect(page).toHaveURL(detailUrl);
+  await expect(changes).toBeHidden();
+
+  // A changed title: system back asks, and Discard keeps the Expense as it was.
+  await edit.click();
+  await page.getByLabel('Title').fill('Lidl Pula');
+  await page.goBack();
+  await expect(changes).toContainText('Lidl Pula · €2.00 · 1 Line item');
+  await changes.getByRole('button', { name: 'Discard' }).click();
+  await expect(page).toHaveURL(detailUrl);
+  await expect(page.getByRole('heading', { name: 'Lidl Rovinj' })).toBeVisible();
+
+  // A Line item typed but not added counts, and so does reloading the page.
+  await edit.click();
+  await page.getByRole('button', { name: 'Add a Line item' }).click();
+  await adding.getByLabel('New Line item name').fill('Milk');
+  await page.getByRole('button', { name: 'Back' }).click();
+  await expect(changes).toBeVisible();
+  await changes.getByRole('button', { name: 'Keep editing' }).click();
+  await expect(adding.getByLabel('New Line item name')).toHaveValue('Milk');
+  const warning = page.waitForEvent('dialog');
+  void page.reload().catch(() => null);
+  const dialog = await warning;
+  expect(dialog.type()).toBe('beforeunload');
+  await dialog.dismiss();
+  await expect(adding.getByLabel('New Line item name')).toHaveValue('Milk');
+  await page.getByRole('button', { name: 'Back' }).click();
+  await changes.getByRole('button', { name: 'Discard' }).click();
+  await expect(page).toHaveURL(detailUrl);
+
+  // A new Repayment, untouched, closes at once; with an amount, back asks.
+  await page.getByRole('button', { name: 'Back' }).click();
+  await page.getByRole('link', { name: 'Balances' }).click();
+  const record = page.getByRole('link', { name: 'Record a Repayment' });
+  await expect(record).toBeVisible();
+  const balancesUrl = page.url();
+  await record.click();
+  await page.getByRole('button', { name: 'Close' }).click();
+  await expect(page).toHaveURL(balancesUrl);
+  await record.click();
+  await page.getByLabel('Amount').fill('20');
+  await page.goBack();
+  const repayment = page.getByRole('dialog', { name: 'Discard this Repayment?' });
+  await expect(repayment).toContainText('€20.00');
+  await repayment.getByRole('button', { name: 'Discard' }).click();
+  await expect(page).toHaveURL(balancesUrl);
+});
+
 /** Renames an Expense from its row on the Expenses tab, and comes back to the tab. */
 async function retitle(page: Page, from: string, to: string): Promise<void> {
   await page.getByRole('link').filter({ hasText: from }).click();

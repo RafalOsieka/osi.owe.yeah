@@ -483,6 +483,14 @@
     "optional": "Optional",
     "moreInfo": "About {label}"
   },
+  "discard": {
+    "newExpense": "Discard this Expense?",
+    "newRepayment": "Discard this Repayment?",
+    "changes": "Discard your changes?",
+    "lineItems": "no Line items | 1 Line item | {count} Line items",
+    "discard": "Discard",
+    "keep": "Keep editing"
+  },
   "history": {
     "title": "History",
     "lastEditedBy": "Last edited by {name} · {when}",

@@ -3,6 +3,7 @@ import { deviceTimeZone, type Repayment } from '@osi/owe-yeah-domain';
 import type { RouteLocationRaw } from 'vue-router';
 import type { LocalExpense } from '~/sync/local-trip';
 import {
+  draftChanged,
   draftFromExpense,
   newRepaymentDraft,
   pickMainPayer,
@@ -21,7 +22,8 @@ import {
 // settles ("what you owe Marta" where it is yours) while it still matches; its amount stays
 // editable for a partial Repayment. Otherwise who paid defaults to the Claim. Reading and
 // saving work like the Expense form's. The rules live in the Expense draft (`pickMainPayer`,
-// `RepaymentDraft`, `stillSuggested`); the form only renders and forwards.
+// `RepaymentDraft`, `stillSuggested`); the form only renders and forwards. Leaving it changed
+// asks first (`useDiscardConfirm`).
 const {
   repayment = null,
   suggested = null,
@@ -41,18 +43,18 @@ const { formErrors, problemAt } = useDraftReasons();
 
 const defaultTitle = t('repayment.title');
 
-// Read once: the form is mounted afresh each time it opens.
-const state = reactive<RepaymentDraft>(
-  repayment
-    ? draftFromExpense(repayment, trip.value, defaultTitle)
-    : newRepaymentDraft(trip.value, {
-        now: new Date(),
-        zone: deviceTimeZone(),
-        claimId: claim.value?.id ?? null,
-        defaultTitle,
-        suggested,
-      }),
-);
+// Read once: the form is mounted afresh each time it opens. What it started with is kept apart,
+// to tell whether anything was changed.
+const start: RepaymentDraft = repayment
+  ? draftFromExpense(repayment, trip.value, defaultTitle)
+  : newRepaymentDraft(trip.value, {
+      now: new Date(),
+      zone: deviceTimeZone(),
+      claimId: claim.value?.id ?? null,
+      defaultTitle,
+      suggested,
+    });
+const state = reactive(structuredClone(start));
 
 // What is typed, read live and when saving.
 const reading = computed(() => readDraft(state, trip.value));
@@ -67,6 +69,8 @@ function pickPayer(participantId: string): void {
 
 const settles = computed(() => stillSuggested(state, suggested));
 
+const { open: discarding, discard, leave } = useDiscardConfirm(() => draftChanged(start, state));
+
 // Which Trip rules the last save broke; the Repayment itself stays as it was.
 const refusals = ref<string[]>([]);
 const saving = ref(false);
@@ -80,7 +84,9 @@ async function submit(): Promise<void> {
   const refused = await saveExpense(read, repayment).finally(() => (saving.value = false));
 
   refusals.value = refused.map((problem) => t(`expense.refused.${problem}`));
-  if (refused.length === 0) await back(parent);
+  if (refused.length > 0) return;
+  leave();
+  await back(parent);
 }
 </script>
 
@@ -186,6 +192,14 @@ async function submit(): Promise<void> {
         </UFormField>
       </div>
     </UForm>
+
+    <DiscardSheet
+      v-model:open="discarding"
+      :title="repayment ? $t('discard.changes') : $t('discard.newRepayment')"
+      :draft="state"
+      :total="reading.total"
+      @discard="discard"
+    />
 
     <template #action>
       <UAlert

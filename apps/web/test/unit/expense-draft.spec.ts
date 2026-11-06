@@ -7,6 +7,7 @@ import {
 import { describe, expect, it } from 'vitest';
 import {
   chooseSplitMode,
+  draftChanged,
   draftFromExpense,
   draftLineItem,
   itemise,
@@ -607,5 +608,32 @@ describe('transitions with a rule', () => {
       parts: [],
     });
     expect(chooseSplitMode(line!, 'units', trip.participants)).toBe(line);
+  });
+});
+
+describe('whether a form has changed', () => {
+  it('a draft is changed once anything in it differs from how it started, nested or not', () => {
+    const started = receipt({ name: 'Bread' }, { name: 'Milk' });
+
+    expect(draftChanged(started, structuredClone(started))).toBe(false);
+    expect(draftChanged(started, { ...started, title: 'Konzum Pula' })).toBe(true);
+    expect(
+      draftChanged(started, {
+        ...started,
+        lineItems: started.lineItems!.map((line, index) =>
+          index === 1 ? { ...line, price: '1.5' } : line,
+        ),
+      }),
+    ).toBe(true);
+  });
+
+  it('changed back to how it started, it is not changed, whatever the Line items are keyed by', () => {
+    const started = receipt({ name: 'Bread' }, { name: 'Milk' });
+    const [bread, milk] = started.lineItems!;
+
+    // Milk removed, then added again as it was: a new line, with a new key.
+    const now = { ...started, lineItems: [bread!, { ...milk!, key: 'added-again' }] };
+
+    expect(draftChanged(started, now)).toBe(false);
   });
 });

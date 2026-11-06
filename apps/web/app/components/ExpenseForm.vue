@@ -14,6 +14,7 @@ import type { FormError } from '@nuxt/ui';
 import type { RouteLocationRaw } from 'vue-router';
 import type { LocalExpense } from '~/sync/local-trip';
 import {
+  draftChanged,
   draftFromExpense,
   itemise,
   newExpenseDraft,
@@ -46,7 +47,8 @@ import {
 // What is typed is read as an Expense draft (`readDraft`): a Trip rule the Expense would break
 // shows at its field while the form is filled in. Saving keeps the Expense's full new state on
 // the device, to sync later, and returns to `parent`'s screen, or wherever the form was opened
-// from. A refusal the form couldn't foresee shows above Save.
+// from. A refusal the form couldn't foresee shows above Save. Leaving it changed, or with a
+// line typed but not added, asks first (`useDiscardConfirm`).
 const { expense = null, parent } = defineProps<{
   expense?: Extract<LocalExpense, SplitExpense> | null;
   /** The screen above the form, for back when it was opened from a link. */
@@ -59,17 +61,17 @@ const back = useBack();
 const { draftReason, formErrors, problemAt } = useDraftReasons();
 const discountText = useDiscountText();
 
-// Read once: the form is mounted afresh each time it opens.
-const state = reactive<SplitDraft>(
-  expense
-    ? draftFromExpense(expense, trip.value)
-    : newExpenseDraft(trip.value, {
-        now: new Date(),
-        zone: deviceTimeZone(),
-        claimId: claim.value?.id ?? null,
-        lastCurrency: lastCurrency.value,
-      }),
-);
+// Read once: the form is mounted afresh each time it opens. What it started with is kept apart,
+// to tell whether anything was changed.
+const start: SplitDraft = expense
+  ? draftFromExpense(expense, trip.value)
+  : newExpenseDraft(trip.value, {
+      now: new Date(),
+      zone: deviceTimeZone(),
+      claimId: claim.value?.id ?? null,
+      lastCurrency: lastCurrency.value,
+    });
+const state = reactive(structuredClone(start));
 
 // What is typed, read live and when saving.
 const reading = computed(() => readDraft(state, trip.value));
@@ -145,6 +147,12 @@ const pendingLine = ref(false);
 function itemiseReceipt(): void {
   Object.assign(state, itemise(state, trip.value));
 }
+
+const {
+  open: discarding,
+  discard,
+  leave,
+} = useDiscardConfirm(() => pendingLine.value || draftChanged(start, state));
 
 // The Receipt's readable lines, each with its shares, in order.
 const lines = computed(() =>
@@ -256,7 +264,9 @@ async function submit(): Promise<void> {
   const refused = await saveExpense(read, expense).finally(() => (saving.value = false));
 
   refusals.value = refused.map((problem) => t(`expense.refused.${problem}`));
-  if (refused.length === 0) await back(parent);
+  if (refused.length > 0) return;
+  leave();
+  await back(parent);
 }
 </script>
 
@@ -482,6 +492,14 @@ async function submit(): Promise<void> {
         </button>
       </div>
     </UForm>
+
+    <DiscardSheet
+      v-model:open="discarding"
+      :title="expense ? $t('discard.changes') : $t('discard.newExpense')"
+      :draft="state"
+      :total="reading.total"
+      @discard="discard"
+    />
 
     <template #action>
       <AttentionNote v-if="pendingLine" role="status" class="mb-3">

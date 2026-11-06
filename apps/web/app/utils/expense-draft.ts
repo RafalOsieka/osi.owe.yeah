@@ -815,3 +815,48 @@ export function chooseSplitMode(
     ),
   };
 }
+
+/** Plain data, as a draft is: compared by value in `draftChanged`. */
+type Plain =
+  | string
+  | number
+  | boolean
+  | null
+  | readonly Plain[]
+  | { readonly [key: string]: Plain };
+
+const isList = (value: Plain): value is readonly Plain[] => Array.isArray(value);
+
+function sameValue(a: Plain, b: Plain): boolean {
+  if (a === b) return true;
+  // Two different texts, numbers or flags, or one of them and a list or record.
+  if (!(a instanceof Object) || !(b instanceof Object)) return false;
+  if (isList(a) || isList(b)) {
+    return (
+      isList(a) &&
+      isList(b) &&
+      a.length === b.length &&
+      a.every((item, index) => sameValue(item, b[index]!))
+    );
+  }
+  const keys = Object.keys(a);
+  return (
+    keys.length === Object.keys(b).length &&
+    keys.every((key) => key in b && sameValue(a[key]!, b[key]!))
+  );
+}
+
+// A draft's values only: the Line items' keys are never saved, and a line added again gets a
+// new one.
+function values(draft: ExpenseDraft): Plain {
+  if (draft.kind === 'repayment' || !draft.lineItems) return draft;
+  return { ...draft, lineItems: draft.lineItems.map(({ key: _key, ...line }) => line) };
+}
+
+/**
+ * Whether a form's draft differs, by value, from the draft it started with, so leaving it
+ * would lose what was typed. Changed back to how it started, it is not changed.
+ */
+export function draftChanged(start: ExpenseDraft, now: ExpenseDraft): boolean {
+  return !sameValue(values(start), values(now));
+}
