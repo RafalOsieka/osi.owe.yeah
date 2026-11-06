@@ -11,6 +11,7 @@ import {
   type ParticipantChange,
   type PullResponse,
   type PushResponse,
+  type RateLookup,
   type ReminderStatus,
   type StoredExpense,
   type SyncChange,
@@ -149,6 +150,18 @@ async function pulled(tripId: string, token: string): Promise<TripSnapshot> {
 
 function revisionsResponse(tripId: string, token: string, expenseId: string): Promise<Response> {
   return fetch(`/api/trips/${tripId}/expenses/${expenseId}/revisions`, {
+    headers: deviceHeaders(token),
+  });
+}
+
+/** The Expense form's lookup of the automatic rate of `from` on `date`. */
+function rateResponse(
+  tripId: string,
+  token: string,
+  from: string,
+  date: string,
+): Promise<Response> {
+  return fetch(`/api/trips/${tripId}/rates?${new URLSearchParams({ from, date })}`, {
     headers: deviceHeaders(token),
   });
 }
@@ -385,6 +398,23 @@ describeApi('Trip API', () => {
       401,
     );
     expect((await revisionsResponse(trip.id, otherToken, uuidv7())).status).toBe(401);
+    expect((await rateResponse(trip.id, otherToken, 'HUF', '2026-07-14')).status).toBe(401);
+    expect((await rateResponse(uuidv7(), otherToken, 'HUF', '2026-07-14')).status).toBe(401);
+  });
+
+  it("looks up the rate of a currency in the Trip's own on a date, before any Expense needs it", async () => {
+    frankfurter.set('2026-07-14', 'BAM', 'EUR', 0.5113);
+    const { trip, token } = await tripWithKasiaAndAnia();
+
+    const response = await rateResponse(trip.id, token, 'BAM', '2026-07-14');
+
+    expect(response.status).toBe(200);
+    expect(await response.json()).toEqual<RateLookup>({
+      status: 'found',
+      entry: { date: '2026-07-14', from: 'BAM', to: 'EUR', rate: '0.5113', fixed: true },
+    });
+    expect((await rateResponse(trip.id, token, 'EUR', '2026-07-14')).status).toBe(400);
+    expect((await rateResponse(trip.id, token, 'BAM', '14.07.2026')).status).toBe(400);
   });
 
   it('answers a push or pull in an older sync schema "update needed", applying nothing', async () => {

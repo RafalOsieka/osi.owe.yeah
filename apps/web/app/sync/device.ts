@@ -3,6 +3,7 @@ import {
   isRepayment,
   expensesReferencing,
   type ChangeResult,
+  type Currency,
   type Expense,
   type ExpenseProblem,
   type Participant,
@@ -10,6 +11,7 @@ import {
   type PushRequest,
   type PushResponse,
   type RateEntry,
+  type RateLookup,
   type ReminderRefusal,
   type ReminderRequest,
   type ReminderStatus,
@@ -49,6 +51,11 @@ import {
 export type Transport = {
   push(tripId: string, token: string, request: PushRequest): Promise<PushResponse>;
   pull(tripId: string, token: string, since?: number): Promise<PullResponse | 'invalidLink'>;
+  /**
+   * The automatic rate of `from` in the Trip currency on a local `date`, ahead of the pull;
+   * also rejects when the server refuses the token.
+   */
+  lookupRate(tripId: string, token: string, from: Currency, date: string): Promise<RateLookup>;
   /** An Expense's Revisions, newest first. */
   revisions(tripId: string, token: string, expenseId: string): Promise<Revision[]>;
   /** Registers, or replaces, the device's push subscription to a Trip. */
@@ -502,6 +509,24 @@ export function createDevice(db: DeviceDb, transport: Transport, deviceId: strin
         return transport.revisions(tripId, device.token, expenseId);
       },
 
+      /**
+       * The automatic rate of `from` in the Trip currency on a local `date`, from the server's
+       * rate table ahead of the pull, for the Expense form (ADR 0003). A found entry is kept
+       * with the Trip's rates, so an Expense saved with it converts before the next pull.
+       * Rejects offline, and before the Trip reached the server.
+       */
+      async lookupRate(from: Currency, date: string): Promise<RateLookup> {
+        const device = await tripOnDevice(tripId);
+        const lookup = await transport.lookupRate(tripId, device.token, from, date);
+        if (lookup.status !== 'found') return lookup;
+        await db.transaction('rw', db.trips, async () => {
+          const current = await db.trips.get(tripId);
+          if (!current) return;
+          await db.trips.update(tripId, { rates: cachedRates(current.rates, [lookup.entry]) });
+        });
+        return lookup;
+      },
+
       /** Whom a Reminder can reach in the Trip, and who was reminded today. Rejects offline. */
       async reminderStatus(): Promise<ReminderStatus> {
         const device = await tripOnDevice(tripId);
@@ -718,9 +743,9 @@ export type Device = ReturnType<typeof createDevice>;
 export type TripHandle = ReturnType<Device['trip']>;
 
 /**
- * The device's cached rate entries with those a pull brought: each of those replaces the one
- * for its date and pair, and the rest stay, so a pair the Trip no longer needs keeps its latest
- * cached rate for a Provisional rate later, e.g. offline.
+ * The device's cached rate entries with those a pull or a lookup brought: each of those
+ * replaces the one for its date and pair, and the rest stay, so a pair the Trip no longer needs
+ * keeps its latest cached rate for a Provisional rate later, e.g. offline.
  */
 function cachedRates(cached: readonly RateEntry[], pulled: readonly RateEntry[]): RateEntry[] {
   const key = ({ date, from, to }: RateEntry) => `${date} ${from} ${to}`;

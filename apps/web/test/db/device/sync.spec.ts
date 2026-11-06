@@ -14,7 +14,7 @@ import { DeviceDb } from '../../../app/sync/db';
 import { createDevice } from '../../../app/sync/device';
 import { toExpense } from '../../../app/sync/local-trip';
 import { changes } from '../../../server/db/schema';
-import { createRates } from '../../../server/trip/rates';
+import { createRates, type Rates } from '../../../server/trip/rates';
 import { createTripStore, type TripStore } from '../../../server/trip/store';
 import { createTripSync, type TripSync } from '../../../server/trip/sync';
 import { startFrankfurter } from '../../e2e/harness/frankfurter';
@@ -81,11 +81,13 @@ describeDb('the device, syncing with the real Trip sync', () => {
   const db = useMigratedDatabase();
   let sync: TripSync;
   let store: TripStore;
+  let rates: Rates;
 
   beforeAll(() => {
     store = createTripStore(db());
+    rates = createRates(db(), frankfurter.url);
     // Notifications are no part of these tests: nobody hears of the applied changes.
-    sync = createTripSync(db(), store, createRates(db(), frankfurter.url), {
+    sync = createTripSync(db(), store, rates, {
       async notifyAffected() {},
     });
   });
@@ -94,7 +96,7 @@ describeDb('the device, syncing with the real Trip sync', () => {
   function newDevice() {
     const deviceId = uuidv7();
     const deviceDb = new DeviceDb(uuidv7());
-    const connection = new Connection(sync, store);
+    const connection = new Connection(sync, store, rates);
     return { device: createDevice(deviceDb, connection, deviceId), deviceDb, connection, deviceId };
   }
 
@@ -622,6 +624,27 @@ describeDb('the device, syncing with the real Trip sync', () => {
     connection.offline = true;
     await croatia.sync();
     expect((await device.read(trip.id))?.local?.rates).toEqual([fixed, czk]);
+  });
+
+  it('keeps a rate looked up for the Expense form with the rates it has, before any Expense needs it', async () => {
+    frankfurter.set('2026-07-14', 'BAM', 'EUR', 0.5113);
+    const { device, croatia, connection, trip } = await setUp();
+    const entry: RateEntry = {
+      date: '2026-07-14',
+      from: 'BAM',
+      to: 'EUR',
+      rate: '0.5113',
+      fixed: true,
+    };
+
+    expect(await croatia.lookupRate('BAM', '2026-07-14')).toEqual({ status: 'found', entry });
+
+    expect((await device.read(trip.id))?.local?.rates).toEqual([entry]);
+    // A pull that brings no rate for it keeps it, as it does any cached rate.
+    await croatia.sync();
+    expect((await device.read(trip.id))?.local?.rates).toEqual([entry]);
+    connection.offline = true;
+    await expect(croatia.lookupRate('BAM', '2026-07-15')).rejects.toThrow('offline');
   });
 
   it('notes the removed Participants the server brought back for its Expense, also from the answer to a retry', async () => {

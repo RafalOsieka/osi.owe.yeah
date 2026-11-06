@@ -24,6 +24,19 @@ export const rateEntrySchema = z.object({
 
 export type RateEntry = z.infer<typeof rateEntrySchema>;
 
+/**
+ * What the server answers when the Expense form looks up one automatic rate ahead of the pull
+ * (`GET /api/trips/:id/rates`): the rate entry; `notCovered` when the provider doesn't cover
+ * the currency, so it needs a Manual rate; `unknown` while there is no telling yet, as the
+ * provider can't be reached or has no rate on or before that date.
+ */
+export const rateLookupSchema = z.discriminatedUnion('status', [
+  z.object({ status: z.literal('found'), entry: rateEntrySchema }),
+  z.object({ status: z.enum(['notCovered', 'unknown']) }),
+]);
+
+export type RateLookup = z.infer<typeof rateLookupSchema>;
+
 /** What an Expense is converted with: the Trip currency and the rate table at hand. */
 export type TripRates = { currency: TripCurrency; rates: readonly RateEntry[] };
 

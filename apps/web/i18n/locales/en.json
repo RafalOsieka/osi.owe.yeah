@@ -381,6 +381,7 @@
   "rate": {
     "currency": "Currency",
     "noRate": "No exchange rate yet",
+    "onSync": "The exchange rate arrives once synced",
     "converted": "{amount} · 1 {from} = {rate} {to}",
     "provisionalHelp": "Provisional rate: the final rate for this day isn't known yet. Amounts in {currency} update by themselves once it is.",
     "missingHelp": "No exchange rate for {from} yet, so this Expense is left out of balances until one arrives.",

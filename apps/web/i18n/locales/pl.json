@@ -381,6 +381,7 @@
   "rate": {
     "currency": "Waluta",
     "noRate": "Brak kursu wymiany",
+    "onSync": "Kurs wymiany pojawi się po synchronizacji",
     "converted": "{amount} · 1 {from} = {rate} {to}",
     "provisionalHelp": "Kurs wstępny: ostateczny kurs z tego dnia nie jest jeszcze znany. Kwoty w {currency} zaktualizują się same, gdy się pojawi.",
     "missingHelp": "Brak kursu wymiany dla {from}, więc ten wydatek nie jest wliczany do sald, dopóki kurs się nie pojawi.",

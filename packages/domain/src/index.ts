@@ -104,9 +104,10 @@ export {
   isRateDateOver,
   neededRates,
   rateEntrySchema,
+  rateLookupSchema,
   rateSummary,
 } from './rates.ts';
-export type { Conversion, ExpenseRate, RateEntry, TripRates } from './rates.ts';
+export type { Conversion, ExpenseRate, RateEntry, RateLookup, TripRates } from './rates.ts';
 export { decimal, manualRateSchema, parseRate, rateSchema } from './manual-rate.ts';
 export type { ManualRate } from './manual-rate.ts';
 export {

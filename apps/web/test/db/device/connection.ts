@@ -2,16 +2,20 @@ import {
   pullResponseSchema,
   pushRequestSchema,
   pushResponseSchema,
+  rateLookupSchema,
   revisionsResponseSchema,
+  type Currency,
   type PullResponse,
   type PushRequest,
   type PushResponse,
+  type RateLookup,
   type ReminderStatus,
   type Revision,
   type SubscriptionRequest,
 } from '@osi/owe-yeah-domain';
 import type { z } from 'zod';
 import type { Reminded, Transport } from '../../../app/sync/device';
+import type { Rates } from '../../../server/trip/rates';
 import type { TripStore } from '../../../server/trip/store';
 import type { TripSync } from '../../../server/trip/sync';
 
@@ -27,9 +31,10 @@ function overTheWire<T>(schema: z.ZodType<T>, value: T): T {
  * A device's connection to the server's real Trip sync, in process (ADR 0004): the device's
  * `Transport`, behind a network the test controls. While `offline` nothing gets through; a
  * lost response reaches the server, but its answer never comes back. Calls outside the sync
- * protocol are stubs until they get a module of their own: push subscriptions, kept here as
- * the server would have them, and Reminders. The sync schema version is the HTTP adapter's
- * check; an in-process device is always built from the same code as the server.
+ * protocol reach the server module behind them too (rate lookups), or are stubs until they
+ * get a module of their own: push subscriptions, kept here as the server would have them, and
+ * Reminders. The sync schema version is the HTTP adapter's check; an in-process device is
+ * always built from the same code as the server.
  */
 export class Connection implements Transport {
   offline = false;
@@ -46,6 +51,7 @@ export class Connection implements Transport {
   constructor(
     private readonly sync: TripSync,
     private readonly store: TripStore,
+    private readonly rates: Rates,
   ) {}
 
   private throwIfOffline(): void {
@@ -83,6 +89,18 @@ export class Connection implements Transport {
     if (!trip) throw new Error('The Trip link was refused');
     const revisions = await this.store.revisions(trip.id, expenseId);
     return overTheWire(revisionsResponseSchema, { revisions }).revisions;
+  }
+
+  async lookupRate(
+    tripId: string,
+    token: string,
+    from: Currency,
+    date: string,
+  ): Promise<RateLookup> {
+    this.throwIfOffline();
+    const trip = await this.store.tripByLink(tripId, token);
+    if (!trip) throw new Error('The Trip link was refused');
+    return overTheWire(rateLookupSchema, await this.rates.lookup(date, from, trip.currency));
   }
 
   async subscribe(
