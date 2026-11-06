@@ -130,6 +130,23 @@ export function balances(trip: TripExpenses): ParticipantBalance[] {
 }
 
 /**
+ * A balance's Share of spending, exact and as shown beside its rounded balance: what is left
+ * once that is taken from what they paid and the Repayments they received, so the amounts
+ * shown add up. The two differ by the rounding.
+ */
+export function shareOfSpending({
+  paid,
+  share,
+  rounded,
+  repaymentsReceived,
+}: ParticipantBalance): { exact: Rational; shown: Rational } {
+  return {
+    exact: subtract(share, repaymentsReceived.amount),
+    shown: subtract(subtract(paid, repaymentsReceived.amount), rounded),
+  };
+}
+
+/**
  * Whether a Trip is Settled: it has Expenses, and every Participant's rounded balance is
  * zero. Derived from the Expenses every time, never stored.
  */

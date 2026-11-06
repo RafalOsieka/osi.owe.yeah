@@ -4,7 +4,7 @@ import {
   decimal,
   negate,
   roundMoney,
-  subtract,
+  shareOfSpending,
   type BreakdownPart,
   type Participant,
   type ParticipantBalance,
@@ -81,18 +81,18 @@ const title = computed(() =>
 
 const sheet = computed(() => {
   const inexact = (amount: Rational) => !roundMoney(amount, currency).exact;
-  // On the Balances tab, what they paid towards Expenses and the Repayments not zero, labelled.
+  // On the Balances tab, what they paid towards Expenses, then the Repayments not zero, labelled.
   const settling = balance
     ? [
         { label: t('breakdown.paid'), ...balance.paidForExpenses },
-        { label: t('breakdown.repaymentsMade'), ...balance.repaymentsMade },
-        { label: t('breakdown.repaymentsReceived'), ...balance.repaymentsReceived },
-      ].filter(({ amount }, index) => index === 0 || amount.numerator !== 0n)
+        ...[
+          { label: t('breakdown.repaymentsMade'), ...balance.repaymentsMade },
+          { label: t('breakdown.repaymentsReceived'), ...balance.repaymentsReceived },
+        ].filter(({ amount }) => amount.numerator !== 0n),
+      ]
     : [];
   // On the Balances tab, the share that adds up with those and their rounded balance.
-  const share = balance
-    ? subtract(subtract(balance.paid, balance.repaymentsReceived.amount), balance.rounded)
-    : breakdown.share;
+  const share = balance ? shareOfSpending(balance).shown : breakdown.share;
   // Whether the share, and so the balance with the rest, include an amount converted at a
   // Provisional rate.
   const shareProvisional = breakdown.parts.some(({ provisional }) => provisional);

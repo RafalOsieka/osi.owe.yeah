@@ -2,7 +2,7 @@
 import {
   compare,
   rational,
-  subtract,
+  shareOfSpending,
   type ParticipantBalance,
   type Rational,
 } from '@osi/owe-yeah-domain';
@@ -41,11 +41,9 @@ const card = computed(() => {
   const sign = shownSign(balance.rounded, currency);
   const amount = money(rational(numerator < 0n ? -numerator : numerator, denominator));
   const { paidForExpenses, repaymentsMade, repaymentsReceived } = balance;
-  // The Share of spending as what is left once the rounded balance is taken from the rest, so
-  // the amounts on the card add up; "≈" while it differs from the exact Share of spending.
-  const spent = subtract(balance.share, repaymentsReceived.amount);
-  const shown = subtract(subtract(balance.paid, repaymentsReceived.amount), balance.rounded);
-  const share = formatMoney(shown, currency, locale.value, 'currency', compare(shown, spent) !== 0);
+  // The Share of spending that adds up with the rest; "≈" while it differs from the exact one.
+  const { exact, shown } = shareOfSpending(balance);
+  const share = formatMoney(shown, currency, locale.value, 'currency', compare(shown, exact) !== 0);
   // The line's segments, each kept whole (no-break spaces) when it wraps.
   const sub = [
     t('balances.youPaid', { amount: money(paidForExpenses.amount) }),
