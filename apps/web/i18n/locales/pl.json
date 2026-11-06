@@ -483,6 +483,14 @@
     "optional": "Opcjonalnie",
     "moreInfo": "Informacje: {label}"
   },
+  "discard": {
+    "newExpense": "Odrzucić ten wydatek?",
+    "newRepayment": "Odrzucić tę spłatę?",
+    "changes": "Odrzucić zmiany?",
+    "lineItems": "pozycje: {count}",
+    "discard": "Odrzuć",
+    "keep": "Edytuj dalej"
+  },
   "history": {
     "title": "Historia",
     "lastEditedBy": "Ostatnia zmiana: {name} · {when}",
