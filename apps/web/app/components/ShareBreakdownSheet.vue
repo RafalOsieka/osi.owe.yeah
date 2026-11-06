@@ -4,9 +4,10 @@ import {
   decimal,
   negate,
   roundMoney,
-  subtract,
-  type Participant,
+  shareOfSpending,
   type BreakdownPart,
+  type Participant,
+  type ParticipantBalance,
   type Rational,
   type ShareBreakdown,
 } from '@osi/owe-yeah-domain';
@@ -14,24 +15,23 @@ import {
 // Where a Participant's share comes from, as a sheet headed by their avatar and name (and
 // what it is of, e.g. the Receipt's title): each
 // part of it (plain Expenses, goods, discounts, Deposits, Deposit refunds, what is not
-// assigned yet, in amber with a line on why it is theirs for now, Income and Repayments
-// received), in the order the Receipt's summary uses, summed up in the share. The claimed Participant's title carries "you". Opened from a share
-// on a Receipt; or, from their bar on the Balances tab, also with what they paid and their
-// balance, said as Balances says it ("Kasia owes €116.95", red; "is owed", green), the share
-// there being what they paid less that balance, as the balance card shows it, so the three add
-// up. Amounts stay exact and are only rounded to show them: the parts are shown rounded, a
-// note says so when rounding changed any, and "≈" marks the share alone, when it is not exact
-// itself. "≈" also marks every amount that includes one converted at a Provisional rate (a
-// part, the share, what they paid, the balance), and a note says the rate is provisional. Done
-// closes it.
+// assigned yet, in amber with a line on why it is theirs for now, and Income), in the order the
+// Receipt's summary uses, summed up in the share. The claimed Participant's title carries "you".
+// Opened from a share on a Receipt; or, from their bar on the Balances tab, where the share is
+// their Share of spending, also with what they paid towards Expenses, the Repayments they made
+// and received (each only when not zero), and their balance, said as Balances says it ("Kasia
+// owes €116.95", red; "is owed", green). The share there is what is left once that balance is
+// taken from the rest, as the balance card shows it, so they all add up. Amounts stay exact and
+// are only rounded to show them: the parts are shown rounded, a note says so when rounding
+// changed any, and "≈" marks the share alone, when it is not exact itself. "≈" also marks every
+// amount that includes one converted at a Provisional rate (a part, the share, what they paid,
+// a Repayment total, the balance), and a note says the rate is provisional. Done closes it.
 const {
   participant,
   breakdown,
   currency,
   claimId = null,
   context = null,
-  paid = null,
-  paidProvisional = false,
   balance = null,
 } = defineProps<{
   participant: Participant;
@@ -40,12 +40,8 @@ const {
   claimId?: string | null;
   /** What the share is of, under the title, e.g. the Receipt's title. */
   context?: string | null;
-  /** What they paid, on the Balances tab. */
-  paid?: Rational | null;
-  /** Whether what they paid includes an amount converted at a Provisional rate. */
-  paidProvisional?: boolean;
-  /** Their rounded balance, as their bar shows it, on the Balances tab. */
-  balance?: Rational | null;
+  /** Their balance, on the Balances tab. */
+  balance?: ParticipantBalance | null;
 }>();
 const open = defineModel<boolean>('open', { required: true });
 
@@ -62,7 +58,6 @@ const ORDER = [
   'deposits',
   'unassigned',
   'income',
-  'repayments',
 ] as const satisfies readonly BreakdownPart[];
 const place = (part: BreakdownPart) => ORDER.indexOf(part);
 
@@ -86,17 +81,27 @@ const title = computed(() =>
 
 const sheet = computed(() => {
   const inexact = (amount: Rational) => !roundMoney(amount, currency).exact;
-  // On the Balances tab, the share that adds up with what they paid and their balance.
-  const share = paid && balance ? subtract(paid, balance) : breakdown.share;
-  // Whether the share, and so the balance with what they paid, include an amount converted at
-  // a Provisional rate.
+  // On the Balances tab, what they paid towards Expenses, then the Repayments not zero, labelled.
+  const settling = balance
+    ? [
+        { label: t('breakdown.paid'), ...balance.paidForExpenses },
+        ...[
+          { label: t('breakdown.repaymentsMade'), ...balance.repaymentsMade },
+          { label: t('breakdown.repaymentsReceived'), ...balance.repaymentsReceived },
+        ].filter(({ amount }) => amount.numerator !== 0n),
+      ]
+    : [];
+  // On the Balances tab, the share that adds up with those and their rounded balance.
+  const share = balance ? shareOfSpending(balance).shown : breakdown.share;
+  // Whether the share, and so the balance with the rest, include an amount converted at a
+  // Provisional rate.
   const shareProvisional = breakdown.parts.some(({ provisional }) => provisional);
-  const balanceProvisional = shareProvisional || paidProvisional;
+  const balanceProvisional = shareProvisional || settling.some(({ provisional }) => provisional);
   // Whether the share is not exactly what it shows.
   const roundedShare = compare(share, breakdown.share) !== 0 || inexact(share);
   const partsRounded =
     roundedShare ||
-    (paid !== null && inexact(paid)) ||
+    settling.some(({ amount }) => inexact(amount)) ||
     breakdown.parts.some(({ amount }) => inexact(amount));
   return {
     parts: breakdown.parts
@@ -109,9 +114,13 @@ const sheet = computed(() => {
       })),
     unassigned: breakdown.parts.some(({ part }) => part === 'unassigned'),
     share: formatMoney(share, currency, locale.value, 'currency', shareProvisional || roundedShare),
+    settling: settling.map(({ label, amount, provisional }) => ({
+      label,
+      amount: rounded(amount, provisional),
+    })),
     partsRounded,
     provisional: balanceProvisional,
-    outcome: balance && outcomeOf(balance, balanceProvisional),
+    outcome: balance && outcomeOf(balance.rounded, balanceProvisional),
   };
 });
 
@@ -176,10 +185,15 @@ function outcomeOf(rounded: Rational, provisional: boolean) {
           <dt>{{ $t('breakdown.share') }}</dt>
           <dd class="shrink-0">{{ sheet.share }}</dd>
         </div>
-        <template v-if="paid && sheet.outcome">
-          <div class="mt-3 flex justify-between gap-3 py-1.5">
-            <dt>{{ $t('breakdown.paid') }}</dt>
-            <dd class="shrink-0">{{ rounded(paid, paidProvisional) }}</dd>
+        <template v-if="sheet.outcome">
+          <div
+            v-for="({ label, amount }, index) in sheet.settling"
+            :key="label"
+            class="flex justify-between gap-3 py-1.5"
+            :class="{ 'mt-3': index === 0 }"
+          >
+            <dt>{{ label }}</dt>
+            <dd class="shrink-0">{{ amount }}</dd>
           </div>
           <div
             class="mt-1 flex justify-between gap-3 border-t border-default pt-2.5 pb-1.5 font-semibold"

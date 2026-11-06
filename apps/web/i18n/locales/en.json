@@ -314,7 +314,10 @@
     "owed": "You're owed",
     "owe": "You owe",
     "even": "You're even",
-    "paidAndShare": "You paid {paid} · your share {share}",
+    "youPaid": "You paid {amount}",
+    "youRepaid": "you repaid {amount}",
+    "yourShare": "your share {amount}",
+    "repaidToYou": "repaid to you {amount}",
     "tripTotal": "Trip total",
     "tripTotalIs": "Trip total {amount}",
     "everyone": "Everyone",
@@ -356,6 +359,8 @@
   "breakdown": {
     "title": "{name}'s share",
     "paid": "Paid",
+    "repaymentsMade": "Repayments made",
+    "repaymentsReceived": "Repayments received",
     "share": "Share",
     "rounded": "≈ rounded to the cent. The exact shares add up to the total.",
     "part": {
@@ -366,8 +371,7 @@
       "depositRefunds": "Deposit refunds",
       "receiptDiscounts": "Receipt discount",
       "unassigned": "Unassigned (for now)",
-      "income": "Income",
-      "repayments": "Repayments received"
+      "income": "Income"
     },
     "owes": "{name} owes",
     "isOwed": "{name} is owed",

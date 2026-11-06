@@ -103,7 +103,7 @@ _Avoid_: Portion, cut
 _Polish avoid_: Porcja
 
 **Balance**:
-What a Participant paid minus their Share, across all of a Trip's Expenses, Repayments included. Above zero they are owed money; below zero they owe it.
+What a Participant paid towards a Trip's Expenses plus the Repayments they made, minus their Share and the Repayments they received. Above zero they are owed money; below zero they owe it.
 _Polish_: Saldo
 _Avoid_: Debt, net
 _Polish avoid_: Bilans, dług

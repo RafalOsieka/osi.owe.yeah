@@ -235,6 +235,41 @@ describe('balances in the Trip currency', () => {
     ]);
     expect(balances(trip).map(({ paidProvisional }) => paidProvisional)).toEqual([true, false]);
   });
+
+  it('converts a Repayment in another currency, marking it when the rate is provisional', () => {
+    // Kasia pays 10.00 USD for both; Ania repays her 20.00 USD, at a rate not fixed yet.
+    const taxi = expense('USD', 1000);
+    const repayment = expenseSchema.parse({
+      id: '019a2b3c-4d5e-7f00-8a1b-0000000000e2',
+      title: 'Repayment',
+      currency: 'USD',
+      time: { instant: '2026-07-14T23:30:00Z', zone: 'Europe/Zagreb' },
+      mainPayerId: ania.id,
+      recipientId: kasia.id,
+      amount: 2000,
+    });
+    const trip = inEur([rate('2026-07-15', 'USD', '0.9', false)], taxi, repayment);
+    const none = { amount: rational(0n), provisional: false };
+
+    expect(
+      balances(trip).map(({ paidForExpenses, repaymentsMade, repaymentsReceived }) => ({
+        paidForExpenses,
+        repaymentsMade,
+        repaymentsReceived,
+      })),
+    ).toEqual([
+      {
+        paidForExpenses: { amount: rational(9n), provisional: true },
+        repaymentsMade: none,
+        repaymentsReceived: { amount: rational(18n), provisional: true },
+      },
+      {
+        paidForExpenses: none,
+        repaymentsMade: { amount: rational(18n), provisional: true },
+        repaymentsReceived: none,
+      },
+    ]);
+  });
 });
 
 describe('rateSummary', () => {

@@ -5,6 +5,7 @@ import {
   rational,
   shareBreakdown,
   shareBreakdowns,
+  subtract,
   type Expense,
   type Rational,
 } from '@osi/owe-yeah-domain';
@@ -219,26 +220,27 @@ describe('shareBreakdowns of a Trip', () => {
     ],
   };
 
-  it('adds up every Participant’s parts across the Trip, plain Expenses, Income and Repayments included', () => {
+  it('adds up every Participant’s parts across the Trip, plain Expenses and Income included, Repayments left out', () => {
     const breakdowns = shareBreakdowns(trip);
 
     expect(breakdowns.get(ania)).toEqual({
-      share: cents(1860n),
+      share: cents(1360n),
       parts: [
         { part: 'expenses', amount: cents(2000n), provisional: false },
         { part: 'goods', amount: cents(400n), provisional: false },
         { part: 'lineDiscounts', amount: cents(-40n), provisional: false },
         { part: 'income', amount: cents(-1000n), provisional: false },
-        { part: 'repayments', amount: cents(500n), provisional: false },
       ],
     });
   });
 
-  it('adds up to the share each balance works with', () => {
+  it('adds up to the Share of spending: each balance’s share less the Repayments received', () => {
     const breakdowns = shareBreakdowns(trip);
 
-    for (const { participantId, share } of balances(trip)) {
-      expect(breakdowns.get(participantId)?.share).toEqual(share);
+    for (const { participantId, share, repaymentsReceived } of balances(trip)) {
+      expect(breakdowns.get(participantId)?.share).toEqual(
+        subtract(share, repaymentsReceived.amount),
+      );
     }
   });
 

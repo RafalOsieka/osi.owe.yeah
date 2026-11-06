@@ -1,21 +1,20 @@
 import { takenOff } from './discount.ts';
 import { expenseKind, type Expense } from './expense.ts';
-import { fromMinor } from './money.ts';
 import { goodsMinor, isDepositRefund } from './line-item.ts';
 import { add, divide, multiply, negate, rational, type Rational } from './rational.ts';
 import { convertible, type TripExpenses } from './settle-up.ts';
 import { lineItemShares, receiptShares, spread } from './shares.ts';
 
 /**
- * Where part of a share comes from, in the order a breakdown lists them:
+ * Where part of a share of spending comes from, in the order a breakdown lists them:
  * - `expenses`: plain Expenses;
  * - `goods`: a Receipt's goods at full price;
  * - `lineDiscounts`, `receiptDiscounts`: what the discounts take off (negative);
  * - `deposits`: Deposits, never discounted;
  * - `depositRefunds`: Deposit refunds (negative);
  * - `unassigned`: a Receipt's value nobody has been given yet, the Main payer's own until it is;
- * - `income`: Income (negative);
- * - `repayments`: Repayments received, which even out what their payers handed over.
+ * - `income`: Income (negative).
+ * Repayments are not spending, so they are no part of it.
  */
 export const BREAKDOWN_PARTS = [
   'expenses',
@@ -26,7 +25,6 @@ export const BREAKDOWN_PARTS = [
   'receiptDiscounts',
   'unassigned',
   'income',
-  'repayments',
 ] as const;
 
 export type BreakdownPart = (typeof BREAKDOWN_PARTS)[number];
@@ -72,11 +70,7 @@ function addExpense(
   };
 
   const kinded = expenseKind(expense);
-  if (kinded.kind === 'repayment') {
-    const { recipientId, amount, currency } = kinded.expense;
-    credit('repayments', new Map([[recipientId, fromMinor(amount, currency)]]));
-    return;
-  }
+  if (kinded.kind === 'repayment') return;
   const { lineItems, discount, currency, mainPayerId } = kinded.expense;
   const { assigned, unassigned } = receiptShares(kinded.expense);
   if (kinded.kind === 'receipt') {
@@ -122,10 +116,10 @@ export function shareBreakdown(expense: Expense): ReadonlyMap<string, ShareBreak
 }
 
 /**
- * Where each Participant's share of the whole Trip comes from, every part added up over its
- * Expenses: the share `balances` works with. Every Participant by id, in the Trip's order.
- * In the Trip currency, leaving out Expenses without a rate, as `balances` does. Shown from a Participant's bar
- * on the Balances tab.
+ * Where each Participant's Share of the Trip's spending comes from, every part added up over
+ * its Expenses: the share `balances` works with, less the Repayments they received. Every
+ * Participant by id, in the Trip's order. In the Trip currency, leaving out Expenses without a
+ * rate, as `balances` does. Shown from a Participant's bar on the Balances tab.
  */
 export function shareBreakdowns(trip: TripExpenses): ReadonlyMap<string, ShareBreakdown> {
   const totals: PartTotals = new Map();

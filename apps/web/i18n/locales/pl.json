@@ -314,7 +314,10 @@
     "owed": "Należy ci się",
     "owe": "Masz do oddania",
     "even": "Wychodzisz na zero",
-    "paidAndShare": "Zapłacone {paid} · twój udział {share}",
+    "youPaid": "Zapłacone {amount}",
+    "youRepaid": "przekazane spłaty {amount}",
+    "yourShare": "twój udział {amount}",
+    "repaidToYou": "otrzymane spłaty {amount}",
     "tripTotal": "Suma wydatków",
     "tripTotalIs": "Suma wydatków {amount}",
     "everyone": "Wszyscy",
@@ -356,6 +359,8 @@
   "breakdown": {
     "title": "Udział: {name}",
     "paid": "Zapłacone",
+    "repaymentsMade": "Przekazane spłaty",
+    "repaymentsReceived": "Otrzymane spłaty",
     "share": "Udział",
     "rounded": "≈ po zaokrągleniu. Dokładne udziały sumują się do całości.",
     "part": {
@@ -366,8 +371,7 @@
       "depositRefunds": "Zwroty kaucji",
       "receiptDiscounts": "Rabat na paragon",
       "unassigned": "Nieprzypisane (na razie)",
-      "income": "Wpływy",
-      "repayments": "Otrzymane spłaty"
+      "income": "Wpływy"
     },
     "owes": "{name}: do oddania",
     "isOwed": "{name}: do odebrania",

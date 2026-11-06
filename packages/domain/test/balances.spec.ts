@@ -52,6 +52,9 @@ describe('balances', () => {
         share: zero,
         balance: zero,
         rounded: zero,
+        paidForExpenses: { amount: zero, provisional: false },
+        repaymentsMade: { amount: zero, provisional: false },
+        repaymentsReceived: { amount: zero, provisional: false },
       })),
     );
   });
@@ -71,7 +74,7 @@ describe('balances', () => {
       ],
     };
 
-    expect(balances(snapshot)).toEqual([
+    expect(balances(snapshot)).toMatchObject([
       {
         participantId: kasia.id,
         paid: rational(10n),
@@ -96,6 +99,58 @@ describe('balances', () => {
         balance: rational(-67n, 12n),
         rounded: rational(-559n, 100n),
       },
+    ]);
+  });
+});
+
+describe('Repayments in balances', () => {
+  /** A Repayment of `minor` cents from `payerId` to `recipientId`. */
+  const repayment = (id: string, payerId: string, recipientId: string, minor: number) =>
+    ({
+      id,
+      title: 'Repayment',
+      currency: 'EUR',
+      time: { instant: '2026-07-15T10:00:00Z', zone: 'Europe/Zagreb' },
+      mainPayerId: payerId,
+      recipientId,
+      amount: minor,
+      version: 1,
+      deleted: false,
+      edited: null,
+    }) satisfies StoredExpense;
+
+  // Kasia pays 30.00 EUR for all three; Ania repays her 10.00 and Ola 5.00.
+  const snapshot: Trip = {
+    ...trip,
+    expenses: [
+      expense('019a2b3c-4d5e-7f00-8a1b-0000000000e1', kasia.id, 3000, [kasia.id, ania.id, ola.id]),
+      repayment('019a2b3c-4d5e-7f00-8a1b-0000000000e2', ania.id, kasia.id, 1000),
+      repayment('019a2b3c-4d5e-7f00-8a1b-0000000000e3', ola.id, kasia.id, 500),
+    ],
+  };
+  const exact = (amount: bigint) => ({ amount: rational(amount), provisional: false });
+
+  it('keeps what was paid towards Expenses apart from the Repayments made and received', () => {
+    expect(
+      balances(snapshot).map(({ paidForExpenses, repaymentsMade, repaymentsReceived }) => ({
+        paidForExpenses,
+        repaymentsMade,
+        repaymentsReceived,
+      })),
+    ).toEqual([
+      { paidForExpenses: exact(30n), repaymentsMade: exact(0n), repaymentsReceived: exact(15n) },
+      { paidForExpenses: exact(0n), repaymentsMade: exact(10n), repaymentsReceived: exact(0n) },
+      { paidForExpenses: exact(0n), repaymentsMade: exact(5n), repaymentsReceived: exact(0n) },
+    ]);
+  });
+
+  it('still counts Repayments in what was paid, the share and the balance', () => {
+    expect(
+      balances(snapshot).map(({ paid, share, balance }) => ({ paid, share, balance })),
+    ).toEqual([
+      { paid: rational(30n), share: rational(25n), balance: rational(5n) },
+      { paid: rational(10n), share: rational(10n), balance: rational(0n) },
+      { paid: rational(5n), share: rational(10n), balance: rational(-5n) },
     ]);
   });
 });
