@@ -93,7 +93,7 @@ const refundError = ref<string | null>(null);
 type AddForm = 'goods' | 'refund';
 // Whether each add form holds a line that isn't on the Receipt yet.
 const typed = computed<Record<AddForm, boolean>>(() => ({
-  goods: adding.price.trim() !== '' || adding.name.trim() !== '',
+  goods: [adding.name, adding.price, adding.deposit].some((field) => field.trim() !== ''),
   refund: refundAmount.value.trim() !== '',
 }));
 watchEffect(() => {

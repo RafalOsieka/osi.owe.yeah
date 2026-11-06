@@ -64,6 +64,17 @@ describe('TillList', () => {
     expect(input(wrapper, 'Deposit refund amount').exists()).toBe(true);
   });
 
+  it('keeps goods with only a Deposit per unit typed pending', async () => {
+    const { wrapper, pending } = await tillList();
+    await click(wrapper, 'Add a Line item');
+    await input(wrapper, 'New Line item Deposit per unit').setValue('0,25');
+
+    await click(wrapper, 'Add a Deposit refund');
+
+    expect(pending()).toBe(true);
+    expect(input(wrapper, 'New Line item Deposit per unit').exists()).toBe(true);
+  });
+
   it('folds an empty add form when the other one opens', async () => {
     const { wrapper } = await tillList();
     await click(wrapper, 'Add a Line item');
