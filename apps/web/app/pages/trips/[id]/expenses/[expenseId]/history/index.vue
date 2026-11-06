@@ -1,5 +1,5 @@
 <script setup lang="ts">
-import { compare, type Rational } from '@osi/owe-yeah-domain';
+import { compare } from '@osi/owe-yeah-domain';
 import { findExpense } from '~/sync/local-trip';
 
 // An Expense's History, opened from its detail page, under the Expense's title: its
@@ -31,8 +31,8 @@ const rows = computed(() => {
   const list = new Intl.ListFormat(locale.value);
   return revisionEntries(data.value ?? []).map(({ revision, kind, before, after, changed }) => {
     const { by, at } = revision.edited;
-    const { currency } = revision.expense;
-    const money = (amount: Rational) => formatMoney(amount, currency, locale.value);
+    const money = ({ amount, currency }: RevisionTotal) =>
+      formatMoney(amount, currency, locale.value);
     const name =
       by === claim.value?.id
         ? t('history.you')
@@ -53,9 +53,10 @@ const rows = computed(() => {
             })
           : null,
       total: money(after),
-      // The total before an edit that moved it.
+      // The total before an edit that moved it, in its own currency.
       was:
-        before !== null && compare(before, after) !== 0
+        before !== null &&
+        (before.currency !== after.currency || compare(before.amount, after.amount) !== 0)
           ? t('history.was', { amount: money(before) })
           : null,
     };
