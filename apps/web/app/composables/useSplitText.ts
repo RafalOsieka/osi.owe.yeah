@@ -41,11 +41,11 @@ export function useSplitText() {
           )
         : splitParticipantIds(split);
     // Each Share of the line after its Line discount, when an Amounts split has one.
-    const discounted =
+    const discountedShares =
       split.mode === 'amounts' && currency && item?.discount && item.split.mode === 'amounts'
         ? spread(item, lineItemShares(item, currency).net).shares
         : null;
-    const mode = discounted
+    const mode = discountedShares
       ? t('receipt.amountsAfterLineDiscount')
       : t(`receipt.mode.${split.mode}`);
     if (ids.length === 0) return `${mode} · ${t('receipt.nobodyYet')}`;
@@ -55,8 +55,8 @@ export function useSplitText() {
     const names =
       split.mode === 'units'
         ? split.parts.map(({ participantId, units }) => `${nameOf(participantId)} ${units}`)
-        : discounted && currency
-          ? [...discounted].map(
+        : discountedShares && currency
+          ? [...discountedShares].map(
               ([id, share]) => `${nameOf(id)} ${formatMoney(share, currency, locale.value)}`,
             )
           : split.mode === 'amounts' && currency
