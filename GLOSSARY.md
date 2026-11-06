@@ -99,13 +99,13 @@ _Polish avoid_: Przychód, zarobek, zwrot
 **Share**:
 The part of an Expense, or of all of a Trip's Expenses, that falls to one Participant.
 _Polish_: Udział
-_Avoid_: Portion, cut, part
-_Polish avoid_: Część, porcja
+_Avoid_: Portion, cut
+_Polish avoid_: Porcja
 
 **Balance**:
 What a Participant paid minus their Share, across all of a Trip's Expenses, Repayments included. Above zero they are owed money; below zero they owe it.
 _Polish_: Saldo
-_Avoid_: Debt, total, net
+_Avoid_: Debt, net
 _Polish avoid_: Bilans, dług
 
 **Repayment**:
