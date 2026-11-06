@@ -27,7 +27,7 @@ _Avoid_: Invite link, share link, code
 _Polish avoid_: Zaproszenie, kod
 
 **Claim**:
-Which Participant a person says they are, on one device and for one Trip. It sets defaults, such as the Main payer of new Expenses, and grants no extra rights.
+Which Participant a person says they are, on one device and for one Trip. The app shows that Participant's Share and Balance as theirs, calls them "you", and uses them for defaults such as the Main payer of new Expenses. It grants no extra rights.
 _Polish_: Przypisanie (a term for code and docs only; the UI asks "Kim jesteś?" and never shows the word)
 _Avoid_: Login, identity, profile
 _Polish avoid_: Logowanie, tożsamość, profil, roszczenie
@@ -96,14 +96,26 @@ _Polish avoid_: Przychód, zarobek, zwrot
 
 ### Settling up
 
+**Share**:
+The part of an Expense, or of all of a Trip's Expenses, that falls to one Participant.
+_Polish_: Udział
+_Avoid_: Portion, cut
+_Polish avoid_: Porcja
+
+**Balance**:
+What a Participant paid minus their Share, across all of a Trip's Expenses, Repayments included. Above zero they are owed money; below zero they owe it.
+_Polish_: Saldo
+_Avoid_: Debt, net
+_Polish avoid_: Bilans, dług
+
 **Repayment**:
-Money one Participant hands to another to even out their balances; modelled as an Expense with one payer and one recipient. Not counted as spending.
+Money one Participant hands to another to even out their Balances; modelled as an Expense with one payer and one recipient. Not counted as spending.
 _Polish_: Spłata
 _Avoid_: Settlement, transfer, reimbursement, payment
 _Polish avoid_: Rozliczenie, przelew, zwrot, płatność
 
 **Suggested Repayment**:
-A Repayment the app proposes so that balances even out with as few transfers as possible. It is only a proposal until someone records it as a Repayment.
+A Repayment the app proposes so that Balances even out with as few transfers as possible. It is only a proposal until someone records it as a Repayment.
 _Polish_: Sugerowana spłata
 _Avoid_: Settlement, debt, transfer, Repayment (on its own)
 _Polish avoid_: Rozliczenie, dług, przelew, spłata (on its own)
@@ -121,7 +133,7 @@ _Avoid_: Push, push notification, alert
 _Polish avoid_: Push, alert, komunikat
 
 **Settled**:
-A Trip with at least one Expense in which every Participant's balance, rounded to whole cents, is zero.
+A Trip with at least one Expense in which every Participant's Balance, rounded to whole cents, is zero.
 _Polish_: Rozliczona (of a Podróż)
 _Avoid_: Closed, done, paid off
 _Polish avoid_: Zamknięta, zakończona, spłacona
@@ -129,7 +141,7 @@ _Polish avoid_: Zamknięta, zakończona, spłacona
 ### Currencies
 
 **Trip currency**:
-The one currency a Trip's balances are kept and settled in. Every Expense in another currency is converted into it.
+The one currency a Trip's Balances are kept and settled in. Every Expense in another currency is converted into it.
 _Polish_: Waluta podróży
 _Avoid_: Main currency, base currency, home currency
 _Polish avoid_: Waluta główna, waluta bazowa
@@ -149,7 +161,7 @@ _Polish avoid_: Kurs szacunkowy, kurs tymczasowy
 ### Working offline
 
 **Conflict**:
-Two Participants changed or deleted the same Expense independently, without seeing each other's change. Whoever syncs second chooses whose version to keep.
+Two Participants changed or deleted the same Expense independently, without seeing each other's change. Whoever syncs second chooses whose change to keep.
 _Polish_: Konflikt
 _Avoid_: Merge conflict, clash, collision
 _Polish avoid_: Kolizja
