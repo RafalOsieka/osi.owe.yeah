@@ -172,12 +172,14 @@ const details = computed(() => {
                     draftSplit(item.split, expense.currency),
                     everyone.value,
                     expense.currency,
+                    item,
                   ),
                 })
               : splitText(
                   draftSplit(item.split, expense.currency),
                   everyone.value,
                   expense.currency,
+                  item,
                 ),
           ]
             .filter((fact) => fact !== null)
