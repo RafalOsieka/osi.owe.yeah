@@ -5,9 +5,10 @@ import type { FormError } from '@nuxt/ui';
 // One name field and a button, used for "Add me", for adding a Participant, and, given their
 // `name`, for correcting a Participant's name. The button is the solid primary once a new name
 // is typed, and plainly unavailable before; it has the field's corners, so the two read as one
-// control. Emits the trimmed name, and the parent does the saving. A form for a new name then
-// clears itself; one correcting a name keeps what was typed while its sheet closes.
-const { name = '', icon = 'i-lucide-user-plus' } = defineProps<{
+// control. Emits the trimmed name, never an unchanged one, and the parent does the saving.
+// A form for a new name then clears itself; one correcting a name keeps what was typed as its
+// sheet closes.
+const { name, icon = 'i-lucide-user-plus' } = defineProps<{
   label: string;
   submitLabel: string;
   icon?: string;
@@ -16,7 +17,7 @@ const { name = '', icon = 'i-lucide-user-plus' } = defineProps<{
 const emit = defineEmits<{ submit: [name: string] }>();
 
 const { t } = useI18n();
-const state = reactive({ name });
+const state = reactive({ name: name ?? '' });
 const typed = computed(() => {
   const trimmed = state.name.trim();
   return trimmed !== '' && trimmed !== name;
@@ -29,8 +30,10 @@ function validate(form: Partial<typeof state>): FormError[] {
 }
 
 function submit(): void {
+  // Enter submits even while the button is unavailable.
+  if (!typed.value) return;
   emit('submit', participantNameSchema.parse(state.name));
-  if (name === '') state.name = '';
+  if (name === undefined) state.name = '';
 }
 </script>
 
