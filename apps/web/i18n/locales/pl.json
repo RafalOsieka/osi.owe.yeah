@@ -224,6 +224,7 @@
       "units": "Na sztuki",
       "amounts": "Kwotowo"
     },
+    "amountsAfterLineDiscount": "Kwotowo po rabacie na pozycję",
     "unitsFor": "Sztuki: {name}",
     "amountFor": "Kwota: {name}",
     "unitsAssigned": "Przypisane sztuki: {assigned} z {quantity}",

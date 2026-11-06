@@ -1,8 +1,10 @@
 import {
   fromMinor,
+  lineItemShares,
   negate,
   parseMoney,
   splitParticipantIds,
+  spread,
   type Discount,
   type LineItem,
   type LineItemShares,
@@ -15,12 +17,20 @@ import type { DraftSplit } from '~/utils/expense-draft';
  * How a Line item's split reads in one line: its Split mode and who it names, with their
  * units for Units ("Units · Ania 2, Kasia 1") and, given the `currency`, their amounts for
  * Amounts ("Amounts · Kasia €10.00, Marta €4.50"), "all N" when Even names everyone, or that
- * nobody has been given any of it yet. A saved split goes through `draftSplit` first.
+ * nobody has been given any of it yet. A saved split goes through `draftSplit` first. Typed
+ * amounts weigh against the full price, so given the Line `item` with a Line discount, Amounts
+ * shows what each Participant's part of the line comes to after it ("Amounts after the Line
+ * discount · Kasia €7.50"), without the Deposit, which the line says on its own.
  */
 export function useSplitText() {
   const { t, locale } = useI18n();
 
-  return (split: DraftSplit, participants: readonly Participant[], currency?: string): string => {
+  return (
+    split: DraftSplit,
+    participants: readonly Participant[],
+    currency?: string,
+    item?: LineItem | null,
+  ): string => {
     const nameOf = (id: string) =>
       participants.find((participant) => participant.id === id)?.name ?? '?';
     const ids =
@@ -30,7 +40,14 @@ export function useSplitText() {
             amount.trim() === '' ? [] : [participantId],
           )
         : splitParticipantIds(split);
-    const mode = t(`receipt.mode.${split.mode}`);
+    // Each Share of the line after its Line discount, when an Amounts split has one.
+    const discounted =
+      split.mode === 'amounts' && currency && item?.discount && item.split.mode === 'amounts'
+        ? spread(item, lineItemShares(item, currency).net).shares
+        : null;
+    const mode = discounted
+      ? t('receipt.amountsAfterLineDiscount')
+      : t(`receipt.mode.${split.mode}`);
     if (ids.length === 0) return `${mode} · ${t('receipt.nobodyYet')}`;
     if (split.mode === 'even' && ids.length === participants.length) {
       return `${mode} · ${t('expense.forAll', { count: ids.length })}`;
@@ -38,18 +55,22 @@ export function useSplitText() {
     const names =
       split.mode === 'units'
         ? split.parts.map(({ participantId, units }) => `${nameOf(participantId)} ${units}`)
-        : split.mode === 'amounts' && currency
-          ? split.parts.flatMap(({ participantId, amount }) => {
-              // An Amount is as typed; one that can't be read shows that way.
-              if (amount.trim() === '') return [];
-              const minor = parseMoney(amount, currency);
-              const shown =
-                minor === null
-                  ? amount
-                  : formatMoney(fromMinor(minor, currency), currency, locale.value);
-              return [`${nameOf(participantId)} ${shown}`];
-            })
-          : ids.map(nameOf);
+        : discounted && currency
+          ? [...discounted].map(
+              ([id, share]) => `${nameOf(id)} ${formatMoney(share, currency, locale.value)}`,
+            )
+          : split.mode === 'amounts' && currency
+            ? split.parts.flatMap(({ participantId, amount }) => {
+                // An Amount is as typed; one that can't be read shows that way.
+                if (amount.trim() === '') return [];
+                const minor = parseMoney(amount, currency);
+                const shown =
+                  minor === null
+                    ? amount
+                    : formatMoney(fromMinor(minor, currency), currency, locale.value);
+                return [`${nameOf(participantId)} ${shown}`];
+              })
+            : ids.map(nameOf);
     return `${mode} · ${new Intl.ListFormat(locale.value, { style: 'narrow' }).format(names)}`;
   };
 }

@@ -224,6 +224,7 @@
       "units": "Units",
       "amounts": "Amounts"
     },
+    "amountsAfterLineDiscount": "Amounts after the Line discount",
     "unitsFor": "Units for {name}",
     "amountFor": "Amount for {name}",
     "unitsAssigned": "{assigned} of {quantity} units assigned",

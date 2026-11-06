@@ -11,7 +11,7 @@ export {
   tripVersionSchema,
 } from './snapshot.ts';
 export type { Edited, Revision, StoredExpense, TripSnapshot } from './snapshot.ts';
-export { claimView, expenseShares, lineItemShares, receiptShares } from './shares.ts';
+export { claimView, expenseShares, lineItemShares, receiptShares, spread } from './shares.ts';
 export { BREAKDOWN_PARTS, shareBreakdown, shareBreakdowns } from './breakdown.ts';
 export type { BreakdownPart, ShareBreakdown } from './breakdown.ts';
 export { discountSchema, parsePercent } from './discount.ts';
