@@ -4,6 +4,7 @@ import {
   expenseKind,
   expenseShares,
   isRepayment,
+  type Currency,
   type Expense,
   type Rational,
   type Revision,
@@ -35,6 +36,7 @@ function same<T>(a: T, b: T): boolean {
 /**
  * What differs between two versions of the same Expense, in `EXPENSE_FIELDS` order; only
  * what the Expense is, not the device's sync state, so either can be a device's own version.
+ * A currency change changes the amount too: the same number in another currency is other money.
  */
 export function changedFields(given: Expense, now: Expense): ExpenseField[] {
   // Read through the schema, so their keys come in its order, whichever device wrote them.
@@ -51,7 +53,7 @@ export function changedFields(given: Expense, now: Expense): ExpenseField[] {
   const forWhom = (expense: Expense) => [...expenseShares(expense).shares.keys()].sort();
   const differs = {
     title: before.title !== after.title,
-    amount: compare(expenseShares(before).total, expenseShares(after).total) !== 0,
+    amount: !sameTotal(revisionTotal(before), revisionTotal(after)),
     currency: before.currency !== after.currency,
     when: !same(before.time, after.time),
     paidBy: !same(paidBy(before), paidBy(after)),
@@ -63,14 +65,26 @@ export function changedFields(given: Expense, now: Expense): ExpenseField[] {
   return EXPENSE_FIELDS.filter((field) => differs[field]);
 }
 
+/** An Expense's total, in the currency of the Revision it is from. */
+export type RevisionTotal = { amount: Rational; currency: Currency };
+
+function revisionTotal(expense: Expense): RevisionTotal {
+  return { amount: expenseShares(expense).total, currency: expense.currency };
+}
+
+/** Whether two totals are the same money: the same number in another currency is not. */
+export function sameTotal(a: RevisionTotal, b: RevisionTotal): boolean {
+  return a.currency === b.currency && compare(a.amount, b.amount) === 0;
+}
+
 /** One row of an Expense's History. */
 export type RevisionEntry = {
   revision: Revision;
   /** What the change that made it did. */
   kind: 'added' | 'edited' | 'deleted' | 'restored';
   /** The Expense's total before the change; `null` for the first Revision. */
-  before: Rational | null;
-  after: Rational;
+  before: RevisionTotal | null;
+  after: RevisionTotal;
   /** What an edit changed; empty for any other change. */
   changed: ExpenseField[];
 };
@@ -82,10 +96,10 @@ export type RevisionEntry = {
 export function revisionEntries(newestFirst: readonly Revision[]): RevisionEntry[] {
   return newestFirst.map((revision, index) => {
     const previous = newestFirst[index + 1];
-    const after = expenseShares(revision.expense).total;
+    const after = revisionTotal(revision.expense);
     if (!previous) return { revision, kind: 'added', before: null, after, changed: [] };
 
-    const before = expenseShares(previous.expense).total;
+    const before = revisionTotal(previous.expense);
     if (revision.deleted === previous.deleted) {
       const changed = changedFields(previous.expense, revision.expense);
       return { revision, kind: 'edited', before, after, changed };
