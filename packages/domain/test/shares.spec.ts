@@ -121,8 +121,8 @@ describe('claimView', () => {
     };
 
     expect(claimView(shop, ania)).toEqual({ kind: 'getBack', amount: rational(3n, 10n) });
-    // She paid 9.10 and bears 9.70, so this Receipt costs her 0.60 more than she paid.
-    expect(claimView(shop, kasia)).toEqual({ kind: 'share', amount: rational(3n, 5n) });
+    // She paid 9.10 and bears 9.70: below her Share, so it shows her whole Share.
+    expect(claimView(shop, kasia)).toEqual({ kind: 'share', amount: rational(97n, 10n) });
   });
 
   it('shows a Repayment as paid by its payer and received by its recipient, and nobody else', () => {
