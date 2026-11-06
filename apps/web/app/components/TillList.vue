@@ -20,7 +20,8 @@ import {
 // then the add forms, each folded into a row until tapped: one for goods, with an optional
 // Deposit per unit, and one for a Deposit refund. An open add form is a pending line, tinted,
 // showing the split it will get and saying it isn't on the Receipt until "Add to Receipt" (or
-// Discard); `pending` tells the form while one has something typed. Whatever the slot holds
+// Discard, which clears it); `pending` tells the form while either has something typed, and
+// such a form stays open when the other one opens. Whatever the slot holds
 // (the Receipt's sums) closes the card. New goods copy the previous goods' split when it was
 // Even, and otherwise start Even across all Participants; a Deposit refund always starts Even
 // across all Participants.
@@ -61,7 +62,8 @@ function addRefusal(line: DraftLineItem): string | null {
   return t('expense.amountInvalid', { decimals }, decimals);
 }
 
-const adding = reactive({ name: '', price: '', quantity: 1, deposit: '' });
+const blankGoods = () => ({ name: '', price: '', quantity: 1, deposit: '' });
+const adding = reactive(blankGoods());
 const addError = ref<string | null>(null);
 
 // What the line being typed comes to, Deposits included; `null` before its price reads.
@@ -85,13 +87,41 @@ const goodsSplit = computed(() =>
   ),
 );
 
-// Which add form is open. Each stays folded into one row until tapped, so the Receipt leads;
-// the goods form opens on its price, as the till prints it.
-const composing = ref<'goods' | 'refund' | null>(null);
-async function compose(form: 'goods' | 'refund'): Promise<void> {
-  composing.value = form;
+const refundAmount = ref('');
+const refundError = ref<string | null>(null);
+
+type AddForm = 'goods' | 'refund';
+// Whether each add form holds a line that isn't on the Receipt yet.
+const typed = computed<Record<AddForm, boolean>>(() => ({
+  goods: [adding.name, adding.price, adding.deposit].some((field) => field.trim() !== ''),
+  refund: refundAmount.value.trim() !== '',
+}));
+watchEffect(() => {
+  pending.value = typed.value.goods || typed.value.refund;
+});
+
+// Which add forms are open. Each stays folded into one row until tapped, so the Receipt leads;
+// opening one folds the other unless it holds something typed. The goods form opens on its
+// price, as the till prints it.
+const open = reactive<Record<AddForm, boolean>>({ goods: false, refund: false });
+async function compose(form: AddForm): Promise<void> {
+  const other = form === 'goods' ? 'refund' : 'goods';
+  if (!typed.value[other]) discard(other);
+  open[form] = true;
   await nextTick();
   if (form === 'goods') priceInput.value?.focus();
+}
+
+// Folds an add form and clears what was typed in it.
+function discard(form: AddForm): void {
+  open[form] = false;
+  if (form === 'goods') {
+    Object.assign(adding, blankGoods());
+    addError.value = null;
+  } else {
+    refundAmount.value = '';
+    refundError.value = null;
+  }
 }
 
 function add(): void {
@@ -105,12 +135,9 @@ function add(): void {
   addError.value = addRefusal(line);
   if (addError.value) return;
   lineItems.value = [...lineItems.value, line];
-  Object.assign(adding, { name: '', price: '', quantity: 1, deposit: '' });
+  Object.assign(adding, blankGoods());
   priceInput.value?.focus();
 }
-
-const refundAmount = ref('');
-const refundError = ref<string | null>(null);
 
 function addRefund(): void {
   const line = draftLineItem({
@@ -125,12 +152,6 @@ function addRefund(): void {
   lineItems.value = [...lineItems.value, line];
   refundAmount.value = '';
 }
-
-watchEffect(() => {
-  pending.value =
-    (composing.value === 'goods' && (adding.price.trim() !== '' || adding.name.trim() !== '')) ||
-    (composing.value === 'refund' && refundAmount.value.trim() !== '');
-});
 
 function replace(index: number, line: DraftLineItem): void {
   lineItems.value = lineItems.value.with(index, line);
@@ -180,7 +201,7 @@ const addRow =
       </ol>
 
       <button
-        v-if="composing !== 'goods'"
+        v-if="!open.goods"
         type="button"
         :class="[addRow, { 'border-t-0': lineItems.length === 0 }]"
         @click="compose('goods')"
@@ -208,7 +229,7 @@ const addRow =
             variant="link"
             :label="$t('receipt.closeAdding')"
             class="-me-3"
-            @click="composing = null"
+            @click="discard('goods')"
           />
         </div>
         <UFormField :label="$t('receipt.name')">
@@ -270,12 +291,7 @@ const addRow =
         <p class="text-center text-sm text-muted">{{ $t('receipt.pendingHelp') }}</p>
       </div>
 
-      <button
-        v-if="composing !== 'refund'"
-        type="button"
-        :class="addRow"
-        @click="compose('refund')"
-      >
+      <button v-if="!open.refund" type="button" :class="addRow" @click="compose('refund')">
         <span class="grid size-8 place-items-center rounded-full bg-primary/10">
           <UIcon name="i-lucide-undo-2" class="size-4" />
         </span>
@@ -294,7 +310,7 @@ const addRow =
             variant="link"
             :label="$t('receipt.closeAdding')"
             class="-me-3"
-            @click="composing = null"
+            @click="discard('refund')"
           />
         </div>
         <UFormField :label="$t('receipt.refundAmount')">
