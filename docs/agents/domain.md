@@ -46,7 +46,7 @@ If the concept you need isn't in the glossary yet, that's a signal: either you'r
 
 ## Polish wording
 
-- **Writing Polish user-facing text** (e.g. `apps/web/i18n/locales/pl.json`): use the term's `_Polish_` word from `GLOSSARY.md`, inflected as Polish grammar needs. Never use a word from its `_Polish avoid_` list.
+- **Writing Polish user-facing text** (e.g. `apps/web/i18n/locales/pl.json`): use the term's `_Polish_` word from `GLOSSARY.md`, inflected as Polish grammar needs. Never use a word from its `_Polish avoid_` list; `apps/web/test/unit/locale-glossary.spec.ts` checks this in CI.
 - **Adding or renaming a glossary term**: also set its `_Polish_` word (singular nominative). If the right word is unclear, ask the user instead of guessing.
 
 ## Flag ADR conflicts

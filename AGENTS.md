@@ -4,7 +4,7 @@
 
 ### Issue tracker
 
-Issues are tracked in GitHub Issues (`RafalOsieka/osi.owe.yeah`) via the `gh` CLI. See `docs/agents/issue-tracker.md`.
+Specs and issues live in GitHub Issues (`RafalOsieka/osi.owe.yeah`), via the `gh` CLI; specs carry the `spec` label. See `docs/agents/issue-tracker.md`.
 
 ### Triage labels
 
@@ -12,7 +12,7 @@ Default vocabulary: `needs-triage`, `needs-info`, `ready-for-agent`, `ready-for-
 
 ### Domain docs
 
-Single-context: root `GLOSSARY.md` + `docs/adr/`. See `docs/agents/domain.md`.
+Single-context: root `GLOSSARY.md` + `docs/adr/`. See `docs/agents/domain.md`. UI work also follows `docs/design/principles.md`.
 
 ## Before pushing
 

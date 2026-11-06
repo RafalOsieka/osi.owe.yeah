@@ -2,6 +2,14 @@
 
 Issues and specs for this repo live as GitHub issues. Use the `gh` CLI for all operations.
 
+## Specs
+
+A **spec** issue carries the `spec` label. Its sub-issues are the feature specs, each with acceptance criteria, and they stay closed once built. A later change to what a spec pinned is recorded as a "Superseded in part by #N" comment on the issue it changes, so read an issue's comments along with its body.
+
+- **Find the specs**: `gh issue list --state all --label spec --json number,title`.
+- **Find a spec's feature specs**: `gh api repos/RafalOsieka/osi.owe.yeah/issues/<spec>/sub_issues --jq '.[] | "\(.number) \(.title)"'`.
+- **Write a new spec**: give it the `spec` label, and make each feature issue its sub-issue.
+
 ## Conventions
 
 - **Create an issue**: `gh issue create --title "..." --body "..."`. Use a heredoc for multi-line bodies.
