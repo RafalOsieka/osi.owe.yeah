@@ -16,9 +16,11 @@ import type { DraftManualRate, RepaymentReading } from '~/utils/expense-draft';
 // which it holds, in the currency it targets: the Trip currency, or the one it was typed for
 // when it was saved before the Trip currency changed. Under it, the rate it comes to, the
 // readable way round ("1 EUR ≈ 397.52 HUF"); the converted total is left out while it is the
-// amount charged typed below. It opens by itself when one is saved, and asks for one while
-// there is no automatic rate, saying so. A Manual rate is for one currency, so picking another clears it
-// and points it at the Trip currency again. The form reads and checks the Manual rate (`name`
+// amount charged typed below. It opens by itself when one is saved, and asks for one when the
+// provider doesn't cover the currency, saying so. The automatic rate is looked up from the
+// server for the currency and date typed (`useRateLookup`); while it can't be, it says the rate
+// comes once synced. A Manual rate is for one currency, so picking another clears it and points
+// it at the Trip currency again. The form reads and checks the Manual rate (`name`
 // `manualRate`); a Trip rule it breaks shows as `error` while it stands.
 const { reading, error = undefined } = defineProps<{
   /** The form's draft as read so far (`readDraft`): its total, time and Manual rate. */
@@ -48,9 +50,24 @@ const missing = computed(
     ) === null,
 );
 
+const lookup = useRateLookup(() => {
+  const { time, manualRate: typed } = reading;
+  if (time === null) return null;
+  return { currency: currency.value, time, manualRate: typed === 'unreadable' ? undefined : typed };
+});
+
+// No automatic rate, as the provider doesn't cover the currency: a Manual rate is needed.
+const notCovered = computed(() => missing.value && lookup.value === 'notCovered');
+
+// Why there is no rate to convert at; nothing while the server is asked.
+const noRate = computed(() => {
+  if (lookup.value === 'checking' || lookup.value === 'found') return null;
+  return lookup.value === 'unknown' ? t('rate.onSync') : t('rate.noRate');
+});
+
 const opened = ref(false);
 const shown = computed(
-  () => foreign.value && (opened.value || manualRate.value.value !== '' || missing.value),
+  () => foreign.value && (opened.value || manualRate.value.value !== '' || notCovered.value),
 );
 
 // The rate the total is converted at, with the Manual rate typed if any; `null` while the
@@ -67,8 +84,8 @@ const converted = computed(() => {
   const { time, total, manualRate: typed } = reading;
   if (!foreign.value || time === null || typed === 'unreadable') return null;
   if (typed?.kind === 'charged') return null;
-  if (total === null) return typed === undefined && missing.value ? t('rate.noRate') : null;
-  if (!found.value) return t('rate.noRate');
+  if (total === null) return typed === undefined && missing.value ? noRate.value : null;
+  if (!found.value) return noRate.value;
   return formatMoney(
     multiply(total, found.value.rate),
     trip.value.currency,
@@ -137,7 +154,7 @@ const value = computed({
     >
       <div>
         <h3 class="text-sm font-medium text-highlighted">{{ $t('rate.conversion') }}</h3>
-        <p v-if="missing" class="mt-0.5 text-sm text-muted">
+        <p v-if="notCovered" class="mt-0.5 text-sm text-muted">
           {{
             manualRate.value === ''
               ? $t('rate.askManual', { from: currency })

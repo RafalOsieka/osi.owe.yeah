@@ -9,5 +9,6 @@ We chose this over copying the rate onto each Expense. A stored rate would make 
 - Changing the Trip currency is a plain Trip-details edit. Nothing on the Expenses changes, and every automatic rate is simply looked up for the new pair.
 - A Manual rate targets the currency it was entered in. When that is no longer the Trip currency, it is chained through the automatic rate for the Expense's date.
 - Rates for today and future dates are provisional and are marked as such. They become fixed once the date is over, and balances update with no Expense changes. Offline devices use their latest cached rate as a Provisional rate in the meantime.
+- The Expense form may fetch a single rate entry from the same table ahead of the pull, for a currency or date the Trip hasn't used yet, so all devices still convert with the same inputs.
 - The backend must keep the rate table forever and never change a fixed rate, or old balances would shift. Swapping the rate provider later affects only rates that are not fixed yet.
 - The Trip currency must be one the provider covers. Expense currencies it doesn't cover need a Manual rate.

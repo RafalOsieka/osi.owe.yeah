@@ -11,6 +11,7 @@ const noSignal = () => Promise.reject(new Error('offline'));
 const unreachable: Transport = {
   push: noSignal,
   pull: noSignal,
+  lookupRate: noSignal,
   revisions: noSignal,
   subscribe: noSignal,
   unsubscribe: noSignal,

@@ -1,6 +1,7 @@
 import {
   pullResponseSchema,
   pushResponseSchema,
+  rateLookupSchema,
   reminderRefusalSchema,
   reminderStatusSchema,
   revisionsResponseSchema,
@@ -28,6 +29,13 @@ export const httpTransport: Transport = {
     if (response.status === 401) return 'invalidLink';
     if (!response.ok) throw new Error(`Pull failed with ${response.status}`);
     return pullResponseSchema.parse(response._data);
+  },
+  async lookupRate(tripId, token, from, date) {
+    const response = await syncApi(`/api/trips/${tripId}/rates`, {
+      headers: { [TRIP_TOKEN_HEADER]: token },
+      query: { from, date },
+    });
+    return rateLookupSchema.parse(response);
   },
   async revisions(tripId, token, expenseId) {
     const response = await syncApi(`/api/trips/${tripId}/expenses/${expenseId}/revisions`, {

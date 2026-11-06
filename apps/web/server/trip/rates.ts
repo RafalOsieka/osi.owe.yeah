@@ -4,6 +4,7 @@ import {
   rateEntrySchema,
   type Currency,
   type RateEntry,
+  type RateLookup,
   type Trip,
 } from '@osi/owe-yeah-domain';
 import { and, eq, inArray, not, sql } from 'drizzle-orm';
@@ -22,6 +23,7 @@ const UNREACHABLE_RETRY_MS = 60 * 1000;
 const AROUND_MS = 7 * 24 * 60 * 60 * 1000;
 
 const key = (date: string, from: string, to: string) => `${date} ${from} ${to}`;
+const pairKey = (from: string, to: string) => `${from} ${to}`;
 
 /**
  * The rate table, filled lazily from Frankfurter at `frankfurterUrl` (ADR 0003). An entry
@@ -32,6 +34,8 @@ const key = (date: string, from: string, to: string) => `${date} ${from} ${to}`;
 export function createRates(db: Database, frankfurterUrl: string) {
   /** When each `date from to` entry that is not fixed may be asked for again. */
   const retryAt = new Map<string, number>();
+  /** The `from to` pairs the provider refused when last asked: it doesn't cover them. */
+  const notCovered = new Set<string>();
 
   /** The table's entries among `needed`, by `key`. */
   async function selectRates(
@@ -63,14 +67,13 @@ export function createRates(db: Database, frankfurterUrl: string) {
   }
 
   /**
-   * The rate entries `expenses` need to be converted into the Trip currency, filling the
-   * rate table as they go: e.g. for an Expense as it was before a change.
+   * The table's entries among `needed` in `currency`, filling the table from the provider
+   * first with those that are missing or not fixed, unless they were asked for lately.
    */
-  async function forExpenses(
-    expenses: Parameters<typeof neededRates>[0],
+  async function filled(
+    needed: readonly { date: string; from: Currency }[],
     currency: Trip['currency'],
   ): Promise<RateEntry[]> {
-    const needed = neededRates(expenses, currency);
     if (needed.length === 0) return [];
 
     const stored = await selectRates(needed, currency);
@@ -84,9 +87,15 @@ export function createRates(db: Database, frankfurterUrl: string) {
     for (const [from, entries] of Map.groupBy(stale, ({ from }) => from)) {
       const dates = entries.map(({ date }) => date);
       const fetched = await fetchRates(frankfurterUrl, from, currency, dates);
-      const wait = fetched ? RETRY_AFTER_MS : UNREACHABLE_RETRY_MS;
+      const wait = fetched === 'unreachable' ? UNREACHABLE_RETRY_MS : RETRY_AFTER_MS;
       for (const date of dates) retryAt.set(key(date, from, currency), now + wait);
-      if (!fetched?.length) continue;
+      if (fetched === 'unreachable') continue;
+      if (fetched === 'notCovered') {
+        notCovered.add(pairKey(from, currency));
+        continue;
+      }
+      notCovered.delete(pairKey(from, currency));
+      if (fetched.length === 0) continue;
       for (const { date, fixed } of fetched) {
         if (fixed) retryAt.delete(key(date, from, currency));
       }
@@ -103,8 +112,31 @@ export function createRates(db: Database, frankfurterUrl: string) {
     return [...(await selectRates(needed, currency)).values()];
   }
 
+  /**
+   * The rate entries `expenses` need to be converted into the Trip currency, filling the
+   * rate table as they go: e.g. for an Expense as it was before a change.
+   */
+  function forExpenses(
+    expenses: Parameters<typeof neededRates>[0],
+    currency: Trip['currency'],
+  ): Promise<RateEntry[]> {
+    return filled(neededRates(expenses, currency), currency);
+  }
+
   return {
     forExpenses,
+
+    /**
+     * The rate entry of `from` (not `to` itself) in the Trip currency `to` on `date`, filling
+     * the table as the pull does, for the Expense form to convert with before the Expense is
+     * saved; or why there is none: the provider doesn't cover `from`, or there is no telling
+     * yet (`RateLookup`).
+     */
+    async lookup(date: string, from: Currency, to: Trip['currency']): Promise<RateLookup> {
+      const [entry] = await filled([{ date, from }], to);
+      if (entry) return { status: 'found', entry };
+      return { status: notCovered.has(pairKey(from, to)) ? 'notCovered' : 'unknown' };
+    },
 
     /**
      * The rate entries a Trip's Expenses (deleted ones aside) need, as the whole-Trip pull
@@ -130,15 +162,16 @@ const frankfurterRowsSchema = z.array(
  * Frankfurter's blended mid rates of `from` in `to` for `dates`, one request for all of them.
  * Each date takes the provider's rate for it or, while that is not published yet, the latest
  * before it. It is fixed once the date is over everywhere and the rate is the date's own, or
- * the provider has published a later one, so it skipped the date for good. Empty when the
- * provider doesn't cover the pair; `null` when it can't be reached.
+ * the provider has published a later one, so it skipped the date for good; a date it has no
+ * rate on or before yet gets none. `notCovered` when the provider refuses the pair;
+ * `unreachable` when it can't be reached.
  */
 async function fetchRates(
   frankfurterUrl: string,
   from: Currency,
   to: Trip['currency'],
   dates: readonly string[],
-) {
+): Promise<RateEntry[] | 'notCovered' | 'unreachable'> {
   const sorted = dates.toSorted();
   const shift = (date: string, ms: number) =>
     new Date(Date.parse(date) + ms).toISOString().slice(0, 10);
@@ -154,13 +187,15 @@ async function fetchRates(
   try {
     const response = await fetch(url, { signal: AbortSignal.timeout(10_000) });
     // A refused currency is not covered; a failing or busy provider is tried again soon.
-    if (!response.ok) return response.status < 500 && response.status !== 429 ? [] : null;
+    if (!response.ok) {
+      return response.status < 500 && response.status !== 429 ? 'notCovered' : 'unreachable';
+    }
     published = frankfurterRowsSchema
       .parse(await response.json())
       .toSorted((a, b) => a.date.localeCompare(b.date));
   } catch (error) {
     console.warn(`Frankfurter rates of ${from} in ${to} could not be fetched`, error);
-    return null;
+    return 'unreachable';
   }
 
   const now = new Date().toISOString();
