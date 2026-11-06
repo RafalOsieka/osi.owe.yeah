@@ -1,6 +1,6 @@
 # Exploratory test on the test environment (2026-11-06)
 
-A simulated Trip on the deployed test environment, driven through the real UI with Playwright, to check the app end to end beyond the automated suites. Domain terms are from `GLOSSARY.md`. Every finding is a GitHub issue (#161–#174, #176).
+A simulated Trip on the deployed test environment, driven through the real UI with Playwright, to check the app end to end beyond the automated suites. Domain terms are from `GLOSSARY.md`. Every finding is a GitHub issue (#161–#174, #176, #177).
 
 ## Setup
 
@@ -24,7 +24,7 @@ A simulated Trip on the deployed test environment, driven through the real UI wi
 | Currencies       | Automatic rates (HUF, fixed and Provisional), Manual rate as amount charged and as exchange rate (HUF, BAM), Trip currency change EUR → PLN → EUR                                                                                                                                                                                                |
 | Settling up      | Balances and bars, Share breakdown sheets, Suggested Repayments, Reminders by shared message, by copied message and by push, Settled on Balances and My Trips                                                                                                                                                                                    |
 | Offline          | Saving offline ("Not synced yet"), syncing on reconnect, a Conflict from two offline edits and choosing a side                                                                                                                                                                                                                                   |
-| Notifications    | Offer after a Claim, Notifications page (blocked with "Check again", Home Screen hint on iPhone, turning on and off), delivery of "added" and Reminder notifications, opening a notification's highlighted row                                                                                                                                   |
+| Notifications    | Offer after a Claim, Notifications page (blocked with "Check again", Home Screen hint on iPhone, turning on and off, and revoking the browser permission after turning on), delivery of "added" and Reminder notifications, opening a notification's highlighted row                                                                             |
 | Shell            | Light and dark mode, test-environment banner, not-found page, PWA installability (manifest, service worker, icons), the install nudge and its Install and ✕ (with a stand-in for the browser's install event), the "New version" prompt and Reload (with a local proxy changing the service worker between two update checks, as a deploy would) |
 
 Not covered: the privacy notice and terms pages (skipped on purpose).
@@ -48,6 +48,7 @@ Not covered: the privacy notice and terms pages (skipped on purpose).
 | #173  | The test-environment banner's close ✕ has about 1:1 contrast in light mode                                                   | ready-for-agent |
 | #174  | Closing or going back from a half-entered Expense discards it without asking                                                 | needs-triage    |
 | #176  | Editing an Income titles the browser tab "Edit Expense"                                                                      | ready-for-agent |
+| #177  | Notifications keep saying "On" after the browser permission is revoked, and nothing arrives                                  | ready-for-agent |
 
 The two problems reported before the run map to #161 and #162 (installing the app) and #163 (automatic exchange rates).
 
@@ -55,4 +56,5 @@ The two problems reported before the run map to #161 and #162 (installing the ap
 
 - **Push on a fresh browser profile is slow the first time.** Turning Notifications on right after a Claim took about 26 s on a new Chrome profile (the browser registering with its push service), with a spinner on "Turn on". Later subscriptions are instant.
 - **A Conflict is silent for whoever synced first.** Ania's offline edit lost to Celina's choice; Ania's device then shows the Expense with "Last edited by Celina" and no notice. The History keeps both changes, as ADR 0002 intends.
+- **Install was checked up to the browser.** Chrome finds the deployed app not installable because of #161. With the repo's icons served through a local proxy, Chrome loads them without warnings, but its installability check needs a trusted HTTPS origin, so the real install dialog wasn't reached; the nudge and its Install button were driven with a stand-in for the browser's install event. An OS-level install was left out on purpose.
 - **Headless Chromium can't test push.** It reports notification permission as denied and has no push service; use the Chrome channel.
