@@ -233,6 +233,7 @@ const settleNote = computed(() => {
       :currency="trip.currency"
       :claim-id="claim?.id"
       :paid="opened.balance.paid"
+      :paid-provisional="opened.balance.paidProvisional"
       :balance="opened.balance.rounded"
     />
   </NuxtLayout>

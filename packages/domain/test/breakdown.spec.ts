@@ -53,8 +53,8 @@ describe('shareBreakdown of a Receipt', () => {
     expect(breakdown.get(ania)).toEqual({
       share: cents(360n),
       parts: [
-        { part: 'goods', amount: cents(400n) },
-        { part: 'lineDiscounts', amount: cents(-40n) },
+        { part: 'goods', amount: cents(400n), provisional: false },
+        { part: 'lineDiscounts', amount: cents(-40n), provisional: false },
       ],
     });
     expect(breakdown.get(kuba)?.share).toEqual(cents(180n));
@@ -91,10 +91,10 @@ describe('shareBreakdown of a Receipt', () => {
     expect(breakdown.get(ania)).toEqual({
       share: cents(230n),
       parts: [
-        { part: 'goods', amount: cents(250n) },
-        { part: 'deposits', amount: cents(25n) },
-        { part: 'depositRefunds', amount: cents(-20n) },
-        { part: 'receiptDiscounts', amount: cents(-25n) },
+        { part: 'goods', amount: cents(250n), provisional: false },
+        { part: 'deposits', amount: cents(25n), provisional: false },
+        { part: 'depositRefunds', amount: cents(-20n), provisional: false },
+        { part: 'receiptDiscounts', amount: cents(-25n), provisional: false },
       ],
     });
     expect(breakdown.get(kuba)?.share).toEqual(cents(115n));
@@ -117,11 +117,13 @@ describe('shareBreakdown of a Receipt', () => {
     expect(breakdown.get(rafal)).toEqual({
       share: cents(250n),
       parts: [
-        { part: 'goods', amount: cents(50n) },
-        { part: 'unassigned', amount: cents(200n) },
+        { part: 'goods', amount: cents(50n), provisional: false },
+        { part: 'unassigned', amount: cents(200n), provisional: false },
       ],
     });
-    expect(breakdown.get(ania)?.parts).toEqual([{ part: 'goods', amount: cents(100n) }]);
+    expect(breakdown.get(ania)?.parts).toEqual([
+      { part: 'goods', amount: cents(100n), provisional: false },
+    ]);
   });
 });
 
@@ -169,11 +171,11 @@ describe('shareBreakdowns of a Trip', () => {
     expect(breakdowns.get(ania)).toEqual({
       share: cents(1860n),
       parts: [
-        { part: 'expenses', amount: cents(2000n) },
-        { part: 'goods', amount: cents(400n) },
-        { part: 'lineDiscounts', amount: cents(-40n) },
-        { part: 'income', amount: cents(-1000n) },
-        { part: 'repayments', amount: cents(500n) },
+        { part: 'expenses', amount: cents(2000n), provisional: false },
+        { part: 'goods', amount: cents(400n), provisional: false },
+        { part: 'lineDiscounts', amount: cents(-40n), provisional: false },
+        { part: 'income', amount: cents(-1000n), provisional: false },
+        { part: 'repayments', amount: cents(500n), provisional: false },
       ],
     });
   });

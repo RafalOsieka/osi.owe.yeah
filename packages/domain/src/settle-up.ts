@@ -25,15 +25,16 @@ export type TripExpenses = Pick<TripSnapshot, 'currency' | 'participants'> & {
 };
 
 /**
- * The Expenses that can be converted into the Trip currency, each with its rate
- * (`expenseRate`); those without one are left out of balances and totals.
+ * The Expenses that can be converted into the Trip currency, each with its rate and whether
+ * that is a Provisional rate (`expenseRate`); those without one are left out of balances and
+ * totals.
  */
 export function convertible<E extends Expense>(
   trip: TripRates & { expenses: readonly E[] },
-): { expense: E; rate: Rational }[] {
+): { expense: E; rate: Rational; provisional: boolean }[] {
   return trip.expenses.flatMap((expense) => {
     const found = expenseRate(expense, trip);
-    return found ? [{ expense, rate: found.rate }] : [];
+    return found ? [{ expense, ...found }] : [];
   });
 }
 
@@ -41,6 +42,8 @@ export function convertible<E extends Expense>(
 export type ParticipantBalance = {
   participantId: string;
   paid: Rational;
+  /** Whether `paid` includes an amount converted at a Provisional rate, so it is approximate. */
+  paidProvisional: boolean;
   share: Rational;
   /** Positive when the Participant is owed money, negative when they owe. */
   balance: Rational;
@@ -62,12 +65,17 @@ export function balances(trip: TripExpenses): ParticipantBalance[] {
   const zero = rational(0n);
   const paid = new Map<string, Rational>();
   const share = new Map<string, Rational>();
+  const paidProvisional = new Set<string>();
   const credit = (totals: Map<string, Rational>, id: string, amount: Rational) =>
     totals.set(id, add(totals.get(id) ?? zero, amount));
 
-  for (const { expense, rate } of convertible(trip)) {
+  for (const { expense, rate, provisional } of convertible(trip)) {
     const parts = expenseShares(expense);
-    for (const [id, part] of parts.paid) credit(paid, id, multiply(part, rate));
+    for (const [id, part] of parts.paid) {
+      credit(paid, id, multiply(part, rate));
+      // Zero is zero at any rate, so it never makes what they paid approximate.
+      if (provisional && part.numerator !== 0n) paidProvisional.add(id);
+    }
     for (const [id, part] of parts.shares) credit(share, id, multiply(part, rate));
   }
 
@@ -77,6 +85,7 @@ export function balances(trip: TripExpenses): ParticipantBalance[] {
     return {
       participantId: id,
       paid: participantPaid,
+      paidProvisional: paidProvisional.has(id),
       share: participantShare,
       balance: subtract(participantPaid, participantShare),
     };

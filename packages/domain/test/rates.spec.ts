@@ -215,8 +215,25 @@ describe('balances in the Trip currency', () => {
     expect(spendingTotal(trip)).toEqual(rational(90n));
     expect(shareBreakdowns(trip).get(ania.id)).toEqual({
       share: rational(45n),
-      parts: [{ part: 'expenses', amount: rational(45n) }],
+      parts: [{ part: 'expenses', amount: rational(45n), provisional: false }],
     });
+  });
+
+  it('marks what includes an amount converted at a Provisional rate', () => {
+    // Kasia pays 10.00 USD for both at a rate not fixed yet; Ania gets 4.00 EUR back for both.
+    const taxi = expense('USD', 1000);
+    const refund = {
+      ...expense('EUR', -400),
+      id: '019a2b3c-4d5e-7f00-8a1b-0000000000e2',
+      mainPayerId: ania.id,
+    };
+    const trip = inEur([rate('2026-07-15', 'USD', '0.9', false)], taxi, refund);
+
+    expect(shareBreakdowns(trip).get(ania.id)?.parts).toEqual([
+      { part: 'expenses', amount: rational(9n, 2n), provisional: true },
+      { part: 'income', amount: rational(-2n), provisional: false },
+    ]);
+    expect(balances(trip).map(({ paidProvisional }) => paidProvisional)).toEqual([true, false]);
   });
 });
 
