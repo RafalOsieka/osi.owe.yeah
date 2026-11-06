@@ -145,13 +145,13 @@ describe('Repayments in balances', () => {
   });
 
   it('still counts Repayments in what was paid, the share and the balance', () => {
-    expect(balances(snapshot).map(({ paid, share, balance }) => ({ paid, share, balance }))).toEqual(
-      [
-        { paid: rational(30n), share: rational(25n), balance: rational(5n) },
-        { paid: rational(10n), share: rational(10n), balance: rational(0n) },
-        { paid: rational(5n), share: rational(10n), balance: rational(-5n) },
-      ],
-    );
+    expect(
+      balances(snapshot).map(({ paid, share, balance }) => ({ paid, share, balance })),
+    ).toEqual([
+      { paid: rational(30n), share: rational(25n), balance: rational(5n) },
+      { paid: rational(10n), share: rational(10n), balance: rational(0n) },
+      { paid: rational(5n), share: rational(10n), balance: rational(-5n) },
+    ]);
   });
 });
 

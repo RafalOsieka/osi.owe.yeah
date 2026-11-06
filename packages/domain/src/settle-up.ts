@@ -134,12 +134,7 @@ export function balances(trip: TripExpenses): ParticipantBalance[] {
  * once that is taken from what they paid and the Repayments they received, so the amounts
  * shown add up. The two differ by the rounding.
  */
-export function shareOfSpending({
-  paid,
-  share,
-  rounded,
-  repaymentsReceived,
-}: ParticipantBalance): { exact: Rational; shown: Rational } {
+export function shareOfSpending({ paid, share, rounded, repaymentsReceived }: ParticipantBalance) {
   return {
     exact: subtract(share, repaymentsReceived.amount),
     shown: subtract(subtract(paid, repaymentsReceived.amount), rounded),
