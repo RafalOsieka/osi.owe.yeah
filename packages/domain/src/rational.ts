@@ -1,5 +1,6 @@
 /**
- * An exact fraction on bigint. All money arithmetic uses it; nothing is rounded inside a Trip.
+ * An exact fraction on bigint. All money arithmetic uses it; nothing is rounded inside a Trip
+ * except a percent discount, which takes off whole minor units as a till does.
  * Always built with `rational()`, so it is reduced and the denominator is positive, which makes
  * structurally equal values numerically equal.
  */
