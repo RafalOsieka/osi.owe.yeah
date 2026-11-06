@@ -71,10 +71,11 @@ describe('Contributions', () => {
     expect(paid(repriced)).toEqual([rational(69n), rational(6n), rational(0n)]);
   });
 
-  it('show the claimed Participant what they lent or owe, Contributions included', () => {
-    // Each share is 20.00: Kasia paid 54.00, Ania 6.00, and Ola nothing.
+  it('show the claimed Participant what they lent, or their whole Share', () => {
+    // Each Share is 20.00: Kasia paid 54.00, Ania 6.00, and Ola nothing.
     expect(claimView(dinner, kasia.id)).toEqual({ kind: 'lent', amount: rational(34n) });
-    expect(claimView(dinner, ania.id)).toEqual({ kind: 'share', amount: rational(14n) });
+    // Ania's Contribution is below her Share: the row shows the Share, not the 14.00 on top.
+    expect(claimView(dinner, ania.id)).toEqual({ kind: 'share', amount: rational(20n) });
     expect(claimView(dinner, ola.id)).toEqual({ kind: 'share', amount: rational(20n) });
 
     // Ola tips 6.00 on a dinner for Kasia and Ania only: she lent all of it.

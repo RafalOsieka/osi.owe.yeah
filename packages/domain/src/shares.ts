@@ -197,10 +197,10 @@ export function expenseShares(expense: Expense): ExpenseShares {
 /**
  * What an Expense means for the Participant this device has claimed:
  * - `lent`: they paid, as Main payer or with a Contribution, for others: what they paid less
- *   their own share;
- * - `share`: someone else paid, and this is their share; or they paid, and their share is
- *   more than what they paid (a Contribution below their share, or a Deposit refund shared
- *   with others): what it costs them on top;
+ *   their own Share;
+ * - `share`: their Share, always the whole of it: when someone else paid, and also when they
+ *   paid less than their Share (a Contribution below it, or a Deposit refund shared with
+ *   others). What is left for them to pay shows on Balances, not here;
  * - `received`: the whole of an Income they received, or of a Repayment handed to them;
  * - `getBack`: their part of money someone else received: an Income, or a Deposit refund;
  * - `repaid`: a Repayment they handed over;
@@ -222,13 +222,11 @@ export function claimView(expense: Expense, claimId: string): ClaimView {
     return own ? { kind: 'received', amount: total } : { kind: 'notForYou' };
   }
   if (payer && total.numerator < 0n) return { kind: 'received', amount: negate(total) };
-  // The Main payer's part, or a Contribution.
+  // The Main payer's part, or a Contribution. Below their Share, it falls through to the Share.
   const part = paid.get(claimId);
   if (part) {
     const lent = subtract(part, own ?? zero);
-    return lent.numerator < 0n
-      ? { kind: 'share', amount: negate(lent) }
-      : { kind: 'lent', amount: lent };
+    if (lent.numerator >= 0n) return { kind: 'lent', amount: lent };
   }
   if (!own) return { kind: 'notForYou' };
   return own.numerator < 0n
