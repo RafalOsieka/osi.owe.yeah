@@ -29,7 +29,12 @@ if (known) void handle.open();
 
 const view = useLiveQuery(() => device.read(tripId));
 const trip = computed(() => view.value?.local);
-const claim = computed(() => view.value?.deviceTrip.claim ?? null);
+// The Claim keeps the name it was made with: shown, it follows the Participant's current one.
+const claim = computed(() => {
+  const claimed = view.value?.deviceTrip.claim;
+  if (!claimed) return null;
+  return trip.value?.participants.find(({ id }) => id === claimed.id) ?? claimed;
+});
 // Nothing to show: the Trip isn't on the device and its link doesn't work, or couldn't be
 // tried (e.g. no signal); or it is, but has never been pulled.
 const onDevice = known !== undefined || joined === 'joined';

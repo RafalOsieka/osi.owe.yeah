@@ -3,7 +3,8 @@ import { expensesReferencing, type Participant } from '@osi/owe-yeah-domain';
 import { v7 as uuidv7 } from 'uuid';
 
 // The Trip tab: everything about the Trip that is not money. Its Participants (tap one to
-// remove them, refused while an Expense references them) with Add Participant and Invite;
+// correct their name or to remove them; removing is refused while an Expense references them)
+// with Add Participant and Invite;
 // the Trip's name and Trip currency, and Recently deleted; then what is only this device's:
 // who it says it is, its notifications, installing the app while the browser can, and
 // forgetting the Trip (last, quiet, and asked first); and the privacy notice and the terms.
@@ -49,6 +50,13 @@ function pick(participant: Participant): void {
   picked.value = participant;
   referencing.value = expensesReferencing(trip.value.expenses, participant.id);
   pickedOpen.value = true;
+}
+
+// The same change as adding them, under their id: the last name saved wins (ADR 0002).
+async function rename(name: string): Promise<void> {
+  if (!picked.value) return;
+  await addParticipant({ ...picked.value, name });
+  pickedOpen.value = false;
 }
 
 async function remove(): Promise<void> {
@@ -201,7 +209,8 @@ const action =
     </UDrawer>
 
     <!-- The Participant's own sheet: their name, how many Expenses they are on, then what that
-         means for removing them, right under the name as the sheet's description. -->
+         means for removing them, right under the name as the sheet's description. Below, their
+         name to correct, whether or not they can be removed. -->
     <UDrawer v-model:open="pickedOpen" :ui="{ description: 'mt-3', footer: 'pt-2' }">
       <template #title>
         <span v-if="picked" class="flex items-center gap-3">
@@ -217,6 +226,16 @@ const action =
         <span class="mt-1 block text-pretty">
           {{ referencing > 0 ? $t('participants.onExpensesHelp') : $t('participants.removeHelp') }}
         </span>
+      </template>
+      <template v-if="picked" #body>
+        <ParticipantNameForm
+          :key="picked.id"
+          :name="picked.name"
+          :label="$t('participants.name')"
+          :submit-label="$t('participants.rename')"
+          icon="i-lucide-check"
+          @submit="rename"
+        />
       </template>
       <template #footer>
         <template v-if="referencing === 0">
