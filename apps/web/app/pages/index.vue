@@ -53,6 +53,7 @@ const rows = computed(() =>
         settled,
         // The first few faces of who is in it.
         people: local.participants.slice(0, 4),
+        colors: participantAvatarColors(local),
         more: Math.max(0, local.participants.length - 4),
         when: dates ?? t('myTrips.noExpenses'),
         balance: balance(),
@@ -131,7 +132,7 @@ useHead({ title: () => t('myTrips.title') });
                       v-for="(person, index) in trip.people"
                       :key="person.id"
                       :participant="person"
-                      :index="index"
+                      :color="trip.colors.get(person.id)"
                       size="xs"
                       class="ring-2 ring-(--ui-bg)"
                       :class="{ '-ms-1': index > 0 }"
