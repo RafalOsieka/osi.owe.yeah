@@ -164,6 +164,37 @@ jobs:
           check owe-yeah-runtime "$GITHUB_SHA"
           check owe-yeah-runtime-dev dev
 
+      # `.dockerignore` is an allowlist, so a folder it misses is silently left out (#161).
+      # Without the icons, Chrome won't offer to install the app and iOS has no Home Screen icon.
+      - name: Check the runtime image serves the app's public files
+        run: |
+          docker run -d --name app --network healthz -p 3000:3000 \
+            -e DATABASE_URL=postgres://postgres:postgres@db:5432/postgres owe-yeah-runtime
+          for _ in $(seq 60); do
+            curl -fsS http://localhost:3000/healthz > /dev/null && break
+            sleep 1
+          done
+          fail() { echo "$1"; docker rm -f app > /dev/null; exit 1; }
+          # The SPA answers a missing file with its index page, so a 200 alone proves nothing.
+          serves_image() {
+            type=$(curl -fsS -o served -w '%{content_type}' "http://localhost:3000$1") ||
+              fail "$1: not served"
+            case $type in image/*) ;; *) fail "$1: served as '$type'" ;; esac
+          }
+          for file in $(git ls-files apps/web/public); do
+            path=${file#apps/web/public}
+            case $path in
+              *.png | *.svg | *.ico) serves_image "$path" ;;
+              *) curl -fsS -o served "http://localhost:3000$path" || fail "$path: not served" ;;
+            esac
+            cmp -s served "$file" || fail "$path: differs from $file"
+          done
+          # The manifest's icons are what Chrome's installability check downloads.
+          icons=$(curl -fsS http://localhost:3000/manifest.webmanifest | jq -er '.icons[].src') ||
+            fail "the manifest names no icons"
+          for icon in $icons; do serves_image "$icon"; done
+          docker rm -f app
+
       # The final images carry only `node`: no package manager or toolchain.
       - name: Check images hold no dev tooling
         run: |
