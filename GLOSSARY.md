@@ -15,7 +15,7 @@ _Avoid_: Group, tab, event, tricount
 _Polish avoid_: Wyjazd, grupa, wydarzenie
 
 **Participant**:
-A person taking part in a Trip who can pay for Expenses or share their cost, whether or not they use the app. Names need not be unique within a Trip.
+A person taking part in a Trip who can pay for Expenses or share their cost, whether or not they use the app. Names need not be unique within a Trip. Anyone in the Trip can correct a Participant's name, and the last change wins.
 _Polish_: Uczestnik
 _Avoid_: Member, user, friend
 _Polish avoid_: Członek, użytkownik, znajomy

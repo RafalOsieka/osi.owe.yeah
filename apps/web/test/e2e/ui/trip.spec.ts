@@ -1373,6 +1373,62 @@ test('a Participant on an Expense is not removed, one on none is; and the Trip i
   await expect(page.getByRole('main')).toContainText('Last changed by you');
 });
 
+test('a Participant on Expenses, one on none and the device’s own are renamed from the Trip tab', async ({
+  page,
+  request,
+}) => {
+  await page.goto(
+    await tripWithExpenses(
+      request,
+      'Hel 2026',
+      ['Kasia', 'Ania', 'Ola'],
+      [{ title: 'Ferry', amount: 3000 }],
+    ),
+  );
+  await page.getByRole('dialog').getByRole('button', { name: 'Ania' }).click();
+  await page.getByRole('link', { name: 'Trip', exact: true }).click();
+  const participants = page.getByRole('region', { name: 'Participants' });
+
+  /** Opens `name`'s sheet and saves `typed` as their name. */
+  async function rename(name: string, typed: string): Promise<void> {
+    await participants.getByRole('button', { name }).click();
+    const sheet = page.getByRole('dialog', { name });
+    await expect(sheet.getByLabel('Name')).toHaveValue(name);
+    await sheet.getByLabel('Name').fill(typed);
+    await sheet.getByRole('button', { name: 'Save name' }).click();
+    await expect(sheet).toHaveCount(0);
+  }
+
+  // Kasia paid for the Ferry: her new name shows on the Expense list, its details and Balances.
+  await rename('Kasia', 'Katarzyna');
+  await expect(participants.getByRole('button', { name: 'Katarzyna' })).toBeVisible();
+  await page.getByRole('link', { name: 'Expenses' }).click();
+  const ferry = page.getByRole('link', { name: /Ferry/ });
+  await expect(ferry).toContainText('Katarzyna paid');
+  await ferry.click();
+  await expect(page.getByRole('main')).toContainText('Katarzyna');
+  await expect(page.getByRole('main')).not.toContainText('Kasia');
+  await page.getByRole('button', { name: 'Back' }).click();
+  await page.getByRole('link', { name: 'Balances' }).click();
+  await expect(page.getByRole('region', { name: 'To settle' })).toContainText('Katarzyna');
+  await page.getByRole('link', { name: 'Trip', exact: true }).click();
+
+  // Ola is on no Expense; Ania is this device's Claim, which follows her new name.
+  await rename('Ola', 'Olga');
+  await expect(participants.getByRole('button', { name: 'Olga' })).toBeVisible();
+  await rename('Ania', 'Anna');
+  await expect(page.getByRole('button', { name: /Who you are/ })).toContainText('Anna');
+
+  // A blank name can't be saved, nor one over 50 characters, as when adding.
+  await participants.getByRole('button', { name: 'Anna' }).click();
+  const anna = page.getByRole('dialog', { name: 'Anna' });
+  await anna.getByLabel('Name').fill('  ');
+  await expect(anna.getByRole('button', { name: 'Save name' })).toBeDisabled();
+  await anna.getByLabel('Name').fill('A'.repeat(51));
+  await anna.getByRole('button', { name: 'Save name' }).click();
+  await expect(anna).toContainText('Give the Participant a name of up to 50 characters.');
+});
+
 test('the tab, the home screen and the installed app all get the Owe Yeah icons', async ({
   page,
   request,

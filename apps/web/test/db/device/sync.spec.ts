@@ -258,6 +258,21 @@ describeDb('the device, syncing with the real Trip sync', () => {
     );
   });
 
+  it('shows a Participant renamed on another device after a pull, last write wins', async () => {
+    const { device, croatia, trip, token, ania, ola } = await setUp();
+    const olas = await joined(trip, token, ola);
+
+    await olas.croatia.addParticipant({ ...ania, name: 'Anna' });
+    await olas.croatia.sync();
+    await croatia.addParticipant({ ...ania, name: 'Ana' });
+    await croatia.sync();
+    await olas.croatia.sync();
+
+    for (const each of [device, olas.device]) {
+      expect((await each.read(trip.id))?.local?.participants[1]).toEqual({ ...ania, name: 'Ana' });
+    }
+  });
+
   it('sends its version of an Expense in Conflict to the server by itself on Keep mine', async () => {
     const { croatia, trip, lidl } = await inConflict();
 

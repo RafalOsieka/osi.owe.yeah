@@ -86,6 +86,7 @@
     "namePlaceholder": "Name",
     "nameInvalid": "Give the Participant a name of up to 50 characters.",
     "add": "Add",
+    "rename": "Save name",
     "name": "Name",
     "addParticipant": "Add Participant",
     "addHelp": "They can also add themselves when they open the Trip link.",
