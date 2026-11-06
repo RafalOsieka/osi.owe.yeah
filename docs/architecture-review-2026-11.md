@@ -70,7 +70,7 @@ Two reviews feed this file:
 
 - [ ] **Lost update across tabs.** In `device.ts:104,393-397`, `acceptedVersions` lives in memory. If another tab accepted the change, `resolveBase` takes `current.version` and can overwrite someone else's version without a Conflict.
 - [x] **A retry loses `restored`.** In `push.post.ts:84-91`, `appliedBefore` returns no restored Participants, so after a lost response the Notice does not show. Done in #79: the `changes` row keeps them.
-- [ ] **The Conflict screen gets the wrong list of people.** `conflict.vue:49,56` uses `trip.participants` instead of `everyone`, so a removed Participant shows as "?".
+- [ ] **The Conflict screen gets the wrong list of people.** `conflict.vue:75,112` uses `trip.participants` instead of `everyone`, so a removed Participant shows as "?". Since #138 it also names the other side's author ("{name}'s version") and feeds the "for all N" check in `ExpenseVersion.vue`, so both can misreport too.
 - [x] **A Manual rate rule exists only in the UI.** "Charged with a zero total" is checked only in `useManualRateErrors.ts:22`. The domain and server accept it, `conversionRate` returns `null`, and the Expense drops out of balances without a word. A Manual rate in the Expense's own currency is likewise stripped only by the UI. Done in #82 (the domain refuses both) and #83 (`useManualRateErrors` is gone).
 - [ ] **The Web Push payload is not validated.** `service-worker/sw.ts:35` casts `as PushMessage` even though `pushMessageSchema` exists. The payload has no schema version, and `notification.ts` has a third amount formatter.
 - [ ] **Rename the domain type `TripSnapshot`.** The glossary says "Avoid: snapshot". It is used in `PullResponse` and on the client.
@@ -108,7 +108,7 @@ They found no reason to reopen ADR 0001–0003, and 121 of the 126 stories are d
   - **The problem:** nuxt-security keys its limiter on the left-most `X-Forwarded-For` entry. Depending on the proxy, the limiter is either bypassable, or every user shares one bucket. A group on one hotel Wi-Fi exhausts 150 requests in 5 minutes.
   - **Symptoms in the app:** a 429 from the limiter shows as "Reminded today", and a 409 from the schema middleware shows as "the debtor can't be notified".
   - **Fix:** set `rateLimiter.ipHeader` to a header the proxy overwrites. Reminder answers carry `{ reason }`, and the app maps on that, not on the status code. Consider exempting pulls from the limiter or raising its limit.
-- [ ] **S5. History shows Revision totals in the wrong currency** (spec story 98). `history/index.vue:18` formats with the Trip currency, while the totals are in the Expense's currency, so a USD Expense reads "PLN". It is a plain bug.
+- [ ] **S5. History shows Revision totals in the wrong currency** (spec story 98). `history/index.vue:18` formats with the Trip currency, while the totals are in the Expense's currency, so a USD Expense reads "PLN". It is a plain bug. Partly fixed in #138: each Revision's total now uses its own currency. The "was" total before an edit still uses the newer Revision's currency (`history/index.vue:34,59`), tracked in #140.
 
 ### P2: before the next change to the shape of stored data
 
