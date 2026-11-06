@@ -14,6 +14,7 @@ import {
   newRepaymentDraft,
   pickMainPayer,
   readDraft,
+  stillSuggested,
   readLineItem,
   type DraftLineItem,
   type DraftReason,
@@ -203,7 +204,17 @@ describe('an Expense made a draft reads back as the same Expense', () => {
       amount: 100000,
     };
 
-    expect(readDraft(draftFromExpense(repayment, trip), trip).expense).toEqual(repayment);
+    expect(readDraft(draftFromExpense(repayment, trip, 'Repayment'), trip).expense).toEqual(
+      repayment,
+    );
+  });
+
+  it('a Repayment with the default title, which opens with an empty note', () => {
+    const repayment: Repayment = { ...base, title: 'Repayment', recipientId: ania, amount: 1000 };
+    const draft = draftFromExpense(repayment, trip, 'Repayment');
+
+    expect(draft.title).toBe('');
+    expect(readDraft(draft, trip).expense).toEqual(repayment);
   });
 });
 
@@ -222,7 +233,7 @@ function plain(changes: Partial<SplitDraft> = {}): SplitDraft {
 /** A new Repayment of 10.00 from Kasia to Ania, and `changes`. */
 function repayment(changes: Partial<RepaymentDraft> = {}): RepaymentDraft {
   return {
-    ...newRepaymentDraft(trip, { ...start, title: 'Repayment' }),
+    ...newRepaymentDraft(trip, { ...start, defaultTitle: 'Repayment' }),
     recipientId: ania,
     amount: '10',
     ...changes,
@@ -268,7 +279,7 @@ describe('a new draft', () => {
   it('starts a Repayment from a Suggested Repayment, leaving out who is not in the Trip', () => {
     const draft = newRepaymentDraft(trip, {
       ...start,
-      title: 'Repayment',
+      defaultTitle: 'Repayment',
       suggested: {
         payerId: ola,
         recipientId: '019a2b3c-4d5e-7f00-8a1b-000000000009',
@@ -277,6 +288,26 @@ describe('a new draft', () => {
     });
 
     expect(draft).toMatchObject({ mainPayerId: ola, recipientId: '', amount: '14.00' });
+  });
+
+  it('a Repayment is still the Suggested Repayment it started from while who and how much match', () => {
+    const suggested = { payerId: kasia, recipientId: ania, amount: '10.00' };
+    const draft = repayment({ amount: ' 10.00 ' });
+
+    expect(stillSuggested(draft, suggested)).toBe(true);
+    expect(stillSuggested({ ...draft, amount: '5.00' }, suggested)).toBe(false);
+    expect(stillSuggested(pickMainPayer(draft, ola), suggested)).toBe(false);
+    expect(stillSuggested(draft, { payerId: kasia, recipientId: ania })).toBe(false);
+    expect(stillSuggested(draft, null)).toBe(false);
+  });
+
+  it('saves a Repayment with an empty note under the default title', () => {
+    expect(readDraft(repayment({ title: ' ' }), trip).expense).toMatchObject({
+      title: 'Repayment',
+    });
+    expect(readDraft(repayment({ title: ' Ferry ' }), trip).expense).toMatchObject({
+      title: 'Ferry',
+    });
   });
 });
 
@@ -550,6 +581,14 @@ describe('transitions with a rule', () => {
 
     expect(pickMainPayer(draft, ania)).toBe('contributes');
     expect(pickMainPayer(draft, ola)).toMatchObject({ mainPayerId: ola });
+  });
+
+  it('picking who got the money as payer turns a Repayment around', () => {
+    expect(pickMainPayer(repayment(), ania)).toMatchObject({
+      mainPayerId: ania,
+      recipientId: kasia,
+    });
+    expect(pickMainPayer(repayment(), ola)).toMatchObject({ mainPayerId: ola, recipientId: ania });
   });
 
   it('a new Split mode starts from scratch', () => {

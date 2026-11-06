@@ -110,8 +110,15 @@ export type SplitDraft = DraftBase & {
   contributions: DraftContribution[];
 };
 
-/** A draft of a Repayment. */
-export type RepaymentDraft = DraftBase & { kind: 'repayment'; recipientId: string };
+/**
+ * A draft of a Repayment. Its `title` is the optional note: left empty, the Repayment is saved
+ * under `defaultTitle` (the localized "Repayment"), and one saved under it opens with an empty note.
+ */
+export type RepaymentDraft = DraftBase & {
+  kind: 'repayment';
+  recipientId: string;
+  defaultTitle: string;
+};
 
 export type ExpenseDraft = SplitDraft | RepaymentDraft;
 
@@ -255,7 +262,7 @@ function draftFromManualRate(
     : { kind, currency, value: typedMoney(manualRate.amount, currency) };
 }
 
-/** A saved Expense as its form edits it. */
+/** A saved Expense as its form edits it; a Repayment with its `defaultTitle` (`RepaymentDraft`). */
 export function draftFromExpense(
   expense: SplitExpense,
   trip: Pick<TripWithParticipants, 'currency' | 'participants'>,
@@ -263,10 +270,12 @@ export function draftFromExpense(
 export function draftFromExpense(
   expense: Repayment,
   trip: Pick<TripWithParticipants, 'currency' | 'participants'>,
+  defaultTitle: string,
 ): RepaymentDraft;
 export function draftFromExpense(
   expense: Expense,
   trip: Pick<TripWithParticipants, 'currency' | 'participants'>,
+  defaultTitle = '',
 ): ExpenseDraft {
   const { currency } = expense;
   const base: DraftBase = {
@@ -282,7 +291,14 @@ export function draftFromExpense(
   const kinded = expenseKind(expense);
   if (kinded.kind === 'repayment') {
     const { amount, recipientId } = kinded.expense;
-    return { ...base, kind: 'repayment', amount: typedMoney(amount, currency), recipientId };
+    return {
+      ...base,
+      kind: 'repayment',
+      title: expense.title === defaultTitle ? '' : expense.title,
+      amount: typedMoney(amount, currency),
+      recipientId,
+      defaultTitle,
+    };
   }
   const split = {
     ...base,
@@ -362,27 +378,47 @@ export function newExpenseDraft(
   };
 }
 
+/** What a new Repayment starts from: a Suggested Repayment, any part of which may be missing. */
+export type RepaymentSuggestion = { payerId?: string; recipientId?: string; amount?: string };
+
 /**
- * A new Repayment in the Trip currency, now, with `title`; it may start from a Suggested
+ * A new Repayment in the Trip currency, now, with an empty note; it may start from a Suggested
  * Repayment (`suggested`), any part of which may be missing. Who paid defaults to the Claim.
  */
 export function newRepaymentDraft(
   trip: Pick<TripWithParticipants, 'currency' | 'participants'>,
   start: DraftStart & {
-    title: string;
-    suggested?: { payerId?: string; recipientId?: string; amount?: string } | null;
+    defaultTitle: string;
+    suggested?: RepaymentSuggestion | null;
   },
 ): RepaymentDraft {
   const { suggested } = start;
   return {
     ...startBase(trip, start),
     kind: 'repayment',
-    title: start.title,
+    title: '',
+    defaultTitle: start.defaultTitle,
     currency: trip.currency,
     amount: suggested?.amount ?? '',
     mainPayerId: knownId(trip, suggested?.payerId) ?? knownId(trip, start.claimId) ?? '',
     recipientId: knownId(trip, suggested?.recipientId) ?? '',
   };
+}
+
+/**
+ * Whether a Repayment is still the Suggested Repayment it started from: the same payer,
+ * recipient and amount. Only then does it say it settles what is owed.
+ */
+export function stillSuggested(
+  draft: RepaymentDraft,
+  suggested: RepaymentSuggestion | null | undefined,
+): boolean {
+  return (
+    !!suggested?.amount &&
+    suggested.payerId === draft.mainPayerId &&
+    suggested.recipientId === draft.recipientId &&
+    draft.amount.trim() === suggested.amount
+  );
 }
 
 const blank = (text: string) => text.trim() === '';
@@ -595,7 +631,10 @@ function readRepayment(draft: RepaymentDraft, trip: TripWithParticipants): Repay
   const reasons: DraftReason[] = [];
   const amount = readMoney(draft.amount, draft.currency);
   if (isUnread(amount)) reasons.push({ field: 'amount', code: amount });
-  const { base, manualRate, time } = readBase(draft, reasons);
+  const { base, manualRate, time } = readBase(
+    { ...draft, title: draft.title.trim() || draft.defaultTitle },
+    reasons,
+  );
   if (!draft.recipientId) reasons.push({ field: 'recipientId', code: 'missing' });
 
   const candidate =
@@ -738,13 +777,20 @@ export function itemise(draft: SplitDraft, trip: TripWithParticipants): SplitDra
 }
 
 /**
- * The draft with a new Main payer, or `contributes` when they have a Contribution: a Main
- * payer can't have one, so it has to be removed first.
+ * The draft with a new Main payer. An Expense refuses with `contributes` when they have a
+ * Contribution: a Main payer can't have one, so it has to be removed first. A Repayment whose
+ * recipient is picked turns around: who paid gets the money instead.
  */
+export function pickMainPayer(draft: SplitDraft, participantId: string): SplitDraft | 'contributes';
+export function pickMainPayer(draft: RepaymentDraft, participantId: string): RepaymentDraft;
 export function pickMainPayer(
-  draft: SplitDraft,
+  draft: ExpenseDraft,
   participantId: string,
-): SplitDraft | 'contributes' {
+): ExpenseDraft | 'contributes' {
+  if (draft.kind === 'repayment') {
+    const recipientId = participantId === draft.recipientId ? draft.mainPayerId : draft.recipientId;
+    return { ...draft, mainPayerId: participantId, recipientId };
+  }
   if (draft.contributions.some((contribution) => contribution.participantId === participantId)) {
     return 'contributes';
   }
