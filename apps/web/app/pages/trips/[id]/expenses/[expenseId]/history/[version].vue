@@ -3,12 +3,12 @@ import { findExpense } from '~/sync/local-trip';
 
 // One Revision of an Expense, opened from its History: the whole Expense as that change left
 // it, titled "Earlier Revision" (or "Current Revision"), under a read-only notice saying who
-// made the change and exactly when. Everything that differs from the Expense now is marked
-// in amber below, the total with what it is now under it (`ExpenseDetails`), and the notice
-// names what differs; or says nothing does. Restore
-// saves it again as a normal change on top of the current version (so it can cause a
-// Conflict), deleted or not, keeping the current version in History, as the line beside it
-// says, and opens the Expense. Not offered for a Revision that deleted the Expense, nor for
+// made the change, or added the Expense for the first Revision, and exactly when, on the
+// device's clock. Everything that differs from the Expense now is marked in amber below, the
+// total with what it is now under it (`ExpenseDetails`), and the notice names what differs;
+// or says nothing does. Restore saves it again as a normal change on top of the current
+// version (so it can cause a Conflict), deleted or not, keeping the current version in
+// History, as the line beside it says, and opens the Expense. Not offered for a Revision that deleted the Expense, nor for
 // the version the Expense is at.
 definePageMeta({ viewTransition: { toTypes: ['forward'], fromTypes: ['back'] } });
 
@@ -22,7 +22,10 @@ const version = Number(route.params.version);
 const detail = computed(() => `/trips/${trip.value.id}/expenses/${expenseId}`);
 
 const { data, status } = useRevisions(expenseId);
-const revision = computed(() => data.value?.find((other) => other.version === version));
+const entry = computed(() =>
+  revisionEntries(data.value ?? []).find((other) => other.revision.version === version),
+);
+const revision = computed(() => entry.value?.revision);
 const current = computed(() => findExpense(trip.value, expenseId));
 
 const isCurrent = computed(() => {
@@ -30,20 +33,17 @@ const isCurrent = computed(() => {
   return !!shown && 'version' in shown.base && shown.base.version === version && !shown.deleted;
 });
 
-const formatWhen = (at: string) =>
-  new Intl.DateTimeFormat(locale.value, { dateStyle: 'medium', timeStyle: 'short' }).format(
-    new Date(at),
-  );
-
-// Who made the change and exactly when, e.g. "Changed by Kasia · Jul 5, 2026, 9:14 PM", so it
-// isn't read as the Expense's own date in the header below.
+// Who made the change and exactly when, e.g. "Changed by Kasia · Jul 5, 2026, 21:14", or
+// "Added by Kasia · …" for the first Revision, so it isn't read as the Expense's own date in
+// the header below.
 const byline = computed(() => {
   if (!revision.value) return '';
   const { by, at } = revision.value.edited;
-  if (by === claim.value?.id) return t('history.changedByYou', { when: formatWhen(at) });
+  const verb = entry.value?.kind === 'added' ? 'added' : 'changed';
+  const when = formatInstant(at, locale.value);
+  if (by === claim.value?.id) return t(`history.${verb}ByYou`, { when });
   const name = everyone.value.find(({ id }) => id === by)?.name;
-  const when = formatWhen(at);
-  return name ? t('history.changedBy', { name, when }) : t('history.changedAt', { when });
+  return name ? t(`history.${verb}By`, { name, when }) : t(`history.${verb}At`, { when });
 });
 
 // What of this Revision differs from the Expense now, named in the notice.
