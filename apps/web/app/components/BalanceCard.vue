@@ -9,10 +9,12 @@ import {
 
 // Your balance, first on the Balances tab: "You're owed X" (green), "You owe X" (red) or
 // "You're even" (neutral), told by the icon (← owing, → owed, as the bars below point), with
-// what you paid and your share. The balance shown is the rounded one settling up uses, so a
-// fraction of a cent left over by an Even split doesn't read as owing, and the share shown is
-// what you paid less it, so the card adds up. Without a Claim it shows the Trip total instead. The default slot sits under a line at
-// the bottom, for what settles it.
+// what you paid towards Expenses and your Share of spending, and the Repayments you made
+// (beside what you paid) and received (after your share), each only when not zero. The balance
+// shown is the rounded one settling up uses, so a fraction of a cent left over by an Even split
+// doesn't read as owing, and the share shown is what is left once it is taken from the rest, so
+// the card adds up. Without a Claim it shows the Trip total instead. The default slot sits under
+// a line at the bottom, for what settles it.
 const { balance, total, currency } = defineProps<{
   /** The claimed Participant's balance, or `null` without a Claim. */
   balance: ParticipantBalance | null;
@@ -38,19 +40,25 @@ const card = computed(() => {
   const { numerator, denominator } = balance.rounded;
   const sign = shownSign(balance.rounded, currency);
   const amount = money(rational(numerator < 0n ? -numerator : numerator, denominator));
-  // The share as paid less the rounded balance, so the three amounts on the card add up; "≈"
-  // while it differs from the exact share.
-  const shown = subtract(balance.paid, balance.rounded);
-  const sub = t('balances.paidAndShare', {
-    paid: money(balance.paid),
-    share: formatMoney(
-      shown,
-      currency,
-      locale.value,
-      'currency',
-      compare(shown, balance.share) !== 0,
-    ),
-  });
+  const { paidForExpenses, repaymentsMade, repaymentsReceived } = balance;
+  // The Share of spending as what is left once the rounded balance is taken from the rest, so
+  // the amounts on the card add up; "≈" while it differs from the exact Share of spending.
+  const spent = subtract(balance.share, repaymentsReceived.amount);
+  const shown = subtract(subtract(balance.paid, repaymentsReceived.amount), balance.rounded);
+  const share = formatMoney(shown, currency, locale.value, 'currency', compare(shown, spent) !== 0);
+  // The line's segments, each kept whole (no-break spaces) when it wraps.
+  const sub = [
+    t('balances.youPaid', { amount: money(paidForExpenses.amount) }),
+    ...(repaymentsMade.amount.numerator !== 0n
+      ? [t('balances.youRepaid', { amount: money(repaymentsMade.amount) })]
+      : []),
+    t('balances.yourShare', { amount: share }),
+    ...(repaymentsReceived.amount.numerator !== 0n
+      ? [t('balances.repaidToYou', { amount: money(repaymentsReceived.amount) })]
+      : []),
+  ]
+    .map((segment) => segment.replaceAll(' ', '\u00a0'))
+    .join(' · ');
   if (sign > 0) return { ...tones.owed, label: t('balances.owed'), amount, sub };
   if (sign < 0) return { ...tones.owe, label: t('balances.owe'), amount, sub };
   return { ...tones.even, label: t('balances.even'), amount: '', sub };
@@ -71,7 +79,7 @@ const card = computed(() => {
     >
       {{ card.amount }}
     </p>
-    <p v-if="card.sub" class="mt-3 text-sm text-muted tabular-nums">{{ keepApprox(card.sub) }}</p>
+    <p v-if="card.sub" class="mt-3 text-sm text-muted tabular-nums">{{ card.sub }}</p>
     <div v-if="$slots.default" class="-mx-5 mt-5 -mb-5 border-t border-default">
       <slot />
     </div>

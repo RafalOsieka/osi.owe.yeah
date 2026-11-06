@@ -28,7 +28,12 @@ export {
 } from './line-item.ts';
 export type { LineItem, LineItemProblem, Split, SplitMode } from './line-item.ts';
 export { balances, isSettled, spendingTotal, suggestedRepayments } from './settle-up.ts';
-export type { ParticipantBalance, SuggestedRepayment, TripExpenses } from './settle-up.ts';
+export type {
+  Converted,
+  ParticipantBalance,
+  SuggestedRepayment,
+  TripExpenses,
+} from './settle-up.ts';
 export type { ClaimView, ExpenseShares, LineItemShares, ReceiptShares } from './shares.ts';
 export type { RoundedMoney } from './money.ts';
 export {

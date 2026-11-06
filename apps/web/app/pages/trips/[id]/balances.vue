@@ -20,7 +20,8 @@ import { z } from 'zod';
 // method, as settling up uses them, in the Trip currency.
 // The footer warns how many Expenses use a Provisional rate, so balances may still move a
 // little (settling up stays allowed), and how many are left out without any rate. Tapping a
-// bar opens where that Participant's share comes from, with what they paid and their balance.
+// bar opens where that Participant's Share of spending comes from, with what they paid, the
+// Repayments they made and received, and their balance.
 // On the claimed Participant's suggestions as creditor, Remind reminds the debtor (#42); the
 // line above them says once whom it can only remind by a message they send themselves.
 // Opened from a Reminder, `?payer=<id>&recipient=<id>` marks the suggestion it was about,
@@ -232,9 +233,7 @@ const settleNote = computed(() => {
       :breakdown="opened.breakdown"
       :currency="trip.currency"
       :claim-id="claim?.id"
-      :paid="opened.balance.paid"
-      :paid-provisional="opened.balance.paidProvisional"
-      :balance="opened.balance.rounded"
+      :balance="opened.balance"
     />
   </NuxtLayout>
 </template>

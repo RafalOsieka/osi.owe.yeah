@@ -38,7 +38,18 @@ export function convertible<E extends Expense>(
   });
 }
 
-/** What one Participant paid, their share of the costs, and the difference, in the Trip currency. */
+/**
+ * An amount in the Trip currency, and whether it includes one converted at a Provisional rate,
+ * so it is approximate.
+ */
+export type Converted = { amount: Rational; provisional: boolean };
+
+/**
+ * What one Participant paid, their share of the costs, and the difference, in the Trip
+ * currency. `paid` and `share` include Repayments, which even out `balance`; the Repayment
+ * totals tell them apart from spending: `paid` is `paidForExpenses` plus `repaymentsMade`,
+ * and their Share of spending is `share` less `repaymentsReceived`.
+ */
 export type ParticipantBalance = {
   participantId: string;
   paid: Rational;
@@ -52,6 +63,12 @@ export type ParticipantBalance = {
    * zero (see `roundBalances`): what settling up works with.
    */
   rounded: Rational;
+  /** What they paid towards Expenses (Income netted in), Repayments left out. */
+  paidForExpenses: Converted;
+  /** The Repayments they handed over. */
+  repaymentsMade: Converted;
+  /** The Repayments handed to them. */
+  repaymentsReceived: Converted;
 };
 
 /**
@@ -62,32 +79,50 @@ export type ParticipantBalance = {
  * and one without a rate is left out (`convertible`).
  */
 export function balances(trip: TripExpenses): ParticipantBalance[] {
-  const zero = rational(0n);
-  const paid = new Map<string, Rational>();
-  const share = new Map<string, Rational>();
-  const paidProvisional = new Set<string>();
-  const credit = (totals: Map<string, Rational>, id: string, amount: Rational) =>
-    totals.set(id, add(totals.get(id) ?? zero, amount));
-
-  for (const { expense, rate, provisional } of convertible(trip)) {
-    const parts = expenseShares(expense);
-    for (const [id, part] of parts.paid) {
-      credit(paid, id, multiply(part, rate));
-      // Zero is zero at any rate, so it never makes what they paid approximate.
-      if (provisional && part.numerator !== 0n) paidProvisional.add(id);
+  const none: Converted = { amount: rational(0n), provisional: false };
+  const totals = {
+    paidForExpenses: new Map<string, Converted>(),
+    repaymentsMade: new Map<string, Converted>(),
+    share: new Map<string, Converted>(),
+    repaymentsReceived: new Map<string, Converted>(),
+  };
+  const credit = (
+    total: Map<string, Converted>,
+    amounts: ReadonlyMap<string, Rational>,
+    { rate, provisional }: { rate: Rational; provisional: boolean },
+  ) => {
+    for (const [id, amount] of amounts) {
+      const sum = total.get(id) ?? none;
+      total.set(id, {
+        amount: add(sum.amount, multiply(amount, rate)),
+        // Zero is zero at any rate, so it never makes a total approximate.
+        provisional: sum.provisional || (provisional && amount.numerator !== 0n),
+      });
     }
-    for (const [id, part] of parts.shares) credit(share, id, multiply(part, rate));
+  };
+
+  for (const { expense, ...conversion } of convertible(trip)) {
+    const parts = expenseShares(expense);
+    const repayment = isRepayment(expense);
+    credit(repayment ? totals.repaymentsMade : totals.paidForExpenses, parts.paid, conversion);
+    credit(totals.share, parts.shares, conversion);
+    if (repayment) credit(totals.repaymentsReceived, parts.shares, conversion);
   }
 
   const exact = trip.participants.map(({ id }) => {
-    const participantPaid = paid.get(id) ?? zero;
-    const participantShare = share.get(id) ?? zero;
+    const paidForExpenses = totals.paidForExpenses.get(id) ?? none;
+    const repaymentsMade = totals.repaymentsMade.get(id) ?? none;
+    const paid = add(paidForExpenses.amount, repaymentsMade.amount);
+    const share = (totals.share.get(id) ?? none).amount;
     return {
       participantId: id,
-      paid: participantPaid,
-      paidProvisional: paidProvisional.has(id),
-      share: participantShare,
-      balance: subtract(participantPaid, participantShare),
+      paid,
+      paidProvisional: paidForExpenses.provisional || repaymentsMade.provisional,
+      share,
+      balance: subtract(paid, share),
+      paidForExpenses,
+      repaymentsMade,
+      repaymentsReceived: totals.repaymentsReceived.get(id) ?? none,
     };
   });
   const rounded = roundBalances(exact, trip.currency);
