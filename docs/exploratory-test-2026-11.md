@@ -1,6 +1,6 @@
 # Exploratory test on the test environment (2026-11-06)
 
-A simulated Trip on the deployed test environment, driven through the real UI with Playwright, to check the app end to end beyond the automated suites. Domain terms are from `GLOSSARY.md`. Every finding is a GitHub issue (#161–#174).
+A simulated Trip on the deployed test environment, driven through the real UI with Playwright, to check the app end to end beyond the automated suites. Domain terms are from `GLOSSARY.md`. Every finding is a GitHub issue (#161–#174, #176).
 
 ## Setup
 
@@ -16,18 +16,18 @@ A simulated Trip on the deployed test environment, driven through the real UI wi
 
 ## What was covered
 
-| Area             | Exercised                                                                                                                                                                                                                                                                                                                              |
-| ---------------- | -------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
-| Trips and people | New Trip (validation, currencies), Invite (QR, Copy, Share), "Who are you?", "Add me", "Just looking", Claim from the header, Add and remove Participant (refused while on Expenses), a removed Claim asked again, Trip name and Trip currency, Forget this Trip (with an unsynced change), My Trips, invalid and tokenless Trip links |
-| Expenses         | Plain Expense with a past date and another time zone, for some Participants, Contribution (and its rules), Income (Money received), Repayments from a Suggested Repayment and free-form, edit, delete with Undo, Recently deleted and Restore, History and restoring a Revision                                                        |
-| Receipts         | Even, Units (with an unassigned unit), Amounts, Line discount, Deposit per unit, Deposit refund, Receipt discount in percent and amount, rule errors at their fields, pending Line item blocking Save, reordering lines, assigning the unassigned unit                                                                                 |
-| Currencies       | Automatic rates (HUF, fixed and Provisional), Manual rate as amount charged and as exchange rate (HUF, BAM), Trip currency change EUR → PLN → EUR                                                                                                                                                                                      |
-| Settling up      | Balances and bars, Share breakdown sheets, Suggested Repayments, Reminders by shared message and by push, Settled on Balances and My Trips                                                                                                                                                                                             |
-| Offline          | Saving offline ("Not synced yet"), syncing on reconnect, a Conflict from two offline edits and choosing a side                                                                                                                                                                                                                         |
-| Notifications    | Offer after a Claim, Notifications page (blocked, Home Screen hint on iPhone, on), delivery of "added" and Reminder notifications, opening a notification's highlighted row                                                                                                                                                            |
-| Shell            | Light and dark mode, test-environment banner, not-found page, PWA installability (manifest, service worker, icons)                                                                                                                                                                                                                     |
+| Area             | Exercised                                                                                                                                                                                                                                                                                                                                        |
+| ---------------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------ |
+| Trips and people | New Trip (validation, currencies), Invite (QR, Copy, Share), "Who are you?", "Add me", "Just looking", Claim from the header, Add and remove Participant (refused while on Expenses), a removed Claim asked again, Trip name and Trip currency, Forget this Trip (with an unsynced change), My Trips, invalid and tokenless Trip links           |
+| Expenses         | Plain Expense with a past date and another time zone, for some Participants, Contribution (and its rules), Income (Money received), Repayments from a Suggested Repayment and free-form, Repayment and Income details and edits, edit, delete with Undo, Recently deleted and Restore, History and restoring a Revision                          |
+| Receipts         | Even, Units (with an unassigned unit), Amounts, Line discount, Deposit per unit, Deposit refund, Receipt discount in percent and amount, rule errors at their fields, pending Line item blocking Save, reordering lines, assigning the unassigned unit                                                                                           |
+| Currencies       | Automatic rates (HUF, fixed and Provisional), Manual rate as amount charged and as exchange rate (HUF, BAM), Trip currency change EUR → PLN → EUR                                                                                                                                                                                                |
+| Settling up      | Balances and bars, Share breakdown sheets, Suggested Repayments, Reminders by shared message, by copied message and by push, Settled on Balances and My Trips                                                                                                                                                                                    |
+| Offline          | Saving offline ("Not synced yet"), syncing on reconnect, a Conflict from two offline edits and choosing a side                                                                                                                                                                                                                                   |
+| Notifications    | Offer after a Claim, Notifications page (blocked with "Check again", Home Screen hint on iPhone, turning on and off), delivery of "added" and Reminder notifications, opening a notification's highlighted row                                                                                                                                   |
+| Shell            | Light and dark mode, test-environment banner, not-found page, PWA installability (manifest, service worker, icons), the install nudge and its Install and ✕ (with a stand-in for the browser's install event), the "New version" prompt and Reload (with a local proxy changing the service worker between two update checks, as a deploy would) |
 
-Not covered: the privacy notice and terms pages (skipped on purpose), and the "New version" prompt, which needs a new deploy during the run.
+Not covered: the privacy notice and terms pages (skipped on purpose).
 
 ## Findings
 
@@ -47,6 +47,7 @@ Not covered: the privacy notice and terms pages (skipped on purpose), and the "N
 | #172  | The floating New Trip button covers the Terms of service link on My Trips                                                    | ready-for-agent |
 | #173  | The test-environment banner's close ✕ has about 1:1 contrast in light mode                                                   | ready-for-agent |
 | #174  | Closing or going back from a half-entered Expense discards it without asking                                                 | needs-triage    |
+| #176  | Editing an Income titles the browser tab "Edit Expense"                                                                      | ready-for-agent |
 
 The two problems reported before the run map to #161 and #162 (installing the app) and #163 (automatic exchange rates).
 
