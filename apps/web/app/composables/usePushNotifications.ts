@@ -17,11 +17,7 @@ export type Subscribed =
   | { status: 'denied' | 'dismissed' | 'failed' };
 
 function currentSupport(installed: boolean): PushSupport {
-  const ios =
-    /iPhone|iPad|iPod/.test(navigator.userAgent) ||
-    // iPadOS says it is a Mac, but Macs have no touch screen.
-    (/Macintosh/.test(navigator.userAgent) && navigator.maxTouchPoints > 1);
-  if (ios && !installed) return 'homeScreen';
+  if (isIos(navigator) && !installed) return 'homeScreen';
   if (
     !('serviceWorker' in navigator) ||
     !('PushManager' in window) ||
