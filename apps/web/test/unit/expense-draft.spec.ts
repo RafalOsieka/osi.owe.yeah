@@ -289,8 +289,10 @@ describe('a new draft', () => {
 
     expect(draft).toMatchObject({ mainPayerId: ola, recipientId: '', amount: '14.00' });
   });
+});
 
-  it('a Repayment is still the Suggested Repayment it started from while who and how much match', () => {
+describe('a Repayment', () => {
+  it('is still the Suggested Repayment it started from while who and how much match', () => {
     const suggested = { payerId: kasia, recipientId: ania, amount: '10.00' };
     const draft = repayment({ amount: ' 10.00 ' });
 
@@ -301,7 +303,7 @@ describe('a new draft', () => {
     expect(stillSuggested(draft, null)).toBe(false);
   });
 
-  it('saves a Repayment with an empty note under the default title', () => {
+  it('with an empty note is saved under the default title', () => {
     expect(readDraft(repayment({ title: ' ' }), trip).expense).toMatchObject({
       title: 'Repayment',
     });
