@@ -53,14 +53,14 @@ export function useOpenTrip(): OpenTrip {
 }
 
 /**
- * A Participant's avatar color: by their place in the open Trip's order (`avatarColorAt`), so
- * no two of its first six share one; by their id when they are not in it, or outside a Trip.
+ * A Participant's avatar color: by their place among everyone the open Trip has had
+ * (`participantAvatarColors`), so no two of its first six share one; by their id only when
+ * the Trip doesn't know them, or outside a Trip.
  */
 export function useAvatarColor(): (participantId: string) => AvatarColor {
   const openTrip = inject(openTripKey, null);
-  return (participantId) => {
-    const index =
-      openTrip?.trip.value.participants.findIndex(({ id }) => id === participantId) ?? -1;
-    return index >= 0 ? avatarColorAt(index) : avatarColor(participantId);
-  };
+  const colors = computed(() =>
+    openTrip ? participantAvatarColors(openTrip.trip.value) : new Map<string, AvatarColor>(),
+  );
+  return (participantId) => colors.value.get(participantId) ?? avatarColor(participantId);
 }

@@ -1,5 +1,10 @@
 import { describe, expect, it } from 'vitest';
-import { AVATAR_COLORS, avatarColor, distinctAvatarColors } from '../../app/utils/avatar';
+import {
+  AVATAR_COLORS,
+  avatarColor,
+  distinctAvatarColors,
+  participantAvatarColors,
+} from '../../app/utils/avatar';
 
 // Ids as one device creates them in the same millisecond: they differ only at the end.
 const siblingIds = Array.from(
@@ -12,6 +17,48 @@ describe('avatarColor', () => {
     const used = new Set(siblingIds.map(avatarColor));
 
     expect(used).toEqual(new Set(AVATAR_COLORS));
+  });
+});
+
+describe('participantAvatarColors', () => {
+  const [ola, kasia, marta, tomek] = ['Ola', 'Kasia', 'Marta', 'Tomek'].map((name, index) => ({
+    id: siblingIds[index]!,
+    name,
+  }));
+
+  it("keeps everyone else's colour when a Participant is removed", () => {
+    const before = participantAvatarColors({
+      participants: [ola!, kasia!, marta!, tomek!],
+      removedParticipants: [],
+    });
+    const after = participantAvatarColors({
+      participants: [ola!, marta!, tomek!],
+      removedParticipants: [kasia!],
+    });
+
+    expect(after).toEqual(before);
+  });
+
+  it('gives the same colours whatever order a device has the Participants in', () => {
+    const one = participantAvatarColors({ participants: [ola!, kasia!], removedParticipants: [] });
+    const other = participantAvatarColors({
+      participants: [kasia!, ola!],
+      removedParticipants: [],
+    });
+
+    expect(other).toEqual(one);
+  });
+
+  it('gives the first six in a Trip, removed ones included, a colour each', () => {
+    const people = siblingIds
+      .slice(0, AVATAR_COLORS.length)
+      .map((id, index) => ({ id, name: `P${index}` }));
+    const colors = participantAvatarColors({
+      participants: people.slice(2),
+      removedParticipants: people.slice(0, 2),
+    });
+
+    expect(new Set(colors.values())).toEqual(new Set(AVATAR_COLORS));
   });
 });
 

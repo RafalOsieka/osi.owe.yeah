@@ -1,3 +1,5 @@
+import type { TripSnapshot } from '@osi/owe-yeah-domain';
+
 /**
  * The avatar colors a Participant can get, in an order that keeps neighbours far apart on the
  * colour wheel: an opaque soft tint with the initial in a deeper shade of the same hue (orange's
@@ -18,18 +20,9 @@ export const AVATAR_COLORS = [
 export type AvatarColor = (typeof AVATAR_COLORS)[number];
 
 /**
- * The avatar color of the Participant at `index` in their Trip's order, which every device
- * shares: the first six in a Trip never share one.
- */
-export function avatarColorAt(index: number): AvatarColor {
-  return AVATAR_COLORS[index % AVATAR_COLORS.length]!;
-}
-
-/**
  * The avatar color picked from an id alone, so every device shows the same one: for a
- * Participant no longer in the Trip, and as the starting point for a Trip's tile on My Trips
- * (`distinctAvatarColors`). The whole id is hashed: ids created in the same millisecond share
- * their start.
+ * Participant the Trip doesn't know, or one shown outside a Trip. The whole id is hashed: ids
+ * created in the same millisecond share their start.
  */
 export function avatarColor(id: string): AvatarColor {
   let hash = 0;
@@ -39,10 +32,24 @@ export function avatarColor(id: string): AvatarColor {
 
 /**
  * Tints for a set of ids that don't repeat while a free one is left, e.g. the Trip tiles on
- * My Trips. The ids go in order (UUIDv7s, so oldest first) and take the palette in its order,
- * so the first few are as far apart in hue as it allows; once all are taken, the hashed one
- * (`avatarColor`). A newer id never changes the tint of an older one.
+ * My Trips. The ids go in order (UUIDv7s, so oldest first, the same on every device) and take
+ * the palette in its order, so the first few are as far apart in hue as it allows, then the
+ * palette again. A newer id never changes the tint of an older one.
  */
 export function distinctAvatarColors(ids: readonly string[]): Map<string, AvatarColor> {
-  return new Map(ids.toSorted().map((id, index) => [id, AVATAR_COLORS[index] ?? avatarColor(id)]));
+  return new Map(
+    ids.toSorted().map((id, index) => [id, AVATAR_COLORS[index % AVATAR_COLORS.length]!]),
+  );
+}
+
+/**
+ * The avatar colors of a Trip's Participants, by their place among everyone the Trip has had,
+ * removed ones included (`distinctAvatarColors`): removing or restoring someone recolours
+ * nobody, and every device shows the same colors once synced.
+ */
+export function participantAvatarColors({
+  participants,
+  removedParticipants,
+}: Pick<TripSnapshot, 'participants' | 'removedParticipants'>): Map<string, AvatarColor> {
+  return distinctAvatarColors([...participants, ...removedParticipants].map(({ id }) => id));
 }
