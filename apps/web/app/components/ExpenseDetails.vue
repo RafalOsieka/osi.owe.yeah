@@ -86,8 +86,8 @@ function unassignedUnits(item: LineItem): number | null {
 
 // What is not assigned yet of a Line item, said on it as the form says it, with the money
 // after the units of a Units split ("1 of 4 units unassigned · ≈ €1.12"), and `after`, what
-// it comes to after the Receipt discount, so it meets the amount in the Main payer's share
-// ("≈ €1.12 (≈ €1.06 after the Receipt discount)").
+// it comes to after the Receipt discount, so the lines add up to the amount in the Main
+// payer's share ("≈ €1.12 (≈ €1.06 after the Receipt discount)").
 function unassignedText(
   item: LineItem,
   shares: LineItemShares,
@@ -104,7 +104,7 @@ function unassignedText(
 const kinded = computed(() => expenseKind(expense));
 
 const details = computed(() => {
-  const { total, discountOff, deposits, paid, shares, unassigned, lineItems } =
+  const { total, discountOff, deposits, paid, shares, unassigned, unassignedByLine, lineItems } =
     expenseShares(expense);
   const { kind, expense: narrowed } = kinded.value;
   const receipt = kind === 'receipt' ? narrowed : null;
@@ -120,8 +120,6 @@ const details = computed(() => {
     : [];
   const openUnits = open.map(({ item }) => unassignedUnits(item));
   const payer = everyone.value.find(({ id }) => id === expense.mainPayerId);
-  // What is not assigned yet after the Receipt discount, when there is one.
-  const afterDiscount = receipt?.discount && unassigned.numerator !== 0n ? unassigned : null;
   // Whose it is for now: "Kasia's for now".
   const countedAs =
     payer && isYou(payer)
@@ -187,7 +185,7 @@ const details = computed(() => {
           unassignedText: unassignedText(
             item,
             lineItems[index]!,
-            open.length === 1 ? afterDiscount : null,
+            receipt.discount ? unassignedByLine[index]! : null,
           ),
           ...lineItems[index]!,
         }))

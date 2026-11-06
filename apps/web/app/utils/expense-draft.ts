@@ -164,6 +164,11 @@ export type ReceiptReading = Pick<
 > & {
   /** The Receipt discount, while it can be read. */
   discount: Discount | undefined;
+  /**
+   * Each readable line's part of `unassigned` after the Receipt discount, by its draft key
+   * (`ReceiptShares['unassignedByLine']`).
+   */
+  unassignedByKey: ReadonlyMap<string, Rational>;
 };
 
 /** What every draft reads as. */
@@ -643,11 +648,12 @@ function readLines(
   }
 
   if (draft.lineItems.length === 0) reasons.push({ field: 'lineItems', code: 'missing' });
-  const lineItems = draft.lineItems.flatMap((line) => {
+  const read = draft.lineItems.flatMap((line) => {
     const { lineItem } = readLineItem(line, currency);
     if (!lineItem) reasons.push({ field: 'lineItems', code: 'unreadable', line: line.key });
-    return lineItem ? [lineItem] : [];
+    return lineItem ? [{ key: line.key, lineItem }] : [];
   });
+  const lineItems = read.map(({ lineItem }) => lineItem);
   const typed = readDiscount(draft.discount, currency);
   if (typed === 'unreadable') reasons.push({ field: 'discount', code: 'unreadable' });
   const discount = typed === 'unreadable' ? undefined : typed;
@@ -669,6 +675,9 @@ function readLines(
       discountOff: shares.discountOff,
       deposits: shares.deposits,
       unassigned: shares.unassigned,
+      unassignedByKey: new Map(
+        read.map(({ key }, index) => [key, shares.unassignedByLine[index]!]),
+      ),
     },
   };
 }

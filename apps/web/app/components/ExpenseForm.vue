@@ -185,12 +185,10 @@ const unassignedLines = computed(() =>
   }),
 );
 
-// What is not assigned yet after the Receipt discount, for the one line it is on to say, so the
-// line meets the Main payer's share; `null` without a Receipt discount or on several lines.
+// What each line's unassigned value comes to after the Receipt discount, for the lines to say,
+// so they add up to what is not assigned in all; `null` without a Receipt discount.
 const unassignedAfter = computed(() =>
-  reading.value.receipt?.discount && unassignedLines.value.length === 1
-    ? reading.value.receipt.unassigned
-    : null,
+  reading.value.receipt?.discount ? reading.value.receipt.unassignedByKey : null,
 );
 
 // What is not assigned yet in all, as the detail page heads it: in units while every line it

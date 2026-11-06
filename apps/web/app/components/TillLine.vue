@@ -39,8 +39,8 @@ const {
   participants: readonly Participant[];
   currency: string;
   /**
-   * What the Receipt's unassigned value comes to after its Receipt discount, when it is all on
-   * this line, to say after its own (`useUnassignedText`).
+   * What this line's unassigned value comes to after the Receipt discount, to say after its
+   * own (`useUnassignedText`), so the lines add up to the Receipt's.
    */
   after?: Rational | null;
   /** Its place on the Receipt, from 1, to name a line without a name. */

@@ -32,8 +32,11 @@ const {
 } = defineProps<{
   participants: readonly Participant[];
   currency: string;
-  /** What the unassigned value comes to after the Receipt discount (`TillLine`'s `after`). */
-  unassignedAfter?: Rational | null;
+  /**
+   * What each line's unassigned value comes to after the Receipt discount, by its key
+   * (`TillLine`'s `after`); `null` without a Receipt discount.
+   */
+  unassignedAfter?: ReadonlyMap<string, Rational> | null;
 }>();
 const lineItems = defineModel<DraftLineItem[]>({ required: true });
 /** The key of the line open for editing; `null` while none is. */
@@ -189,7 +192,7 @@ const addRow =
           :open="openKey === line.key"
           :participants="participants"
           :currency="currency"
-          :after="unassignedAfter"
+          :after="unassignedAfter?.get(line.key) ?? null"
           :position="index + 1"
           :first="index === 0"
           :last="index === lineItems.length - 1"

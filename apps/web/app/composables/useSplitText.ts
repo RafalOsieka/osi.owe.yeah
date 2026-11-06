@@ -79,8 +79,8 @@ export function useSplitText() {
  * What of a Line item is not assigned yet, as the Receipt's form and detail page say it on the
  * line: the units for a Units split ("1 of 4 units unassigned"), the amount otherwise; `null`
  * once all of it is. With `withValue`, the units are followed by what they come to, and
- * `after`, when given, by what the Receipt's unassigned value comes to after its Receipt
- * discount, so the line meets the Main payer's share ("1 of 4 units unassigned · ≈ €1.12
+ * `after`, when given, by what the line's unassigned value comes to after the Receipt
+ * discount, so the lines add up to the Main payer's share ("1 of 4 units unassigned · ≈ €1.12
  * (≈ €1.06 after the Receipt discount)").
  */
 export function useUnassignedText() {

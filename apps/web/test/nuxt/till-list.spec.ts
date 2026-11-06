@@ -1,26 +1,36 @@
-import type { Participant } from '@osi/owe-yeah-domain';
-import { mountSuspended } from '@nuxt/test-utils/runtime';
+import { rational, type Participant, type Rational } from '@osi/owe-yeah-domain';
+import { mockNuxtImport, mountSuspended } from '@nuxt/test-utils/runtime';
 import type { VueWrapper } from '@vue/test-utils';
 import { describe, expect, it } from 'vitest';
 import { defineComponent, h, ref } from 'vue';
 import TillList from '../../app/components/TillList.vue';
-import type { DraftLineItem } from '../../app/utils/expense-draft';
+import { draftLineItem, type DraftLineItem } from '../../app/utils/expense-draft';
 
 const participants: Participant[] = [
   { id: '019a2b3c-4d5e-7f00-8a1b-000000000001', name: 'Kasia' },
   { id: '019a2b3c-4d5e-7f00-8a1b-000000000002', name: 'Ania' },
 ];
 
-/** The Till list as the Receipt form holds it, with its `pending` flag to read. */
-async function tillList(): Promise<{ wrapper: VueWrapper; pending: () => boolean }> {
+// A line on the Receipt marks the claimed Participant; nobody is claimed here.
+mockNuxtImport('useOpenTrip', () => () => ({ claim: ref(null) }));
+
+/**
+ * The Till list as the Receipt form holds it, with `lines` on it and what their unassigned
+ * values come to after the Receipt discount, and its `pending` flag to read.
+ */
+async function tillList(
+  lines: DraftLineItem[] = [],
+  unassignedAfter: ReadonlyMap<string, Rational> | null = null,
+): Promise<{ wrapper: VueWrapper; pending: () => boolean }> {
   const pending = ref(false);
-  const lineItems = ref<DraftLineItem[]>([]);
+  const lineItems = ref<DraftLineItem[]>(lines);
   const wrapper = await mountSuspended(
     defineComponent({
       setup: () => () =>
         h(TillList, {
           participants,
           currency: 'EUR',
+          unassignedAfter,
           modelValue: lineItems.value,
           'onUpdate:modelValue': (value: DraftLineItem[]) => (lineItems.value = value),
           pending: pending.value,
@@ -94,5 +104,17 @@ describe('TillList', () => {
     await click(wrapper, 'Add a Line item');
 
     expect(input(wrapper, 'New Line item name').element.value).toBe('');
+  });
+
+  it('says on each unassigned line what it comes to after the Receipt discount', async () => {
+    const nobody = (name: string, price: string) =>
+      draftLineItem({ name, price, quantity: 1, split: { mode: 'even', participantIds: [] } });
+    const lines = [nobody('Bread', '10'), nobody('Cheese', '30')];
+    const after = new Map(lines.map(({ key }, index) => [key, rational([9n, 27n][index]!)]));
+
+    const { wrapper } = await tillList(lines, after);
+
+    expect(wrapper.text()).toContain('€10.00 not assigned yet (€9.00 after the Receipt discount)');
+    expect(wrapper.text()).toContain('€30.00 not assigned yet (€27.00 after the Receipt discount)');
   });
 });

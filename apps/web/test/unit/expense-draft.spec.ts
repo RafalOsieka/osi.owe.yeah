@@ -504,7 +504,10 @@ describe('a Manual rate', () => {
 
 describe('what a draft comes to so far', () => {
   it('a Receipt as far as it can be read, what the Main payer covers, and when', () => {
-    const draft = receipt({ price: '2', quantity: 5 }, { price: '?' });
+    const draft = receipt(
+      { price: '2', quantity: 5, split: { mode: 'even', participantIds: [] } },
+      { price: '?' },
+    );
     draft.discount = { kind: 'percent', value: '10' };
     draft.contributions = [{ participantId: ania, amount: '1' }];
     const reading = readDraft(draft, trip);
@@ -514,7 +517,8 @@ describe('what a draft comes to so far', () => {
       total: rational(9n),
       discountOff: rational(1n),
       deposits: rational(0n),
-      unassigned: rational(0n),
+      unassigned: rational(9n),
+      unassignedByKey: new Map([[draft.lineItems![0]!.key, rational(9n)]]),
     });
     expect(reading.mainPayerPart).toEqual(rational(8n));
     expect(reading.time).toEqual({ instant: '2026-07-14T21:30:00Z', zone: 'Europe/Zagreb' });
