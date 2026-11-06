@@ -5,9 +5,10 @@ import { v7 as uuidv7 } from 'uuid';
 // The Trip tab: everything about the Trip that is not money. Its Participants (tap one to
 // remove them, refused while an Expense references them) with Add Participant and Invite;
 // the Trip's name and Trip currency, and Recently deleted; then what is only this device's:
-// who it says it is, its notifications, and forgetting the Trip (last, quiet, and asked
-// first); and the privacy notice and the terms. Notifications need a Claim first; on iOS
-// outside the installed app, the row says to add the app to the Home Screen instead.
+// who it says it is, its notifications, installing the app while the browser can, and
+// forgetting the Trip (last, quiet, and asked first); and the privacy notice and the terms.
+// Notifications need a Claim first; on iOS outside the installed app, the row says to add the
+// app to the Home Screen instead.
 definePageMeta({ scrollToTop: false });
 useKeptScroll();
 
@@ -161,6 +162,7 @@ const action =
           </span>
           <UIcon name="i-lucide-chevron-right" :class="chevron" />
         </NuxtLink>
+        <InstallRow />
         <!-- Last and quiet, like any row: only the sheet's confirmation is red. -->
         <button type="button" :class="row" @click="forgetting = true">
           <span class="min-w-0 flex-1">
