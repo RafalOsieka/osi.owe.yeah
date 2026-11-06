@@ -53,13 +53,13 @@ _Avoid_: Co-payment, partial payment
 _Polish avoid_: Wkład, współpłatność, płatność częściowa
 
 **Receipt**:
-An Expense recorded item by item, mirroring the paper or digital receipt it came from, with its Line items in the order they appear there. May carry a discount on the whole Receipt.
+An Expense recorded item by item, mirroring the paper or digital receipt it came from, with its Line items in the order they appear there. May carry a discount on the whole Receipt; a percentage discount takes off a whole number of minor units, rounded half up as a till does.
 _Polish_: Paragon
 _Avoid_: Bill, invoice, ticket
 _Polish avoid_: Rachunek, faktura
 
 **Line item**:
-One position on a Receipt: a product with its unit price, whole-number quantity, any discount applied to it, and how it is split. Weighed goods are one unit at their line price.
+One position on a Receipt: a product with its unit price, whole-number quantity, any discount applied to it, and how it is split. Weighed goods are one unit at their line price. A percentage discount on a Line item takes off a whole number of minor units of its total, rounded half up.
 _Polish_: Pozycja
 _Avoid_: Product, position, entry
 _Polish avoid_: Produkt, wpis
