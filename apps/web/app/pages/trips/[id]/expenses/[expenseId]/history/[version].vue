@@ -4,12 +4,11 @@ import { findExpense } from '~/sync/local-trip';
 // One Revision of an Expense, opened from its History: the whole Expense as that change left
 // it, titled "Earlier Revision" (or "Current Revision"), under a read-only notice saying who
 // made the change, or added the Expense for the first Revision, and exactly when, on the
-// device's clock. Everything that differs from the Expense now is marked
-// in amber below, the total with what it is now under it (`ExpenseDetails`), and the notice
-// names what differs; or says nothing does. Restore
-// saves it again as a normal change on top of the current version (so it can cause a
-// Conflict), deleted or not, keeping the current version in History, as the line beside it
-// says, and opens the Expense. Not offered for a Revision that deleted the Expense, nor for
+// device's clock. Everything that differs from the Expense now is marked in amber below, the
+// total with what it is now under it (`ExpenseDetails`), and the notice names what differs;
+// or says nothing does. Restore saves it again as a normal change on top of the current
+// version (so it can cause a Conflict), deleted or not, keeping the current version in
+// History, as the line beside it says, and opens the Expense. Not offered for a Revision that deleted the Expense, nor for
 // the version the Expense is at.
 definePageMeta({ viewTransition: { toTypes: ['forward'], fromTypes: ['back'] } });
 
@@ -38,9 +37,9 @@ const isCurrent = computed(() => {
 // "Added by Kasia · …" for the first Revision, so it isn't read as the Expense's own date in
 // the header below.
 const byline = computed(() => {
-  if (!entry.value) return '';
-  const { by, at } = entry.value.revision.edited;
-  const verb = entry.value.kind === 'added' ? 'added' : 'changed';
+  if (!revision.value) return '';
+  const { by, at } = revision.value.edited;
+  const verb = entry.value?.kind === 'added' ? 'added' : 'changed';
   const when = formatInstant(at, locale.value);
   if (by === claim.value?.id) return t(`history.${verb}ByYou`, { when });
   const name = everyone.value.find(({ id }) => id === by)?.name;
