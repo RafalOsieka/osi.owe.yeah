@@ -13,7 +13,7 @@ const {
 } = defineProps<{
   participant: Participant;
   size?: AvatarProps['size'];
-  /** Their color in their Trip, where no Trip is open. */
+  /** Their color, where no Trip is open to pick it (My Trips). */
   color?: AvatarColor;
 }>();
 

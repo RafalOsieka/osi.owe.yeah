@@ -21,8 +21,8 @@ export type AvatarColor = (typeof AVATAR_COLORS)[number];
 
 /**
  * The avatar color picked from an id alone, so every device shows the same one: for a
- * Participant the Trip doesn't know. The whole id is hashed: ids created in the same
- * millisecond share their start.
+ * Participant the Trip doesn't know, or one shown outside a Trip. The whole id is hashed: ids
+ * created in the same millisecond share their start.
  */
 export function avatarColor(id: string): AvatarColor {
   let hash = 0;

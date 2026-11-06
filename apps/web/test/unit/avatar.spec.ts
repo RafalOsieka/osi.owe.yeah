@@ -26,7 +26,7 @@ describe('participantAvatarColors', () => {
     name,
   }));
 
-  it('keeps everyone else colour when a Participant is removed', () => {
+  it("keeps everyone else's colour when a Participant is removed", () => {
     const before = participantAvatarColors({
       participants: [ola!, kasia!, marta!, tomek!],
       removedParticipants: [],
@@ -41,7 +41,10 @@ describe('participantAvatarColors', () => {
 
   it('gives the same colours whatever order a device has the Participants in', () => {
     const one = participantAvatarColors({ participants: [ola!, kasia!], removedParticipants: [] });
-    const other = participantAvatarColors({ participants: [kasia!, ola!], removedParticipants: [] });
+    const other = participantAvatarColors({
+      participants: [kasia!, ola!],
+      removedParticipants: [],
+    });
 
     expect(other).toEqual(one);
   });
