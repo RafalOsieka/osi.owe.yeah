@@ -53,9 +53,7 @@ export function changedFields(given: Expense, now: Expense): ExpenseField[] {
   const forWhom = (expense: Expense) => [...expenseShares(expense).shares.keys()].sort();
   const differs = {
     title: before.title !== after.title,
-    amount:
-      before.currency !== after.currency ||
-      compare(expenseShares(before).total, expenseShares(after).total) !== 0,
+    amount: !sameTotal(revisionTotal(before), revisionTotal(after)),
     currency: before.currency !== after.currency,
     when: !same(before.time, after.time),
     paidBy: !same(paidBy(before), paidBy(after)),
@@ -69,6 +67,15 @@ export function changedFields(given: Expense, now: Expense): ExpenseField[] {
 
 /** An Expense's total, in the currency of the Revision it is from. */
 export type RevisionTotal = { amount: Rational; currency: Currency };
+
+function revisionTotal(expense: Expense): RevisionTotal {
+  return { amount: expenseShares(expense).total, currency: expense.currency };
+}
+
+/** Whether two totals are the same money: the same number in another currency is not. */
+export function sameTotal(a: RevisionTotal, b: RevisionTotal): boolean {
+  return a.currency === b.currency && compare(a.amount, b.amount) === 0;
+}
 
 /** One row of an Expense's History. */
 export type RevisionEntry = {
@@ -87,16 +94,12 @@ export type RevisionEntry = {
  * the total and, for an edit, what it changed.
  */
 export function revisionEntries(newestFirst: readonly Revision[]): RevisionEntry[] {
-  const total = ({ expense }: Revision): RevisionTotal => ({
-    amount: expenseShares(expense).total,
-    currency: expense.currency,
-  });
   return newestFirst.map((revision, index) => {
     const previous = newestFirst[index + 1];
-    const after = total(revision);
+    const after = revisionTotal(revision.expense);
     if (!previous) return { revision, kind: 'added', before: null, after, changed: [] };
 
-    const before = total(previous);
+    const before = revisionTotal(previous.expense);
     if (revision.deleted === previous.deleted) {
       const changed = changedFields(previous.expense, revision.expense);
       return { revision, kind: 'edited', before, after, changed };

@@ -1,6 +1,6 @@
 import { rational, type Currency, type Expense, type Revision } from '@osi/owe-yeah-domain';
 import { describe, expect, it } from 'vitest';
-import { changedFields, revisionEntries } from '../../app/utils/revisions';
+import { changedFields, revisionEntries, type RevisionTotal } from '../../app/utils/revisions';
 
 const kasia = '019a2b3c-4d5e-7f00-8a1b-000000000001';
 const tomek = '019a2b3c-4d5e-7f00-8a1b-000000000002';
@@ -22,6 +22,10 @@ function revision(
     ],
   };
   return { version, expense, deleted, edited: { by: kasia, at: '2026-07-15T08:00:00.000Z' } };
+}
+
+function eur(numerator: bigint, denominator?: bigint): RevisionTotal {
+  return { amount: rational(numerator, denominator), currency: 'EUR' };
 }
 
 describe('revisionEntries', () => {
@@ -66,10 +70,6 @@ describe('revisionEntries', () => {
     });
   });
 });
-
-function eur(numerator: bigint, denominator?: bigint) {
-  return { amount: rational(numerator, denominator), currency: 'EUR' };
-}
 
 describe('changedFields', () => {
   const base = revision(1, 3000).expense;
