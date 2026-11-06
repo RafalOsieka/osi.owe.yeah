@@ -135,7 +135,7 @@ export default defineNuxtConfig({
   },
   compatibilityDate: '2025-07-15',
   // Nitro defaults to es2019, which lacks the BigInt literals the domain package's exact
-  // arithmetic uses; the server runs on Node 24.
+  // arithmetic uses; the server runs on Node 26.
   nitro: {
     esbuild: { options: { target: 'es2022' } },
     // The SPA shell as a static `index.html`, which the service worker precaches and serves

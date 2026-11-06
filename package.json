@@ -23,11 +23,11 @@
   },
   "devDependencies": {
     "@intlify/eslint-plugin-vue-i18n": "^4.5.1",
-    "@types/node": "^26.6.5",
+    "@types/node": "^26.6.6",
     "@typescript-eslint/parser": "^8.72.1",
-    "eslint": "^10.13.0",
+    "eslint": "^10.14.0",
     "eslint-config-prettier": "^10.1.8",
-    "eslint-plugin-oxlint": "^1.89.0",
+    "eslint-plugin-oxlint": "^1.90.0",
     "eslint-plugin-vuejs-accessibility": "^2.6.3",
     "typescript": "^6.0.3",
     "vite-plus": "catalog:"
@@ -41,7 +41,7 @@
   "devEngines": {
     "runtime": {
       "name": "node",
-      "version": "^24.21.0",
+      "version": "^26.13.0",
       "onFail": "download"
     },
     "packageManager": {

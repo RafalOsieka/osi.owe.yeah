@@ -12,7 +12,7 @@
 # Bundles the migrator CLI (`vp pack`) into a single file with its dependencies
 # inlined. The official Vite+ image ships `vp` and resolves Node.js and pnpm from
 # `devEngines`. Keep the tag in sync with the `vite-plus` catalog entry.
-FROM ghcr.io/voidzero-dev/vite-plus:1.3.0 AS migrator-build
+FROM ghcr.io/voidzero-dev/vite-plus:1.5.0 AS migrator-build
 WORKDIR /app
 
 COPY --chown=vp:vp package.json pnpm-lock.yaml pnpm-workspace.yaml ./
@@ -27,7 +27,7 @@ RUN vp run --filter @osi/owe-yeah-migrator build \
 # ── slim-node ─────────────────────────────────────────────────────────────────
 # Node on the same major as `devEngines.runtime`. The official image ships npm,
 # corepack and yarn; the final images need only `node`.
-FROM node:24-alpine AS slim-node
+FROM node:26-alpine AS slim-node
 RUN rm -rf /usr/local/lib/node_modules /opt/yarn-* \
   /usr/local/bin/npm /usr/local/bin/npx /usr/local/bin/corepack \
   /usr/local/bin/yarn /usr/local/bin/yarnpkg
@@ -62,7 +62,7 @@ USER node
 CMD ["node", "dist/cli.mjs"]
 
 # ── web-build ─────────────────────────────────────────────────────────────────
-FROM ghcr.io/voidzero-dev/vite-plus:1.3.0 AS web-build
+FROM ghcr.io/voidzero-dev/vite-plus:1.5.0 AS web-build
 WORKDIR /app
 
 # Manifests first for layer caching. The image runs as the non-root `vp` user, so
