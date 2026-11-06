@@ -25,6 +25,18 @@ export function formatExpenseTime(time: ExpenseTime, locale: string): string {
   }).format(new Date(time.instant));
 }
 
+/**
+ * A moment in the device's zone, e.g. "Nov 6, 2026, 20:42" for when a Revision was made, on
+ * the device's clock like every other time in the app.
+ */
+export function formatInstant(at: string, locale: string): string {
+  return new Intl.DateTimeFormat(locale, {
+    dateStyle: 'medium',
+    timeStyle: 'short',
+    hourCycle: deviceHourCycle(),
+  }).format(new Date(at));
+}
+
 /** A time zone as people say it: its city, e.g. "New York" for `America/New_York`. */
 export function zoneName(zone: string): string {
   return (zone.split('/').at(-1) ?? zone).replaceAll('_', ' ');
