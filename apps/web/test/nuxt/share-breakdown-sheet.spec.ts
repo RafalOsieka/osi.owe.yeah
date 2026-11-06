@@ -21,8 +21,8 @@ async function sheet(
       balance: rational(balance, 100n),
     },
   });
-  // '≈' keeps a no-break space after it; read it as a plain one.
-  const text = (cell: Element) => cell.textContent?.trim().replaceAll(' ', ' ');
+  // "≈" keeps a no-break space after it; read every space as a plain one.
+  const text = (cell: Element) => cell.textContent?.trim().replace(/\s/g, ' ');
   const rows = [...document.body.querySelectorAll('dl > div')].map((row) =>
     [...row.children].map(text).join(': '),
   );

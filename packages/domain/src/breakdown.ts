@@ -50,9 +50,8 @@ const zero = rational(0n);
 
 /**
  * Adds an Expense's parts to `totals`, converted at `rate` (1 in its own currency), marking
- * them `provisional` when that is a Provisional rate. Spreads
- * every amount by its Line item's split as `receiptShares` does, so the parts add up to the
- * shares `expenseShares` gives.
+ * them `provisional` when that is a Provisional rate. Spreads every amount by its Line item's
+ * split as `receiptShares` does, so the parts add up to the shares `expenseShares` gives.
  */
 function addExpense(
   totals: PartTotals,
@@ -65,6 +64,7 @@ function addExpense(
       const sum = parts.get(part) ?? { amount: zero, provisional: false };
       parts.set(part, {
         amount: add(sum.amount, multiply(amount, rate)),
+        // Zero is zero at any rate, so it never makes a part approximate.
         provisional: sum.provisional || (provisional && amount.numerator !== 0n),
       });
       totals.set(id, parts);
@@ -129,6 +129,7 @@ export function shareBreakdown(expense: Expense): ReadonlyMap<string, ShareBreak
  */
 export function shareBreakdowns(trip: TripExpenses): ReadonlyMap<string, ShareBreakdown> {
   const totals: PartTotals = new Map();
-  for (const { expense, ...rate } of convertible(trip)) addExpense(totals, expense, rate);
+  for (const { expense, ...conversion } of convertible(trip))
+    addExpense(totals, expense, conversion);
   return new Map(trip.participants.map(({ id }) => [id, toBreakdown(totals.get(id))]));
 }

@@ -88,9 +88,11 @@ const sheet = computed(() => {
   const inexact = (amount: Rational) => !roundMoney(amount, currency).exact;
   // On the Balances tab, the share that adds up with what they paid and their balance.
   const share = paid && balance ? subtract(paid, balance) : breakdown.share;
-  // Whether the share includes an amount converted at a Provisional rate.
-  const provisional = breakdown.parts.some((part) => part.provisional);
-  // "≈" on the share when it is not exactly what it shows, or includes a Provisional-rate amount.
+  // Whether the share, and so the balance with what they paid, include an amount converted at
+  // a Provisional rate.
+  const shareProvisional = breakdown.parts.some(({ provisional }) => provisional);
+  const balanceProvisional = shareProvisional || paidProvisional;
+  // Whether the share is not exactly what it shows.
   const roundedShare = compare(share, breakdown.share) !== 0 || inexact(share);
   const partsRounded =
     roundedShare ||
@@ -106,10 +108,10 @@ const sheet = computed(() => {
         tone: part === 'unassigned' ? 'text-warning' : '',
       })),
     unassigned: breakdown.parts.some(({ part }) => part === 'unassigned'),
-    share: formatMoney(share, currency, locale.value, 'currency', provisional || roundedShare),
+    share: formatMoney(share, currency, locale.value, 'currency', shareProvisional || roundedShare),
     partsRounded,
-    provisional: provisional || paidProvisional,
-    outcome: balance && outcomeOf(balance, provisional || paidProvisional),
+    provisional: balanceProvisional,
+    outcome: balance && outcomeOf(balance, balanceProvisional),
   };
 });
 

@@ -73,6 +73,7 @@ export function balances(trip: TripExpenses): ParticipantBalance[] {
     const parts = expenseShares(expense);
     for (const [id, part] of parts.paid) {
       credit(paid, id, multiply(part, rate));
+      // Zero is zero at any rate, so it never makes what they paid approximate.
       if (provisional && part.numerator !== 0n) paidProvisional.add(id);
     }
     for (const [id, part] of parts.shares) credit(share, id, multiply(part, rate));
