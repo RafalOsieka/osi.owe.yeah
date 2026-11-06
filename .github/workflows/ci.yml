@@ -174,20 +174,21 @@ jobs:
             curl -fsS http://localhost:3000/healthz > /dev/null && break
             sleep 1
           done
-          fail() { echo "$1"; docker rm -f app > /dev/null; exit 1; }
+          fail() { docker logs app; echo "$1"; docker rm -f app > /dev/null; exit 1; }
+          served="$RUNNER_TEMP/served"
           # The SPA answers a missing file with its index page, so a 200 alone proves nothing.
           serves_image() {
-            type=$(curl -fsS -o served -w '%{content_type}' "http://localhost:3000$1") ||
+            content_type=$(curl -fsS -o "$served" -w '%{content_type}' "http://localhost:3000$1") ||
               fail "$1: not served"
-            case $type in image/*) ;; *) fail "$1: served as '$type'" ;; esac
+            case $content_type in image/*) ;; *) fail "$1: served as '$content_type'" ;; esac
           }
           for file in $(git ls-files apps/web/public); do
             path=${file#apps/web/public}
             case $path in
               *.png | *.svg | *.ico) serves_image "$path" ;;
-              *) curl -fsS -o served "http://localhost:3000$path" || fail "$path: not served" ;;
+              *) curl -fsS -o "$served" "http://localhost:3000$path" || fail "$path: not served" ;;
             esac
-            cmp -s served "$file" || fail "$path: differs from $file"
+            cmp -s "$served" "$file" || fail "$path: differs from $file"
           done
           # The manifest's icons are what Chrome's installability check downloads.
           icons=$(curl -fsS http://localhost:3000/manifest.webmanifest | jq -er '.icons[].src') ||
