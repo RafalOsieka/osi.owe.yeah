@@ -26,6 +26,8 @@ const rows = computed(() => {
   };
   return trip.value.deletedExpenses.toSorted(newestFirst).map((expense) => {
     const { edited, unsynced } = expense;
+    // "by you" needs both a Claim and a known author; without them `undefined === undefined`.
+    const byYou = claim.value !== null && edited?.by === claim.value.id;
     const name = everyone.value.find(({ id }) => id === edited?.by)?.name;
     const when = edited?.at
       ? formatTimeAgo(edited.at, now, locale.value, t('history.justNow'))
@@ -33,12 +35,11 @@ const rows = computed(() => {
     return {
       expense,
       total: formatMoney(expenseShares(expense).total, expense.currency, locale.value),
-      deleted:
-        edited?.by === claim.value?.id
-          ? t('deleted.byYou', { when })
-          : name
-            ? t('deleted.by', { name, when })
-            : t('deleted.at', { when }),
+      deleted: byYou
+        ? t('deleted.byYou', { when })
+        : name
+          ? t('deleted.by', { name, when })
+          : t('deleted.at', { when }),
       conflict: unsynced?.status === 'conflict',
       notSynced: unsynced !== null && unsynced.status !== 'conflict',
     };
