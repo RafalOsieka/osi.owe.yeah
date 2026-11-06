@@ -3,9 +3,9 @@ import { findExpense } from '~/sync/local-trip';
 
 // The Conflict screen, opened from the notice on an Expense's detail page: this device's
 // version of the Expense and the one the server has, each a card named for whose it is ("Your
-// version", "Tomek's version", when he changed it) with what differs highlighted, marked
+// change", "Tomek's change", when he changed it) with what differs highlighted, marked
 // when it deletes the Expense, and ending in its own equal choice, after what that choice
-// does to the other version: quiet where Tomek's stays in History, a restrained amber warning
+// does to the other change: quiet where Tomek's stays in History, a restrained amber warning
 // where yours is lost for good. Keep yours sends this device's version again on top of
 // theirs, which stays in the Expense's History; keep theirs drops this device's changes, which
 // never reached the server, for good. Either returns to the detail page.

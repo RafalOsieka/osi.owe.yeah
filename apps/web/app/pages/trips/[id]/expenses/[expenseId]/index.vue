@@ -7,7 +7,7 @@ import { toExpense } from '~/sync/local-trip';
 // currency; on top, why it is not synced yet if it isn't; at the bottom, one quiet card with
 // its History (who last edited it and when, "you" for the claimed Participant) and Delete,
 // named for what it deletes (Expense, Income or Repayment). A Conflict shows as an amber
-// notice saying the details are this device's version, with a full-width primary Choose version that
+// notice saying the details are this device's change, with a full-width primary Choose a change that
 // opens the Conflict screen, Edit stepping back meanwhile; a rejected change is fixed with Edit
 // or discarded. Edit opens the Expense form. Delete moves it to Recently deleted, with Undo
 // for a moment. Should the Expense go (deleted, or a discarded new one), so does the page.

@@ -3,7 +3,7 @@
 // would be lost, a pending Line item. A soft amber fill (opaque, so it reads the same on a
 // card and on the canvas) with a hairline amber edge, the icon on
 // the first line, the message in the text colour, and an optional `#action` (e.g. a link to
-// the Line item, or Choose version) under it.
+// the Line item, or Choose a change) under it.
 const { icon = 'i-lucide-circle-alert' } = defineProps<{ icon?: string }>();
 </script>
 
