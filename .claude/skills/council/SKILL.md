@@ -38,8 +38,10 @@ Every round's brief comes from `<run>/template.md`, filled in by `scripts/brief.
 
 - what the product is and who uses it;
 - the bar to judge against;
+- the spec, as paths: the repo's design principles (`docs/design/principles.md` here), and how to read the spec issues behind the screens in the set (`docs/agents/issue-tracker.md` here);
+- the copy rule: on-screen text names domain concepts with `GLOSSARY.md`'s words, in every language the set shows; a word from an `_Avoid_` list on screen is a finding;
 - `{{folder}}`, and one line per screen saying what it shows;
-- "Judge the screenshots only: read no source code."
+- "Judge the screenshots against these docs: read no source code."
 
 Capture each round's set from a freshly started app, so the app's current state is what gets judged; in this repo: `pnpm --filter @osi/owe-yeah-screenshots capture <run>/r<N>/shots`. Put screens that matter in the set from round 1, especially the most complex forms. A screen added later costs a round, since scores dip while it catches up.
 
@@ -87,7 +89,7 @@ Hand the **report page** to a subagent after every round, so the next round does
 
 Apply the recommendations you agree with, one commit per round, and name the ones you reject, with the reason. Rejected ones join the template's **kept on purpose** list. Write the round's `changes.md`, then convene a new round (step 3 with each `--session-id`), until both delegates are satisfied, or every delegate meets the target.
 
-Hold the scope to the spec. A recommendation that adds behaviour the spec didn't ask for becomes a follow-up for the user, not a change on this branch. When a round raises only findings you've already rejected, stop and put the disagreement to the user.
+Hold the scope to the spec. Before applying a recommendation, check it against the spec, the design principles and `GLOSSARY.md`. One that departs from a spec issue's criterion or a principle, renames a domain concept, or adds behaviour the spec didn't ask for is a **spec delta**: log it in `<run>/spec-delta.md` (the spec it touches, before → now) and put it to the user before it lands. A delta the user declines becomes a follow-up, not a change on this branch. When a round raises only findings you've already rejected, stop and put the disagreement to the user.
 
 A subagent stopped by a usage limit keeps its work: once the limit resets, send it a message to continue rather than starting a new one.
 
@@ -109,3 +111,5 @@ Rounds: 2
 ```
 
 A design review has one row per delegate, on the Design axis. A delegate that gives no score gets `no score`, with a line under the table saying why. Below the table, list the rejected recommendations with their reasons, and the minor findings left as follow-ups. Without a PR, the same results go in the final reply only.
+
+Every accepted spec delta goes in the description as `## Spec changes`, one line each (the spec it touches, before → now), and the work updates what it touches in the same PR: the living docs (glossary, principles, ADRs) directly, and a closed spec issue with a "Superseded in part by #N" comment once the PR has its number.
