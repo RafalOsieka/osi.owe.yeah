@@ -76,6 +76,13 @@ const markedAmount = (amount: Rational, theirs: Rational | undefined) =>
   other.value && (!theirs || compare(amount, theirs) !== 0) ? MARK : '';
 
 const money = (amount: Rational) => formatMoney(amount, expense.currency, locale.value);
+// How a Line item is split, "for all N" against the Participants in the Trip now.
+const splitOf = (item: LineItem) =>
+  splitText(draftSplit(item.split, expense.currency), trip.value.participants, {
+    currency: expense.currency,
+    item,
+    everyone: everyone.value,
+  });
 const isYou = (participant: Participant) => participant.id === claim.value?.id;
 
 // The units of a Line item nobody has been given yet, for a Units split; `null` otherwise.
@@ -166,19 +173,9 @@ const details = computed(() => {
               ? t('receipt.facts', {
                   quantity: item.quantity,
                   price: money(fromMinor(item.unitPrice, expense.currency)),
-                  split: splitText(
-                    draftSplit(item.split, expense.currency),
-                    everyone.value,
-                    expense.currency,
-                    item,
-                  ),
+                  split: splitOf(item),
                 })
-              : splitText(
-                  draftSplit(item.split, expense.currency),
-                  everyone.value,
-                  expense.currency,
-                  item,
-                ),
+              : splitOf(item),
           ]
             .filter((fact) => fact !== null)
             .join(' · '),

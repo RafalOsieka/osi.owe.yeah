@@ -40,7 +40,7 @@ const line: LineItem = {
 describe('an Amounts split as a line reads it', () => {
   it('shows the amounts as typed without a Line discount', async () => {
     const text = await splitText();
-    expect(text(draftSplit(line.split, 'EUR'), participants, 'EUR', line)).toBe(
+    expect(text(draftSplit(line.split, 'EUR'), participants, { currency: 'EUR', item: line })).toBe(
       'Amounts · Kasia €10.00, Marta €5.00',
     );
   });
@@ -48,8 +48,32 @@ describe('an Amounts split as a line reads it', () => {
   it('shows each Share after a Line discount, and says so', async () => {
     const text = await splitText();
     const discounted: LineItem = { ...line, discount: { kind: 'percent', basisPoints: 2500 } };
-    expect(text(draftSplit(discounted.split, 'EUR'), participants, 'EUR', discounted)).toBe(
-      'Amounts after the Line discount · Kasia €7.50, Marta €3.75',
+    expect(
+      text(draftSplit(discounted.split, 'EUR'), participants, {
+        currency: 'EUR',
+        item: discounted,
+      }),
+    ).toBe('Amounts after the Line discount · Kasia €7.50, Marta €3.75');
+  });
+});
+
+describe('an Even split against the current Participants', () => {
+  // Removed from the Trip, still named on older Revisions.
+  const ewa: Participant = { id: '019a2b3c-4d5e-7f00-8a1b-000000000004', name: 'Ewa' };
+  const everyone = [...participants, ewa];
+
+  it('is for all of them when it names each current Participant', async () => {
+    const text = await splitText();
+    const split = draftSplit(
+      { mode: 'even', participantIds: participants.map(({ id }) => id) },
+      'EUR',
     );
+    expect(text(split, participants, { everyone })).toBe('Even · for all 3');
+  });
+
+  it('names them when it includes a removed Participant instead of a current one', async () => {
+    const text = await splitText();
+    const split = draftSplit({ mode: 'even', participantIds: [kasia.id, marta.id, ewa.id] }, 'EUR');
+    expect(text(split, participants, { everyone })).toBe('Even · Kasia, Marta, Ewa');
   });
 });

@@ -100,7 +100,7 @@ const unitPrice = computed(() =>
 
 // The folded line's facts under its name: how it is split, then its discount and Deposit.
 const facts = computed(() => {
-  const split = splitText(line.value.split, participants, currency, item.value);
+  const split = splitText(line.value.split, participants, { currency, item: item.value });
   const extras = [
     item.value?.discount &&
       shares.value &&

@@ -5,11 +5,18 @@ import { computed, ref } from 'vue';
 import ExpenseDetails from '../../app/components/ExpenseDetails.vue';
 
 const kasia: Participant = { id: '019a2b3c-4d5e-7f00-8a1b-000000000001', name: 'Kasia' };
+const marta: Participant = { id: '019a2b3c-4d5e-7f00-8a1b-000000000002', name: 'Marta' };
+// Added to the Trip and removed again, on no Expense.
+const ewa: Participant = { id: '019a2b3c-4d5e-7f00-8a1b-000000000003', name: 'Ewa' };
 
 mockNuxtImport('useOpenTrip', () => () => ({
-  trip: computed(() => ({ id: '019a2b3c-4d5e-7f00-8a1b-2c3d4e5f6a7b', currency: 'EUR' })),
+  trip: computed(() => ({
+    id: '019a2b3c-4d5e-7f00-8a1b-2c3d4e5f6a7b',
+    currency: 'EUR',
+    participants: [kasia, marta],
+  })),
   claim: ref(kasia),
-  everyone: ref([kasia]),
+  everyone: ref([kasia, marta, ewa]),
 }));
 
 // Bread and cheese nobody has been given yet, €10.00 and €30.00, with €4.00 off the Receipt:
@@ -36,5 +43,25 @@ describe('a Receipt with a Receipt discount and several unassigned Line items', 
       expect.stringContaining('€10.00 not assigned yet (€9.00 after the Receipt discount)'),
       expect.stringContaining('€30.00 not assigned yet (€27.00 after the Receipt discount)'),
     ]);
+  });
+});
+
+describe('a Receipt in a Trip with a removed Participant', () => {
+  it('says an Even line for every current Participant is for all of them', async () => {
+    const { discount: _, ...undiscounted } = lidl;
+    const receipt: Expense = {
+      ...undiscounted,
+      lineItems: [
+        {
+          name: 'Bread',
+          unitPrice: 129,
+          quantity: 2,
+          split: { mode: 'even', participantIds: [kasia.id, marta.id] },
+        },
+      ],
+    };
+    const wrapper = await mountSuspended(ExpenseDetails, { props: { expense: receipt } });
+
+    expect(wrapper.find('li[id]').text()).toContain('2 × €1.29 · Even · for all 2');
   });
 });
