@@ -729,7 +729,7 @@ describeDb('the device, syncing with the real Trip sync', () => {
     const { device, croatia, connection } = await joined(trip, token, ania);
     // The server fills a rate in after a pull that needs it, for a later pull to bring.
     const synced = async (rates: RateEntry[]) =>
-      vi.waitFor(async () => {
+      eventually(async () => {
         await croatia.sync();
         expect((await device.read(trip.id))?.local?.rates).toEqual(rates);
       });

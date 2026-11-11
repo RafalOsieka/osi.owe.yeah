@@ -24,5 +24,10 @@ describe('ExpenseTimeField', () => {
       local,
     );
     expect(wrapper.text()).toContain('The date must be between 4 January 1999');
+
+    // Fixing the time doesn't fold the field away while it is typed in.
+    await wrapper.setProps({ error: undefined });
+    expect(wrapper.find('input[type="datetime-local"]').exists()).toBe(true);
+    expect(wrapper.text()).not.toContain('The date must be between');
   });
 });
