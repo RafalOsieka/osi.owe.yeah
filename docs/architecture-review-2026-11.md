@@ -99,6 +99,7 @@ They found no reason to reopen ADR 0001–0003, and 121 of the 126 stories are d
   - **What's at risk:** the production compose (now `deploy/osieka-dev/compose.yaml`) keeps everything on one volume on one host: the Revisions kept forever, the fixed rates ADR 0003 forbids changing, and the token hashes. The VAPID keys live only on the host.
   - **Fix:** a nightly `pg_dump` with 30-day retention, copied off the host together with the stack's secrets, and one restore drill. No ticket covers this yet.
   - **Scoped to test on 2026-11-11:** a dump before each migration (#206), plus the off-host copy, the secrets and a restore drill (#207). Nightly dumps wait for a production instance.
+  - **Done in #206:** a `backup` compose service dumps before every `migrate` and keeps the last 5; the runbook restores one. #207 is still open.
 - [ ] **S2. One malformed change blocks the whole Trip's sync, with no message** (system H2).
   - **Server:** the sync push validates the whole body and answers 400 for all of it.
   - **Device:** queuing a change parses nothing, the shape is guarded only by forms, sync swallows the error, and the outbox resends the same first 100 changes forever. The user's only way out is "Forget anyway", which loses data.
@@ -161,7 +162,7 @@ They found no reason to reopen ADR 0001–0003, and 121 of the 126 stories are d
 - [ ] **S15. The pull reads its snapshot outside a transaction.** One snapshot can hold an Expense whose newly added Participant it doesn't yet show. **Overlap:** #77's single whole-Trip read can run in one `REPEATABLE READ` transaction. **Issue:** #218.
 - [ ] **S16. CI doesn't check that the Drizzle schema matches the migrations.** Add `drizzle-kit generate` followed by `git diff --exit-code`. **Issue:** #219.
 - [ ] **S17. Playwright tests only Chromium**, though the spec's top risk is iOS Safari. Add a WebKit project for the offline and sync journeys. **Issue:** #220.
-- [x] **S18. Deploys build on the production host**, without tagged images, and migrations only go forward. Acceptable for now, with a backup (S1) before every deploy. Done in #124 and #127 (ADR 0005): hosts pull GHCR images pinned by digest. Forward-only migrations are now a decision recorded in ADR 0005. A backup before each deploy waits on S1.
+- [x] **S18. Deploys build on the production host**, without tagged images, and migrations only go forward. Acceptable for now, with a backup (S1) before every deploy. Done in #124 and #127 (ADR 0005): hosts pull GHCR images pinned by digest. Forward-only migrations are now a decision recorded in ADR 0005. A dump before each deploy is done in #206.
 - [x] **S19. Spec story 101 is half done.** The Revision keeps its `deviceId`, but the endpoint doesn't return it. Either use it or drop the story. Dropped on 2026-11-11 through #19's amendments.
 - [ ] **S20. Classifying a change** (added, changed, deleted, restored) exists twice: in the server's Notifications code and in the app's Revisions utilities. **Issue:** #210. A domain `revisionKind`, and "edited" everywhere, the Web Push payload included.
 

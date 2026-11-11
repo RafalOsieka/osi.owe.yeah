@@ -622,7 +622,7 @@
   },
   "privacy": {
     "title": "Polityka prywatności",
-    "updated": "Ostatnia aktualizacja: 4 listopada 2026 r.",
+    "updated": "Ostatnia aktualizacja: 11 listopada 2026 r.",
     "intro": "Owe Yeah zapisuje, ile kilka osób wydaje wspólnie, i wylicza, kto komu ile oddaje. Tu opisujemy, jakie dane osobowe przetwarza, po co, jak długo i jakie masz prawa. To środowisko testowe: nie wpisuj niczego wrażliwego.",
     "controller": {
       "title": "Kto odpowiada za dane",
@@ -660,6 +660,7 @@
     "retention": {
       "title": "Jak długo je przechowujemy",
       "test": "To środowisko testowe: jego dane mogą zostać usunięte w dowolnej chwili bez uprzedzenia, a cała testowa baza danych jest czyszczona co najmniej raz na 12 miesięcy. Do tego czasu podróże są przechowywane z każdą wersją.",
+      "backups": "Przed każdą aktualizacją aplikacji serwer kopiuje swoją bazę danych. Przechowujemy 5 ostatnich kopii, a dane usunięte z bazy zostają w nich, dopóki nie zastąpią ich nowsze kopie.",
       "notifications": "Subskrypcję powiadomień usuwamy, gdy wyłączysz powiadomienia, zapomnisz podróż albo usługa powiadomień przeglądarki zgłosi, że subskrypcja już nie istnieje.",
       "ip": "Adresy IP do ograniczania zapytań serwer trzyma tylko w pamięci, przez kilka minut. Cloudflare przechowuje swoje logi zgodnie z własnymi zasadami.",
       "device": "Na Twoim urządzeniu podróż zostaje, dopóki jej nie zapomnisz, nie wyczyścisz danych strony albo nie odinstalujesz aplikacji."
