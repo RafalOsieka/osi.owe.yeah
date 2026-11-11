@@ -727,6 +727,12 @@ describeDb('the device, syncing with the real Trip sync', () => {
     await kasias.croatia.saveExpense(langos, null);
     await kasias.croatia.sync();
     const { device, croatia, connection } = await joined(trip, token, ania);
+    // The server fills a rate in after a pull that needs it, for a later pull to bring.
+    const synced = async (rates: RateEntry[]) =>
+      vi.waitFor(async () => {
+        await croatia.sync();
+        expect((await device.read(trip.id))?.local?.rates).toEqual(rates);
+      });
     const provisional: RateEntry = {
       date: '2026-07-14',
       from: 'HUF',
@@ -734,23 +740,21 @@ describeDb('the device, syncing with the real Trip sync', () => {
       rate: '0.0025',
       fixed: false,
     };
-    expect((await device.read(trip.id))?.local?.rates).toEqual([provisional]);
+    await synced([provisional]);
 
     // Two days later the provider has published the day's own rate, which is now fixed.
     frankfurter.set('2026-07-14', 'HUF', 'EUR', 0.00251);
     vi.setSystemTime(new Date('2026-07-16T12:00:00Z'));
-    await croatia.sync();
     const fixed: RateEntry = { ...provisional, rate: '0.00251', fixed: true };
-    expect((await device.read(trip.id))?.local?.rates).toEqual([fixed]);
+    await synced([fixed]);
 
     // One no Expense needs any more stays as the latest cached rate, e.g. for a new Expense.
     frankfurter.set('2026-07-14', 'CZK', 'EUR', 0.04);
     const [saved] = (await kasias.device.read(trip.id))!.local!.expenses;
     await kasias.croatia.saveExpense({ ...langos, currency: 'CZK' }, saved!);
     await kasias.croatia.sync();
-    await croatia.sync();
     const czk: RateEntry = { ...fixed, from: 'CZK', rate: '0.04' };
-    expect((await device.read(trip.id))?.local?.rates).toEqual([fixed, czk]);
+    await synced([fixed, czk]);
 
     // Offline, the rates it has stay.
     connection.offline = true;

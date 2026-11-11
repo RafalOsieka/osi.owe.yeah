@@ -223,8 +223,9 @@ describe('expenseProblems', () => {
     it('takes a time up to a year ahead, and no later', () => {
       expect(expenseProblems(at('2027-07-15T12:00:00Z'), trip, now)).toEqual([]);
       expect(expenseProblems(at('2027-07-15T12:01:00Z'), trip, now)).toEqual(['timeOutOfRange']);
-      expect(expenseProblems({ ...repayment, time: at('2030-01-01T00:00:00Z').time }, trip, now))
-        .toEqual(['timeOutOfRange']);
+      expect(
+        expenseProblems({ ...repayment, time: at('2030-01-01T00:00:00Z').time }, trip, now),
+      ).toEqual(['timeOutOfRange']);
     });
   });
 

@@ -7,19 +7,16 @@ import {
   useRuntimeConfig,
 } from 'nuxt/server';
 import { tripSync } from '../../../trip';
+import { LruMap } from '../../../utils/lru-map';
 import { invalidTripLink, tripLinkOf } from '../../../utils/trip-access';
 
 const HOUR_MS = 60 * 60 * 1000;
 
-// How many client addresses `creations` keeps; the least recently seen is dropped first.
-const KNOWN_ADDRESSES = 10_000;
-
 /**
  * The Trips each client address has created in its current hour, which starts with the first
- * of them. A Map keeps insertion order, and each use inserts its address again, so the least
- * recently seen address comes first.
+ * of them, for the 10,000 addresses seen most recently.
  */
-const creations = new Map<string, { count: number; since: number }>();
+const creations = new LruMap<string, { count: number; since: number }>(10_000);
 
 /**
  * Counts a Trip created from `address`, unless it has created `limit` Trips this hour already.
@@ -30,10 +27,7 @@ function mayCreateTrip(address: string, limit: number): boolean {
   const known = creations.get(address);
   const current = known && now - known.since < HOUR_MS ? known : { count: 0, since: now };
   const allowed = current.count < limit;
-  creations.delete(address);
   creations.set(address, allowed ? { ...current, count: current.count + 1 } : current);
-  const [oldest] = creations.keys();
-  if (creations.size > KNOWN_ADDRESSES && oldest !== undefined) creations.delete(oldest);
   return allowed;
 }
 

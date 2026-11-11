@@ -11,6 +11,7 @@ import { and, eq, inArray, not, sql } from 'drizzle-orm';
 import { z } from 'zod';
 import type { Database } from '../db/client';
 import { rates } from '../db/schema';
+import { LruMap } from '../utils/lru-map';
 import type { WholeTrip } from './store';
 
 // A rate the provider answered without fixing (not fixed yet, or not covered) is asked for
@@ -21,6 +22,8 @@ const UNREACHABLE_RETRY_MS = 60 * 1000;
 // How far around the dates a fetch reaches: before, for a latest rate to fall back on while a
 // date's own is not published; after, to see whether the provider skipped a date for good.
 const AROUND_MS = 7 * 24 * 60 * 60 * 1000;
+// How many entries `retryAt` remembers. One dropped early is only asked for again sooner.
+const RETRY_ENTRIES = 10_000;
 
 const key = (date: string, from: string, to: string) => `${date} ${from} ${to}`;
 const pairKey = (from: string, to: string) => `${from} ${to}`;
@@ -29,11 +32,16 @@ const pairKey = (from: string, to: string) => `${from} ${to}`;
  * The rate table, filled lazily from Frankfurter at `frankfurterUrl` (ADR 0003). An entry
  * that is missing, or not fixed yet, is fetched at most once an hour (`RETRY_AFTER_MS`) per
  * instance; the server builds one. A fixed entry is never fetched or changed again. Without
- * the provider, the table gives what it has.
+ * the provider, the table gives what it has. The pull never waits for the provider: it gets
+ * what the table has, and the rest is filled in the background for a later pull.
  */
 export function createRates(db: Database, frankfurterUrl: string) {
-  /** When each `date from to` entry that is not fixed may be asked for again. */
-  const retryAt = new Map<string, number>();
+  /**
+   * When each `date from to` entry that is not fixed may be asked for again, for the
+   * `RETRY_ENTRIES` used most recently. An entry being fetched waits as for an unreachable
+   * provider, so pulls meanwhile don't fetch it again.
+   */
+  const retryAt = new LruMap<string, number>(RETRY_ENTRIES);
   /** The `from to` pairs the provider refused when last asked: it doesn't cover them. */
   const notCovered = new Set<string>();
 
@@ -67,26 +75,34 @@ export function createRates(db: Database, frankfurterUrl: string) {
   }
 
   /**
-   * The table's entries among `needed` in `currency`, filling the table from the provider
-   * first with those that are missing or not fixed, unless they were asked for lately.
+   * The table's entries among `needed` in `currency`, and those of them to fetch: missing or
+   * not fixed, and not asked for lately. Those are claimed (`retryAt`) for the caller to fetch.
    */
-  async function filled(
+  async function storedAndStale(
     needed: readonly { date: string; from: Currency }[],
     currency: Trip['currency'],
-  ): Promise<RateEntry[]> {
-    if (needed.length === 0) return [];
-
+  ) {
     const stored = await selectRates(needed, currency);
     const now = Date.now();
     const stale = needed.filter(({ date, from }) => {
       const entry = key(date, from, currency);
       return !stored.get(entry)?.fixed && (retryAt.get(entry) ?? 0) <= now;
     });
-    if (stale.length === 0) return [...stored.values()];
+    for (const { date, from } of stale) {
+      retryAt.set(key(date, from, currency), now + UNREACHABLE_RETRY_MS);
+    }
+    return { stored, stale };
+  }
 
+  /** Fills the table from the provider with the `stale` entries in `currency`. */
+  async function fill(
+    stale: readonly { date: string; from: Currency }[],
+    currency: Trip['currency'],
+  ): Promise<void> {
     for (const [from, entries] of Map.groupBy(stale, ({ from }) => from)) {
       const dates = entries.map(({ date }) => date);
       const fetched = await fetchRates(frankfurterUrl, from, currency, dates);
+      const now = Date.now();
       const wait = fetched === 'unreachable' ? UNREACHABLE_RETRY_MS : RETRY_AFTER_MS;
       for (const date of dates) retryAt.set(key(date, from, currency), now + wait);
       if (fetched === 'unreachable') continue;
@@ -109,6 +125,32 @@ export function createRates(db: Database, frankfurterUrl: string) {
           setWhere: not(rates.fixed),
         });
     }
+  }
+
+  /** `fill` for nobody to wait for: a failure is only logged. */
+  async function fillInBackground(
+    stale: readonly { date: string; from: Currency }[],
+    currency: Trip['currency'],
+  ): Promise<void> {
+    try {
+      await fill(stale, currency);
+    } catch (error) {
+      console.warn(`Rates in ${currency} could not be filled`, error);
+    }
+  }
+
+  /**
+   * The table's entries among `needed` in `currency`, filling the table from the provider
+   * first with those that are missing or not fixed, unless they were asked for lately.
+   */
+  async function filled(
+    needed: readonly { date: string; from: Currency }[],
+    currency: Trip['currency'],
+  ): Promise<RateEntry[]> {
+    if (needed.length === 0) return [];
+    const { stored, stale } = await storedAndStale(needed, currency);
+    if (stale.length === 0) return [...stored.values()];
+    await fill(stale, currency);
     return [...(await selectRates(needed, currency)).values()];
   }
 
@@ -140,13 +182,18 @@ export function createRates(db: Database, frankfurterUrl: string) {
 
     /**
      * The rate entries a Trip's Expenses (deleted ones aside) need, as the whole-Trip pull
-     * brings them (ADR 0003).
+     * brings them (ADR 0003): those the table has now. The rest are filled in the background,
+     * so the provider never holds up the pull, and a later pull brings them.
      */
-    forTrip(trip: WholeTrip): Promise<RateEntry[]> {
-      return forExpenses(
+    async forTrip(trip: WholeTrip): Promise<RateEntry[]> {
+      const needed = neededRates(
         trip.expenses.filter(({ deleted }) => !deleted),
         trip.currency,
       );
+      if (needed.length === 0) return [];
+      const { stored, stale } = await storedAndStale(needed, trip.currency);
+      if (stale.length > 0) void fillInBackground(stale, trip.currency);
+      return [...stored.values()];
     },
   };
 }

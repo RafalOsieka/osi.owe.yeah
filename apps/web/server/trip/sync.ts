@@ -319,8 +319,9 @@ export function createTripSync(db: Database, store: TripStore, rates: Rates, not
     /**
      * The whole-Trip pull: the Trip with its Participants and its Expenses. Given `since`, the
      * Trip version the device has, it answers `trip: null` while the Trip is still at that
-     * version. Either way it brings the rate entries the Trip's Expenses need, filling the
-     * rate table as it goes (ADR 0003): rates become fixed without the Trip changing.
+     * version. Either way it brings the rate entries the Trip's Expenses need that the rate
+     * table has (ADR 0003), without waiting for the provider: the rest are filled in the
+     * background for a later pull, and rates become fixed without the Trip changing.
      */
     async pull(tripId: string, token: string, since?: number): Promise<PullResponse | InvalidLink> {
       const linked = await store.tripByLink(tripId, token);
