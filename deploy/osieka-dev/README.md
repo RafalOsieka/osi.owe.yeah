@@ -30,7 +30,7 @@ These files are built for one instance: Owe Yeah run by osieka.dev at `owe-yeah-
 4. **Registry credential.** The host pulls as a bot GitHub account that can read only these two packages. Give the stack a registry credential for `ghcr.io`: the bot's username and a classic token with only `read:packages`, expiring in a year. GitHub emails the bot's address a week before it expires, so that address must reach the operator.
 5. **Stack.** Create a stack from this repo, branch `deploy`, file `test/compose.yaml`, polling every ~5 minutes. Redeploying it by hand is the fallback.
 6. Check that `cloudflared` and `app` turn healthy: `cloudflared` once the tunnel holds a connection to Cloudflare, `app` once `/healthz` answers.
-7. **Off the host.** Copy the stack's `backups` volume off the host regularly: a dump that stays on the host is lost with it. Keep the stack's secrets (above) and the registry credential in a password manager: a restored database is of no use without `POSTGRES_PASSWORD`, and a lost VAPID pair cuts off every subscribed device.
+7. **Off the host.** Copy the stack's `backups` volume off the host after each deploy: a dump that stays on the host is lost with it. Keep the copy a mirror of the volume, so it too holds only the last 5 dumps, as the privacy notice promises. Keep the stack's secrets (above) and the registry credential in a password manager: a restored database is of no use without `POSTGRES_PASSWORD`, and a lost VAPID pair cuts off every subscribed device.
 
 ## Opening test to the public
 
@@ -68,7 +68,7 @@ The `db` container sees the dumps read-only at `/backups`, so these commands all
 
 ### Restore a dump
 
-1. Stop `app`, so nothing writes to the database:
+1. Turn off the stack's polling of `deploy`, so no deploy starts halfway through, and stop `app`, so nothing writes to the database:
 
    ```sh
    docker stop <app container>
@@ -87,7 +87,7 @@ The `db` container sees the dumps read-only at `/backups`, so these commands all
    docker exec <db container> pg_restore -U postgres -d owe_yeah --exit-on-error /backups/<dump>
    ```
 
-4. Start the stack again by redeploying it. That dumps the restored database too, which pushes out the oldest dump, then migrates it to the deployed build's schema. If the deploy that broke the database is still on `deploy`, revert it there first, or `migrate` runs the same migration again.
+4. Turn polling back on and start the stack again by redeploying it. That dumps the restored database too, which pushes out the oldest dump, then migrates it to the deployed build's schema. If the deploy that broke the database is still on `deploy`, revert it there first, or `migrate` runs the same migration again.
 
 ## Requests
 
@@ -123,7 +123,7 @@ docker exec -i <db container> psql -U postgres -d owe_yeah -v id=<id> -v token=<
    - Opening the link on a device that doesn't hold the Trip shows "This Trip link doesn't work".
    - A device that holds the Trip keeps its copy and stops syncing, without saying so. It gets no more Notifications, and changes made on it never sync. These copies are on people's devices, out of the operator's reach: the requester should forget the Trip on their devices, and ask the other Participants to do the same.
    - A device whose unsynced changes include the Trip's name or currency (a Trip created offline, or renamed since its last sync) creates the Trip again under the same link on its next sync. The new Trip holds only that device's unsynced changes. Run `find.sql` again a week later, and erase the Trip again if it's back.
-4. Outside the database, container logs hold only warnings, which may quote a query's values, and rotate away (10 MB × 3). The last 5 [dumps](#dumps) still hold the Trip: it leaves them once 5 more deploys have dumped the database after the erasure, and copies off the host as those copies are replaced. Say so in the answer, and erase the Trip again after restoring a dump.
+4. Outside the database, container logs hold only warnings, which may quote a query's values, and rotate away (10 MB × 3). The last 5 [dumps](#dumps) still hold the Trip: it leaves them once 5 more deploys have dumped the database after the erasure, and leaves the copy off the host when that copy is next mirrored. Say so in the answer, and erase the Trip again after restoring a dump.
 
 **Erasing part of a Trip.** The requester can do part of it in the app, and the change syncs to every device:
 

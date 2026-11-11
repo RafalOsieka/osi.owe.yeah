@@ -34,7 +34,7 @@ services:
       retries: 5
 
   # Dumps the database before every deploy migrates it, since migrations only go forward. A
-  # custom-format dump named by its UTC time; only the newest 5 are kept. It's written under a
+  # custom-format dump named by its UTC time; only the newest `keep` are kept. It's written under a
   # temporary name first, so a failed dump leaves no file that looks whole and pushes out none.
   backup:
     image: postgres:18-alpine
@@ -48,12 +48,13 @@ services:
       - sh
       - -euc
       - |
+        keep=5
         rm -f /backups/*.partial
         name="/backups/owe_yeah-$$(date -u +%Y%m%dT%H%M%SZ).dump"
         pg_dump -h db -U postgres -d owe_yeah -Fc -f "$$name.partial"
         mv "$$name.partial" "$$name"
         echo "Dumped to $$name"
-        ls -1r /backups/*.dump | tail -n +6 | xargs -r rm -v --
+        ls -1r /backups/*.dump | tail -n +$$((keep + 1)) | xargs -r rm -v --
     depends_on:
       db:
         condition: service_healthy
