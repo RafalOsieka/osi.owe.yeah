@@ -103,6 +103,41 @@ async function tripLinkFromInvite(page: Page): Promise<string> {
   return url;
 }
 
+/**
+ * Stands in for the browser's notification permission and push service: headless Chromium
+ * reports notifications blocked, and can't reach a push service. The permission is granted
+ * until `setNotificationPermission` changes it, and lasts past a reload.
+ */
+async function standInForNotifications(page: Page): Promise<void> {
+  await page.addInitScript(() => {
+    Object.defineProperty(Notification, 'permission', {
+      get: () => localStorage.getItem('test-notification-permission') ?? 'granted',
+    });
+    Notification.requestPermission = async () => Notification.permission;
+    const endpoint = 'https://push.example.com/ui-e2e';
+    const subscription = {
+      endpoint,
+      options: { applicationServerKey: null, userVisibleOnly: true },
+      toJSON: () => ({ endpoint, keys: { p256dh: 'p256dh', auth: 'auth' } }),
+      unsubscribe: async () => true,
+    };
+    // SAFETY: the app reads only these members of a PushSubscription.
+    PushManager.prototype.subscribe = async () => subscription as PushSubscription;
+    PushManager.prototype.getSubscription = async () => null;
+  });
+}
+
+/** Allows or blocks notifications for the app, as the browser's site settings do. */
+async function setNotificationPermission(
+  page: Page,
+  permission: NotificationPermission,
+): Promise<void> {
+  await page.evaluate(
+    (value) => localStorage.setItem('test-notification-permission', value),
+    permission,
+  );
+}
+
 /** Creates a Trip through New Trip, as `me`, and lands on it. */
 async function createTrip(
   page: Page,
@@ -237,22 +272,7 @@ test('notifications are offered once after a Claim, and turned on and off from t
 
   request,
 }) => {
-  // The browser allows notifications and its push service is stood in for: headless Chromium
-  // reports them blocked, and can't reach a push service.
-  await page.addInitScript(() => {
-    Object.defineProperty(Notification, 'permission', { get: () => 'granted' });
-    Notification.requestPermission = async () => 'granted';
-    const endpoint = 'https://push.example.com/ui-e2e';
-    const subscription = {
-      endpoint,
-      options: { applicationServerKey: null, userVisibleOnly: true },
-      toJSON: () => ({ endpoint, keys: { p256dh: 'p256dh', auth: 'auth' } }),
-      unsubscribe: async () => true,
-    };
-    // SAFETY: the app reads only these members of a PushSubscription.
-    PushManager.prototype.subscribe = async () => subscription as PushSubscription;
-    PushManager.prototype.getSubscription = async () => null;
-  });
+  await standInForNotifications(page);
   const tripLink = await tripLinkFor(request, 'Mazury 2026', ['Kasia', 'Ania']);
   await page.goto(tripLink);
   await page.waitForFunction(() => navigator.serviceWorker.controller !== null);
@@ -285,6 +305,42 @@ test('notifications are offered once after a Claim, and turned on and off from t
   await page.getByRole('button', { name: 'Turn off' }).click();
   await page.getByRole('button', { name: 'Back' }).click();
   await expect(row).toContainText('Off');
+});
+
+test('notifications turned on say Blocked once the browser blocks them, and On again once allowed and checked', async ({
+  page,
+  request,
+}) => {
+  await standInForNotifications(page);
+  const tripLink = await tripLinkFor(request, 'Mazury 2026', ['Kasia', 'Ania']);
+  await page.goto(tripLink);
+  await page
+    .getByRole('dialog', { name: 'Who are you?' })
+    .getByRole('button', { name: 'Kasia' })
+    .click();
+  await page
+    .getByRole('dialog', { name: 'Notifications' })
+    .getByRole('button', { name: 'Turn on' })
+    .click();
+  await page.getByRole('link', { name: 'Trip', exact: true }).click();
+  const row = page.getByRole('link', { name: /Notifications/ });
+  await expect(row).toContainText('On');
+
+  // Blocked in the browser's site settings afterwards: the row and the page say so, with the
+  // steps to unblock, instead of "On".
+  await setNotificationPermission(page, 'denied');
+  await page.reload();
+  await expect(row).toContainText('Blocked');
+  await row.click();
+  const main = page.getByRole('main');
+  await expect(main).toContainText('Blocked in this browser');
+  await expect(main).toContainText('To unblock them:');
+  await expect(main).not.toContainText("You're notified about changes");
+
+  // Allowed again: "Check again" brings them back, without turning them on anew.
+  await setNotificationPermission(page, 'granted');
+  await page.getByRole('button', { name: 'Check again' }).click();
+  await expect(row).toContainText('On');
 });
 
 test('Remind shares a message while the debtor cannot be notified, then sends one Reminder a day; a tapped one highlights its suggestion', async ({
