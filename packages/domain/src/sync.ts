@@ -91,8 +91,9 @@ export type PushRequest = z.infer<typeof pushRequestSchema>;
 
 /**
  * Why the server refused a change outright: a Trip rule (`expenseProblems`), an id another
- * Trip uses, an edit of an Expense the server does not have, or removing a Participant an
- * Expense references.
+ * Trip uses, an edit of an Expense the server does not have, removing a Participant an
+ * Expense references, or a new Trip currency once the Trip has a Repayment
+ * (`tripCurrencyLocked`).
  */
 export const pushProblemSchema = z.enum([
   ...expenseProblemSchema.options,
@@ -100,6 +101,7 @@ export const pushProblemSchema = z.enum([
   'unknownExpense',
   'participantIdTaken',
   'participantReferenced',
+  'tripHasRepayments',
 ]);
 
 export type PushProblem = z.infer<typeof pushProblemSchema>;

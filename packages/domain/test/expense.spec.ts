@@ -7,6 +7,7 @@ import {
   groupByLocalDay,
   localDateTime,
   localDay,
+  tripCurrencyLocked,
   type Expense,
   type LineItem,
   type Repayment,
@@ -50,6 +51,17 @@ const repayment: Expense = {
   recipientId: kasia.id,
   amount: 1225,
 };
+
+describe('tripCurrencyLocked', () => {
+  it('locks the Trip currency once the Trip has a Repayment', () => {
+    expect(tripCurrencyLocked([lidl, repayment])).toBe(true);
+  });
+
+  it('leaves the Trip currency free while the Trip has no Repayment', () => {
+    expect(tripCurrencyLocked([lidl])).toBe(false);
+    expect(tripCurrencyLocked([])).toBe(false);
+  });
+});
 
 describe('expenseSchema', () => {
   it('accepts a plain Expense and keeps its instant in UTC', () => {

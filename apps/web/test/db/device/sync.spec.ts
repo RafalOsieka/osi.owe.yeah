@@ -51,6 +51,19 @@ function plainExpense(title: string, payer: Participant, ticked: Participant[]):
   };
 }
 
+/** A Repayment of 12.25 EUR from `payer` to `recipient`. */
+function repaymentOf(payer: Participant, recipient: Participant): Expense {
+  return {
+    id: uuidv7(),
+    title: 'Repayment',
+    currency: 'EUR',
+    time: { instant: '2026-07-15T08:00:00Z', zone: 'Europe/Zagreb' },
+    mainPayerId: payer.id,
+    recipientId: recipient.id,
+    amount: 1225,
+  };
+}
+
 /** The Trip "Croatia 2026" of Kasia, Ania and Ola, with its Trip link's token. */
 function croatia2026() {
   const [kasia, ania, ola] = [participant('Kasia'), participant('Ania'), participant('Ola')];
@@ -597,6 +610,45 @@ describeDb('the device, syncing with the real Trip sync', () => {
     };
     expect(await onServer(trip, token)).toMatchObject(details);
     expect((await device.read(trip.id))?.local).toMatchObject(details);
+  });
+
+  it("keeps the Trip currency once there's a Repayment, deleted ones aside, but takes a rename", async () => {
+    const { device, croatia, trip, token, kasia, ania } = await setUp();
+    const repayment = repaymentOf(ania, kasia);
+    await croatia.saveExpense(repayment, null);
+
+    expect(await croatia.saveTripDetails({ name: 'Mazury', currency: 'PLN' })).toBe(false);
+    expect(await croatia.saveTripDetails({ name: 'Mazury', currency: 'EUR' })).toBe(true);
+    await croatia.sync();
+    expect(await onServer(trip, token)).toMatchObject({ name: 'Mazury', currency: 'EUR' });
+
+    const recorded = (await device.read(trip.id))?.local?.expenses[0];
+    await croatia.deleteExpense(repayment, recorded!);
+    expect(await croatia.saveTripDetails({ name: 'Mazury', currency: 'PLN' })).toBe(true);
+    await croatia.sync();
+    expect(await onServer(trip, token)).toMatchObject({ currency: 'PLN' });
+  });
+
+  it('notes a new Trip currency the server refused for a Repayment recorded meanwhile, and shows the Trip currency that stands', async () => {
+    const { device, croatia, connection, trip, token, kasia, ania } = await setUp();
+    const anias = await joined(trip, token, ania);
+    connection.offline = true;
+    expect(await croatia.saveTripDetails({ name: 'Croatia 2026', currency: 'PLN' })).toBe(true);
+    // A later rename carries the new Trip currency too: both are refused, told once.
+    expect(await croatia.saveTripDetails({ name: 'Chorwacja', currency: 'PLN' })).toBe(true);
+    await anias.croatia.saveExpense(repaymentOf(ania, kasia), null);
+    await anias.croatia.sync();
+
+    connection.offline = false;
+    await croatia.sync();
+
+    const view = await device.read(trip.id);
+    expect(view?.unsynced).toBe(0);
+    expect(view?.local).toMatchObject({ name: 'Croatia 2026', currency: 'EUR' });
+    expect(view?.deviceTrip.notices).toMatchObject([
+      { kind: 'currencyChangeRefused', currency: 'PLN' },
+    ]);
+    expect((await onServer(trip, token)).currency).toBe('EUR');
   });
 
   it('caches the rate entries every pull brings, the newest of each, also while the Trip is unchanged', async () => {

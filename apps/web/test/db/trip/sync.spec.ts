@@ -533,6 +533,37 @@ describeDb('Trip sync', () => {
     });
   });
 
+  it('refuses a new Trip currency while the Trip has a Repayment, but still takes a rename', async () => {
+    const { trip, token, kasia, ania } = await tripWithKasiaAndAnia();
+    await push(trip.id, token, change(plainExpense(kasia, [kasia, ania])));
+    const repayment: Expense = {
+      id: uuidv7(),
+      title: 'Repayment',
+      currency: 'EUR',
+      time: { instant: '2026-07-15T08:00:00Z', zone: 'Europe/Zagreb' },
+      mainPayerId: ania.id,
+      recipientId: kasia.id,
+      amount: 1225,
+    };
+    await push(trip.id, token, change(repayment));
+    const toPln = tripChange({ name: 'Croatia', currency: 'PLN' });
+    const renamed = tripChange({ name: 'Croatia', currency: 'EUR' });
+
+    expect(await push(trip.id, token, toPln, renamed)).toEqual<ChangeResult[]>([
+      { changeId: toPln.id, status: 'rejected', problems: ['tripHasRepayments'] },
+      { changeId: renamed.id, status: 'accepted', version: null },
+    ]);
+    expect(await pulled(trip.id, token)).toMatchObject({ name: 'Croatia', currency: 'EUR' });
+
+    // Once the Repayment is deleted (in Recently deleted), the Trip currency is free again.
+    const toPlnAgain = tripChange({ name: 'Croatia', currency: 'PLN' });
+    await push(trip.id, token, deletion(repayment, 1));
+    expect(await push(trip.id, token, toPlnAgain)).toEqual<ChangeResult[]>([
+      { changeId: toPlnAgain.id, status: 'accepted', version: null },
+    ]);
+    expect(await pulled(trip.id, token)).toMatchObject({ currency: 'PLN' });
+  });
+
   it('fills the fixed rate a foreign Expense needs on the pull, once, and never changes it', async () => {
     const { trip, token, kasia } = await tripWithKasiaAndAnia();
     frankfurter.set('2026-07-14', 'USD', 'EUR', 0.87593);

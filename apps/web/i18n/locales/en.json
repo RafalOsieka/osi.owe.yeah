@@ -67,6 +67,7 @@
       "save": "Save",
       "currencyHelp": "Balances are shown and settled in this currency. Changing it keeps every Expense as entered; each is converted at its own day's rate.",
       "currencyChange": "Balances will be recalculated in {currency}. Every Expense keeps its amount and currency; each is converted at its own day's rate.",
+      "currencyLocked": "The Trip currency can't change once the Trip has Repayments: they even out Balances at this currency's rates, and another currency would leave small amounts owing. To change it, delete the Repayments first.",
       "lastChangedBy": "Last changed by {name} · {when}",
       "lastChangedByYou": "Last changed by you · {when}",
       "lastChanged": "Last changed {when}"
@@ -555,6 +556,7 @@
     "participantRestored": "{name} was removed while you were offline. Your Expense {title} brought them back.",
     "removalRefused": "{name} wasn't removed: they're on an Expense now.",
     "removalRefusedBy": "{name} wasn't removed: {title} includes them now.",
+    "currencyChangeRefused": "Your change to the Trip's name and Trip currency wasn't saved: someone recorded a Repayment meanwhile, and the Trip currency can't change to {currency} once the Trip has one.",
     "quoted": "“{title}”",
     "showExpense": "Show Expense"
   },

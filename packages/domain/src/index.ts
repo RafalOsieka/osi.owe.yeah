@@ -59,6 +59,7 @@ export {
   localDay,
   receiptDiscountExceeds,
   referencedParticipantIds,
+  tripCurrencyLocked,
 } from './expense.ts';
 export type {
   Contribution,

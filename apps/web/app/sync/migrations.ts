@@ -131,6 +131,7 @@ export const migrations: readonly Migration[] = [toV2, toV3, toV4, toV5, toV6];
 const noticeKinds = new Set<string>([
   'participantRestored',
   'removalRefused',
+  'currencyChangeRefused',
   'claimRemoved',
 ] satisfies Notice['kind'][]);
 
