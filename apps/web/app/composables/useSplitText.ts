@@ -19,7 +19,7 @@ import type { DraftSplit } from '~/utils/expense-draft';
  * Amounts ("Amounts · Kasia €10.00, Marta €4.50"), "all N" when Even names exactly the Trip's
  * current `participants`, or that nobody has been given any of it yet. A saved split goes
  * through `draftSplit` first. Names come from `everyone` the Trip has had when given, so a
- * removed Participant on an older version is still named. Typed amounts weigh against the full
+ * removed Participant on an older Revision is still named. Typed amounts weigh against the full
  * price, so given the Line `item` with a Line discount, Amounts shows what each Participant's
  * part of the line comes to after it ("Amounts after the Line discount · Kasia €7.50"), without
  * the Deposit, which the line says on its own.

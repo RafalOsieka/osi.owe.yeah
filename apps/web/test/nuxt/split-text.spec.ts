@@ -58,7 +58,7 @@ describe('an Amounts split as a line reads it', () => {
 });
 
 describe('an Even split against the current Participants', () => {
-  // Removed from the Trip, still named on older versions.
+  // Removed from the Trip, still named on older Revisions.
   const ewa: Participant = { id: '019a2b3c-4d5e-7f00-8a1b-000000000004', name: 'Ewa' };
   const everyone = [...participants, ewa];
 
