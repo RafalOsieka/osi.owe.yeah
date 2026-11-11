@@ -13,7 +13,7 @@ import { notificationSubscriptions } from '../db/schema';
 import type { Rates } from '../trip/rates';
 import type { TripStore, WholeTrip } from '../trip/store';
 import type { AppliedExpenseChange, Notifier } from '../trip/sync';
-import { deliver, type VapidDetails } from './delivery';
+import { deliver, type PushSettings } from './delivery';
 
 /** One applied change as Notifications tell it: what it did, who made it, whom it moved. */
 type Activity = {
@@ -26,13 +26,13 @@ type Activity = {
 /**
  * Notifications about Expense changes (#41), the Trip sync's `Notifier` in production: reading
  * the Trip through `store` and converting at `rates`, with subscriptions kept in `db`. Sent
- * signed with `vapid`; nothing is sent without it.
+ * with `push`; nothing is sent without it.
  */
 export function createNotifications(
   db: Database,
   store: TripStore,
   rates: Rates,
-  vapid: VapidDetails | null,
+  push: PushSettings | null,
 ): Notifier {
   /**
    * What each changed Expense was before its change, by change id: the Revision before the
@@ -89,7 +89,7 @@ export function createNotifications(
   }
 
   async function notify(tripId: string, applied: readonly AppliedExpenseChange[]): Promise<void> {
-    if (applied.length === 0 || !vapid) return;
+    if (applied.length === 0 || !push) return;
     const subscriptions = await db
       .select()
       .from(notificationSubscriptions)
@@ -99,7 +99,7 @@ export function createNotifications(
     const trip = await store.readTrip(tripId);
     if (!trip) return;
     const activities = await activitiesOf(trip, applied);
-    await deliver(db, subscriptions, (device) => messageFor(trip, activities, device), vapid);
+    await deliver(db, subscriptions, (device) => messageFor(trip, activities, device), push);
   }
 
   return {

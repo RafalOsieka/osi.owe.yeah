@@ -10,7 +10,7 @@ import {
 import { and, eq, gte, sql } from 'drizzle-orm';
 import type { Database } from '../db/client';
 import { notificationSubscriptions, reminders } from '../db/schema';
-import { deliver, type VapidDetails } from '../notifications/delivery';
+import { deliver, type PushSettings } from '../notifications/delivery';
 import type { Rates } from '../trip/rates';
 import type { TripStore, WholeTrip } from '../trip/store';
 
@@ -18,14 +18,14 @@ import type { TripStore, WholeTrip } from '../trip/store';
 const startOfToday = sql`date_trunc('day', now(), 'UTC')`;
 
 /**
- * Reminders (#42), reading the Trip through `store` and converting at `rates`, sent signed with
- * `vapid`: nobody can be reminded without it.
+ * Reminders (#42), reading the Trip through `store` and converting at `rates`, sent with
+ * `push`: nobody can be reminded without it.
  */
 export function createReminders(
   db: Database,
   store: TripStore,
   rates: Rates,
-  vapid: VapidDetails | null,
+  push: PushSettings | null,
 ) {
   /**
    * The Repayment `to` owes `from` as the server's balances suggest it now (`suggestedRepayments`),
@@ -62,7 +62,7 @@ export function createReminders(
       const creditor = trip?.participants.find(({ id }) => id === from);
       if (!trip || !suggestion || !creditor) return { refused: 'notSuggested' };
 
-      const devices = vapid
+      const devices = push
         ? await db
             .select()
             .from(notificationSubscriptions)
@@ -73,7 +73,7 @@ export function createReminders(
               ),
             )
         : [];
-      if (!vapid || devices.length === 0) return { refused: 'unreachable' };
+      if (!push || devices.length === 0) return { refused: 'unreachable' };
 
       // One statement, so two Reminders sent at once can't both get through.
       const [sent] = await db
@@ -96,7 +96,7 @@ export function createReminders(
         to,
         amount: roundMoney(suggestion.amount, trip.currency).decimal,
       };
-      void deliver(db, devices, () => message, vapid);
+      void deliver(db, devices, () => message, push);
       return undefined;
     },
 
@@ -106,7 +106,7 @@ export function createReminders(
      */
     async status(tripId: string): Promise<ReminderStatus> {
       const [subscribed, today] = await Promise.all([
-        vapid
+        push
           ? db
               .selectDistinct({ claimId: notificationSubscriptions.claimId })
               .from(notificationSubscriptions)

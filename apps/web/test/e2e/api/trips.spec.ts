@@ -194,12 +194,22 @@ async function tripWithKasiaAndAnia() {
   return { trip, token, kasia, ania };
 }
 
-/** Registers `device`'s push subscription to the Trip, for the Participant it claims. */
-function subscribe(tripId: string, token: string | undefined, device: string, claimId: string) {
+/**
+ * Registers `device`'s push subscription to the Trip, for the Participant it claims: at the
+ * stand-in push service, or at `endpoint`.
+ */
+function subscribe(
+  tripId: string,
+  token: string | undefined,
+  device: string,
+  claimId: string,
+  endpoint?: string,
+) {
+  const subscription = pushService.subscription(device);
   return fetch(`/api/trips/${tripId}/subscriptions/${device}`, {
     method: 'PUT',
     headers: deviceHeaders(token),
-    body: JSON.stringify({ ...pushService.subscription(device), claimId }),
+    body: JSON.stringify({ ...subscription, endpoint: endpoint ?? subscription.endpoint, claimId }),
   });
 }
 
@@ -292,8 +302,8 @@ describeApi('Trip API', () => {
       NUXT_VAPID_PUBLIC_KEY: vapid.publicKey,
       NUXT_VAPID_PRIVATE_KEY: vapid.privateKey,
       NUXT_VAPID_SUBJECT: 'mailto:test@example.com',
-      // The stand-in push service is plain http; real ones are https only.
-      NUXT_NOTIFICATIONS_ALLOW_HTTP: 'true',
+      // The stand-in push service is plain http on 127.0.0.1, no known push service.
+      NUXT_NOTIFICATIONS_ANY_ENDPOINT: 'true',
       NUXT_COMMIT_SHA: commit,
     },
     // The PWA is off under Vitest for the nuxt suite's sake; this suite builds the real one,
@@ -450,6 +460,17 @@ describeApi('Trip API', () => {
     expect((await subscribe(trip.id, newToken(), device, kasia.id)).status).toBe(401);
     expect((await subscribe(trip.id, token, device, kasia.id)).status).toBe(204);
     expect((await unsubscribe(trip.id, token, device)).status).toBe(204);
+  });
+
+  it('takes a push subscription only at a known push service unless switched to any endpoint', async () => {
+    await startServer({ env: { NUXT_NOTIFICATIONS_ANY_ENDPOINT: 'false' } });
+    onTestFinished(() => startServer());
+    const { trip, token, kasia } = await tripWithKasiaAndAnia();
+    const device = uuidv7();
+
+    expect((await subscribe(trip.id, token, device, kasia.id)).status).toBe(400);
+    const fcm = `https://fcm.googleapis.com/fcm/send/${device}`;
+    expect((await subscribe(trip.id, token, device, kasia.id, fcm)).status).toBe(204);
   });
 
   it("notifies the devices of the Participants a change affects, but not the author's", async () => {

@@ -8,7 +8,7 @@ import type {
 } from '@osi/owe-yeah-domain';
 import { eq } from 'drizzle-orm';
 import { v7 as uuidv7 } from 'uuid';
-import { afterAll, beforeAll, expect, it } from 'vitest';
+import { afterAll, beforeAll, expect, it, onTestFinished } from 'vitest';
 import webpush from 'web-push';
 import { notificationSubscriptions } from '../../../server/db/schema';
 import { createNotifications } from '../../../server/notifications/activity';
@@ -84,13 +84,17 @@ describeDb('Notifications', () => {
   const db = useMigratedDatabase();
   // The Notifications under way, so a test can wait for them all to be sent.
   const sending: Promise<void>[] = [];
+  const vapid = { ...webpush.generateVAPIDKeys(), subject: 'mailto:test@example.com' };
   let sync: TripSync;
 
-  beforeAll(() => {
+  /**
+   * The Trip sync with Notifications, sent to any endpoint, as the plain http stand-in needs,
+   * or only to known push services, as in production.
+   */
+  function syncWith(anyEndpoint: boolean): TripSync {
     const store = createTripStore(db());
     const rates = createRates(db(), 'http://127.0.0.1:9');
-    const vapid = { ...webpush.generateVAPIDKeys(), subject: 'mailto:test@example.com' };
-    const notifications = createNotifications(db(), store, rates, vapid);
+    const notifications = createNotifications(db(), store, rates, { vapid, anyEndpoint });
     const notifier: Notifier = {
       notifyAffected(tripId, applied) {
         const sent = notifications.notifyAffected(tripId, applied);
@@ -98,7 +102,11 @@ describeDb('Notifications', () => {
         return sent;
       },
     };
-    sync = createTripSync(db(), store, rates, notifier);
+    return createTripSync(db(), store, rates, notifier);
+  }
+
+  beforeAll(() => {
+    sync = syncWith(true);
   });
 
   /** Pushes changes, then waits until every device they concern has been sent its Notification. */
@@ -207,5 +215,31 @@ describeDb('Notifications', () => {
 
     expect(pushService.payloadsOf(devices.ania)).toHaveLength(1);
     expect(pushService.payloadsOf(devices.ola)).toHaveLength(2);
+  });
+
+  it('sends nothing to an endpoint off the known push services', async () => {
+    sync = syncWith(false);
+    onTestFinished(() => {
+      sync = syncWith(true);
+    });
+    const { trip, token, kasia, ania, ola, devices } = await subscribedTrip();
+
+    await push(trip.id, token, change(plainExpense(kasia, [ania, ola]), kasia.id));
+
+    expect(pushService.payloadsOf(devices.ania)).toEqual([]);
+    expect(pushService.payloadsOf(devices.ola)).toEqual([]);
+  });
+
+  it("doesn't follow a push service's redirect, nor prune the subscription for it", async () => {
+    const { trip, token, kasia, ania, ola, devices } = await subscribedTrip();
+    // Followed, the redirect would end at an endpoint that is gone, and prune Ania's.
+    const elsewhere = uuidv7();
+    pushService.gone(elsewhere);
+    pushService.redirect(devices.ania, elsewhere);
+    await push(trip.id, token, change(plainExpense(kasia, [ania, ola]), kasia.id));
+
+    await push(trip.id, token, change(plainExpense(kasia, [ania, ola]), kasia.id));
+
+    expect(pushService.payloadsOf(devices.ania)).toHaveLength(2);
   });
 });

@@ -9,22 +9,24 @@ import {
 import { z } from 'zod';
 import { getDb } from '../../../../db';
 import { notificationSubscriptions } from '../../../../db/schema';
+import { isKnownPushService } from '../../../../notifications/push-services';
 import { requireTrip } from '../../../../utils/trip-access';
 
 /**
  * Registers a device's subscription to Notifications in the Trip (#41), or replaces it: with
  * the Claim it has now, so it follows a changed Claim. The device sends it again until it gets
  * through. The `deviceId` route param is the device's opaque id, the one its changes carry.
- * Only an https endpoint is taken, as every push service has one.
+ * Only an endpoint at a known push service is taken (`isKnownPushService`); a refused one
+ * logs its host, so a push service missing from the list shows up.
  */
 export default defineEventHandler(async (event): Promise<void> => {
   const trip = await requireTrip(event);
   const deviceId = z.uuid().safeParse(getRouterParam(event, 'deviceId'));
   if (!deviceId.success) throw createError({ status: 400, statusText: 'Invalid device id' });
   const { endpoint, keys, claimId } = await readValidatedBody(event, subscriptionRequestSchema);
-  const secure = new URL(endpoint).protocol === 'https:';
-  if (!secure && !useRuntimeConfig().notificationsAllowHttp) {
-    throw createError({ status: 400, statusText: 'A push endpoint is https' });
+  if (!useRuntimeConfig().notificationsAnyEndpoint && !isKnownPushService(endpoint)) {
+    console.warn(`A push endpoint at an unknown host was refused: ${new URL(endpoint).host}`);
+    throw createError({ status: 400, statusText: 'Not a known push service' });
   }
 
   const subscription = { endpoint, p256dh: keys.p256dh, auth: keys.auth, claimId };

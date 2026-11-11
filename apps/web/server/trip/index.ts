@@ -1,6 +1,6 @@
 import { useRuntimeConfig } from 'nuxt/server';
 import { getDb } from '../db';
-import type { VapidDetails } from '../notifications/delivery';
+import type { PushSettings } from '../notifications/delivery';
 import { createNotifications } from '../notifications/activity';
 import { createReminders } from '../utils/reminders';
 import { createRates } from './rates';
@@ -17,20 +17,25 @@ function lazy<T>(make: () => T): () => T {
   return () => (made ??= { value: make() }).value;
 }
 
-/** The VAPID keys Notifications and Reminders are signed with; `null` when none are set, so nothing is sent. */
-const vapid = lazy((): VapidDetails | null => {
-  const { vapidPublicKey, vapidPrivateKey, vapidSubject } = useRuntimeConfig();
+/**
+ * What Notifications and Reminders are sent with (`PushSettings`); `null` when no VAPID keys
+ * are set, so nothing is sent.
+ */
+const push = lazy((): PushSettings | null => {
+  const { vapidPublicKey, vapidPrivateKey, vapidSubject, notificationsAnyEndpoint } =
+    useRuntimeConfig();
   if (!vapidPublicKey || !vapidPrivateKey) return null;
-  return { subject: vapidSubject, publicKey: vapidPublicKey, privateKey: vapidPrivateKey };
+  const vapid = { subject: vapidSubject, publicKey: vapidPublicKey, privateKey: vapidPrivateKey };
+  return { vapid, anyEndpoint: notificationsAnyEndpoint };
 });
 
 export const tripStore = lazy(() => createTripStore(getDb()));
 
 export const tripRates = lazy(() => createRates(getDb(), useRuntimeConfig().frankfurterUrl));
 
-export const reminders = lazy(() => createReminders(getDb(), tripStore(), tripRates(), vapid()));
+export const reminders = lazy(() => createReminders(getDb(), tripStore(), tripRates(), push()));
 
-const notifications = lazy(() => createNotifications(getDb(), tripStore(), tripRates(), vapid()));
+const notifications = lazy(() => createNotifications(getDb(), tripStore(), tripRates(), push()));
 
 export const tripSync = lazy(() =>
   createTripSync(getDb(), tripStore(), tripRates(), notifications()),
