@@ -79,6 +79,7 @@ test.describe('in a test environment', () => {
     for (const colorScheme of ['light', 'dark'] as const) {
       await page.emulateMedia({ colorScheme });
       await open(page, '/');
+      await expect(page.locator('html')).toContainClass(colorScheme);
       const close = banner(page).getByRole('button', { name: 'Close' });
       const ratio = contrast(
         await rgb(close, 'color'),
