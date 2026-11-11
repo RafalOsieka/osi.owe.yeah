@@ -100,7 +100,9 @@ const notSynced = computed((): AlertProps | null => {
       const reason = unsynced.problems.map((problem) => t(`sync.reason.${problem}`)).join(' ');
       return {
         title: t('sync.rejected', { reason }),
-        description: t('sync.rejectedHelp'),
+        description: t(
+          unsynced.problems.includes('malformed') ? 'sync.malformedHelp' : 'sync.rejectedHelp',
+        ),
         color: 'error',
         icon: 'i-lucide-cloud-off',
         actions: [{ label: t('sync.discard'), onClick: () => discardChanges(expenseId) }],

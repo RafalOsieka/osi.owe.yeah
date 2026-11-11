@@ -430,6 +430,7 @@
     "conflictBySomeone": "Someone else changed this Expense too. Choose whose change to keep.",
     "choose": "Choose a change",
     "rejectedHelp": "Edit it to fix it, or discard your change.",
+    "malformedHelp": "Edit it and save it again, or discard your change.",
     "discard": "Discard change",
     "reason": {
       "unknownMainPayer": "who paid is no longer in the Trip.",
@@ -446,7 +447,8 @@
       "contributionFromMainPayer": "the Main payer can't also make a Contribution.",
       "contributionsExceedTotal": "the Contributions add up to more than the Expense.",
       "chargedWithoutTotal": "the amount charged needs a total other than zero.",
-      "manualRateToOwnCurrency": "the Manual rate must convert into a currency other than the Expense's own."
+      "manualRateToOwnCurrency": "the Manual rate must convert into a currency other than the Expense's own.",
+      "malformed": "the server couldn't read this change."
     },
     "pullToRefresh": "Pull to sync",
     "releaseToRefresh": "Release to sync",
@@ -561,6 +563,8 @@
     "removalRefused": "{name} wasn't removed: they're on an Expense now.",
     "removalRefusedBy": "{name} wasn't removed: {title} includes them now.",
     "currencyChangeRefused": "Your change to the Trip's name and Trip currency wasn't saved: someone recorded a Repayment meanwhile, and the Trip currency can't change to {currency} once the Trip has one.",
+    "tripChangeRefused": "Your change to the Trip's name and Trip currency wasn't saved: the server couldn't read it.",
+    "participantChangeRefused": "Your change to {name} wasn't saved: the server couldn't read it.",
     "quoted": "“{title}”",
     "showExpense": "Show Expense"
   },

@@ -33,6 +33,7 @@ import {
   type ForgottenTrip,
   type Held,
   type Notice,
+  queuedChangeSchema,
   type OutboxEntry,
   type QueuedChange,
 } from './db';
@@ -162,15 +163,19 @@ export function createDevice(db: DeviceDb, transport: Transport, deviceId: strin
       .toSorted((a, b) => b.deviceTrip.openedAt.localeCompare(a.deviceTrip.openedAt));
   }
 
+  /**
+   * Queues a change in the outbox, stamped with its id, the device's Claim and the device, as
+   * `queuedChangeSchema` outputs it. Throws for a change the server couldn't read: the forms
+   * guard its shape, so that is a bug.
+   */
   async function enqueue(tripId: string, change: NewChange): Promise<void> {
     const device = await db.trips.get(tripId);
-    // SAFETY: `NewChange` is a `QueuedChange` without the fields added here.
-    const queued = {
+    const queued = queuedChangeSchema.parse({
       ...change,
       id: uuidv7(),
       claimId: device?.claim?.id ?? null,
       deviceId,
-    } as QueuedChange;
+    });
     await db.outbox.add({ tripId, change: queued, held: null });
   }
 
@@ -784,8 +789,10 @@ function toSyncChange(change: QueuedChange): SyncChange {
 
 /**
  * What the user should hear about a change's result: removed Participants an accepted
- * Expense brought back (named as `known` has them), a removal the server refused, or a new
- * Trip currency it refused for a Repayment recorded meanwhile.
+ * Expense brought back (named as `known` has them), a removal the server refused, a new
+ * Trip currency it refused for a Repayment recorded meanwhile, or a change of the Trip details
+ * or of a Participant it couldn't read. A refused Expense change is held and shown on the
+ * Expense instead.
  */
 function noticesFor(
   change: QueuedChange,
@@ -800,6 +807,12 @@ function noticesFor(
       .map((participant) => ({ kind: 'participantRestored', participant, expenseTitle }));
   }
   if (result.status !== 'rejected') return [];
+  if (result.problems.includes('malformed')) {
+    const { kind } = change;
+    if (kind === 'trip') return [{ kind: 'changeRefused', about: { kind, trip: change.trip } }];
+    if (kind === 'expense') return [];
+    return [{ kind: 'changeRefused', about: { kind, participant: change.participant } }];
+  }
   if (change.kind === 'participant' && result.problems.includes('participantReferenced')) {
     return [{ kind: 'removalRefused', participant: change.participant }];
   }

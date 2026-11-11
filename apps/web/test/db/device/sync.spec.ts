@@ -467,6 +467,70 @@ describeDb('the device, syncing with the real Trip sync', () => {
     });
   });
 
+  it('queues only a change the server can read, with names trimmed', async () => {
+    const { device, croatia, connection, trip } = await setUp();
+    connection.offline = true;
+
+    await expect(croatia.addParticipant(participant('  '))).rejects.toThrow();
+    const marta = participant('  Marta ');
+    await croatia.addParticipant(marta);
+    await croatia.saveTripDetails({ name: ' Croatia 2027  ', currency: 'EUR' });
+
+    expect(await device.read(trip.id)).toMatchObject({
+      unsynced: 2,
+      local: {
+        name: 'Croatia 2027',
+        participants: expect.arrayContaining([{ id: marta.id, name: 'Marta' }]),
+      },
+    });
+  });
+
+  it("holds an Expense change the server can't read, drops a Participant change noting it, and syncs the rest", async () => {
+    const { device, deviceDb, deviceId, croatia, trip, token, kasia, ania } = await setUp();
+    // Changes queued before the device checked them, e.g. kept by a store migration as they were.
+    const unreadable = { id: uuidv7(), claimId: kasia.id, deviceId };
+    const marta = participant('');
+    const pizza = plainExpense(' ', kasia, [kasia, ania]);
+    await deviceDb.outbox.bulkAdd([
+      {
+        tripId: trip.id,
+        change: { ...unreadable, kind: 'participant', participant: marta, removed: false },
+        held: null,
+      },
+      {
+        tripId: trip.id,
+        change: {
+          ...unreadable,
+          id: uuidv7(),
+          kind: 'expense',
+          base: { version: null },
+          expense: pizza,
+          deleted: false,
+        },
+        held: null,
+      },
+    ]);
+    await croatia.saveExpense(plainExpense('Ferry', kasia, [kasia]), null);
+
+    await croatia.sync();
+
+    expect((await onServer(trip, token)).expenses).toMatchObject([{ title: 'Ferry' }]);
+    expect(await device.read(trip.id)).toMatchObject({
+      unsynced: 1,
+      deviceTrip: {
+        notices: [{ kind: 'changeRefused', about: { kind: 'participant', participant: marta } }],
+      },
+      local: {
+        expenses: expect.arrayContaining([
+          expect.objectContaining({
+            id: pizza.id,
+            unsynced: expect.objectContaining({ status: 'rejected', problems: ['malformed'] }),
+          }),
+        ]),
+      },
+    });
+  });
+
   it('drops a rejected new Expense when its change is discarded', async () => {
     const { device, croatia, trip, pizza } = await rejected();
 

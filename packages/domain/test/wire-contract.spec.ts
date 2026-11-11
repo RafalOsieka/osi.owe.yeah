@@ -7,6 +7,7 @@ import {
   environmentResponseSchema,
   pullQuerySchema,
   pullResponseSchema,
+  pushEnvelopeSchema,
   pushKeyResponseSchema,
   pushMessageSchema,
   pushRequestSchema,
@@ -48,6 +49,8 @@ describe('the wire contract', () => {
       headers: { syncSchema: SYNC_SCHEMA_HEADER, tripToken: TRIP_TOKEN_HEADER },
       // Sent by the app, parsed by the server.
       requests: accepted({
+        // The push body is read as an envelope first, then change by change.
+        pushEnvelope: pushEnvelopeSchema,
         pushBody: pushRequestSchema,
         pullQuery: pullQuerySchema,
         rateQuery: rateQuerySchema,

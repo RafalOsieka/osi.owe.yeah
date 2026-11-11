@@ -6,6 +6,7 @@ import type {
   Participant,
   ParticipantChange,
   PullResponse,
+  PushEnvelope,
   RateEntry,
   StoredExpense,
   SyncChange,
@@ -136,7 +137,7 @@ describeDb('Trip sync', () => {
   });
 
   /** Pushes changes and returns their results, expecting the Trip link to be taken. */
-  async function push(tripId: string, token: string, ...changes: SyncChange[]) {
+  async function push(tripId: string, token: string, ...changes: PushEnvelope['changes']) {
     const response = await sync.push(tripId, token, { changes });
     if (response === 'invalidLink') throw new Error('The Trip link was refused');
     return response.results;
@@ -238,6 +239,30 @@ describeDb('Trip sync', () => {
     expect(await sync.push(trip.id, otherToken, { changes: [ola] })).toBe('invalidLink');
     // A Trip the server doesn't have is only created by a push that creates it.
     expect(await sync.push(uuidv7(), newToken(), { changes: [ola] })).toBe('invalidLink');
+  });
+
+  it("refuses only a change it can't read, applying the rest of the push", async () => {
+    const { trip, token, kasia } = await tripWithKasiaAndAnia();
+    const ola = participantChange(participant('Ola'));
+    const malformed = { id: uuidv7(), kind: 'participant', participant: { name: '' } };
+    const expense = change(plainExpense(kasia));
+
+    expect(await push(trip.id, token, ola, malformed, expense)).toEqual<ChangeResult[]>([
+      { changeId: ola.id, status: 'accepted', version: null },
+      { changeId: malformed.id, status: 'rejected', problems: ['malformed'] },
+      { changeId: expense.id, status: 'accepted', version: 1 },
+    ]);
+    const { participants, expenses } = await pulled(trip.id, token);
+    expect(participants.map(({ name }) => name)).toEqual(['Kasia', 'Ania', 'Ola']);
+    expect(expenses).toEqual([stored(expense.expense, 1)]);
+  });
+
+  it('checks the Trip link before it reads any change', async () => {
+    const trip = newTrip();
+    await createdToken(trip);
+    const malformed = { id: uuidv7(), kind: 'expense' };
+
+    expect(await sync.push(trip.id, newToken(), { changes: [malformed] })).toBe('invalidLink');
   });
 
   it('applies each change of a retried push once, even after a later change by someone else', async () => {

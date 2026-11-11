@@ -2,6 +2,8 @@ import {
   expenseProblems,
   expensesReferencing,
   referencedParticipantIds,
+  syncChangeSchema,
+  tripChangeSchema,
   tripCurrencyLocked,
   tripIdSchema,
   tripTokenSchema,
@@ -9,7 +11,7 @@ import {
   type ExpenseChange,
   type ParticipantChange,
   type PullResponse,
-  type PushRequest,
+  type PushEnvelope,
   type PushResponse,
   type SyncChange,
   type TripChange,
@@ -31,7 +33,11 @@ export type Notifier = {
   notifyAffected(tripId: string, applied: readonly AppliedExpenseChange[]): Promise<void>;
 };
 
-/** What the sync answers a request without a valid Trip link, whether or not the Trip exists. */
+/**
+ * What the sync answers a request without a valid Trip link. It doesn't say whether the Trip
+ * exists, except to a push that creates one, which is refused when the id is taken. That is
+ * left as it is: Trip ids are UUIDv7s, and guessing one is infeasible.
+ */
 export type InvalidLink = 'invalidLink';
 
 /**
@@ -247,14 +253,17 @@ export function createTripSync(db: Database, store: TripStore, rates: Rates, not
      * and then kept as a Revision. It brings back any removed Participant it references.
      * Deletes and restores are Expense changes like edits. A change applied before is
      * answered as the first time and not applied again. Once it has answered, the notifier
-     * hears of the Expense changes this push applied.
+     * hears of the Expense changes this push applied. The Trip link is checked before any
+     * change is read; a change that isn't `syncChangeSchema` is refused as `malformed`.
      */
     async push(
       tripId: string,
       token: string,
-      { changes: pushed }: PushRequest,
+      { changes: pushed }: PushEnvelope,
     ): Promise<PushResponse | InvalidLink> {
-      const creation = pushed.find((change) => change.kind === 'trip');
+      const creation = pushed
+        .map((change) => tripChangeSchema.safeParse(change).data)
+        .find((change) => change !== undefined);
       if (creation && !(await createTripIfMissing(tripId, token, creation.trip))) {
         return 'invalidLink';
       }
@@ -263,7 +272,12 @@ export function createTripSync(db: Database, store: TripStore, rates: Rates, not
 
       const results: ChangeResult[] = [];
       const applied: AppliedExpenseChange[] = [];
-      for (const change of pushed) {
+      for (const unread of pushed) {
+        const change = syncChangeSchema.safeParse(unread).data;
+        if (!change) {
+          results.push({ changeId: unread.id, status: 'rejected', problems: ['malformed'] });
+          continue;
+        }
         const { result, fresh } = await applyOnce(change, trip.id);
         results.push(result);
         if (fresh && change.kind === 'expense' && result.status === 'accepted' && result.version) {

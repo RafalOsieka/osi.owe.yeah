@@ -20,7 +20,7 @@ import { tripSchema } from './trip.ts';
  * bump that changes what the outbox has to send also appends a link to the store's migration
  * chain (`migrations` in the web app), so queued changes go out in the new schema.
  */
-export const SYNC_SCHEMA_VERSION = 2;
+export const SYNC_SCHEMA_VERSION = 3;
 
 /** The request header that carries the sync schema version the app speaks. */
 export const SYNC_SCHEMA_HEADER = 'x-sync-schema';
@@ -92,10 +92,24 @@ export const pushRequestSchema = z.object({
 export type PushRequest = z.infer<typeof pushRequestSchema>;
 
 /**
+ * A push as the server reads its body: only the envelope, 1 to 100 changes, each with a
+ * UUIDv7 id. Each change is then read on its own (`syncChangeSchema`), so one it can't read
+ * is refused as `malformed` without holding back the rest.
+ */
+export const pushEnvelopeSchema = z.object({
+  changes: z
+    .array(z.looseObject({ id: changeMeta.id }))
+    .min(1)
+    .max(100),
+});
+
+export type PushEnvelope = z.infer<typeof pushEnvelopeSchema>;
+
+/**
  * Why the server refused a change outright: a Trip rule (`expenseProblems`), an id another
  * Trip uses, an edit of an Expense the server does not have, removing a Participant an
- * Expense references, or a new Trip currency once the Trip has a Repayment
- * (`tripCurrencyLocked`).
+ * Expense references, a new Trip currency once the Trip has a Repayment
+ * (`tripCurrencyLocked`), or a change it can't read (`malformed`, not `syncChangeSchema`).
  */
 export const pushProblemSchema = z.enum([
   ...expenseProblemSchema.options,
@@ -104,6 +118,7 @@ export const pushProblemSchema = z.enum([
   'participantIdTaken',
   'participantReferenced',
   'tripHasRepayments',
+  'malformed',
 ]);
 
 export type PushProblem = z.infer<typeof pushProblemSchema>;

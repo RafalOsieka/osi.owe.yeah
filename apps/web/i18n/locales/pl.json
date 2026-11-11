@@ -430,6 +430,7 @@
     "conflictBySomeone": "W międzyczasie ten wydatek zmienił też ktoś inny. Wybierz, którą zmianę zachować.",
     "choose": "Wybierz zmianę",
     "rejectedHelp": "Popraw go albo odrzuć swoją zmianę.",
+    "malformedHelp": "Edytuj go i zapisz ponownie albo odrzuć swoją zmianę.",
     "discard": "Odrzuć zmianę",
     "reason": {
       "unknownMainPayer": "osoby, która zapłaciła, nie ma już w podróży.",
@@ -446,7 +447,8 @@
       "contributionFromMainPayer": "główny płatnik nie może mieć też dopłaty.",
       "contributionsExceedTotal": "dopłaty wynoszą więcej niż cały wydatek.",
       "chargedWithoutTotal": "pobrana kwota wymaga sumy różnej od zera.",
-      "manualRateToOwnCurrency": "kurs ręczny musi przeliczać na inną walutę niż waluta wydatku."
+      "manualRateToOwnCurrency": "kurs ręczny musi przeliczać na inną walutę niż waluta wydatku.",
+      "malformed": "serwer nie mógł odczytać tej zmiany."
     },
     "pullToRefresh": "Pociągnij, aby zsynchronizować",
     "releaseToRefresh": "Puść, aby zsynchronizować",
@@ -561,6 +563,8 @@
     "removalRefused": "Uczestnik {name} nie został usunięty: jest teraz w wydatku.",
     "removalRefusedBy": "Uczestnik {name} nie został usunięty: obejmuje go teraz wydatek {title}.",
     "currencyChangeRefused": "Twoja zmiana nazwy i waluty podróży nie została zapisana: w międzyczasie ktoś zapisał spłatę, a gdy podróż ma spłatę, jej waluty nie można zmienić na {currency}.",
+    "tripChangeRefused": "Twoja zmiana nazwy i waluty podróży nie została zapisana: serwer nie mógł jej odczytać.",
+    "participantChangeRefused": "Twoja zmiana uczestnika {name} nie została zapisana: serwer nie mógł jej odczytać.",
     "quoted": "„{title}”",
     "showExpense": "Pokaż wydatek"
   },

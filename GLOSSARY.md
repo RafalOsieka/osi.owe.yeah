@@ -179,7 +179,7 @@ _Avoid_: Merge conflict, clash, collision
 _Polish avoid_: Kolizja
 
 **Notice**:
-A message shown inside a Trip on one device when sync refused or changed something that device did (a removed Participant brought back, a removal or a Trip currency change refused), or when someone else removed the Participant the device claims. It stays until dismissed.
+A message shown inside a Trip on one device when sync refused or changed something that device did (a removed Participant brought back, a removal or a Trip currency change refused, a change the server couldn't read), or when someone else removed the Participant the device claims. It stays until dismissed.
 _Polish_: Komunikat
 _Avoid_: Notification, alert, toast
 _Polish avoid_: Powiadomienie, alert
