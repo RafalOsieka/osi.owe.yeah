@@ -1,10 +1,10 @@
 <script setup lang="ts">
 import type { DropdownMenuItem } from '@nuxt/ui';
 
-// App pages (My Trips): the app mark with the page's `title` as its large heading (or the app's
-// name, e.g. on a first visit), and a "⋯" menu holding the color mode. An optional `#action`
-// floats at the bottom right; the page's last element can sit at the bottom (`mt-auto`), just
-// above the action or the safe area.
+// App pages (My Trips, a page that doesn't exist): the app mark with the page's `title` as its
+// large heading (or the app's name, e.g. on a first visit), and a "⋯" menu holding the color
+// mode. An optional `#action` floats at the bottom right; the page's last element can sit at the
+// bottom (`mt-auto`), just above the action or the safe area.
 const { title = null } = defineProps<{
   /** The page's heading, shown large in the header instead of the app's name. */
   title?: string | null;
