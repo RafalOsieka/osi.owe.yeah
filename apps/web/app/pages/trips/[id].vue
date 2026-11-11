@@ -136,7 +136,8 @@ useHead({ title: () => trip.value?.name ?? t('trip.invalidLink') });
 </script>
 
 <template>
-  <div>
+  <!-- Passes the app column on, so a layout in here fills the screen's height like elsewhere. -->
+  <div class="flex flex-1 flex-col">
     <template v-if="trip">
       <NuxtPage />
       <WhoAreYou

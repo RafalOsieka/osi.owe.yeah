@@ -93,21 +93,22 @@ test.describe('in a test environment', () => {
       await expect(banner(page)).toBeVisible();
       const button = await box(page.getByRole('link', { name: 'New Trip' }));
       for (const name of ['Privacy notice', 'Terms of service']) {
-        const link = await box(page.getByRole('link', { name }));
-        expect(overlaps(link, button), `${name} at ${viewport.width} px`).toBe(false);
+        const link = page.getByRole('link', { name });
+        await expect(link, `${name} at ${viewport.width} px`).toBeInViewport({ ratio: 1 });
+        expect(overlaps(await box(link), button), `${name} at ${viewport.width} px`).toBe(false);
       }
     }
   });
 });
 
-type Box = { x: number; y: number; width: number; height: number };
-
 /** Where `locator` is on the screen, without scrolling to it. */
-async function box(locator: Locator): Promise<Box> {
+async function box(locator: Locator) {
   const found = await locator.boundingBox();
-  expect(found).not.toBeNull();
-  return found ?? { x: 0, y: 0, width: 0, height: 0 };
+  if (!found) throw new Error(`${locator} is not on the page`);
+  return found;
 }
+
+type Box = Awaited<ReturnType<typeof box>>;
 
 /** Whether two boxes on the screen share any area. */
 function overlaps(a: Box, b: Box): boolean {
