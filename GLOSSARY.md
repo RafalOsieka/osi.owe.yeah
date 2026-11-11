@@ -88,6 +88,18 @@ _Polish_: Wersja
 _Avoid_: Version, snapshot, edit
 _Polish avoid_: Rewizja, migawka, edycja
 
+**History**:
+All Revisions of one Expense, newest first.
+_Polish_: Historia
+_Avoid_: Log, changelog, versions
+_Polish avoid_: Dziennik, rejestr
+
+**Recently deleted**:
+The place in a Trip where its deleted Expenses wait, newest first, until someone restores them. Nothing leaves it on its own.
+_Polish_: Ostatnio usunięte
+_Avoid_: Trash, bin, archive
+_Polish avoid_: Kosz, archiwum
+
 **Income**:
 Money received by a Participant on behalf of some Participants, e.g. a cash Deposit refund; modelled as an Expense with a single Line item of negative amount. A Receipt whose Deposit refunds outweigh its goods stays a Receipt.
 _Polish_: Wpływ
@@ -165,3 +177,9 @@ Two Participants changed or deleted the same Expense independently, without seei
 _Polish_: Konflikt
 _Avoid_: Merge conflict, clash, collision
 _Polish avoid_: Kolizja
+
+**Notice**:
+A message shown inside a Trip on one device when sync refused or changed something that device did (a removed Participant brought back, a removal or a Trip currency change refused), or when someone else removed the Participant the device claims. It stays until dismissed.
+_Polish_: Komunikat
+_Avoid_: Notification, alert, toast
+_Polish avoid_: Powiadomienie, alert
