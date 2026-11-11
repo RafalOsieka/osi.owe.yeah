@@ -34,6 +34,24 @@ jobs:
       - name: Run lint
         run: vp run lint
 
+      # A schema change without `vp run db:generate` would pass every suite (they migrate from
+      # the committed SQL) and break on deploy. Generating needs no database. `git status`, not
+      # `git diff`, so the new, untracked migration files are listed too. A possible rename
+      # needs drizzle-kit's prompt, which without a TTY errors yet exits 0 and writes nothing,
+      # so the generator must also say it found no changes. Runs even when lint fails.
+      - name: Check the Drizzle schema matches the committed migrations
+        if: ${{ !cancelled() }}
+        run: |
+          output=$(vp run db:generate 2>&1)
+          echo "$output"
+          drift=$(git status --porcelain -- apps/migrator/migrations)
+          if [ -n "$drift" ] || ! echo "$output" | grep -q 'No schema changes'; then
+            echo "$drift"
+            git diff -- apps/migrator/migrations
+            echo "apps/web/server/db/schema has changes with no migration: run 'vp run db:generate' and commit it"
+            exit 1
+          fi
+
   format:
     runs-on: ubuntu-latest
     steps:
