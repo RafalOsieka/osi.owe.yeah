@@ -1,9 +1,10 @@
 import { PARTICIPANT_LIMIT, type Participant } from '@osi/owe-yeah-domain';
 import { mockNuxtImport, mountSuspended } from '@nuxt/test-utils/runtime';
-import { describe, expect, it } from 'vitest';
-import { computed, ref } from 'vue';
+import { afterEach, describe, expect, it } from 'vitest';
+import { computed, nextTick, ref } from 'vue';
 import NewTrip from '../../app/pages/trips/new.vue';
 import Settings from '../../app/pages/trips/[id]/settings.vue';
+import WhoAreYou from '../../app/components/WhoAreYou.vue';
 
 // The Trip's live Participants, as each test sets them.
 const participants = ref<Participant[]>([]);
@@ -44,10 +45,13 @@ describe('New Trip', () => {
     const addAnother = () =>
       page.findAll('button').find((button) => button.text() === 'Add another')!;
 
-    // "Your name" and one other field to start with.
+    // "Your name" and one other field to start with; rendered once, after the last click.
+    const button = addAnother();
     for (let count = 2; count < PARTICIPANT_LIMIT; count++) {
-      await addAnother().trigger('click');
+      button.element.click();
     }
+    await nextTick();
+    expect(page.findAll('input[placeholder]')).toHaveLength(PARTICIPANT_LIMIT + 1);
 
     expect(addAnother().attributes('disabled')).toBeDefined();
     expect(page.text()).toContain('A Trip can have at most 100 Participants.');
@@ -73,5 +77,29 @@ describe('Settings', () => {
 
     expect(button.attributes('disabled')).toBeDefined();
     expect(page.text()).toContain('A Trip can have at most 100 Participants.');
+  });
+});
+
+describe('Who are you?', () => {
+  afterEach(() => {
+    document.body.innerHTML = '';
+  });
+
+  const sheet = async (count: number) => {
+    await mountSuspended(WhoAreYou, {
+      props: { open: true, participants: everyone(count), current: null },
+    });
+    return document.body.textContent ?? '';
+  };
+
+  it('offers Add me while the Trip has fewer than 100 Participants', async () => {
+    expect(await sheet(PARTICIPANT_LIMIT - 1)).toContain('Add me');
+  });
+
+  it('offers no Add me once the Trip has 100, saying why', async () => {
+    const text = await sheet(PARTICIPANT_LIMIT);
+
+    expect(text).not.toContain('Add me');
+    expect(text).toContain('A Trip can have at most 100 Participants.');
   });
 });

@@ -1,9 +1,10 @@
 <script setup lang="ts">
-import type { Participant } from '@osi/owe-yeah-domain';
+import { PARTICIPANT_LIMIT, type Participant } from '@osi/owe-yeah-domain';
 import type { BrowserSubscription } from '~/sync/db';
 
 // The "Who are you?" sheet: the device picks one of the Trip's Participants as its Claim,
-// or uses "Add me" to create a new Participant and Claim it in one step. Closing it ("Just
+// or uses "Add me" to create a new Participant and Claim it in one step, unless the Trip has as
+// many Participants as it can have, which it then says instead. Closing it ("Just
 // looking", or "Cancel" with a Claim) changes nothing. Asked again because someone removed
 // the Participant this device was, it says so. With `offerFor` (the Trip's name), it ends
 // with the offer of notifications that follows a Claim (#41). Joining a Trip opens it first,
@@ -65,7 +66,11 @@ const description = computed(() => {
             </UButton>
           </li>
         </ul>
+        <p v-if="participants.length >= PARTICIPANT_LIMIT" class="text-sm text-muted">
+          {{ $t('participants.limitReached') }}
+        </p>
         <ParticipantNameForm
+          v-else
           :label="$t('claim.notListed')"
           :submit-label="$t('claim.addMe')"
           @submit="emit('addMe', $event)"

@@ -18,6 +18,7 @@ import {
 } from '@osi/owe-yeah-domain';
 import { v7 as uuidv7 } from 'uuid';
 import { afterAll, beforeAll, expect, it } from 'vitest';
+import { participants as participantRows } from '../../../server/db/schema';
 import { createRates } from '../../../server/trip/rates';
 import { createTripStore } from '../../../server/trip/store';
 import {
@@ -381,6 +382,20 @@ describeDb('Trip sync', () => {
       removedParticipants: [removed],
       expenses: [],
     });
+  });
+
+  it('takes an Expense that brings back nobody, even on a Trip past the 100th from before the limit', async () => {
+    const { trip, token, everyone } = await fullTrip();
+    // A 101st Participant, which Trip sync took before it counted them.
+    await db()
+      .insert(participantRows)
+      .values({ ...participant('Marta'), tripId: trip.id, removed: false });
+    const [payer] = everyone;
+    const lunch = change(plainExpense(payer!));
+
+    expect(await push(trip.id, token, lunch)).toEqual<ChangeResult[]>([
+      { changeId: lunch.id, status: 'accepted', version: 1 },
+    ]);
   });
 
   it('removes a Participant softly, but refuses while an Expense references them', async () => {

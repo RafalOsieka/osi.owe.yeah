@@ -119,8 +119,8 @@ export function createTripSync(db: Database, store: TripStore, rates: Rates, not
       const live = trip.expenses.filter(({ deleted }) => !deleted);
       const referenced = removed && expensesReferencing(live, participant.id) > 0;
       if (referenced) return { changeId, status: 'rejected', problems: ['participantReferenced'] };
-      const joining = !removed && !liveIds(trip).has(participant.id);
-      if (joining && tooMany(trip, 1)) {
+      const alreadyIn = trip.participants.some((p) => p.id === participant.id && !p.removed);
+      if (!removed && !alreadyIn && tooMany(trip, 1)) {
         return { changeId, status: 'rejected', problems: ['tooManyParticipants'] };
       }
 
@@ -162,7 +162,7 @@ export function createTripSync(db: Database, store: TripStore, rates: Rates, not
       const restored = deleted
         ? []
         : trip.participants.filter((p) => p.removed && referenced.has(p.id)).map((p) => p.id);
-      if (tooMany(trip, restored.length)) {
+      if (restored.length > 0 && tooMany(trip, restored.length)) {
         return { changeId, status: 'rejected', problems: ['tooManyParticipants'] };
       }
 
@@ -333,14 +333,9 @@ async function lockTrip(tx: Transaction, tripId: string): Promise<WholeTrip> {
   return trip;
 }
 
-/** The ids of the Trip's Participants who aren't removed. */
-function liveIds(trip: WholeTrip): Set<string> {
-  return new Set(trip.participants.filter(({ removed }) => !removed).map(({ id }) => id));
-}
-
-/** Whether `joining` more Participants would make the Trip's more than `PARTICIPANT_LIMIT`. */
-function tooMany(trip: WholeTrip, joining: number): boolean {
-  return liveIds(trip).size + joining > PARTICIPANT_LIMIT;
+/** Whether `adding` more live Participants would make the Trip's more than `PARTICIPANT_LIMIT`. */
+function tooMany(trip: WholeTrip, adding: number): boolean {
+  return trip.participants.filter(({ removed }) => !removed).length + adding > PARTICIPANT_LIMIT;
 }
 
 /** An accepted change's result, naming the Participants it brought back only if there are any. */

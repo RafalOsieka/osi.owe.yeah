@@ -135,7 +135,7 @@ They found no reason to reopen ADR 0001–0003, and 121 of the 126 stories are d
   - **The problem:** Trips are created anonymously, with no cap on Participants, Expenses or Revisions, and the body limit is 2 MB.
   - **Fix:** per-Trip caps (100 Participants, as the existing schema already says), about 256 KB for the `/api` body, and a separate limit on creating Trips.
   - **Also from S3:** a cap on subscriptions per Trip and a limit on concurrent outbound deliveries. Today the 100-Participant cap is checked only when a Trip is created, and Trip sync never counts Participants added later.
-  - **Found while grilling:** a 101st live Participant syncs, and from then on every device's pull fails to parse, silently. **Issue:** #223 (bug). Done in #223: Trip sync refuses a Participant change or an Expense change that would make a 101st live Participant (`tooManyParticipants`), and the app offers no Add at 100.
+  - **Found while grilling:** a 101st live Participant syncs, and from then on every device's pull fails to parse, silently. **Issue:** #223 (bug). Done in #223: Trip sync refuses a Participant change or an Expense change that would make a 101st live Participant (`tooManyParticipants`), and New Trip, Settings and "Who are you?" offer no Add at 100.
   - **Issue:** #224.
     - At most 2,000 Expenses per Trip; Revisions are not capped.
     - At most 10 new Trips per IP per hour.

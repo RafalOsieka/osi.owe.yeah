@@ -134,9 +134,10 @@ async function create(): Promise<void> {
             :label="$t('trip.create.addParticipant')"
             class="-ms-1"
             :disabled="full"
+            :aria-describedby="full ? 'others-help' : undefined"
             @click="state.others.push('')"
           />
-          <p class="text-sm text-muted">
+          <p id="others-help" class="text-sm text-muted">
             {{ full ? $t('participants.limitReached') : $t('trip.create.othersHelp') }}
           </p>
         </fieldset>
