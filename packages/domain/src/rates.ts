@@ -24,6 +24,9 @@ export const rateEntrySchema = z.object({
 
 export type RateEntry = z.infer<typeof rateEntrySchema>;
 
+/** The rate lookup's query: the automatic rate of `from` in the Trip currency on `date`. */
+export const rateQuerySchema = z.object({ from: currencySchema, date: z.iso.date() });
+
 /**
  * What the server answers when the Expense form looks up one automatic rate ahead of the pull
  * (`GET /api/trips/:id/rates`): the rate entry; `notCovered` when the provider doesn't cover

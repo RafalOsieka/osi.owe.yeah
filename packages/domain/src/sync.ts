@@ -7,6 +7,7 @@ import {
   revisionSchema,
   storedExpenseSchema,
   tripSnapshotSchema,
+  tripVersionSchema,
 } from './snapshot.ts';
 import { tripSchema } from './trip.ts';
 
@@ -139,6 +140,11 @@ export type ChangeResult = z.infer<typeof changeResultSchema>;
 export const pushResponseSchema = z.object({ results: z.array(changeResultSchema) });
 
 export type PushResponse = z.infer<typeof pushResponseSchema>;
+
+/** The pull's query: `since`, the Trip version the device has, if it has the Trip. */
+export const pullQuerySchema = z.object({
+  since: z.coerce.number().pipe(tripVersionSchema).optional(),
+});
 
 /**
  * The whole-Trip pull (ADR 0002). Asked with the Trip version the device has, it answers
