@@ -14,9 +14,8 @@ const detail = computed(() => `/trips/${trip.value.id}/expenses/${expenseId}`);
 // Read once, like the form: a pull while editing must not reset what the user typed.
 const expense = trip.value.expenses.find(({ id }) => id === expenseId);
 
-useHead({
-  title: () => (expense && isRepayment(expense) ? t('repayment.edit') : t('expense.edit')),
-});
+// The forms title the tab like their heading; only a missing Expense needs a title here.
+if (!expense) useHead({ title: () => t('expense.edit') });
 </script>
 
 <template>

@@ -854,6 +854,7 @@ test('record a plain Expense, read it, edit it, and see the balances', async ({ 
   // The Main payer defaults to the Claim, and everyone is ticked.
   await page.getByRole('link', { name: 'Add Expense' }).click();
   await expect(page.getByRole('banner')).toContainText('New Expense');
+  await expect(page).toHaveTitle('New Expense | Owe Yeah');
   const paidBy = page.getByRole('group', { name: 'Paid by' });
   const forWhom = page.getByRole('group', { name: 'For whom' });
   await expect(paidBy.getByRole('radio', { name: 'Kasia' })).toBeChecked();
@@ -910,6 +911,7 @@ test('record a plain Expense, read it, edit it, and see the balances', async ({ 
   await expect(shares.filter({ hasText: 'Ola' })).toContainText('≈ €3.33');
 
   await page.getByRole('link', { name: 'Edit Expense' }).click();
+  await expect(page).toHaveTitle('Edit Expense | Owe Yeah');
   await expect(page.getByLabel('Amount')).toHaveValue('10.00');
   await page.getByRole('button', { name: /^When/ }).click();
   await expect(page.getByLabel('When')).toHaveValue('2026-07-14T23:30');
@@ -947,6 +949,7 @@ test('settle up: Income, then the suggested Repayments, until the Trip is Settle
   await page.getByLabel('Amount').fill('6');
   await page.getByRole('switch', { name: 'Money received' }).click();
   await expect(page.getByRole('banner')).toContainText('New Income');
+  await expect(page).toHaveTitle('New Income | Owe Yeah');
   await page
     .getByRole('group', { name: 'Received by' })
     .getByRole('radio', { name: 'Ola' })
@@ -958,6 +961,13 @@ test('settle up: Income, then the suggested Repayments, until the Trip is Settle
   await expect(income).toContainText('€6.00');
   await expect(income).not.toContainText('−€6.00');
   await expect(income).toContainText('you get back €2.00');
+  // Its edit page is titled for Income, on the tab as in the heading.
+  await income.click();
+  await page.getByRole('link', { name: 'Edit Income' }).click();
+  await expect(page.getByRole('banner')).toContainText('Edit Income');
+  await expect(page).toHaveTitle('Edit Income | Owe Yeah');
+  await page.getByRole('button', { name: 'Back' }).click();
+  await page.getByRole('button', { name: 'Back' }).click();
 
   // Kasia is owed 22.00: Ola owes 14.00 and Ania 8.00. The total is net of the Income.
   await page.getByRole('link', { name: 'Balances' }).click();
@@ -973,6 +983,7 @@ test('settle up: Income, then the suggested Repayments, until the Trip is Settle
   // Recording from a suggestion fills it in; the amount can be lowered for a partial one.
   await toSettle.nth(0).getByRole('link', { name: 'Record Repayment' }).click();
   await expect(page.getByRole('banner')).toContainText('New Repayment');
+  await expect(page).toHaveTitle('New Repayment | Owe Yeah');
   await expect(page.getByLabel('Amount')).toHaveValue('14.00');
   await expect(
     page.getByRole('group', { name: 'Paid by' }).getByRole('radio', { name: 'Ola' }),
@@ -1001,6 +1012,11 @@ test('settle up: Income, then the suggested Repayments, until the Trip is Settle
   const repayment = page.getByRole('link', { name: /Repayment/ }).filter({ hasText: '€10.00' });
   await expect(repayment).toContainText('Ola → Kasia');
   await expect(repayment).toContainText('you received €10.00');
+  await repayment.click();
+  await page.getByRole('link', { name: 'Edit Repayment' }).click();
+  await expect(page).toHaveTitle('Edit Repayment | Owe Yeah');
+  await page.getByRole('button', { name: 'Back' }).click();
+  await page.getByRole('button', { name: 'Back' }).click();
 
   // With Repayments recorded, the Trip currency is locked and says why; the name still changes.
   await page.getByRole('link', { name: 'Trip', exact: true }).click();

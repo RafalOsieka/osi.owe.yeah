@@ -7,7 +7,6 @@ import { z } from 'zod';
 definePageMeta({ viewTransition: { toTypes: ['forward'], fromTypes: ['back'] } });
 
 const { trip } = useOpenTrip();
-const { t } = useI18n();
 const route = useRoute();
 
 // Anything malformed in the query is left out, and the form starts without it.
@@ -19,8 +18,6 @@ const querySchema = z.object({
 // Read once, like the form.
 const { payer, recipient, amount } = querySchema.parse(route.query);
 const suggested = { payerId: payer, recipientId: recipient, amount };
-
-useHead({ title: () => t('repayment.new') });
 </script>
 
 <template>

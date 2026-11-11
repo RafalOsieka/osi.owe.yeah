@@ -43,6 +43,10 @@ const { formErrors, problemAt } = useDraftReasons();
 
 const defaultTitle = t('repayment.title');
 
+// The heading, which also titles the tab.
+const heading = computed(() => (repayment ? t('repayment.edit') : t('repayment.new')));
+useHead({ title: heading });
+
 // Read once: the form is mounted afresh each time it opens. What it started with is kept apart,
 // to tell whether anything was changed.
 const start: RepaymentDraft = repayment
@@ -91,12 +95,7 @@ async function submit(): Promise<void> {
 </script>
 
 <template>
-  <NuxtLayout
-    name="form"
-    :title="repayment ? $t('repayment.edit') : $t('repayment.new')"
-    :parent="parent"
-    :close="!repayment"
-  >
+  <NuxtLayout name="form" :title="heading" :parent="parent" :close="!repayment">
     <UForm
       id="repayment-form"
       :state="state"
