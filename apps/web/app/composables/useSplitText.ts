@@ -16,11 +16,13 @@ import type { DraftSplit } from '~/utils/expense-draft';
 /**
  * How a Line item's split reads in one line: its Split mode and who it names, with their
  * units for Units ("Units · Ania 2, Kasia 1") and, given the `currency`, their amounts for
- * Amounts ("Amounts · Kasia €10.00, Marta €4.50"), "all N" when Even names everyone, or that
- * nobody has been given any of it yet. A saved split goes through `draftSplit` first. Typed
- * amounts weigh against the full price, so given the Line `item` with a Line discount, Amounts
- * shows what each Participant's part of the line comes to after it ("Amounts after the Line
- * discount · Kasia €7.50"), without the Deposit, which the line says on its own.
+ * Amounts ("Amounts · Kasia €10.00, Marta €4.50"), "all N" when Even names exactly the Trip's
+ * current `participants`, or that nobody has been given any of it yet. A saved split goes
+ * through `draftSplit` first. Names come from `everyone` the Trip has had when given, so a
+ * removed Participant on an older version is still named. Typed amounts weigh against the full
+ * price, so given the Line `item` with a Line discount, Amounts shows what each Participant's
+ * part of the line comes to after it ("Amounts after the Line discount · Kasia €7.50"), without
+ * the Deposit, which the line says on its own.
  */
 export function useSplitText() {
   const { t, locale } = useI18n();
@@ -28,11 +30,14 @@ export function useSplitText() {
   return (
     split: DraftSplit,
     participants: readonly Participant[],
-    currency?: string,
-    item?: LineItem | null,
+    {
+      currency,
+      item,
+      everyone = participants,
+    }: { currency?: string; item?: LineItem | null; everyone?: readonly Participant[] } = {},
   ): string => {
     const nameOf = (id: string) =>
-      participants.find((participant) => participant.id === id)?.name ?? '?';
+      everyone.find((participant) => participant.id === id)?.name ?? '?';
     const ids =
       split.mode === 'amounts'
         ? split.parts.flatMap(({ participantId, amount }) =>
@@ -49,7 +54,11 @@ export function useSplitText() {
       ? t('receipt.amountsAfterLineDiscount')
       : t(`receipt.mode.${split.mode}`);
     if (ids.length === 0) return `${mode} · ${t('receipt.nobodyYet')}`;
-    if (split.mode === 'even' && ids.length === participants.length) {
+    if (
+      split.mode === 'even' &&
+      ids.length === participants.length &&
+      participants.every(({ id }) => ids.includes(id))
+    ) {
       return `${mode} · ${t('expense.forAll', { count: ids.length })}`;
     }
     const names =

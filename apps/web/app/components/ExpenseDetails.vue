@@ -168,17 +168,19 @@ const details = computed(() => {
                   price: money(fromMinor(item.unitPrice, expense.currency)),
                   split: splitText(
                     draftSplit(item.split, expense.currency),
-                    everyone.value,
-                    expense.currency,
-                    item,
+                    trip.value.participants,
+                    {
+                      currency: expense.currency,
+                      item,
+                      everyone: everyone.value,
+                    },
                   ),
                 })
-              : splitText(
-                  draftSplit(item.split, expense.currency),
-                  everyone.value,
-                  expense.currency,
+              : splitText(draftSplit(item.split, expense.currency), trip.value.participants, {
+                  currency: expense.currency,
                   item,
-                ),
+                  everyone: everyone.value,
+                }),
           ]
             .filter((fact) => fact !== null)
             .join(' · '),

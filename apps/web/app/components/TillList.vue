@@ -224,7 +224,7 @@ const addRow =
           <div class="min-w-0">
             <p class="font-semibold text-highlighted">{{ $t('receipt.newLineItem') }}</p>
             <p class="text-sm text-muted">
-              {{ splitText(goodsSplit, participants, currency) }}
+              {{ splitText(goodsSplit, participants, { currency }) }}
             </p>
           </div>
           <UButton
