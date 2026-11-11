@@ -82,27 +82,13 @@ The Docker-backed suites start their own `postgres:18-alpine` container, so they
 
 A pnpm workspace:
 
-| Path                     | Package                         | Purpose                                                                                     |
-| ------------------------ | ------------------------------- | ------------------------------------------------------------------------------------------- |
-| `apps/web`               | `@osi/owe-yeah-web`             | Nuxt 4 SPA with Nuxt UI, offline storage in IndexedDB, and the Nitro server with its API    |
-| `apps/migrator`          | `@osi/owe-yeah-migrator`        | One-shot step that applies the SQL migrations in `apps/migrator/migrations` and exits       |
-| `packages/domain`        | `@osi/owe-yeah-domain`          | Pure TypeScript domain rules on exact rationals, shared by the browser and the server       |
-| `tools/oxlint/anti-slop` |                                 | Custom Oxlint rules                                                                         |
-| `tools/screenshots`      | `@osi/owe-yeah-screenshots`     | Seeds Trips into a running app and captures every screen for design reviews                 |
-| `tools/tricount-import`  | `@osi/owe-yeah-tricount-import` | Throwaway admin tool that moves each Tricount into a new Trip once; deleted after migration |
-
-<details>
-<summary>Using the Tricount importer</summary>
-
-It runs from the operator's machine with an explicit `DATABASE_URL` and is in no image:
-
-```sh
-DATABASE_URL=… pnpm --filter @osi/owe-yeah-tricount-import run import <share link> --zone Europe/Warsaw --origin https://<app>
-```
-
-Each fetch saves the response, without the share token, to `tools/tricount-import/responses/` (git-ignored). `--from-file <file>` imports a saved one instead.
-
-</details>
+| Path                     | Package                     | Purpose                                                                                  |
+| ------------------------ | --------------------------- | ---------------------------------------------------------------------------------------- |
+| `apps/web`               | `@osi/owe-yeah-web`         | Nuxt 4 SPA with Nuxt UI, offline storage in IndexedDB, and the Nitro server with its API |
+| `apps/migrator`          | `@osi/owe-yeah-migrator`    | One-shot step that applies the SQL migrations in `apps/migrator/migrations` and exits    |
+| `packages/domain`        | `@osi/owe-yeah-domain`      | Pure TypeScript domain rules on exact rationals, shared by the browser and the server    |
+| `tools/oxlint/anti-slop` |                             | Custom Oxlint rules                                                                      |
+| `tools/screenshots`      | `@osi/owe-yeah-screenshots` | Seeds Trips into a running app and captures every screen for design reviews              |
 
 ## Deployment
 

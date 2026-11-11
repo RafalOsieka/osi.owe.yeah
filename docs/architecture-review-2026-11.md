@@ -79,7 +79,7 @@ Every open item was checked again against `main` at `0be94a6` on 2026-11-11. Eac
 - [x] **"Notice" is not in the glossary.** Done on 2026-11-11 (see Catch-up). It covers in-app messages, such as "Participant restored" or a rejected change.
 - [x] **"Push" means two things:** sync push and Web Push. Neither is in `GLOSSARY.md`, and neither are "Notice", "Recently deleted" or "History". `TripSnapshot` clashes with "Avoid: snapshot". Done except `TripSnapshot` (its own item above): **Notification** has "Avoid: Push", which settles Web Push. **Notice**, **History** and **Recently deleted** were added on 2026-11-11. The sync push stays protocol vocabulary (ADR 0002), not a glossary term.
 - [x] **Fire-and-forget calls.** `void notifyAffected(…)` and `void deliver(…)` run without `event.waitUntil`. That is fine on Node and fragile on serverless. Dropped on 2026-11-11: the app runs on Node in Docker, and no serverless deploy is planned.
-- [ ] **`tools/tricount-import`** duplicates token generation and `hashTripToken`, and copies the schema. After #73, either delete it or share the hash. **Issue:** #221 deletes it, since the import is done.
+- [x] **`tools/tricount-import`** duplicates token generation and `hashTripToken`, and copies the schema. After #73, either delete it or share the hash. **Issue:** #221 deletes it, since the import is done. Done in #221.
 - [ ] **The domain interface is wide.** About 19 exports of `packages/domain` are unused outside the package (`changeResultSchema`, `syncChangeSchema`, `tripSnapshotSchema`, `lineItemSchema`, `parseAmount`, `localDay`, …). **Issue:** #222, after #209.
 - [x] **Flatten the migrations** into one initial migration (no production yet). Done in #75: `0000_init.sql`.
 
@@ -155,7 +155,7 @@ They found no reason to reopen ADR 0001–0003, and 121 of the 126 stories are d
   - **The gaps:** no `default-src` or `connect-src`, and `script-src` allows `'unsafe-inline'` and `https:`.
   - **Fix:** add `default-src 'self'` and `connect-src 'self'`, then check the headers a production build actually sends.
   - **Issue:** #217.
-- [ ] **S13. The Tricount share token is a CLI argument**, so it lands in shell history and the process list. Read it from stdin, a hidden prompt or an environment variable. Goes with the tool in #221.
+- [x] **S13. The Tricount share token is a CLI argument**, so it lands in shell history and the process list. Read it from stdin, a hidden prompt or an environment variable. Goes with the tool in #221. Done in #221.
 - [ ] **S14. The sync push parses its body before checking the token**, and a creation push tells whether a Trip id exists, which contradicts a comment in the Trip access code.
   - **Fix:** check the link first. In #78 this means the HTTP adapter must not fully parse before the module checks the link, or the comment changes.
   - **Decided on 2026-11-11:** checking the link first is in #205. The second half is dropped, because Trip ids are UUIDv7 and guessing one is infeasible. #205 corrects the comments in `sync.ts` and `store.ts` instead.

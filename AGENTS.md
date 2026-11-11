@@ -37,7 +37,6 @@ A pnpm workspace (`pnpm-workspace.yaml`). Package names are `@osi/owe-yeah-*`.
 - `apps/migrator` (`@osi/owe-yeah-migrator`): applies the committed SQL in `apps/migrator/migrations` and exits.
 - `tools/oxlint/anti-slop`: custom Oxlint rules (frozen copy; don't edit `index.ts`, `rules/` or `shared/`).
 - `tools/screenshots`: captures every screen of a running app for design reviews (`pnpm --filter @osi/owe-yeah-screenshots run capture`).
-- `tools/tricount-import`: throwaway Tricount import tool, in no image.
 - `deploy/osieka-dev/`: the osieka.dev instance (compose file, operator runbook, GDPR request SQL).
 - `docker/`: license notice and source offer generation for the images.
 - `.agents/skills`, `.claude/skills`: vendored agent skills pinned in `skills-lock.json`. Keep them byte-identical to upstream.

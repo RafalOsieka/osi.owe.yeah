@@ -4,7 +4,7 @@
 #   docker build .                   -> the web app (the last stage, `runtime`)
 #   docker build --target migrator . -> the one-shot migrator the deployed compose runs before the app
 # Both final images hold only Node and their own output: no package manager, no
-# toolchain and no workspace tools (the Tricount importer never enters the build context).
+# toolchain and no workspace tools.
 # Both carry their license notices in /app/notices: the repo's LICENSE, the npm packages'
 # THIRD-PARTY-NOTICES.md and the Alpine packages' SOURCE-OFFER.md (see docker/).
 

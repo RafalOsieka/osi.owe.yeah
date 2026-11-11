@@ -1,7 +1,6 @@
 packages:
   - packages/*
   - apps/*
-  - tools/tricount-import
   - tools/screenshots
 
 allowBuilds:
