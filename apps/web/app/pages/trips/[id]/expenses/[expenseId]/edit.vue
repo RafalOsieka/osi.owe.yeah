@@ -1,5 +1,5 @@
 <script setup lang="ts">
-import { expenseKind, isRepayment } from '@osi/owe-yeah-domain';
+import { isRepayment } from '@osi/owe-yeah-domain';
 
 // Edit Expense: the Expense form filled with the Expense, or the Repayment form for a
 // Repayment, opened from its detail page.
@@ -14,19 +14,8 @@ const detail = computed(() => `/trips/${trip.value.id}/expenses/${expenseId}`);
 // Read once, like the form: a pull while editing must not reset what the user typed.
 const expense = trip.value.expenses.find(({ id }) => id === expenseId);
 
-// The tab is named like the form's heading: Edit Expense, Edit Income or Edit Repayment.
-useHead({
-  title: () => {
-    switch (expense && expenseKind(expense).kind) {
-      case 'repayment':
-        return t('repayment.edit');
-      case 'income':
-        return t('expense.editIncome');
-      default:
-        return t('expense.edit');
-    }
-  },
-});
+// The forms title the tab like their heading; only a missing Expense needs a title here.
+if (!expense) useHead({ title: () => t('expense.edit') });
 </script>
 
 <template>

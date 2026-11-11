@@ -854,6 +854,7 @@ test('record a plain Expense, read it, edit it, and see the balances', async ({ 
   // The Main payer defaults to the Claim, and everyone is ticked.
   await page.getByRole('link', { name: 'Add Expense' }).click();
   await expect(page.getByRole('banner')).toContainText('New Expense');
+  await expect(page).toHaveTitle('New Expense | Owe Yeah');
   const paidBy = page.getByRole('group', { name: 'Paid by' });
   const forWhom = page.getByRole('group', { name: 'For whom' });
   await expect(paidBy.getByRole('radio', { name: 'Kasia' })).toBeChecked();
@@ -948,6 +949,7 @@ test('settle up: Income, then the suggested Repayments, until the Trip is Settle
   await page.getByLabel('Amount').fill('6');
   await page.getByRole('switch', { name: 'Money received' }).click();
   await expect(page.getByRole('banner')).toContainText('New Income');
+  await expect(page).toHaveTitle('New Income | Owe Yeah');
   await page
     .getByRole('group', { name: 'Received by' })
     .getByRole('radio', { name: 'Ola' })
@@ -981,6 +983,7 @@ test('settle up: Income, then the suggested Repayments, until the Trip is Settle
   // Recording from a suggestion fills it in; the amount can be lowered for a partial one.
   await toSettle.nth(0).getByRole('link', { name: 'Record Repayment' }).click();
   await expect(page.getByRole('banner')).toContainText('New Repayment');
+  await expect(page).toHaveTitle('New Repayment | Owe Yeah');
   await expect(page.getByLabel('Amount')).toHaveValue('14.00');
   await expect(
     page.getByRole('group', { name: 'Paid by' }).getByRole('radio', { name: 'Ola' }),

@@ -241,6 +241,8 @@ const texts = computed(() => {
   }
   return { heading: expense ? t('expense.edit') : t('expense.new'), save: t('expense.save') };
 });
+// The tab is titled like the heading, following "Money received" as it is switched.
+useHead({ title: () => texts.value.heading });
 
 // The draft's reasons, and a line typed but not added, which would otherwise be lost on save
 // (Save is greyed out then, but Enter in a field still submits).
