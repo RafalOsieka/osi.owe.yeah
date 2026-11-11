@@ -25,7 +25,8 @@ const creations = new Map<string, { count: number; since: number }>();
  * Counts a Trip created from `address`, unless it has created `limit` Trips this hour already.
  * Kept in memory, so a restart starts every count again.
  */
-function mayCreateTrip(address: string, limit: number, now = Date.now()): boolean {
+function mayCreateTrip(address: string, limit: number): boolean {
+  const now = Date.now();
   const known = creations.get(address);
   const current = known && now - known.since < HOUR_MS ? known : { count: 0, since: now };
   const allowed = current.count < limit;
@@ -47,6 +48,7 @@ function mayCreateTrip(address: string, limit: number, now = Date.now()): boolea
 export default defineEventHandler(async (event): Promise<PushResponse> => {
   const request = await readValidatedBody(event, pushEnvelopeSchema);
   const link = tripLinkOf(event);
+  // Without the header, as without Cloudflare in front, every request counts as one address.
   const address = getRequestHeader(event, 'cf-connecting-ip') ?? '';
   const { tripsPerHour } = useRuntimeConfig();
   const mayCreate = () => mayCreateTrip(address, tripsPerHour);

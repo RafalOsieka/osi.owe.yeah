@@ -116,10 +116,11 @@ export default defineNuxtConfig({
     // the network it runs in. Tests only: `NUXT_NOTIFICATIONS_ANY_ENDPOINT` takes any endpoint,
     // plain http included, for the stand-in push service on 127.0.0.1.
     notificationsAnyEndpoint: false,
-    // How many Trips one client address may create an hour, keyed on `CF-Connecting-IP` like
-    // the rate limiter (`server/api/trips/[id]/push.post.ts`). Tests only: the ui suite, whose
-    // browser sends every request without that header, raises it with `NUXT_TRIPS_PER_HOUR`.
-    tripsPerHour: 10,
+    // How many Trips one client address may create an hour (`server/api/trips/[id]/push.post.ts`
+    // counts them), keyed on `CF-Connecting-IP` like the rate limiter. Raised in development, as
+    // the rate limiter is off there, and in the ui suite (`NUXT_TRIPS_PER_HOUR`): both send every
+    // request without that header, so all of it counts as one address.
+    tripsPerHour: process.env.NODE_ENV === 'development' ? 1000 : 10,
     // The Git commit the server was built from, which `/healthz` reports. The runtime image
     // bakes it in as `NUXT_COMMIT_SHA` from its `COMMIT_SHA` build arg; the prerendered app
     // can't carry it.
