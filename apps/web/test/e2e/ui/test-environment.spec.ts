@@ -15,8 +15,8 @@ async function open(page: Page, path: string): Promise<void> {
 }
 
 /**
- * Walks through a screen of every kind: My Trips, New Trip, a Trip's three tabs, New Expense
- * and the privacy notice. Calls `check` on each.
+ * Walks through a screen of every kind: My Trips, New Trip, a Trip's three tabs, New Expense,
+ * the privacy notice and a page that doesn't exist. Calls `check` on each.
  */
 async function everyScreen(page: Page, check: () => Promise<void>): Promise<void> {
   await check();
@@ -36,6 +36,9 @@ async function everyScreen(page: Page, check: () => Promise<void>): Promise<void
   await page.getByRole('link', { name: 'Add Expense' }).click();
   await check();
   await open(page, '/privacy');
+  await check();
+  await open(page, '/nonexistent-page');
+  await expect(page.getByRole('heading', { name: "This page doesn't exist." })).toBeVisible();
   await check();
 }
 
