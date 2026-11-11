@@ -19,6 +19,10 @@
   "testEnvironment": {
     "banner": "Test environment: data may be wiped, don't enter anything sensitive"
   },
+  "notFound": {
+    "title": "This page doesn't exist.",
+    "help": "Check the address."
+  },
   "myTrips": {
     "title": "My Trips",
     "empty": "No Trips yet",

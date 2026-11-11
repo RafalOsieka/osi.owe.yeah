@@ -7,7 +7,7 @@ Words follow `GLOSSARY.md`. Copy that names a domain concept uses its canonical 
 ## Shape
 
 - **Phone first.** Every screen is designed at 390 px and works one-handed.
-- **Three layouts.** My Trips and the legal pages share a plain header. An open Trip has a header (the Trip, who you are, the sync status) and a bottom tab bar: Expenses, Balances, Trip. Forms and detail pages are full screen, with back or close, and the main action fixed at the bottom.
+- **Three layouts.** My Trips, the legal pages and the not-found page share a plain header. An open Trip has a header (the Trip, who you are, the sync status) and a bottom tab bar: Expenses, Balances, Trip. Forms and detail pages are full screen, with back or close, and the main action fixed at the bottom.
 - **Cards on a canvas.** Each screen is a soft canvas with cards on it (raised in dark mode). Related rows share a card; a section's label sits above its card.
 - **What each tab leads with.**
   - Expenses: the Expenses, newest day first, each day with what was spent.

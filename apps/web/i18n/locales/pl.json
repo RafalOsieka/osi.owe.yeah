@@ -19,6 +19,10 @@
   "testEnvironment": {
     "banner": "Środowisko testowe: dane mogą zostać usunięte, nie wpisuj niczego wrażliwego"
   },
+  "notFound": {
+    "title": "Ta strona nie istnieje.",
+    "help": "Sprawdź adres."
+  },
   "myTrips": {
     "title": "Moje podróże",
     "empty": "Nie masz jeszcze podróży",

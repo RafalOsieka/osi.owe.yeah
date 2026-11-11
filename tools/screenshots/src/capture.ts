@@ -1,8 +1,8 @@
 // The app's screenshot set for design reviews (the council skill's design branch): seeds three
 // Trips through the sync API of a running app, then walks every page and its options at phone
 // size (390 px, 2x), light and dark, into `<outDir>/{light,dark}-<id>.png`, with
-// `<outDir>/screens.json` saying what each screen shows and in which themes (`SCREENS`). 71
-// screens walked, 42 captured (12 of them in dark too), in three review groups: a (the app, the Trip tabs and Trip settings), b (an Expense's detail, its History and
+// `<outDir>/screens.json` saying what each screen shows and in which themes (`SCREENS`). 72
+// screens walked, 43 captured (12 of them in dark too), in three review groups: a (the app, the Trip tabs and Trip settings), b (an Expense's detail, its History and
 // Conflict) and c (the Expense, Receipt and Repayment forms).
 //
 //   pnpm --filter @osi/owe-yeah-screenshots capture <outDir> [baseUrl=http://localhost:3000]
@@ -233,6 +233,11 @@ const SCREENS = {
   ],
   'a38-privacy': ['Privacy notice', 'The privacy notice, in full.', 'light'],
   'a39-terms': ['Terms of service', 'The terms of service, in full.', 'none'],
+  'a40-not-found': [
+    'Page not found',
+    'An address no page has: the page does not exist, with My Trips.',
+    'light',
+  ],
   'b01-expense-detail': [
     'Expense detail',
     'A plain Expense: total, when, the Main payer with a Contribution from someone else, the shares, who last edited it, History and Delete.',
@@ -1104,6 +1109,9 @@ async function capture(scheme: 'light' | 'dark'): Promise<void> {
   await go(`${base}/terms`);
   await main.locator('h2').first().waitFor();
   await snap('a39-terms', true);
+  await go(`${base}/nonexistent-page`);
+  await text("This page doesn't exist.").waitFor();
+  await snap('a40-not-found');
 
   // Delete asks nothing: Undo is the way back.
   await go(croatia.expensePage('Ferry to Hvar'));
