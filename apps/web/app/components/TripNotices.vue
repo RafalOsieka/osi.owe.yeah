@@ -1,9 +1,11 @@
 <script setup lang="ts">
 import { referencedParticipantIds, type Participant } from '@osi/owe-yeah-domain';
+import type { LocalExpense } from '~/sync/local-trip';
 
 // What sync has to tell about this device's changes, on top of every Trip tab until
-// dismissed: a removed Participant one of its Expenses brought back, or a removal the server
-// refused because an Expense includes them now. Each says what happened and, when one Expense
+// dismissed: a removed Participant one of its Expenses brought back, a removal the server
+// refused because an Expense includes them now, or a new Trip currency it refused because
+// someone recorded a Repayment meanwhile. Each says what happened and, when one Expense
 // explains it, offers "Show Expense". An outlined note on the canvas, so it doesn't read as one
 // of the Expenses: nothing is wrong, it only changed. A quoted title never breaks mid-quote.
 // A removed Claim is told in "Who are you?" instead.
@@ -17,11 +19,26 @@ const including = (participant: Participant, title?: string) =>
       (title === undefined || expense.title === title),
   );
 
-// Each notice as its message key and what it names; a refused removal names the Expense
-// when only one includes them.
+// A notice as shown: its message key and what the message names.
+type ShownNotice = {
+  id: string;
+  keypath: string;
+  name: string | null;
+  currency: string | null;
+  title: string | null;
+  expense: LocalExpense | null;
+};
+
+// Each notice as shown; a refused removal names the Expense when only one includes them, a
+// refused Trip currency names the currency.
 const shown = computed(() =>
-  notices.value.flatMap((notice) => {
+  notices.value.flatMap((notice): ShownNotice[] => {
     if (notice.kind === 'claimRemoved') return [];
+    if (notice.kind === 'currencyChangeRefused') {
+      const keypath = 'notices.currencyChangeRefused';
+      const { id, currency } = notice;
+      return [{ id, keypath, name: null, currency, title: null, expense: null }];
+    }
     const restored = notice.kind === 'participantRestored';
     const expenses = restored
       ? including(notice.participant, notice.expenseTitle)
@@ -34,7 +51,14 @@ const shown = computed(() =>
         ? 'notices.removalRefusedBy'
         : 'notices.removalRefused';
     return [
-      { id: notice.id, keypath, name: notice.participant.name, title, expense: only ?? null },
+      {
+        id: notice.id,
+        keypath,
+        name: notice.participant.name,
+        currency: null,
+        title,
+        expense: only ?? null,
+      },
     ];
   }),
 );
@@ -51,6 +75,7 @@ const shown = computed(() =>
       <div class="min-w-0 flex-1 pt-px">
         <i18n-t :keypath="notice.keypath" tag="p" scope="global" class="text-sm text-default">
           <template #name>{{ notice.name }}</template>
+          <template #currency>{{ notice.currency }}</template>
           <template #title>
             <span class="inline-block max-w-full truncate align-bottom whitespace-nowrap">
               {{ $t('notices.quoted', { title: notice.title }) }}

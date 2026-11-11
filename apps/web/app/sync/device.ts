@@ -2,6 +2,7 @@ import {
   expenseProblems,
   isRepayment,
   expensesReferencing,
+  tripCurrencyLocked,
   type ChangeResult,
   type Currency,
   type Expense,
@@ -269,13 +270,23 @@ export function createDevice(db: DeviceDb, transport: Transport, deviceId: strin
     for (const tripId of renewed) changed(tripId);
   }
 
-  /** Keeps Notices for the Trip until they are dismissed. */
+  /**
+   * Keeps Notices for the Trip until they are dismissed. A Notice the Trip keeps already is
+   * not kept twice, e.g. a new Trip currency refused for two queued changes that carried it.
+   */
   async function notify(tripId: string, ...notices: NewNotice[]): Promise<void> {
     if (notices.length === 0) return;
     const device = await db.trips.get(tripId);
     if (!device) return;
-    const added = notices.map((notice) => ({ ...notice, id: uuidv7() }));
-    await db.trips.update(tripId, { notices: [...device.notices, ...added] });
+    const kept = [...device.notices];
+    const said = new Set(kept.map(({ id: _, ...notice }) => JSON.stringify(notice)));
+    for (const notice of notices) {
+      const key = JSON.stringify(notice);
+      if (said.has(key)) continue;
+      said.add(key);
+      kept.push({ ...notice, id: uuidv7() });
+    }
+    await db.trips.update(tripId, { notices: kept });
   }
 
   /**
@@ -425,10 +436,20 @@ export function createDevice(db: DeviceDb, transport: Transport, deviceId: strin
 
       /**
        * Saves the Trip's name and Trip currency, last write wins. A new Trip currency rewrites
-       * no Expense: each is converted at the rate for the new pair (ADR 0003).
+       * no Expense: each is converted at the rate for the new pair (ADR 0003). Once the Trip
+       * has a Repayment, a new Trip currency is refused (`tripCurrencyLocked`) and nothing is
+       * saved. Resolves to whether the details were saved.
        */
-      saveTripDetails: syncing((details: Omit<Trip, 'id'>) =>
-        enqueue(tripId, { kind: 'trip', trip: details }),
+      saveTripDetails: syncing(
+        (details: Omit<Trip, 'id'>) =>
+          db.transaction('rw', db.trips, db.outbox, async () => {
+            const local = await readLocal(tripId);
+            const locked = tripCurrencyLocked(local.expenses);
+            if (details.currency !== local.currency && locked) return false;
+            await enqueue(tripId, { kind: 'trip', trip: details });
+            return true;
+          }),
+        (saved) => saved,
       ),
 
       /** Dismisses one of the Trip's Notices. */
@@ -763,7 +784,8 @@ function toSyncChange(change: QueuedChange): SyncChange {
 
 /**
  * What the user should hear about a change's result: removed Participants an accepted
- * Expense brought back (named as `known` has them), or a removal the server refused.
+ * Expense brought back (named as `known` has them), a removal the server refused, or a new
+ * Trip currency it refused for a Repayment recorded meanwhile.
  */
 function noticesFor(
   change: QueuedChange,
@@ -780,6 +802,9 @@ function noticesFor(
   if (result.status !== 'rejected') return [];
   if (change.kind === 'participant' && result.problems.includes('participantReferenced')) {
     return [{ kind: 'removalRefused', participant: change.participant }];
+  }
+  if (change.kind === 'trip' && result.problems.includes('tripHasRepayments')) {
+    return [{ kind: 'currencyChangeRefused', currency: change.trip.currency }];
   }
   return [];
 }

@@ -7,6 +7,7 @@ We chose this over copying the rate onto each Expense. A stored rate would make 
 ## Consequences
 
 - Changing the Trip currency is a plain Trip-details edit. Nothing on the Expenses changes, and every automatic rate is simply looked up for the new pair.
+- The Trip currency can't change once the Trip has Repayments (deleted ones aside), because Repayments made in one currency only cancel the Expenses they settled at that currency's rates. The device and the server both refuse it; a change queued offline that meets a Repayment on the server is refused and the device is told.
 - A Manual rate targets the currency it was entered in. When that is no longer the Trip currency, it is chained through the automatic rate for the Expense's date.
 - Rates for today and future dates are provisional and are marked as such. They become fixed once the date is over, and balances update with no Expense changes. Offline devices use their latest cached rate as a Provisional rate in the meantime.
 - The Expense form may fetch a single rate entry from the same table ahead of the pull, for a currency or date the Trip hasn't used yet, so all devices still convert with the same inputs.

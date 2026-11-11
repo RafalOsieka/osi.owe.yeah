@@ -67,6 +67,7 @@
       "save": "Zapisz",
       "currencyHelp": "W tej walucie salda są pokazywane i rozliczane. Jej zmiana zostawia każdy wydatek tak, jak go wpisano; każdy jest przeliczany po kursie ze swojego dnia.",
       "currencyChange": "Salda zostaną przeliczone na {currency}. Każdy wydatek zachowa swoją kwotę i walutę; każdy jest przeliczany po kursie ze swojego dnia.",
+      "currencyLocked": "Waluty podróży nie można zmienić, gdy podróż ma spłaty: wyrównują one salda po kursach tej waluty, a w innej walucie zostałyby drobne kwoty do oddania. Aby ją zmienić, najpierw usuń spłaty.",
       "lastChangedBy": "Ostatnia zmiana: {name} · {when}",
       "lastChangedByYou": "Ostatnia zmiana: ty · {when}",
       "lastChanged": "Ostatnia zmiana: {when}"
@@ -555,6 +556,7 @@
     "participantRestored": "Uczestnika {name} usunięto, zanim zsynchronizował się twój wydatek {title}. Wydatek go przywrócił.",
     "removalRefused": "Uczestnik {name} nie został usunięty: jest teraz w wydatku.",
     "removalRefusedBy": "Uczestnik {name} nie został usunięty: obejmuje go teraz wydatek {title}.",
+    "currencyChangeRefused": "Twoja zmiana nazwy i waluty podróży nie została zapisana: w międzyczasie ktoś zapisał spłatę, a gdy podróż ma spłatę, jej waluty nie można zmienić na {currency}.",
     "quoted": "„{title}”",
     "showExpense": "Pokaż wydatek"
   },

@@ -8,6 +8,7 @@ import {
   type RateEntry,
   type SubscriptionRequest,
   type SyncChange,
+  type TripCurrency,
   type TripSnapshot,
 } from '@osi/owe-yeah-domain';
 import { Dexie, type EntityTable } from 'dexie';
@@ -17,11 +18,13 @@ import { migrations } from './migrations';
 /**
  * Something sync did to this device's changes that the user should hear about, kept until
  * they dismiss it: a removed Participant an Expense of theirs brought back, a removal the
- * server refused, or their Claim's Participant removed by someone else.
+ * server refused, a new Trip currency it refused because the Trip has a Repayment now, or
+ * their Claim's Participant removed by someone else.
  */
 export type Notice = { id: string } & (
   | { kind: 'participantRestored'; participant: Participant; expenseTitle: string }
   | { kind: 'removalRefused'; participant: Participant }
+  | { kind: 'currencyChangeRefused'; currency: TripCurrency }
   | { kind: 'claimRemoved'; participant: Participant }
 );
 

@@ -1002,6 +1002,17 @@ test('settle up: Income, then the suggested Repayments, until the Trip is Settle
   await expect(repayment).toContainText('Ola → Kasia');
   await expect(repayment).toContainText('you received €10.00');
 
+  // With Repayments recorded, the Trip currency is locked and says why; the name still changes.
+  await page.getByRole('link', { name: 'Trip', exact: true }).click();
+  await page.getByRole('link', { name: /Name and Trip currency/ }).click();
+  await expect(page.getByRole('button', { name: 'Trip currency' })).toBeDisabled();
+  await expect(page.getByRole('main')).toContainText('delete the Repayments first');
+  await page.getByLabel('Name').fill('Alps 2026 hut');
+  await page.getByRole('button', { name: 'Save' }).click();
+  await expect(page.getByRole('link', { name: /Name and Trip currency/ })).toContainText(
+    'Alps 2026 hut · EUR',
+  );
+
   // My Trips puts it under Settled, below a Trip that isn't, though it was opened last.
   await createTrip(page, 'Lakes 2026', 'Kasia', ['Ania']);
   await page.getByRole('button', { name: 'Back to My Trips' }).click();

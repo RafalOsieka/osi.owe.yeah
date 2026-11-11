@@ -211,6 +211,16 @@ export function expensesReferencing(expenses: readonly Expense[], participantId:
 }
 
 /**
+ * Whether the Trip currency is locked: it is once the Trip has a Repayment (pass the Expenses
+ * that aren't deleted). Each Expense converts at its own day's rate (ADR 0003), so a Repayment
+ * that settled someone exactly in one Trip currency stops doing so in another. The device
+ * checks it before queuing a Trip change and the server again before accepting one.
+ */
+export function tripCurrencyLocked(expenses: readonly Expense[]): boolean {
+  return expenses.some((expense) => isRepayment(expense));
+}
+
+/**
  * The rules an Expense must follow within its Trip; empty when it may be saved. The device
  * checks them before pushing and the server again before accepting. A Repayment's recipient
  * counts as its ticked Participant, and so does everyone with a Contribution. Every Line item

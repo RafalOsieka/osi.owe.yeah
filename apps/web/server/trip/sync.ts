@@ -2,6 +2,7 @@ import {
   expenseProblems,
   expensesReferencing,
   referencedParticipantIds,
+  tripCurrencyLocked,
   tripIdSchema,
   tripTokenSchema,
   type ChangeResult,
@@ -78,13 +79,18 @@ export function createTripSync(db: Database, store: TripStore, rates: Rates, not
 
   /**
    * A Trip's details, last write wins; who sent the change is who last changed them. A new
-   * Trip currency causes no Conflict, as no Expense changes with it.
+   * Trip currency causes no Conflict, as no Expense changes with it, but is refused once the
+   * Trip has a Repayment (deleted ones aside), whichever of the two came first on the device.
    */
   async function applyTripChange(change: TripChange, tripId: string): Promise<ChangeResult> {
     const changeId = change.id;
     return db.transaction(async (tx): Promise<ChangeResult> => {
-      await lockTrip(tx, tripId);
+      const trip = await lockTrip(tx, tripId);
       const { name, currency } = change.trip;
+      const live = trip.expenses.filter(({ deleted }) => !deleted);
+      if (currency !== trip.currency && tripCurrencyLocked(live)) {
+        return { changeId, status: 'rejected', problems: ['tripHasRepayments'] };
+      }
       await tx.update(trips).set({ name, currency }).where(eq(trips.id, tripId));
       await recordChange(tx, change, tripId, tripId, null);
       return { changeId, status: 'accepted', version: null };
