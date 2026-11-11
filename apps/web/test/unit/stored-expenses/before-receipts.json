@@ -1,0 +1,46 @@
+{
+  "plainExpense": {
+    "title": "Dinner",
+    "currency": "EUR",
+    "time": { "instant": "2026-07-14T19:30:00Z", "zone": "Europe/Zagreb" },
+    "mainPayerId": "019a2b3c-4d5e-7f00-8a1b-000000000001",
+    "lineItems": [
+      {
+        "unitPrice": 4800,
+        "split": {
+          "mode": "even",
+          "participantIds": [
+            "019a2b3c-4d5e-7f00-8a1b-000000000001",
+            "019a2b3c-4d5e-7f00-8a1b-000000000002"
+          ]
+        }
+      }
+    ]
+  },
+  "income": {
+    "title": "Refund for the ferry",
+    "currency": "EUR",
+    "time": { "instant": "2026-07-15T08:00:00Z", "zone": "Europe/Zagreb" },
+    "mainPayerId": "019a2b3c-4d5e-7f00-8a1b-000000000002",
+    "lineItems": [
+      {
+        "unitPrice": -1200,
+        "split": {
+          "mode": "even",
+          "participantIds": [
+            "019a2b3c-4d5e-7f00-8a1b-000000000001",
+            "019a2b3c-4d5e-7f00-8a1b-000000000002"
+          ]
+        }
+      }
+    ]
+  },
+  "repayment": {
+    "title": "Taxi",
+    "currency": "EUR",
+    "time": { "instant": "2026-07-15T21:00:00Z", "zone": "Europe/Zagreb" },
+    "mainPayerId": "019a2b3c-4d5e-7f00-8a1b-000000000002",
+    "recipientId": "019a2b3c-4d5e-7f00-8a1b-000000000001",
+    "amount": 900
+  }
+}

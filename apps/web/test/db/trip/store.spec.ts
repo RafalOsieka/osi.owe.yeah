@@ -1,5 +1,4 @@
 import { randomBytes } from 'node:crypto';
-import { fromPartial } from '@total-typescript/shoehorn';
 import { v7 as uuidv7 } from 'uuid';
 import { expect, it } from 'vitest';
 import { changes, expenses, participants, revisions, trips } from '../../../server/db/schema';
@@ -44,13 +43,13 @@ describeDb('Trip store', () => {
           tripId: trip.id,
           version: 1,
           // Stored before Line items had a name and a quantity.
-          state: fromPartial({
+          state: {
             title: 'Dinner',
             currency: 'EUR',
             time,
             mainPayerId: ana.id,
             lineItems: [{ unitPrice: 2450, split: { mode: 'even', participantIds: [ana.id] } }],
-          }),
+          },
         },
         {
           id: taxi,
