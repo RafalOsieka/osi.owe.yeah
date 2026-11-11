@@ -48,7 +48,7 @@ Every open item was checked again against `main` at `0be94a6` on 2026-11-11. Eac
 - **Problem:** The "sync after a local change" policy (ADR 0002) lives in a page. Each mutation has to remember to call sync, each with its own condition. Outbox details (`ExpenseBase`, `{ after: changeId }`, `NOTIFICATIONS_OFF`) leak into pages and forms. (Revised: the other `~/sync/*` imports are types that are part of the interface, plus pure functions over `LocalTrip`; only `ExpenseBase` is a leak.)
 - **Direction:** The device schedules sync on every enqueue and offers a handle per Trip with `tripId` bound. Base is hidden behind "the Expense as it was read".
 
-### 5. Notification subscriptions as their own module next to sync (Worth exploring). Status: decided (#208)
+### 5. Notification subscriptions as their own module next to sync (Worth exploring). Status: done (#208)
 
 - **Files:** `app/sync/device.ts` (704 lines at the review, 810 at `0be94a6`), `test/unit/device.spec.ts` (646 lines)
 - **Problem:** Web Push subscription reconciliation (about 120 lines, with its own state machine) is coupled to the outbox loop (`syncOnce` → `syncSubscription`). There are also three online-only pass-throughs: `revisions`, `reminderStatus` and `remind`.
