@@ -26,9 +26,10 @@ const {
 } = useOpenTrip();
 const { t } = useI18n();
 const { support } = usePushNotifications();
+// Blocked by the browser comes first: nothing arrives then, even if this device turned them on.
 const notificationsState = computed(() => {
-  if (notifications.value.subscription) return t('notifications.on');
-  return support.value === 'denied' ? t('notifications.blocked') : t('notifications.off');
+  if (support.value === 'denied') return t('notifications.blocked');
+  return notifications.value.subscription ? t('notifications.on') : t('notifications.off');
 });
 
 const adding = ref(false);

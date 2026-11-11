@@ -3,9 +3,9 @@ import type { BrowserSubscription } from '~/sync/db';
 
 // "Notifications", opened from the Trip tab (#41): the toggle for this Trip on this device,
 // in one card headed by the Trip's name and a status chip. While off, the explanation comes
-// before the browser's prompt (back is the way out, so no "Not now"); while on, it says so and
-// turns them off. Notifications are about what involves the device's Claim, so without one
-// it asks "Who are you?" first.
+// before the browser's prompt (back is the way out, so no "Not now"), or the steps to unblock
+// while the browser blocks them; while on, it says so and turns them off. Notifications are
+// about what involves the device's Claim, so without one it asks "Who are you?" first.
 definePageMeta({ viewTransition: { toTypes: ['forward'], fromTypes: ['back'] } });
 
 const { trip, claim, notifications, turnOnNotifications, turnOffNotifications, askWhoYouAre } =
@@ -16,8 +16,10 @@ const back = useBack();
 const parent = computed(() => `/trips/${trip.value.id}/settings`);
 const { support } = usePushNotifications();
 
-// The status chip under the Trip's name, as the Trip tab's row says it.
-const on = computed(() => notifications.value.subscription !== null);
+// The status chip under the Trip's name, as the Trip tab's row says it. Turned on, then
+// blocked by the browser, counts as not on: nothing arrives, so the page shows the steps to
+// unblock and "Check again", which takes the browser's subscription anew.
+const on = computed(() => notifications.value.subscription !== null && support.value !== 'denied');
 const state = computed(() => {
   if (!claim.value) return { label: t('notifications.pickFirst'), color: 'neutral' } as const;
   if (on.value) return { label: t('notifications.on'), color: 'success' } as const;
