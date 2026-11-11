@@ -5,6 +5,9 @@ import { environmentResponseSchema } from '@osi/owe-yeah-domain';
 // whether it is one (`/api/environment`), asked on every open; the device remembers the last
 // answer, so the banner shows offline too. Closing it hides it until the app is opened again.
 const REMEMBERED_KEY = 'owe-yeah:test-environment';
+// The ✕ takes the banner's own text colour: the Alert's default (a muted grey link) is about as
+// light as the amber, so it can barely be seen (#173).
+const CLOSE_CLASS = 'text-inverted hover:text-inverted/75 active:text-inverted/75';
 
 const testEnvironment = ref(localStorage.getItem(REMEMBERED_KEY) === 'true');
 const closed = ref(false);
@@ -28,6 +31,7 @@ void askServer().catch(() => {});
     :title="$t('testEnvironment.banner')"
     close
     class="rounded-none py-2 pt-[calc(0.5rem+env(safe-area-inset-top))]"
+    :ui="{ close: CLOSE_CLASS }"
     @update:open="closed = true"
   />
 </template>
