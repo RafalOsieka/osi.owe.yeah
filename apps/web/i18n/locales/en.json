@@ -565,6 +565,7 @@
     "currencyChangeRefused": "Your change to the Trip's name and Trip currency wasn't saved: someone recorded a Repayment meanwhile, and the Trip currency can't change to {currency} once the Trip has one.",
     "tripChangeRefused": "Your change to the Trip's name and Trip currency wasn't saved: the server couldn't read it.",
     "participantChangeRefused": "Your change to {name} wasn't saved: the server couldn't read it.",
+    "unnamedParticipantChangeRefused": "Your change to a Participant wasn't saved: the server couldn't read it.",
     "quoted": "“{title}”",
     "showExpense": "Show Expense"
   },

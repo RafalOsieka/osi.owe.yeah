@@ -9,7 +9,8 @@ import { toExpense } from '~/sync/local-trip';
 // named for what it deletes (Expense, Income or Repayment). A Conflict shows as an amber
 // notice saying the details are this device's change, with a full-width primary Choose a change that
 // opens the Conflict screen, Edit stepping back meanwhile; a rejected change is fixed with Edit
-// or discarded. Edit opens the Expense form. Delete moves it to Recently deleted, with Undo
+// or discarded, and one the server couldn't read is saved again from Edit or discarded. Edit
+// opens the Expense form. Delete moves it to Recently deleted, with Undo
 // for a moment. Should the Expense go (deleted, or a discarded new one), so does the page.
 definePageMeta({ viewTransition: { toTypes: ['forward'], fromTypes: ['back'] } });
 
@@ -98,14 +99,17 @@ const notSynced = computed((): AlertProps | null => {
       return { title: t('sync.pending'), color: 'neutral', icon: 'i-lucide-cloud-off' };
     case 'rejected': {
       const reason = unsynced.problems.map((problem) => t(`sync.reason.${problem}`)).join(' ');
+      // A change the server couldn't read is saved again from the Expense form, as it stands.
+      const malformed = unsynced.problems.includes('malformed');
+      const discard = { label: t('sync.discard'), onClick: () => discardChanges(expenseId) };
       return {
         title: t('sync.rejected', { reason }),
-        description: t(
-          unsynced.problems.includes('malformed') ? 'sync.malformedHelp' : 'sync.rejectedHelp',
-        ),
+        description: t(malformed ? 'sync.malformedHelp' : 'sync.rejectedHelp'),
         color: 'error',
         icon: 'i-lucide-cloud-off',
-        actions: [{ label: t('sync.discard'), onClick: () => discardChanges(expenseId) }],
+        actions: malformed
+          ? [{ label: labels.value.edit, to: `${page.value}/edit` }, discard]
+          : [discard],
       };
     }
   }

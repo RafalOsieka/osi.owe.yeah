@@ -2,6 +2,7 @@ import {
   expenseProblems,
   isRepayment,
   expensesReferencing,
+  PUSH_LIMIT,
   tripCurrencyLocked,
   type ChangeResult,
   type Currency,
@@ -109,9 +110,6 @@ type NewNotice = Notice extends infer N ? (N extends Notice ? Omit<N, 'id'> : ne
 
 /** An outbox entry holding an Expense change. */
 type ExpenseEntry = OutboxEntry & { change: Extract<QueuedChange, { kind: 'expense' }> };
-
-// One push holds at most this many changes (`pushRequestSchema`).
-const PUSH_LIMIT = 100;
 
 /**
  * The device's Trips and sync (ADR 0002): every change is written to the device store first

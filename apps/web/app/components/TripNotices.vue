@@ -31,21 +31,26 @@ type ShownNotice = {
 };
 
 // Each notice as shown; a refused removal names the Expense when only one includes them, a
-// refused Trip currency names the currency.
+// refused Trip currency names the currency, and a change the server couldn't read names the
+// Participant it was about, if it has a name.
 const shown = computed(() =>
   notices.value.flatMap((notice): ShownNotice[] => {
     if (notice.kind === 'claimRemoved') return [];
     if (notice.kind === 'changeRefused') {
       const { id, about } = notice;
-      const shown = { id, currency: null, title: null, expense: null };
+      const plain = { id, currency: null, title: null, expense: null };
       if (about.kind === 'trip') {
-        return [{ ...shown, keypath: 'notices.tripChangeRefused', name: null }];
+        return [{ ...plain, keypath: 'notices.tripChangeRefused', name: null }];
       }
-      // As the Trip names them now: a name the server couldn't read may be blank.
+      // As the Trip names them now: a name the server couldn't read may be blank, e.g. of a
+      // Participant added on this device only.
       const { participant } = about;
-      const name = everyone.value.find(({ id }) => id === participant.id)?.name;
-      const keypath = 'notices.participantChangeRefused';
-      return [{ ...shown, keypath, name: name ?? participant.name }];
+      const known = everyone.value.find(({ id }) => id === participant.id)?.name;
+      const name = known ?? participant.name.trim();
+      const keypath = name
+        ? 'notices.participantChangeRefused'
+        : 'notices.unnamedParticipantChangeRefused';
+      return [{ ...plain, keypath, name }];
     }
     if (notice.kind === 'currencyChangeRefused') {
       const keypath = 'notices.currencyChangeRefused';

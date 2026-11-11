@@ -565,6 +565,7 @@
     "currencyChangeRefused": "Twoja zmiana nazwy i waluty podróży nie została zapisana: w międzyczasie ktoś zapisał spłatę, a gdy podróż ma spłatę, jej waluty nie można zmienić na {currency}.",
     "tripChangeRefused": "Twoja zmiana nazwy i waluty podróży nie została zapisana: serwer nie mógł jej odczytać.",
     "participantChangeRefused": "Twoja zmiana uczestnika {name} nie została zapisana: serwer nie mógł jej odczytać.",
+    "unnamedParticipantChangeRefused": "Twoja zmiana uczestnika nie została zapisana: serwer nie mógł jej odczytać.",
     "quoted": "„{title}”",
     "showExpense": "Pokaż wydatek"
   },

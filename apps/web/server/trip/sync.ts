@@ -254,7 +254,8 @@ export function createTripSync(db: Database, store: TripStore, rates: Rates, not
      * Deletes and restores are Expense changes like edits. A change applied before is
      * answered as the first time and not applied again. Once it has answered, the notifier
      * hears of the Expense changes this push applied. The Trip link is checked before any
-     * change is read; a change that isn't `syncChangeSchema` is refused as `malformed`.
+     * change is applied (only a creation's Trip details are read before it); a change that
+     * isn't `syncChangeSchema` is refused as `malformed`.
      */
     async push(
       tripId: string,

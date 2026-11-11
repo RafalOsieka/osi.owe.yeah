@@ -84,9 +84,12 @@ export type ParticipantChange = z.infer<typeof participantChangeSchema>;
 export type ExpenseChange = z.infer<typeof expenseChangeSchema>;
 export type SyncChange = z.infer<typeof syncChangeSchema>;
 
+/** How many changes one push holds at most. */
+export const PUSH_LIMIT = 100;
+
 /** A push: changes to apply in order. Each is accepted or refused on its own. */
 export const pushRequestSchema = z.object({
-  changes: z.array(syncChangeSchema).min(1).max(100),
+  changes: z.array(syncChangeSchema).min(1).max(PUSH_LIMIT),
 });
 
 export type PushRequest = z.infer<typeof pushRequestSchema>;
@@ -100,7 +103,7 @@ export const pushEnvelopeSchema = z.object({
   changes: z
     .array(z.looseObject({ id: changeMeta.id }))
     .min(1)
-    .max(100),
+    .max(PUSH_LIMIT),
 });
 
 export type PushEnvelope = z.infer<typeof pushEnvelopeSchema>;
