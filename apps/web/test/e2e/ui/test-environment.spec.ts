@@ -73,6 +73,22 @@ test.describe('in a test environment', () => {
     await expect(banner(page)).toBeVisible();
   });
 
+  test("the banner's close button stands out from the banner in light and dark mode", async ({
+    page,
+  }) => {
+    for (const colorScheme of ['light', 'dark'] as const) {
+      await page.emulateMedia({ colorScheme });
+      await open(page, '/');
+      await expect(page.locator('html')).toContainClass(colorScheme);
+      const close = banner(page).getByRole('button', { name: 'Close' });
+      const ratio = contrast(
+        await rgb(close, 'color'),
+        await rgb(banner(page), 'background-color'),
+      );
+      expect(ratio, `in ${colorScheme} mode`).toBeGreaterThanOrEqual(3);
+    }
+  });
+
   test('under the banner, the New Trip button leaves the footer links on My Trips clear', async ({
     page,
   }) => {
@@ -113,6 +129,33 @@ type Box = Awaited<ReturnType<typeof box>>;
 /** Whether two boxes on the screen share any area. */
 function overlaps(a: Box, b: Box): boolean {
   return a.x < b.x + b.width && b.x < a.x + a.width && a.y < b.y + b.height && b.y < a.y + a.height;
+}
+
+type Rgb = [number, number, number];
+
+/** The sRGB channels (0-255) of a colour property of `locator`, whatever CSS colour space it uses. */
+async function rgb(locator: Locator, property: 'color' | 'background-color'): Promise<Rgb> {
+  return locator.evaluate((element, name) => {
+    // A canvas paints any CSS colour (oklch, color-mix) and reads it back as sRGB.
+    const context = document.createElement('canvas').getContext('2d');
+    if (!context) throw new Error('No 2D canvas');
+    context.fillStyle = getComputedStyle(element).getPropertyValue(name);
+    context.fillRect(0, 0, 1, 1);
+    const [r = 0, g = 0, b = 0] = context.getImageData(0, 0, 1, 1).data;
+    return [r, g, b] satisfies Rgb;
+  }, property);
+}
+
+/** The WCAG 2 contrast ratio between two opaque colours, from 1 to 21. */
+function contrast(a: Rgb, b: Rgb): number {
+  const linear = (channel: number) => {
+    const c = channel / 255;
+    return c <= 0.04045 ? c / 12.92 : ((c + 0.055) / 1.055) ** 2.4;
+  };
+  const luminance = ([r, g, b]: Rgb) =>
+    0.2126 * linear(r) + 0.7152 * linear(g) + 0.0722 * linear(b);
+  const [x, y] = [luminance(a), luminance(b)];
+  return (Math.max(x, y) + 0.05) / (Math.min(x, y) + 0.05);
 }
 
 test('outside a test environment, no screen shows the banner', async ({ page }) => {
