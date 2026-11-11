@@ -1,5 +1,6 @@
 import { randomBytes } from 'node:crypto';
 import {
+  EXPENSE_LIMIT,
   PARTICIPANT_LIMIT,
   PUSH_LIMIT,
   type ChangeResult,
@@ -18,7 +19,10 @@ import {
 } from '@osi/owe-yeah-domain';
 import { v7 as uuidv7 } from 'uuid';
 import { afterAll, beforeAll, expect, it } from 'vitest';
-import { participants as participantRows } from '../../../server/db/schema';
+import {
+  expenses as expenseRows,
+  participants as participantRows,
+} from '../../../server/db/schema';
 import { createRates } from '../../../server/trip/rates';
 import { createTripStore } from '../../../server/trip/store';
 import {
@@ -139,10 +143,12 @@ describeDb('Trip sync', () => {
     );
   });
 
-  /** Pushes changes and returns their results, expecting the Trip link to be taken. */
+  /** Pushes changes and returns their results, expecting the push to be taken. */
   async function push(tripId: string, token: string, ...changes: PushEnvelope['changes']) {
     const response = await sync.push(tripId, token, { changes });
-    if (response === 'invalidLink') throw new Error('The Trip link was refused');
+    if (response === 'invalidLink' || response === 'tooManyTrips') {
+      throw new Error(`The push was refused: ${response}`);
+    }
     return response.results;
   }
 
@@ -540,6 +546,28 @@ describeDb('Trip sync', () => {
       'Konzum',
       'Ferry',
     ]);
+  });
+
+  it('refuses an Expense past the 2,000th, deleted ones included, but still applies edits', async () => {
+    const { trip, token, kasia } = await tripWithKasiaAndAnia();
+    const kept = plainExpense(kasia);
+    const gone = plainExpense(kasia);
+    await push(trip.id, token, change(kept), change(gone), deletion(gone, 1));
+    // The rest of the 2,000, stored as Trip sync stores them, as pushing each would be slow.
+    const others = Array.from({ length: EXPENSE_LIMIT - 2 }, () => plainExpense(kasia));
+    await db()
+      .insert(expenseRows)
+      .values(others.map(({ id, ...state }) => ({ id, tripId: trip.id, version: 1, state })));
+    const tooMany = change(plainExpense(kasia));
+    const edit = change({ ...kept, title: 'Konzum' }, 1);
+    const restore = change(gone, 2);
+
+    expect(await push(trip.id, token, tooMany, edit, restore)).toEqual<ChangeResult[]>([
+      { changeId: tooMany.id, status: 'rejected', problems: ['tooManyExpenses'] },
+      { changeId: edit.id, status: 'accepted', version: 2 },
+      { changeId: restore.id, status: 'accepted', version: 3 },
+    ]);
+    expect((await pulled(trip.id, token)).expenses).toHaveLength(EXPENSE_LIMIT);
   });
 
   it("refuses an Expense id another Trip uses, and an edit of an Expense it doesn't have", async () => {

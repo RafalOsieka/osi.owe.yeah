@@ -75,6 +75,12 @@ export type Trip = z.infer<typeof tripSchema>;
 export const PARTICIPANT_LIMIT = 100;
 
 /**
+ * How many Expenses a Trip has at most, deleted ones included. Trip sync refuses a change that
+ * would create one more (`tooManyExpenses`); edits of the ones it has still apply.
+ */
+export const EXPENSE_LIMIT = 2000;
+
+/**
  * A Trip with its Participants, as the client creates it and the whole-Trip pull returns
  * it. Participant names may repeat; ids may not.
  */

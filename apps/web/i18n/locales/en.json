@@ -450,7 +450,8 @@
       "chargedWithoutTotal": "the amount charged needs a total other than zero.",
       "manualRateToOwnCurrency": "the Manual rate must convert into a currency other than the Expense's own.",
       "malformed": "the server couldn't read this change.",
-      "tooManyParticipants": "it brings back someone removed from the Trip, which already has 100 Participants."
+      "tooManyParticipants": "it brings back someone removed from the Trip, which already has 100 Participants.",
+      "tooManyExpenses": "the Trip already has 2,000 Expenses, deleted ones included, the most it can have."
     },
     "pullToRefresh": "Pull to sync",
     "releaseToRefresh": "Release to sync",

@@ -45,7 +45,7 @@ Only once the privacy notice and terms are live in the deployed build, `owe-yeah
 
 ## What the app relies on Cloudflare for
 
-- **Rate limiting by client.** The limiter keys clients on `CF-Connecting-IP`, which Cloudflare sets to the real client IP, never on `X-Forwarded-For`, which a client can forge. The tunnel must stay the only way in: a request that reaches `app` without the header shares one limit with every other such request.
+- **Rate limiting by client.** The limiter, and the limit on new Trips, key clients on `CF-Connecting-IP`, which Cloudflare sets to the real client IP, never on `X-Forwarded-For`, which a client can forge. The tunnel must stay the only way in: a request that reaches `app` without the header shares one limit with every other such request.
 - **No stale versions at the edge.** The service worker, `/`, `index.html` and the web manifest are sent with `Cache-Control: no-cache`, so Cloudflare revalidates them on every request; the hashed `/_nuxt/` assets they point to are cached for a year. No Cache Rule may override this, or a new version can wait at the edge for hours.
 
 ## Operating test

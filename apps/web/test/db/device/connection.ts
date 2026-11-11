@@ -71,7 +71,9 @@ export class Connection implements Transport {
     // Only the envelope, as the HTTP adapter: Trip sync reads each change on its own.
     const response = await this.sync.push(tripId, token, overTheWire(pushEnvelopeSchema, request));
     this.throwIfLost('losePushResponses');
-    if (response === 'invalidLink') throw new Error('The Trip link was refused');
+    if (response === 'invalidLink' || response === 'tooManyTrips') {
+      throw new Error(`The push was refused: ${response}`);
+    }
     return overTheWire(pushResponseSchema, response);
   }
 

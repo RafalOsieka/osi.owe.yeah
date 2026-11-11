@@ -114,7 +114,8 @@ export type PushEnvelope = z.infer<typeof pushEnvelopeSchema>;
  * Expense references, a new Trip currency once the Trip has a Repayment
  * (`tripCurrencyLocked`), a change it can't read (`malformed`, not `syncChangeSchema`), or a
  * Participant change or Expense change that would make the Trip's live Participants more than
- * `PARTICIPANT_LIMIT`, by adding one or bringing removed ones back.
+ * `PARTICIPANT_LIMIT`, by adding one or bringing removed ones back, or a new Expense past
+ * `EXPENSE_LIMIT`.
  */
 export const pushProblemSchema = z.enum([
   ...expenseProblemSchema.options,
@@ -125,6 +126,7 @@ export const pushProblemSchema = z.enum([
   'tripHasRepayments',
   'malformed',
   'tooManyParticipants',
+  'tooManyExpenses',
 ]);
 
 export type PushProblem = z.infer<typeof pushProblemSchema>;

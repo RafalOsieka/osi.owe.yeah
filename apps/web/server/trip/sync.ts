@@ -1,4 +1,5 @@
 import {
+  EXPENSE_LIMIT,
   PARTICIPANT_LIMIT,
   expenseProblems,
   expensesReferencing,
@@ -40,6 +41,9 @@ export type Notifier = {
  * left as it is: Trip ids are UUIDv7s, and guessing one is infeasible.
  */
 export type InvalidLink = 'invalidLink';
+
+/** What the sync answers a push that would create a Trip, when the creation isn't allowed. */
+export type TooManyTrips = 'tooManyTrips';
 
 /**
  * The server side of the sync (ADR 0002), mirroring the device's `Transport`: the push and the
@@ -146,7 +150,8 @@ export function createTripSync(db: Database, store: TripStore, rates: Rates, not
    * version, in one conditional statement so concurrent pushes cannot both win, and adds the
    * Revision it makes. Removed Participants still count as the Trip's, and an Expense that is
    * not deleted brings back those it references, unless that makes the Trip's Participants more
-   * than `PARTICIPANT_LIMIT`. Returns nothing when the change did not apply.
+   * than `PARTICIPANT_LIMIT`. A new Expense past `EXPENSE_LIMIT` is refused. Returns nothing
+   * when the change did not apply.
    */
   async function applyExpenseChange(
     change: ExpenseChange,
@@ -158,6 +163,11 @@ export function createTripSync(db: Database, store: TripStore, rates: Rates, not
       const trip = await lockTrip(tx, tripId);
       const problems = expenseProblems(change.expense, trip);
       if (problems.length > 0) return { changeId, status: 'rejected', problems };
+      // A creation of an Expense the Trip has already is left to end as a Conflict.
+      const creating = change.baseVersion === null && !trip.expenses.some((e) => e.id === id);
+      if (creating && trip.expenses.length >= EXPENSE_LIMIT) {
+        return { changeId, status: 'rejected', problems: ['tooManyExpenses'] };
+      }
       const referenced = referencedParticipantIds(change.expense);
       const restored = deleted
         ? []
@@ -232,31 +242,37 @@ export function createTripSync(db: Database, store: TripStore, rates: Rates, not
   /**
    * Creates the Trip `tripId` under `token`, unless a Trip with that id (or token) exists
    * already: how a Trip created on a device, maybe offline, reaches the server. Whether the
-   * push may then use the Trip is still for its Trip link to say. Returns `false` for a token
-   * too weak to be a Trip link.
+   * push may then use the Trip is still for its Trip link to say. `mayCreate` is asked only
+   * when the Trip is missing. Answers why the push is refused, if it is: a token too weak to be
+   * a Trip link, or a creation `mayCreate` refused.
    */
   async function createTripIfMissing(
     tripId: string,
     token: string,
     details: TripChange['trip'],
-  ): Promise<boolean> {
+    mayCreate: () => boolean,
+  ): Promise<InvalidLink | TooManyTrips | null> {
     const id = tripIdSchema.safeParse(tripId);
-    if (!id.success) return true;
+    if (!id.success) return null;
+    const [existing] = await db.select({ id: trips.id }).from(trips).where(eq(trips.id, id.data));
+    if (existing) return null;
     const strong = tripTokenSchema.safeParse(token);
-    if (!strong.success) return false;
+    if (!strong.success) return 'invalidLink';
+    if (!mayCreate()) return 'tooManyTrips';
     await db
       .insert(trips)
       .values({ id: id.data, ...details, tokenHash: hashTripToken(strong.data) })
       .onConflictDoNothing();
-    return true;
+    return null;
   }
 
   return {
     /**
      * The sync push: applies a device's outbox changes in order and answers with a result per
      * change. A push carrying a Trip change creates the Trip if the server doesn't have it
-     * yet. Trip details and Participants are last-write-wins, except that a Participant an
-     * Expense references is never removed. A new Trip currency rewrites no Expense (ADR 0003).
+     * yet and `mayCreate` allows it; a creation it refuses refuses the whole push. Trip
+     * details and Participants are last-write-wins, except that a Participant an Expense
+     * references is never removed. A new Trip currency rewrites no Expense (ADR 0003).
      * An Expense change carries the Expense's full new state and the version it was based on;
      * it is accepted only if it follows the Trip's rules and that version is still current,
      * and then kept as a Revision. It brings back any removed Participant it references.
@@ -270,13 +286,14 @@ export function createTripSync(db: Database, store: TripStore, rates: Rates, not
       tripId: string,
       token: string,
       { changes: pushed }: PushEnvelope,
-    ): Promise<PushResponse | InvalidLink> {
+      mayCreate: () => boolean = () => true,
+    ): Promise<PushResponse | InvalidLink | TooManyTrips> {
       const creation = pushed
         .map((change) => tripChangeSchema.safeParse(change).data)
         .find((change) => change !== undefined);
-      if (creation && !(await createTripIfMissing(tripId, token, creation.trip))) {
-        return 'invalidLink';
-      }
+      const refused =
+        creation && (await createTripIfMissing(tripId, token, creation.trip, mayCreate));
+      if (refused) return refused;
       const trip = await store.tripByLink(tripId, token);
       if (!trip) return 'invalidLink';
 

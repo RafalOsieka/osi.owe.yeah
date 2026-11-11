@@ -10,15 +10,21 @@ export type ReceivedPush = { device: string; payload: unknown };
  * on it, and `subscription` makes one with real keys, as a browser does, so what the server
  * sends can be decrypted (RFC 8291, aes128gcm) and checked. Each endpoint answers 201, or the
  * status `gone` set for it, as a push service answers an endpoint it no longer has, or a 307
- * to the endpoint `redirect` set for it.
+ * to the endpoint `redirect` set for it. `answerAfter` holds every answer back, so that pushes
+ * sent together overlap, and `mostAtOnce` says how many of them did.
  */
 export async function startPushService() {
   const received: ReceivedPush[] = [];
   const statuses = new Map<string, number>();
   const redirects = new Map<string, string>();
   const keys = new Map<string, { ecdh: ReturnType<typeof createECDH>; auth: Buffer }>();
+  let delayMs = 0;
+  let atOnce = 0;
+  let most = 0;
 
   const server = createServer((request, response) => {
+    atOnce++;
+    most = Math.max(most, atOnce);
     const chunks: Buffer[] = [];
     request.on('data', (chunk: Buffer) => chunks.push(chunk));
     request.on('end', () => {
@@ -31,7 +37,10 @@ export async function startPushService() {
       const location = redirects.get(device);
       if (location) response.setHeader('Location', location);
       response.statusCode = location ? 307 : (statuses.get(device) ?? 201);
-      response.end();
+      setTimeout(() => {
+        atOnce--;
+        response.end();
+      }, delayMs);
     });
   });
   await new Promise<void>((resolve) => server.listen(0, '127.0.0.1', resolve));
@@ -61,6 +70,16 @@ export async function startPushService() {
     /** Makes `device`'s endpoint redirect to `to`'s from now on. */
     redirect(device: string, to: string): void {
       redirects.set(device, `http://127.0.0.1:${port}/${to}`);
+    },
+    /** Answers every push `ms` after it came from now on; 0 answers at once. */
+    answerAfter(ms: number): void {
+      delayMs = ms;
+    },
+    /** The most pushes it was answering at once since the last call. */
+    mostAtOnce(): number {
+      const seen = most;
+      most = atOnce;
+      return seen;
     },
     /** The payloads `device` got, in the order they came. */
     payloadsOf(device: string): unknown[] {

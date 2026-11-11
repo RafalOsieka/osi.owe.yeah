@@ -1,4 +1,5 @@
 import { subscriptionRequestSchema } from '@osi/owe-yeah-domain';
+import { and, eq, ne } from 'drizzle-orm';
 import {
   createError,
   defineEventHandler,
@@ -12,12 +13,17 @@ import { notificationSubscriptions } from '../../../../db/schema';
 import { isKnownPushService } from '../../../../notifications/push-services';
 import { requireTrip } from '../../../../utils/trip-access';
 
+// How many devices' subscriptions a Trip keeps at most, so a Notification reaches a bounded
+// number of push services.
+const SUBSCRIPTION_LIMIT = 200;
+
 /**
  * Registers a device's subscription to Notifications in the Trip (#41), or replaces it: with
  * the Claim it has now, so it follows a changed Claim. The device sends it again until it gets
  * through. The `deviceId` route param is the device's opaque id, the one its changes carry.
  * Only an endpoint at a known push service is taken (`isKnownPushService`); a refused one
- * logs its host, so a push service missing from the list shows up.
+ * logs its host, so a push service missing from the list shows up. A new device past
+ * `SUBSCRIPTION_LIMIT` gets 409, and the device keeps sending it, as it does any refusal.
  */
 export default defineEventHandler(async (event): Promise<void> => {
   const trip = await requireTrip(event);
@@ -29,8 +35,20 @@ export default defineEventHandler(async (event): Promise<void> => {
     throw createError({ status: 400, statusText: 'Not a known push service' });
   }
 
+  const db = getDb();
+  const others = await db.$count(
+    notificationSubscriptions,
+    and(
+      eq(notificationSubscriptions.tripId, trip.id),
+      ne(notificationSubscriptions.deviceId, deviceId.data),
+    ),
+  );
+  if (others >= SUBSCRIPTION_LIMIT) {
+    throw createError({ status: 409, statusText: 'Too many subscriptions in the Trip' });
+  }
+
   const subscription = { endpoint, p256dh: keys.p256dh, auth: keys.auth, claimId };
-  await getDb()
+  await db
     .insert(notificationSubscriptions)
     .values({ tripId: trip.id, deviceId: deviceId.data, ...subscription })
     .onConflictDoUpdate({

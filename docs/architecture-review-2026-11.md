@@ -131,7 +131,7 @@ They found no reason to reopen ADR 0001–0003, and 121 of the 126 stories are d
   - **Fix:** answer with what the rate table holds and fill it in the background; bound the Expense instant (e.g. 1999-01-04 to a year ahead); only ask Frankfurter for currencies it covers; make `retryAt` an LRU.
   - **Overlap:** #78 puts the pull with its rates inside the Trip sync module, which is the natural place for this.
   - **Issue:** #216 (rates filled in the background, the instant bounded, `retryAt` an LRU).
-- [ ] **S9. No limits on the amount of data** (security M3).
+- [x] **S9. No limits on the amount of data** (security M3). Done in #223 and #224.
   - **The problem:** Trips are created anonymously, with no cap on Participants, Expenses or Revisions, and the body limit is 2 MB.
   - **Fix:** per-Trip caps (100 Participants, as the existing schema already says), about 256 KB for the `/api` body, and a separate limit on creating Trips.
   - **Also from S3:** a cap on subscriptions per Trip and a limit on concurrent outbound deliveries. Today the 100-Participant cap is checked only when a Trip is created, and Trip sync never counts Participants added later.
@@ -141,6 +141,7 @@ They found no reason to reopen ADR 0001–0003, and 121 of the 126 stories are d
     - At most 10 new Trips per IP per hour.
     - At most 200 subscriptions per Trip; delivery sends at most 10 at a time.
     - **The 2 MB body limit stays:** one large Receipt is about 2 MB, so 256 KB could block a legitimate outbox forever.
+  - **Done in #224:** Trip sync refuses a new Expense past the 2,000th (`tooManyExpenses`), the push answers 429 to an address that created 10 Trips this hour, the subscription handler answers 409 past 200 devices in a Trip, and delivery sends 10 at a time.
 - [ ] **S10. Failures are silent at both ends** (system M3).
   - **Device:** every sync error is swallowed.
   - **Server:** problems only reach `console.warn`, and the app has no healthcheck.

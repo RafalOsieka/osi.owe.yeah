@@ -86,27 +86,42 @@ function stored(expense: Expense, version: number, by: string | null = null): St
   return { ...expense, version, deleted: false, edited: { by, at: expect.any(String) } };
 }
 
+/** A client address of its own, as Cloudflare names it in `CF-Connecting-IP`. */
+function newAddress(): string {
+  return [10, ...randomBytes(3)].join('.');
+}
+
 /**
  * The headers a device sends: its Trip link's token, if given, and the sync schema it speaks
- * (`null` for an app from before it said).
+ * (`null` for an app from before it said), and the client address Cloudflare adds. Each
+ * request comes from an address of its own unless given, so the Trips this suite creates never
+ * add up to the limit on creating them.
  */
-function deviceHeaders(token?: string, schema: number | null = SYNC_SCHEMA_VERSION): Headers {
-  const headers = new Headers({ 'content-type': 'application/json' });
+function deviceHeaders(
+  token?: string,
+  schema: number | null = SYNC_SCHEMA_VERSION,
+  address = newAddress(),
+): Headers {
+  const headers = new Headers({ 'content-type': 'application/json', 'cf-connecting-ip': address });
   if (token) headers.set(TRIP_TOKEN_HEADER, token);
   if (schema !== null) headers.set(SYNC_SCHEMA_HEADER, String(schema));
   return headers;
 }
 
-/** A push as a device sends it; its changes may be ones the server refuses as malformed. */
+/**
+ * A push as a device sends it, from `address` if given; its changes may be ones the server
+ * refuses as malformed.
+ */
 function pushResponse(
   tripId: string,
   changes: unknown[],
   token?: string,
   schema?: number | null,
+  address?: string,
 ): Promise<Response> {
   return fetch(`/api/trips/${tripId}/push`, {
     method: 'POST',
-    headers: deviceHeaders(token, schema),
+    headers: deviceHeaders(token, schema, address),
     body: JSON.stringify({ changes }),
   });
 }
@@ -468,6 +483,50 @@ describeApi('Trip API', () => {
 
     expect(pushed.status).toBe(409);
     expect((await pulled(trip.id, token)).expenses).toEqual([]);
+  });
+
+  it('creates at most 10 Trips an hour from one address, and still takes pushes to the Trips it has', async () => {
+    const address = newAddress();
+    const created: { trip: TripWithParticipants; token: string }[] = [];
+    for (let count = 0; count < 10; count++) {
+      const trip = newTrip(`Trip ${count + 1}`, [participant('Kasia')]);
+      const token = newToken();
+      expect((await pushResponse(trip.id, creation(trip), token, undefined, address)).status).toBe(
+        200,
+      );
+      created.push({ trip, token });
+    }
+    const eleventh = newTrip('Trip 11');
+
+    const tooMany = await pushResponse(
+      eleventh.id,
+      creation(eleventh),
+      newToken(),
+      undefined,
+      address,
+    );
+
+    expect(tooMany.status).toBe(429);
+    // A rename is a Trip change too, to a Trip the server has.
+    const [{ trip, token }] = created;
+    const [kasia] = trip.participants;
+    const changes = [tripChange({ ...trip, name: 'Croatia 2026' }), change(plainExpense(kasia!))];
+    const existing = await pushResponse(trip.id, changes, token, undefined, address);
+    expect(existing.status).toBe(200);
+    expect(await pulled(trip.id, token)).toMatchObject({ name: 'Croatia 2026', expenses: [{}] });
+    expect((await pushResponse(eleventh.id, creation(eleventh), newToken())).status).toBe(200);
+  });
+
+  it('takes at most 200 push subscriptions in a Trip, and still replaces one it has', async () => {
+    const { trip, token, kasia, devices } = await subscribedTrip();
+    // Subscribed for Kasia, Ania and Ola so far.
+    for (let count = 3; count < 200; count++) {
+      expect((await subscribe(trip.id, token, uuidv7(), kasia.id)).status).toBe(204);
+    }
+
+    expect((await subscribe(trip.id, token, uuidv7(), kasia.id)).status).toBe(409);
+    // Ania's device now says it is Kasia.
+    expect((await subscribe(trip.id, token, devices.ania, kasia.id)).status).toBe(204);
   });
 
   it('registers and removes a push subscription only with the Trip link', async () => {

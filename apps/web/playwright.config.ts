@@ -14,6 +14,8 @@ const env = {
   NUXT_VAPID_SUBJECT: 'mailto:test@example.com',
   // The journeys subscribe at `push.example.com`, no known push service.
   NUXT_NOTIFICATIONS_ANY_ENDPOINT: 'true',
+  // Every journey creates its Trips from one client address.
+  NUXT_TRIPS_PER_HOUR: '1000',
 };
 
 // The ui e2e suite: user journeys in a real browser against the built app and a disposable
