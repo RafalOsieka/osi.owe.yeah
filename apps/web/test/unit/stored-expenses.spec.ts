@@ -8,9 +8,11 @@ import { z } from 'zod';
  * shape forever, and a pull answers 500 for a Trip with a row it can't parse.
  *
  * A file here is never changed once it is on `main`. A change to the stored shape keeps the
- * files of the shapes before it, adds one for its own, and either migrates `expenses.state`
- * with SQL (a JSONB migration) or upgrades Revisions on read in the Trip store, which this
- * test then parses through, so every file here still parses.
+ * files of the shapes before it, adds one for its own, and brings old rows along: a SQL JSONB
+ * migration for `expenses.state`, or an upgrade on read, which Revisions need since they are
+ * never rewritten. An upgrade on read goes next to `expenseStateSchema`, so the Trip store and
+ * this test both parse through it. A change that is not only additive then checks old files
+ * against their upgraded form instead of field by field.
  */
 const fixtureFiles = import.meta.glob('./stored-expenses/*.json', {
   eager: true,
