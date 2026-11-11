@@ -69,13 +69,19 @@ export const tripSchema = z.object({
 export type Trip = z.infer<typeof tripSchema>;
 
 /**
+ * How many Participants a Trip has at most, removed ones aside. Trip sync refuses a change that
+ * would make one more (`tooManyParticipants`), and the app offers no Add once a Trip has them.
+ */
+export const PARTICIPANT_LIMIT = 100;
+
+/**
  * A Trip with its Participants, as the client creates it and the whole-Trip pull returns
  * it. Participant names may repeat; ids may not.
  */
 export const tripWithParticipantsSchema = tripSchema.extend({
   participants: z
     .array(participantSchema)
-    .max(100)
+    .max(PARTICIPANT_LIMIT)
     .refine(
       (participants) => new Set(participants.map(({ id }) => id)).size === participants.length,
       {

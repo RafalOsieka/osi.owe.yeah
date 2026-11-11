@@ -73,6 +73,7 @@ export type {
 export { participantIdSchema, participantNameSchema, participantSchema } from './participant.ts';
 export type { Participant } from './participant.ts';
 export {
+  PARTICIPANT_LIMIT,
   TRIP_CURRENCIES,
   TRIP_TOKEN_HEADER,
   tripIdSchema,

@@ -95,6 +95,7 @@
     "name": "Name",
     "addParticipant": "Add Participant",
     "addHelp": "They can also add themselves when they open the Trip link.",
+    "limitReached": "A Trip can have at most 100 Participants.",
     "you": "you",
     "remove": "Remove from Trip",
     "removeHelp": "Their name stays on older Revisions and deleted Expenses. An Expense that includes them again brings them back.",
@@ -448,7 +449,8 @@
       "contributionsExceedTotal": "the Contributions add up to more than the Expense.",
       "chargedWithoutTotal": "the amount charged needs a total other than zero.",
       "manualRateToOwnCurrency": "the Manual rate must convert into a currency other than the Expense's own.",
-      "malformed": "the server couldn't read this change."
+      "malformed": "the server couldn't read this change.",
+      "tooManyParticipants": "it brings back someone removed from the Trip, which already has 100 Participants."
     },
     "pullToRefresh": "Pull to sync",
     "releaseToRefresh": "Release to sync",
@@ -566,6 +568,7 @@
     "tripChangeRefused": "Your change to the Trip's name and Trip currency wasn't saved: the server couldn't read it.",
     "participantChangeRefused": "Your change to {name} wasn't saved: the server couldn't read it.",
     "unnamedParticipantChangeRefused": "Your change to a Participant wasn't saved: the server couldn't read it.",
+    "tooManyParticipants": "{name} wasn't added: the Trip already has 100 Participants, the most it can have.",
     "quoted": "“{title}”",
     "showExpense": "Show Expense"
   },

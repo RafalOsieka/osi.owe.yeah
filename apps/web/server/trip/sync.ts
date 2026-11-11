@@ -1,4 +1,5 @@
 import {
+  PARTICIPANT_LIMIT,
   expenseProblems,
   expensesReferencing,
   referencedParticipantIds,
@@ -105,7 +106,8 @@ export function createTripSync(db: Database, store: TripStore, rates: Rates, not
 
   /**
    * Adds, renames, removes or brings back a Participant, last write wins. Removing one that an
-   * Expense references (deleted ones aside) is refused, and so is an id another Trip uses.
+   * Expense references (deleted ones aside) is refused, and so is an id another Trip uses, and
+   * adding or bringing back one past `PARTICIPANT_LIMIT`.
    */
   async function applyParticipantChange(
     change: ParticipantChange,
@@ -117,6 +119,10 @@ export function createTripSync(db: Database, store: TripStore, rates: Rates, not
       const live = trip.expenses.filter(({ deleted }) => !deleted);
       const referenced = removed && expensesReferencing(live, participant.id) > 0;
       if (referenced) return { changeId, status: 'rejected', problems: ['participantReferenced'] };
+      const joining = !removed && !liveIds(trip).has(participant.id);
+      if (joining && tooMany(trip, 1)) {
+        return { changeId, status: 'rejected', problems: ['tooManyParticipants'] };
+      }
 
       // An id another Trip uses is left alone: the update is limited to this Trip's row.
       const [upserted] = await tx
@@ -139,8 +145,8 @@ export function createTripSync(db: Database, store: TripStore, rates: Rates, not
    * Creates the Expense (base version `null`) or updates it if it is still at the base
    * version, in one conditional statement so concurrent pushes cannot both win, and adds the
    * Revision it makes. Removed Participants still count as the Trip's, and an Expense that is
-   * not deleted brings back those it references. Returns nothing when the change did not
-   * apply.
+   * not deleted brings back those it references, unless that makes the Trip's Participants more
+   * than `PARTICIPANT_LIMIT`. Returns nothing when the change did not apply.
    */
   async function applyExpenseChange(
     change: ExpenseChange,
@@ -152,6 +158,13 @@ export function createTripSync(db: Database, store: TripStore, rates: Rates, not
       const trip = await lockTrip(tx, tripId);
       const problems = expenseProblems(change.expense, trip);
       if (problems.length > 0) return { changeId, status: 'rejected', problems };
+      const referenced = referencedParticipantIds(change.expense);
+      const restored = deleted
+        ? []
+        : trip.participants.filter((p) => p.removed && referenced.has(p.id)).map((p) => p.id);
+      if (tooMany(trip, restored.length)) {
+        return { changeId, status: 'rejected', problems: ['tooManyParticipants'] };
+      }
 
       const [stored] =
         change.baseVersion === null
@@ -182,10 +195,6 @@ export function createTripSync(db: Database, store: TripStore, rates: Rates, not
         deviceId: change.deviceId,
       });
 
-      const referenced = referencedParticipantIds(change.expense);
-      const restored = deleted
-        ? []
-        : trip.participants.filter((p) => p.removed && referenced.has(p.id)).map((p) => p.id);
       if (restored.length > 0) {
         await tx
           .update(participants)
@@ -322,6 +331,16 @@ async function lockTrip(tx: Transaction, tripId: string): Promise<WholeTrip> {
   // deploy/osieka-dev), so a push that races that fails here.
   if (!trip) throw new Error(`Trip ${tripId} is gone`);
   return trip;
+}
+
+/** The ids of the Trip's Participants who aren't removed. */
+function liveIds(trip: WholeTrip): Set<string> {
+  return new Set(trip.participants.filter(({ removed }) => !removed).map(({ id }) => id));
+}
+
+/** Whether `joining` more Participants would make the Trip's more than `PARTICIPANT_LIMIT`. */
+function tooMany(trip: WholeTrip, joining: number): boolean {
+  return liveIds(trip).size + joining > PARTICIPANT_LIMIT;
 }
 
 /** An accepted change's result, naming the Participants it brought back only if there are any. */

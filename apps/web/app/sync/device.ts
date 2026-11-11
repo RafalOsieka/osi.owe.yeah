@@ -788,9 +788,9 @@ function toSyncChange(change: QueuedChange): SyncChange {
 /**
  * What the user should hear about a change's result: removed Participants an accepted
  * Expense brought back (named as `known` has them), a removal the server refused, a new
- * Trip currency it refused for a Repayment recorded meanwhile, or a change of the Trip details
- * or of a Participant it couldn't read. A refused Expense change is held and shown on the
- * Expense instead.
+ * Trip currency it refused for a Repayment recorded meanwhile, a change of the Trip details
+ * or of a Participant it couldn't read, or a Participant it refused because the Trip is full. A
+ * refused Expense change is held and shown on the Expense instead.
  */
 function noticesFor(
   change: QueuedChange,
@@ -813,6 +813,9 @@ function noticesFor(
   }
   if (change.kind === 'participant' && result.problems.includes('participantReferenced')) {
     return [{ kind: 'removalRefused', participant: change.participant }];
+  }
+  if (change.kind === 'participant' && result.problems.includes('tooManyParticipants')) {
+    return [{ kind: 'tooManyParticipants', participant: change.participant }];
   }
   if (change.kind === 'trip' && result.problems.includes('tripHasRepayments')) {
     return [{ kind: 'currencyChangeRefused', currency: change.trip.currency }];

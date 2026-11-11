@@ -5,8 +5,9 @@ import type { LocalExpense } from '~/sync/local-trip';
 // What sync has to tell about this device's changes, on top of every Trip tab until
 // dismissed: a removed Participant one of its Expenses brought back, a removal the server
 // refused because an Expense includes them now, or a new Trip currency it refused because
-// someone recorded a Repayment meanwhile, or a change of the Trip details or of a Participant
-// the server couldn't read, which is lost. Each says what happened and, when one Expense
+// someone recorded a Repayment meanwhile, a change of the Trip details or of a Participant
+// the server couldn't read, which is lost, or a Participant it didn't add because the Trip has
+// as many as it can have. Each says what happened and, when one Expense
 // explains it, offers "Show Expense". An outlined note on the canvas, so it doesn't read as one
 // of the Expenses: nothing is wrong, it only changed. A quoted title never breaks mid-quote.
 // A removed Claim is told in "Who are you?" instead.
@@ -51,6 +52,11 @@ const shown = computed(() =>
         ? 'notices.participantChangeRefused'
         : 'notices.unnamedParticipantChangeRefused';
       return [{ ...plain, keypath, name }];
+    }
+    if (notice.kind === 'tooManyParticipants') {
+      const { id, participant } = notice;
+      const keypath = 'notices.tooManyParticipants';
+      return [{ id, keypath, name: participant.name, currency: null, title: null, expense: null }];
     }
     if (notice.kind === 'currencyChangeRefused') {
       const keypath = 'notices.currencyChangeRefused';

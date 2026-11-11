@@ -1,5 +1,6 @@
 <script setup lang="ts">
 import {
+  PARTICIPANT_LIMIT,
   TRIP_CURRENCIES,
   participantNameSchema,
   tripNameSchema,
@@ -25,6 +26,9 @@ type TripForm = Omit<Trip, 'id'> & { me: string; others: string[] };
 const state = reactive<TripForm>({ name: '', currency: 'EUR', me: '', others: [''] });
 
 const currencies = useCurrencyItems(TRIP_CURRENCIES);
+
+// "Your name" and every other field, blank ones too, make as many Participants as a Trip can have.
+const full = computed(() => 1 + state.others.length >= PARTICIPANT_LIMIT);
 
 // The domain rules for names, worded for the form; the currency picker only offers valid ones.
 function validate(trip: Partial<TripForm>): FormError[] {
@@ -129,9 +133,12 @@ async function create(): Promise<void> {
             icon="i-lucide-plus"
             :label="$t('trip.create.addParticipant')"
             class="-ms-1"
+            :disabled="full"
             @click="state.others.push('')"
           />
-          <p class="text-sm text-muted">{{ $t('trip.create.othersHelp') }}</p>
+          <p class="text-sm text-muted">
+            {{ full ? $t('participants.limitReached') : $t('trip.create.othersHelp') }}
+          </p>
         </fieldset>
       </div>
     </UForm>

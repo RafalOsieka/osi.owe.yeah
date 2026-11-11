@@ -1,10 +1,10 @@
 <script setup lang="ts">
-import { expensesReferencing, type Participant } from '@osi/owe-yeah-domain';
+import { PARTICIPANT_LIMIT, expensesReferencing, type Participant } from '@osi/owe-yeah-domain';
 import { v7 as uuidv7 } from 'uuid';
 
 // The Trip tab: everything about the Trip that is not money. Its Participants (tap one to
 // correct their name or to remove them; removing is refused while an Expense references them)
-// with Add Participant and Invite;
+// with Add Participant (none once the Trip has as many as it can, saying why) and Invite;
 // the Trip's name and Trip currency, and Recently deleted; then what is only this device's:
 // who it says it is, its notifications, installing the app while the browser can, and
 // forgetting the Trip (last, quiet, and asked first); and the privacy notice and the terms.
@@ -31,6 +31,9 @@ const notificationsState = computed(() => {
   if (support.value === 'denied') return t('notifications.blocked');
   return notifications.value.subscription ? t('notifications.on') : t('notifications.off');
 });
+
+// As many Participants as a Trip can have: Add Participant is off.
+const full = computed(() => trip.value.participants.length >= PARTICIPANT_LIMIT);
 
 const adding = ref(false);
 useCloseOnBack(adding);
@@ -80,7 +83,7 @@ const row =
   'flex w-full min-h-14 cursor-pointer items-center gap-3 px-4 py-3 text-start transition-colors hover:bg-elevated/60 active:bg-elevated';
 const chevron = 'size-5 shrink-0 text-dimmed';
 const action =
-  'flex min-h-12 cursor-pointer items-center justify-center gap-2 px-3 font-medium text-primary transition-colors hover:bg-elevated/60 active:bg-elevated';
+  'flex min-h-12 cursor-pointer items-center justify-center gap-2 px-3 font-medium text-primary transition-colors hover:bg-elevated/60 active:bg-elevated disabled:cursor-not-allowed disabled:bg-transparent disabled:text-dimmed';
 </script>
 
 <template>
@@ -104,7 +107,13 @@ const action =
         </ul>
         <!-- Two compact actions side by side, so they don't read as more people. -->
         <div class="grid grid-cols-2 divide-x divide-default border-t border-default">
-          <button type="button" :class="action" @click="adding = true">
+          <button
+            type="button"
+            :class="action"
+            :disabled="full"
+            :aria-describedby="full ? 'participants-full' : undefined"
+            @click="adding = true"
+          >
             <UIcon name="i-lucide-user-plus" class="size-5 shrink-0" />
             {{ $t('participants.addParticipant') }}
           </button>
@@ -114,6 +123,9 @@ const action =
           </button>
         </div>
       </div>
+      <p v-if="full" id="participants-full" class="mt-2 px-4 text-sm text-muted">
+        {{ $t('participants.limitReached') }}
+      </p>
     </section>
 
     <section aria-labelledby="this-trip-heading" class="mt-7">
