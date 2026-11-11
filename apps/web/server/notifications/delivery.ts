@@ -23,8 +23,8 @@ type NotificationSubscriptionRow = typeof notificationSubscriptions.$inferSelect
 /**
  * Sends each subscription the message `messageOf` writes for it (`null`: none), all at once,
  * then deletes from `db` those whose push service answers 404 or 410, as gone. A subscription
- * off the known push services gets nothing unless `anyEndpoint`, which covers rows stored
- * before they were checked. Nothing is retried. Never rejects.
+ * off the known push services gets nothing (unless `anyEndpoint`), so rows stored before the
+ * subscription handler checked endpoints are never sent to. Nothing is retried. Never rejects.
  */
 export async function deliver(
   db: Database,

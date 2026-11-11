@@ -26,13 +26,13 @@ type Activity = {
 /**
  * Notifications about Expense changes (#41), the Trip sync's `Notifier` in production: reading
  * the Trip through `store` and converting at `rates`, with subscriptions kept in `db`. Sent
- * with `push`; nothing is sent without it.
+ * with `pushSettings`; nothing is sent without them.
  */
 export function createNotifications(
   db: Database,
   store: TripStore,
   rates: Rates,
-  push: PushSettings | null,
+  pushSettings: PushSettings | null,
 ): Notifier {
   /**
    * What each changed Expense was before its change, by change id: the Revision before the
@@ -89,7 +89,7 @@ export function createNotifications(
   }
 
   async function notify(tripId: string, applied: readonly AppliedExpenseChange[]): Promise<void> {
-    if (applied.length === 0 || !push) return;
+    if (applied.length === 0 || !pushSettings) return;
     const subscriptions = await db
       .select()
       .from(notificationSubscriptions)
@@ -99,7 +99,12 @@ export function createNotifications(
     const trip = await store.readTrip(tripId);
     if (!trip) return;
     const activities = await activitiesOf(trip, applied);
-    await deliver(db, subscriptions, (device) => messageFor(trip, activities, device), push);
+    await deliver(
+      db,
+      subscriptions,
+      (device) => messageFor(trip, activities, device),
+      pushSettings,
+    );
   }
 
   return {

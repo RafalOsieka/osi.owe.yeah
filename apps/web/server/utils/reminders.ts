@@ -19,13 +19,13 @@ const startOfToday = sql`date_trunc('day', now(), 'UTC')`;
 
 /**
  * Reminders (#42), reading the Trip through `store` and converting at `rates`, sent with
- * `push`: nobody can be reminded without it.
+ * `pushSettings`: nobody can be reminded without them.
  */
 export function createReminders(
   db: Database,
   store: TripStore,
   rates: Rates,
-  push: PushSettings | null,
+  pushSettings: PushSettings | null,
 ) {
   /**
    * The Repayment `to` owes `from` as the server's balances suggest it now (`suggestedRepayments`),
@@ -62,7 +62,7 @@ export function createReminders(
       const creditor = trip?.participants.find(({ id }) => id === from);
       if (!trip || !suggestion || !creditor) return { refused: 'notSuggested' };
 
-      const devices = push
+      const devices = pushSettings
         ? await db
             .select()
             .from(notificationSubscriptions)
@@ -73,7 +73,7 @@ export function createReminders(
               ),
             )
         : [];
-      if (!push || devices.length === 0) return { refused: 'unreachable' };
+      if (!pushSettings || devices.length === 0) return { refused: 'unreachable' };
 
       // One statement, so two Reminders sent at once can't both get through.
       const [sent] = await db
@@ -96,7 +96,7 @@ export function createReminders(
         to,
         amount: roundMoney(suggestion.amount, trip.currency).decimal,
       };
-      void deliver(db, devices, () => message, push);
+      void deliver(db, devices, () => message, pushSettings);
       return undefined;
     },
 
@@ -106,7 +106,7 @@ export function createReminders(
      */
     async status(tripId: string): Promise<ReminderStatus> {
       const [subscribed, today] = await Promise.all([
-        push
+        pushSettings
           ? db
               .selectDistinct({ claimId: notificationSubscriptions.claimId })
               .from(notificationSubscriptions)

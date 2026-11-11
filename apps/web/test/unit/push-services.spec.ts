@@ -5,7 +5,9 @@ describe('isKnownPushService', () => {
   it.each([
     'https://fcm.googleapis.com/fcm/send/abc',
     'https://updates.push.services.mozilla.com/wpush/v2/abc',
+    'https://push.apple.com/abc',
     'https://web.push.apple.com/abc',
+    'https://notify.windows.com/w/?token=abc',
     'https://wns2-par02p.notify.windows.com/w/?token=abc',
     'https://push.services.mozilla.com/abc',
     'https://sub.fcm.googleapis.com/abc',

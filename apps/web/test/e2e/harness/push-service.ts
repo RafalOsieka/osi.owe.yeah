@@ -9,8 +9,8 @@ export type ReceivedPush = { device: string; payload: unknown };
  * A stand-in for the browsers' push services at the HTTP boundary: every endpoint is a path
  * on it, and `subscription` makes one with real keys, as a browser does, so what the server
  * sends can be decrypted (RFC 8291, aes128gcm) and checked. Each endpoint answers 201, or the
- * status `gone` set for it, as a push service answers an endpoint it no longer has, or the
- * redirect `redirect` set for it.
+ * status `gone` set for it, as a push service answers an endpoint it no longer has, or a 307
+ * to the endpoint `redirect` set for it.
  */
 export async function startPushService() {
   const received: ReceivedPush[] = [];

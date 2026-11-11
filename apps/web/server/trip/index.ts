@@ -21,7 +21,7 @@ function lazy<T>(make: () => T): () => T {
  * What Notifications and Reminders are sent with (`PushSettings`); `null` when no VAPID keys
  * are set, so nothing is sent.
  */
-const push = lazy((): PushSettings | null => {
+const pushSettings = lazy((): PushSettings | null => {
   const { vapidPublicKey, vapidPrivateKey, vapidSubject, notificationsAnyEndpoint } =
     useRuntimeConfig();
   if (!vapidPublicKey || !vapidPrivateKey) return null;
@@ -33,9 +33,13 @@ export const tripStore = lazy(() => createTripStore(getDb()));
 
 export const tripRates = lazy(() => createRates(getDb(), useRuntimeConfig().frankfurterUrl));
 
-export const reminders = lazy(() => createReminders(getDb(), tripStore(), tripRates(), push()));
+export const reminders = lazy(() =>
+  createReminders(getDb(), tripStore(), tripRates(), pushSettings()),
+);
 
-const notifications = lazy(() => createNotifications(getDb(), tripStore(), tripRates(), push()));
+const notifications = lazy(() =>
+  createNotifications(getDb(), tripStore(), tripRates(), pushSettings()),
+);
 
 export const tripSync = lazy(() =>
   createTripSync(getDb(), tripStore(), tripRates(), notifications()),

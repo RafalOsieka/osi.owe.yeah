@@ -462,7 +462,7 @@ describeApi('Trip API', () => {
     expect((await unsubscribe(trip.id, token, device)).status).toBe(204);
   });
 
-  it('takes a push subscription only at a known push service unless switched to any endpoint', async () => {
+  it('takes a push subscription only at a known push service, as in production', async () => {
     await startServer({ env: { NUXT_NOTIFICATIONS_ANY_ENDPOINT: 'false' } });
     onTestFinished(() => startServer());
     const { trip, token, kasia } = await tripWithKasiaAndAnia();

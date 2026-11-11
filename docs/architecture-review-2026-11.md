@@ -105,7 +105,7 @@ They found no reason to reopen ADR 0001–0003, and 121 of the 126 stories are d
   - **Fix:** validate with the wire schema when a change is queued. The server parses each change on its own and answers only the bad one `rejected: ['malformed']`, so it goes through the existing "not synced" flow.
   - **Overlap:** #78 (Trip sync module) is where per-change parsing on the server belongs. The device side is a missing seam, a candidate for a grilling.
   - **Issue:** #205.
-- [ ] **S3. Blind SSRF through a push subscription** (security M1, system L4).
+- [x] **S3. Blind SSRF through a push subscription** (security M1, system L4). Done: #204 takes and sends to known push services only, and delivery follows no redirect.
   - **The hole:** the subscription endpoint only checks for `https:`, and delivering a Notification follows redirects, so a request can reach `http://` addresses on the internal network. A Trip can be created anonymously, there is no cap on subscriptions, and the 404/410 pruning leaks one bit through `reachable`.
   - **Fix:** an allowlist of push-service hosts (FCM, Mozilla, Apple, WNS), `redirect: 'error'` on the fetch, a cap on subscriptions per Trip, and a limit on outbound concurrency.
   - **Issue:** #204 (the allowlist and `redirect: 'error'`; the cap and the concurrency limit moved to S9).
