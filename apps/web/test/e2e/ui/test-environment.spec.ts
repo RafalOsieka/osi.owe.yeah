@@ -1,4 +1,4 @@
-import { expect, test, type Page } from '@playwright/test';
+import { expect, test, type Locator, type Page } from '@playwright/test';
 
 // The suite's second server runs the same build switched on as a test environment
 // (`playwright.config.ts`); the first one, every other test's, is switched off.
@@ -72,7 +72,48 @@ test.describe('in a test environment', () => {
     await page.reload();
     await expect(banner(page)).toBeVisible();
   });
+
+  test('under the banner, the New Trip button leaves the footer links on My Trips clear', async ({
+    page,
+  }) => {
+    await open(page, '/');
+    await page.getByRole('link', { name: 'New Trip' }).click();
+    await page.getByLabel('Trip name').fill('Hel 2026');
+    await page.getByLabel('Your name').fill('Ania');
+    await page.getByLabel('Participant 2').fill('Kasia');
+    await page.getByRole('button', { name: 'Create Trip' }).click();
+    await expect(page.getByRole('banner')).toContainText('You are Ania');
+    await open(page, '/');
+
+    for (const viewport of [
+      { width: 390, height: 844 },
+      { width: 1280, height: 800 },
+    ]) {
+      await page.setViewportSize(viewport);
+      await expect(banner(page)).toBeVisible();
+      const button = await box(page.getByRole('link', { name: 'New Trip' }));
+      for (const name of ['Privacy notice', 'Terms of service']) {
+        const link = page.getByRole('link', { name });
+        await expect(link, `${name} at ${viewport.width} px`).toBeInViewport({ ratio: 1 });
+        expect(overlaps(await box(link), button), `${name} at ${viewport.width} px`).toBe(false);
+      }
+    }
+  });
 });
+
+/** Where `locator` is on the screen, without scrolling to it. */
+async function box(locator: Locator) {
+  const found = await locator.boundingBox();
+  if (!found) throw new Error(`${locator} is not on the page`);
+  return found;
+}
+
+type Box = Awaited<ReturnType<typeof box>>;
+
+/** Whether two boxes on the screen share any area. */
+function overlaps(a: Box, b: Box): boolean {
+  return a.x < b.x + b.width && b.x < a.x + a.width && a.y < b.y + b.height && b.y < a.y + a.height;
+}
 
 test('outside a test environment, no screen shows the banner', async ({ page }) => {
   await open(page, '/');
