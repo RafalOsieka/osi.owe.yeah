@@ -56,6 +56,22 @@ export const expenseTimeSchema = z.object({
 
 export type ExpenseTime = z.infer<typeof expenseTimeSchema>;
 
+/** Frankfurter's first day: the earliest local day an Expense can have a rate on (ADR 0003). */
+const EARLIEST_EXPENSE_DAY = '1999-01-04';
+
+/**
+ * Whether an Expense can have happened at `time`: on `EARLIEST_EXPENSE_DAY` or later in its
+ * own zone, and no more than a year after `now` (an ISO instant). Keeps the rates the Trip's
+ * Expenses need to ones Frankfurter can have.
+ */
+function inTimeRange(time: ExpenseTime, now: string): boolean {
+  const latest = Temporal.Instant.from(now).toZonedDateTimeISO('UTC').add({ years: 1 });
+  return (
+    localDay(time) >= EARLIEST_EXPENSE_DAY &&
+    Temporal.Instant.compare(time.instant, latest.toInstant()) <= 0
+  );
+}
+
 /**
  * What every Expense has. It carries its own currency, any in circulation, which all its
  * amounts are in; it is converted into the Trip currency at the rate for its local date
@@ -186,6 +202,7 @@ export const expenseProblemSchema = z.enum([
   'contributionsExceedTotal',
   'chargedWithoutTotal',
   'manualRateToOwnCurrency',
+  'timeOutOfRange',
 ]);
 
 export type ExpenseProblem = z.infer<typeof expenseProblemSchema>;
@@ -232,9 +249,14 @@ export function tripCurrencyLocked(expenses: readonly Expense[]): boolean {
  * makes no Contribution, and Contributions may cover the whole total but not more, so the
  * Main payer's part is never negative and Income has none. A Manual rate must be one a rate
  * can be made of: an amount charged needs a total other than zero, and it targets a currency
- * other than the Expense's own (see `conversionRate`).
+ * other than the Expense's own (see `conversionRate`). It happened no earlier than the first day
+ * with a rate and no more than a year after `now` (an ISO instant, the current one by default).
  */
-export function expenseProblems(expense: Expense, trip: TripWithParticipants): ExpenseProblem[] {
+export function expenseProblems(
+  expense: Expense,
+  trip: TripWithParticipants,
+  now: string = Temporal.Now.instant().toString(),
+): ExpenseProblem[] {
   const known = new Set(trip.participants.map(({ id }) => id));
   const ticked = tickedParticipantIds(expense);
   const problems: ExpenseProblem[] = [];
@@ -260,6 +282,7 @@ export function expenseProblems(expense: Expense, trip: TripWithParticipants): E
     }
   }
   if (expense.manualRate?.currency === expense.currency) problems.push('manualRateToOwnCurrency');
+  if (!inTimeRange(expense.time, now)) problems.push('timeOutOfRange');
   return problems;
 }
 

@@ -557,6 +557,8 @@ function problemField(problem: ExpenseProblem, draft: ExpenseDraft): DraftField 
     case 'chargedWithoutTotal':
     case 'manualRateToOwnCurrency':
       return 'manualRate';
+    case 'timeOutOfRange':
+      return 'local';
   }
 }
 
@@ -599,9 +601,10 @@ function checked<E extends Expense>(
   reasons: DraftReason[],
 ): E | null {
   if (!candidate) return null;
-  // The rules don't depend on when it happened.
+  // Until the time is set, it stands in as now, which breaks no rule.
+  const stand = { instant: new Date().toISOString(), zone: draft.zone };
   // SAFETY: an Expense without its time, given one back.
-  const expense = { ...candidate, time: time ?? { instant: '', zone: draft.zone } } as E;
+  const expense = { ...candidate, time: time ?? stand } as E;
   const blocked = new Set(reasons.map(({ field }) => field));
   for (const problem of expenseProblems(expense, trip)) {
     const field = problemField(problem, draft);

@@ -207,6 +207,27 @@ describe('expenseProblems', () => {
     ]);
   });
 
+  describe('when an Expense can have happened', () => {
+    const now = '2026-07-15T12:00:00Z';
+    const at = (instant: string): Expense => ({
+      ...lidl,
+      time: { instant, zone: 'Europe/Zagreb' },
+    });
+
+    it("takes Frankfurter's first day, 4 January 1999, in the Expense's own zone", () => {
+      // 00:30 on 4 January in Zagreb, still 3 January in UTC.
+      expect(expenseProblems(at('1999-01-03T23:30:00Z'), trip, now)).toEqual([]);
+      expect(expenseProblems(at('1999-01-03T22:30:00Z'), trip, now)).toEqual(['timeOutOfRange']);
+    });
+
+    it('takes a time up to a year ahead, and no later', () => {
+      expect(expenseProblems(at('2027-07-15T12:00:00Z'), trip, now)).toEqual([]);
+      expect(expenseProblems(at('2027-07-15T12:01:00Z'), trip, now)).toEqual(['timeOutOfRange']);
+      expect(expenseProblems({ ...repayment, time: at('2030-01-01T00:00:00Z').time }, trip, now))
+        .toEqual(['timeOutOfRange']);
+    });
+  });
+
   describe('a Manual rate no rate can make', () => {
     const inDollars: Expense = { ...lidl, currency: 'USD' };
     const charged = { kind: 'charged' as const, amount: 2100, currency: 'EUR' as const };

@@ -468,7 +468,11 @@ async function submit(): Promise<void> {
           </div>
         </UFormField>
 
-        <ExpenseTimeField v-model:local="state.local" v-model:zone="state.zone" />
+        <ExpenseTimeField
+          v-model:local="state.local"
+          v-model:zone="state.zone"
+          :error="problemAt(reading.reasons, 'local')"
+        />
       </div>
 
       <div v-if="!reading.receipt" class="card divide-y divide-default overflow-hidden">

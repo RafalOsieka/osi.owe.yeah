@@ -171,7 +171,8 @@
       "contributionFromMainPayer": "The Main payer can't also make a Contribution.",
       "contributionsExceedTotal": "The Contributions add up to more than the Expense.",
       "chargedWithoutTotal": "The amount charged needs a total other than zero.",
-      "manualRateToOwnCurrency": "The Manual rate must convert into a currency other than the Expense's own."
+      "manualRateToOwnCurrency": "The Manual rate must convert into a currency other than the Expense's own.",
+      "timeOutOfRange": "The date must be between 4 January 1999 and a year from now."
     },
     "emptyHelp": "Add what anyone paid on the Trip. Everyone's share is worked out for you.",
     "addShort": "Expense",
@@ -449,6 +450,7 @@
       "contributionsExceedTotal": "the Contributions add up to more than the Expense.",
       "chargedWithoutTotal": "the amount charged needs a total other than zero.",
       "manualRateToOwnCurrency": "the Manual rate must convert into a currency other than the Expense's own.",
+      "timeOutOfRange": "the date must be between 4 January 1999 and a year from now.",
       "malformed": "the server couldn't read this change.",
       "tooManyParticipants": "it brings back someone removed from the Trip, which already has 100 Participants.",
       "tooManyExpenses": "the Trip already has 2,000 Expenses, deleted ones included, the most it can have."
