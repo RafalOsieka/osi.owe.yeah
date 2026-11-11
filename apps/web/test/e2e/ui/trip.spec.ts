@@ -314,6 +314,7 @@ test('notifications turned on say Blocked once the browser blocks them, and On a
   await standInForNotifications(page);
   const tripLink = await tripLinkFor(request, 'Mazury 2026', ['Kasia', 'Ania']);
   await page.goto(tripLink);
+  await page.waitForFunction(() => navigator.serviceWorker.controller !== null);
   await page
     .getByRole('dialog', { name: 'Who are you?' })
     .getByRole('button', { name: 'Kasia' })
@@ -337,7 +338,7 @@ test('notifications turned on say Blocked once the browser blocks them, and On a
   await expect(main).toContainText('To unblock them:');
   await expect(main).not.toContainText("You're notified about changes");
 
-  // Allowed again: "Check again" brings them back, without turning them on anew.
+  // Allowed again: "Check again" brings them back, with no need to tap "Turn on".
   await setNotificationPermission(page, 'granted');
   await page.getByRole('button', { name: 'Check again' }).click();
   await expect(row).toContainText('On');
