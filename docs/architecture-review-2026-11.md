@@ -123,7 +123,7 @@ They found no reason to reopen ADR 0001–0003, and 121 of the 126 stories are d
   - **Fix:** drop the `$type` cast so that skipping the parse is a type error; keep a JSON fixture per historical shape, with a test that each still parses; break changes with a SQL JSONB migration for `expenses.state`, and upgrade Revisions when they are read.
   - **Overlap:** #77 (Trip store) parses every read through the domain schemas. The fixtures, the cast and the policy for upgrading Revisions are not in #77.
   - **Issue:** #214.
-- [ ] **S7. Nothing forces a sync schema version bump** (system M1).
+- [x] **S7. Nothing forces a sync schema version bump** (system M1). Done: `packages/domain/test/wire-contract.spec.ts` snapshots every wire schema with the version and says how to decide.
   - **The problem:** the client parses responses strictly, so a new problem code or currency breaks older apps unless someone remembers to bump. #82 bumps by hand for exactly this reason.
   - **Fix:** a contract test that snapshots `z.toJSONSchema()` of every wire schema (push, pull, Revisions, Web Push payloads) together with `SYNC_SCHEMA_VERSION`, so CI fails until a bump or an explicit "safe" is decided. **Issue:** #215.
 - [ ] **S8. Frankfurter sits on the pull's critical path** (system M2, security L1).
