@@ -125,22 +125,22 @@ async function claim(page: Page, name: string): Promise<void> {
  * `setNotificationPermission` changes it, and lasts past a reload.
  */
 async function standInForNotifications(page: Page, pushService: PushService): Promise<void> {
-  const subscribed = pushService.subscription(uuidv7());
-  await page.addInitScript((json) => {
+  const pushSubscription = pushService.subscription(uuidv7());
+  await page.addInitScript((subscriptionJson) => {
     Object.defineProperty(Notification, 'permission', {
       get: () => localStorage.getItem('test-notification-permission') ?? 'granted',
     });
     Notification.requestPermission = async () => Notification.permission;
     const subscription = {
-      endpoint: json.endpoint,
+      endpoint: subscriptionJson.endpoint,
       options: { applicationServerKey: null, userVisibleOnly: true },
-      toJSON: () => json,
+      toJSON: () => subscriptionJson,
       unsubscribe: async () => true,
     };
     // SAFETY: the app reads only these members of a PushSubscription.
     PushManager.prototype.subscribe = async () => subscription as PushSubscription;
     PushManager.prototype.getSubscription = async () => null;
-  }, subscribed);
+  }, pushSubscription);
 }
 
 /** Allows or blocks notifications for the app, as the browser's site settings do. */
@@ -404,7 +404,7 @@ test('Remind shares a message while the debtor cannot be notified, then sends on
 
   // Once her phone has notifications on, Remind notifies her, once a day.
   const aniasPhone = uuidv7();
-  const subscribed = await request.put(`/api/trips/${tripId}/subscriptions/${uuidv7()}`, {
+  const subscribed = await request.put(`/api/trips/${tripId}/subscriptions/${aniasPhone}`, {
     headers,
     data: { ...pushService.subscription(aniasPhone), claimId: ania.id },
   });

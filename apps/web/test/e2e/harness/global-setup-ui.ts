@@ -8,9 +8,10 @@ import { DEFAULT_DATABASE_URL, isDockerAvailable, startPostgres, stopPostgres } 
 export default async function setup(): Promise<() => Promise<void>> {
   if (!isDockerAvailable()) throw new Error('Docker is required for the ui e2e suite');
 
+  // First: a taken port fails here, before there is a container to leave behind.
+  const frankfurter = await startFrankfurter(UI_FRANKFURTER_PORT);
   await startPostgres();
   await runMigrations(DEFAULT_DATABASE_URL);
-  const frankfurter = await startFrankfurter(UI_FRANKFURTER_PORT);
 
   return async () => {
     await frankfurter.close();
