@@ -1,5 +1,4 @@
 import 'fake-indexeddb/auto';
-import { randomBytes } from 'node:crypto';
 import {
   PARTICIPANT_LIMIT,
   type Expense,
@@ -20,6 +19,7 @@ import { createTripStore, type TripStore } from '../../../server/trip/store';
 import { createTripSync, type TripSync } from '../../../server/trip/sync';
 import { startFrankfurter } from '../../e2e/harness/frankfurter';
 import { describeWithDocker } from '../../e2e/harness/postgres';
+import { newToken, newTrip, participant, plainExpense } from '../../e2e/harness/trip-builders';
 import { useMigratedDatabase } from '../database';
 import { Connection } from './connection';
 
@@ -28,29 +28,6 @@ const describeDb = describeWithDocker();
 // The rate provider the Trip sync's rates fetch from.
 const frankfurter = await startFrankfurter();
 afterAll(frankfurter.close);
-
-function participant(name: string): Participant {
-  return { id: uuidv7(), name };
-}
-
-/** A plain Expense of 24.50 EUR paid by `payer`, split evenly between `ticked`. */
-function plainExpense(title: string, payer: Participant, ticked: Participant[]): Expense {
-  return {
-    id: uuidv7(),
-    title,
-    currency: 'EUR',
-    time: { instant: '2026-07-14T21:30:00Z', zone: 'Europe/Zagreb' },
-    mainPayerId: payer.id,
-    lineItems: [
-      {
-        name: '',
-        unitPrice: 2450,
-        quantity: 1,
-        split: { mode: 'even', participantIds: ticked.map(({ id }) => id) },
-      },
-    ],
-  };
-}
 
 /** A Repayment of 12.25 EUR from `payer` to `recipient`. */
 function repaymentOf(payer: Participant, recipient: Participant): Expense {
@@ -68,13 +45,8 @@ function repaymentOf(payer: Participant, recipient: Participant): Expense {
 /** The Trip "Croatia 2026" of Kasia, Ania and Ola, with its Trip link's token. */
 function croatia2026() {
   const [kasia, ania, ola] = [participant('Kasia'), participant('Ania'), participant('Ola')];
-  const trip: TripWithParticipants = {
-    id: uuidv7(),
-    name: 'Croatia 2026',
-    currency: 'EUR',
-    participants: [kasia, ania, ola],
-  };
-  return { trip, token: randomBytes(32).toString('base64url'), kasia, ania, ola };
+  const trip = newTrip('Croatia 2026', [kasia, ania, ola]);
+  return { trip, token: newToken(), kasia, ania, ola };
 }
 
 /** The browser's push subscription, as the device keeps it while notifications are on. */
@@ -144,7 +116,7 @@ describeDb('the device, syncing with the real Trip sync', () => {
     const set = await setUp();
     const { croatia, connection, trip, kasia, ania } = set;
     const other = anotherWindow(set);
-    const lidl = plainExpense('Lidl Rovinj', kasia, [kasia, ania]);
+    const lidl = plainExpense(kasia, [kasia, ania]);
     connection.offline = true;
     await croatia.saveExpense(lidl, null);
     await croatia.sync();
@@ -188,13 +160,8 @@ describeDb('the device, syncing with the real Trip sync', () => {
   async function martaOfAnotherTrip(): Promise<Participant> {
     const marta = participant('Marta');
     const { device } = newDevice();
-    const tatry: TripWithParticipants = {
-      id: uuidv7(),
-      name: 'Tatry',
-      currency: 'PLN',
-      participants: [marta],
-    };
-    await device.createTrip(tatry, randomBytes(32).toString('base64url'));
+    const tatry: TripWithParticipants = { ...newTrip('Tatry', [marta]), currency: 'PLN' };
+    await device.createTrip(tatry, newToken());
     await device.trip(tatry.id).sync();
     expect((await device.read(tatry.id))?.unsynced).toBe(0);
     return marta;
@@ -210,7 +177,7 @@ describeDb('the device, syncing with the real Trip sync', () => {
     const marta = await martaOfAnotherTrip();
     connection.offline = true;
     await croatia.addParticipant(marta);
-    const pizza = plainExpense('Pizza', marta, [kasia, ania]);
+    const pizza = plainExpense(marta, [kasia, ania], { title: 'Pizza' });
     await croatia.saveExpense(pizza, null);
     await croatia.sync();
     connection.offline = false;
@@ -227,7 +194,7 @@ describeDb('the device, syncing with the real Trip sync', () => {
     const set = await setUp();
     const { device, croatia, connection, trip, token, kasia, ania } = set;
     const anias = await joined(trip, token, ania);
-    const lidl = plainExpense('Lidl Rovinj', kasia, [kasia, ania]);
+    const lidl = plainExpense(kasia, [kasia, ania]);
     await croatia.saveExpense(lidl, null);
     await croatia.sync();
     const [synced] = (await device.read(trip.id))!.local!.expenses;
@@ -259,7 +226,7 @@ describeDb('the device, syncing with the real Trip sync', () => {
 
   it('sends a saved Expense, and then its deletion, to the server by itself', async () => {
     const { device, croatia, trip, kasia } = await setUp();
-    const lidl = plainExpense('Lidl Rovinj', kasia, [kasia]);
+    const lidl = plainExpense(kasia, [kasia]);
 
     await croatia.saveExpense(lidl, null);
     await eventually(async () =>
@@ -352,7 +319,7 @@ describeDb('the device, syncing with the real Trip sync', () => {
   it('ends an edit started before a pull brought someone else’s version in a Conflict', async () => {
     const { device, croatia, trip, token, kasia, ania } = await setUp();
     const anias = await joined(trip, token, ania);
-    const lidl = plainExpense('Lidl Rovinj', kasia, [kasia, ania]);
+    const lidl = plainExpense(kasia, [kasia, ania]);
     await croatia.saveExpense(lidl, null);
     await croatia.sync();
     // Kasia opens Lidl Rovinj to edit it…
@@ -442,7 +409,7 @@ describeDb('the device, syncing with the real Trip sync', () => {
     const { device, croatia, connection, deviceId, trip, token, kasia, ania, ola } = await setUp({
       offline: true,
     });
-    await croatia.saveExpense(plainExpense('Lidl Rovinj', kasia, [kasia, ania]), null);
+    await croatia.saveExpense(plainExpense(kasia, [kasia, ania]), null);
     await croatia.sync();
 
     expect(await device.read(trip.id)).toMatchObject({
@@ -472,7 +439,7 @@ describeDb('the device, syncing with the real Trip sync', () => {
     expect(croatia.lastFailure.value).toBeNull();
 
     connection.offline = true;
-    await croatia.saveExpense(plainExpense('Lidl Rovinj', kasia, [kasia]), null);
+    await croatia.saveExpense(plainExpense(kasia, [kasia]), null);
     await croatia.sync();
     expect(croatia.lastFailure.value).toBe('offline');
 
@@ -488,7 +455,7 @@ describeDb('the device, syncing with the real Trip sync', () => {
 
   it('resends a change whose answer was lost under the same id: applied once, its result reaching the device', async () => {
     const { device, croatia, connection, trip, kasia } = await setUp();
-    const lidl = plainExpense('Lidl Rovinj', kasia, [kasia]);
+    const lidl = plainExpense(kasia, [kasia]);
     connection.losePushResponses = 1;
     await croatia.saveExpense(lidl, null);
 
@@ -510,7 +477,7 @@ describeDb('the device, syncing with the real Trip sync', () => {
   it('sends edits of one Expense made offline one by one, each on the version the last got', async () => {
     const { device, croatia, connection, trip, kasia } = await setUp();
     connection.offline = true;
-    const lidl = plainExpense('Lidl Rovinj', kasia, [kasia]);
+    const lidl = plainExpense(kasia, [kasia]);
     await croatia.saveExpense(lidl, null);
     const [saved] = (await device.read(trip.id))!.local!.expenses;
     await croatia.saveExpense({ ...lidl, title: 'Konzum' }, saved!);
@@ -529,7 +496,7 @@ describeDb('the device, syncing with the real Trip sync', () => {
 
   it('holds back only the Expense the server refuses, keeping it with why', async () => {
     const { device, croatia, connection, trip, token, kasia, pizza } = await rejected();
-    await croatia.saveExpense(plainExpense('Ferry', kasia, [kasia]), null);
+    await croatia.saveExpense(plainExpense(kasia, [kasia], { title: 'Ferry' }), null);
 
     await croatia.sync();
     await croatia.sync();
@@ -596,7 +563,7 @@ describeDb('the device, syncing with the real Trip sync', () => {
     // Changes queued before the device checked them, e.g. kept by a store migration as they were.
     const unreadable = { id: uuidv7(), claimId: kasia.id, deviceId };
     const marta = participant('');
-    const pizza = plainExpense(' ', kasia, [kasia, ania]);
+    const pizza = plainExpense(kasia, [kasia, ania], { title: ' ' });
     await deviceDb.outbox.bulkAdd([
       {
         tripId: trip.id,
@@ -616,7 +583,7 @@ describeDb('the device, syncing with the real Trip sync', () => {
         held: null,
       },
     ]);
-    await croatia.saveExpense(plainExpense('Ferry', kasia, [kasia]), null);
+    await croatia.saveExpense(plainExpense(kasia, [kasia], { title: 'Ferry' }), null);
 
     await croatia.sync();
 
@@ -716,7 +683,7 @@ describeDb('the device, syncing with the real Trip sync', () => {
 
   it('deletes an Expense to Recently deleted and restores it, each change on the version the last got', async () => {
     const { device, croatia, trip, kasia } = await setUp();
-    const lidl = plainExpense('Lidl Rovinj', kasia, [kasia]);
+    const lidl = plainExpense(kasia, [kasia]);
     await croatia.saveExpense(lidl, null);
     await croatia.sync();
     const [saved] = (await device.read(trip.id))!.local!.expenses;
@@ -755,7 +722,7 @@ describeDb('the device, syncing with the real Trip sync', () => {
 
   it('removes a Participant softly, refusing while an Expense references them', async () => {
     const { device, croatia, trip, token, kasia, ania, ola } = await setUp();
-    await croatia.saveExpense(plainExpense('Lidl Rovinj', kasia, [kasia, ania]), null);
+    await croatia.saveExpense(plainExpense(kasia, [kasia, ania]), null);
 
     expect(await croatia.removeParticipant(ania)).toBe(1);
     expect(await croatia.removeParticipant(ola)).toBe(0);
@@ -768,7 +735,7 @@ describeDb('the device, syncing with the real Trip sync', () => {
 
   it('saves a new Trip currency while Expenses are in another, rewriting none', async () => {
     const { device, croatia, trip, token, kasia } = await setUp();
-    await croatia.saveExpense(plainExpense('Ferry', kasia, [kasia]), null);
+    await croatia.saveExpense(plainExpense(kasia, [kasia], { title: 'Ferry' }), null);
 
     await croatia.saveTripDetails({ name: 'Mazury', currency: 'PLN' });
     await croatia.sync();
@@ -828,7 +795,10 @@ describeDb('the device, syncing with the real Trip sync', () => {
     frankfurter.set('2026-07-13', 'HUF', 'EUR', 0.0025);
     const kasias = await setUp();
     const { trip, token, kasia, ania } = kasias;
-    const langos: Expense = { ...plainExpense('Langos', kasia, [kasia]), currency: 'HUF' };
+    const langos: Expense = {
+      ...plainExpense(kasia, [kasia], { title: 'Langos' }),
+      currency: 'HUF',
+    };
     await kasias.croatia.saveExpense(langos, null);
     await kasias.croatia.sync();
     const { device, croatia, connection } = await joined(trip, token, ania);
@@ -893,7 +863,7 @@ describeDb('the device, syncing with the real Trip sync', () => {
     const anias = await joined(trip, token, ania);
     // Made offline on Kasia's device, while Ania removed Ola.
     connection.offline = true;
-    const lidl = plainExpense('Lidl Rovinj', kasia, [kasia, ola]);
+    const lidl = plainExpense(kasia, [kasia, ola]);
     await croatia.saveExpense(lidl, null);
     await croatia.sync();
     expect(await anias.croatia.removeParticipant(ola)).toBe(0);
@@ -928,7 +898,7 @@ describeDb('the device, syncing with the real Trip sync', () => {
     const { device, croatia, trip, token, ania, ola } = await setUp();
     // Ania's Expense with Ola, which Kasia's device hasn't pulled yet.
     const anias = await joined(trip, token, ania);
-    const ferry = plainExpense('Ferry', ania, [ania, ola]);
+    const ferry = plainExpense(ania, [ania, ola], { title: 'Ferry' });
     await anias.croatia.saveExpense(ferry, null);
     await anias.croatia.sync();
 
@@ -960,11 +930,11 @@ describeDb('the device, syncing with the real Trip sync', () => {
     // Offline, Kasia's device ticks Ola on Pizza and adds Marta, while Ania's device removes Ola
     // and adds Basia: the Trip has 100 Participants again.
     connection.offline = true;
-    const pizza = plainExpense('Pizza', kasia, [kasia, ola]);
+    const pizza = plainExpense(kasia, [kasia, ola], { title: 'Pizza' });
     await croatia.saveExpense(pizza, null);
     const marta = participant('Marta');
     await croatia.addParticipant(marta);
-    await croatia.saveExpense(plainExpense('Ferry', kasia, [kasia]), null);
+    await croatia.saveExpense(plainExpense(kasia, [kasia], { title: 'Ferry' }), null);
     expect(await anias.croatia.removeParticipant(ola)).toBe(0);
     await anias.croatia.addParticipant(participant('Basia'));
     await anias.croatia.sync();

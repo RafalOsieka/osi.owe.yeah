@@ -7,19 +7,15 @@ import {
   TRIP_TOKEN_HEADER,
   type ChangeResult,
   type Expense,
-  type ExpenseChange,
   type Participant,
-  type ParticipantChange,
   type PullResponse,
   type PushKeys,
   type PushResponse,
   type RateLookup,
   type ReminderStatus,
   type ServerTrip,
-  type StoredExpense,
   type SubscriptionRequest,
   type SyncChange,
-  type TripChange,
   type TripWithParticipants,
 } from '@osi/owe-yeah-domain';
 import { createTest, fetch, startServer } from '@nuxt/test-utils/e2e';
@@ -29,6 +25,17 @@ import webpush from 'web-push';
 import { startFrankfurter } from '../harness/frankfurter';
 import { describeWithDocker } from '../harness/postgres';
 import { startPushService } from '../harness/push-service';
+import {
+  change,
+  creation,
+  newToken,
+  newTrip,
+  participant,
+  participantChange,
+  plainExpense,
+  stored,
+  tripChange,
+} from '../harness/trip-builders';
 
 const describeApi = describeWithDocker();
 
@@ -40,53 +47,6 @@ const vapid = webpush.generateVAPIDKeys();
 
 // The commit the server under test is started with, as an image built with `COMMIT_SHA` has it.
 const commit = '0123456789abcdef0123456789abcdef01234567';
-
-// Every change in these tests comes from one device, without a Claim unless given.
-const deviceId = uuidv7();
-
-/** A Trip link token, as the device creating the Trip generates it. */
-function newToken(): string {
-  return randomBytes(32).toString('base64url');
-}
-
-function participant(name: string): Participant {
-  return { id: uuidv7(), name };
-}
-
-function newTrip(name = 'Croatia 2026', participants: Participant[] = []): TripWithParticipants {
-  return { id: uuidv7(), name, currency: 'EUR', participants };
-}
-
-function tripChange(
-  { name, currency }: Pick<TripWithParticipants, 'name' | 'currency'>,
-  claimId: string | null = null,
-): TripChange {
-  return { id: uuidv7(), claimId, deviceId, kind: 'trip', trip: { name, currency } };
-}
-
-function participantChange(changed: Participant, removed = false): ParticipantChange {
-  return {
-    id: uuidv7(),
-    claimId: null,
-    deviceId,
-    kind: 'participant',
-    participant: changed,
-    removed,
-  };
-}
-
-function change(
-  expense: Expense,
-  baseVersion: number | null = null,
-  claimId: string | null = null,
-): ExpenseChange {
-  return { id: uuidv7(), claimId, deviceId, kind: 'expense', baseVersion, expense, deleted: false };
-}
-
-/** `expense` as the pull returns it at `version`, made by `by` at whatever time. */
-function stored(expense: Expense, version: number, by: string | null = null): StoredExpense {
-  return { ...expense, version, deleted: false, edited: { by, at: expect.any(String) } };
-}
 
 /** A Content Security Policy's directives by name, each with its sources. */
 function directives(policy: string | null | undefined): Map<string, string[]> {
@@ -146,11 +106,6 @@ async function push(tripId: string, token: string, ...changes: SyncChange[]) {
   return results;
 }
 
-/** The Trip's creation and its first Participants, as a device's outbox holds them. */
-function creation(trip: TripWithParticipants): SyncChange[] {
-  return [tripChange(trip), ...trip.participants.map((added) => participantChange(added))];
-}
-
 /** Creates a Trip by its first push, as a device does, and returns its Trip link's token. */
 async function createdToken(trip: TripWithParticipants): Promise<string> {
   const token = newToken();
@@ -191,25 +146,6 @@ function rateResponse(
   return fetch(`/api/trips/${tripId}/rates?${new URLSearchParams({ from, date })}`, {
     headers: deviceHeaders(token),
   });
-}
-
-/** A plain Expense of 24.50 EUR paid by `payer`, split evenly between `ticked`. */
-function plainExpense(payer: Participant, ticked: Participant[] = [payer]): Expense {
-  return {
-    id: uuidv7(),
-    title: 'Lidl Rovinj',
-    currency: 'EUR',
-    time: { instant: '2026-07-14T21:30:00Z', zone: 'Europe/Zagreb' },
-    mainPayerId: payer.id,
-    lineItems: [
-      {
-        name: '',
-        unitPrice: 2450,
-        quantity: 1,
-        split: { mode: 'even', participantIds: ticked.map(({ id }) => id) },
-      },
-    ],
-  };
 }
 
 /** A Trip with Kasia and Ania, created on the server. */

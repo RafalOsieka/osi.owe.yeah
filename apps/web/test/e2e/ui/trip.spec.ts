@@ -1,14 +1,20 @@
-import { randomBytes } from 'node:crypto';
 import {
   pullResponseSchema,
   SYNC_SCHEMA_HEADER,
   SYNC_SCHEMA_VERSION,
   TRIP_TOKEN_HEADER,
   type PushRequest,
-  type SyncChange,
 } from '@osi/owe-yeah-domain';
 import type { APIRequestContext, Page } from '@playwright/test';
 import { v7 as uuidv7 } from 'uuid';
+import {
+  change,
+  creation,
+  newToken,
+  newTrip,
+  participant,
+  plainExpense,
+} from '../harness/trip-builders';
 import { expect, test, type PushService } from './fixtures';
 
 /**
@@ -22,51 +28,30 @@ async function tripWithExpenses(
   participants: readonly string[],
   expenses: readonly { title: string; amount: number }[] = [],
 ): Promise<string> {
-  const id = uuidv7();
-  const token = randomBytes(32).toString('base64url');
-  const meta = { claimId: null, deviceId: uuidv7() };
-  const people = participants.map((participant) => ({ id: uuidv7(), name: participant }));
-  const changes: SyncChange[] = [
-    { ...meta, id: uuidv7(), kind: 'trip', trip: { name, currency: 'EUR' } },
-    ...people.map((participant) => ({
-      ...meta,
-      id: uuidv7(),
-      kind: 'participant' as const,
-      participant,
-      removed: false,
-    })),
-    ...expenses.map(({ title, amount }, index) => ({
-      ...meta,
-      id: uuidv7(),
-      kind: 'expense' as const,
-      baseVersion: null,
-      expense: {
-        id: uuidv7(),
-        title,
-        currency: 'EUR' as const,
+  const trip = newTrip(
+    name,
+    participants.map((added) => participant(added)),
+  );
+  const token = newToken();
+  const [payer] = trip.participants;
+  const changes = [
+    ...creation(trip),
+    ...expenses.map(({ title, amount }, index) =>
+      change({
+        ...plainExpense(payer!, trip.participants, { title, unitPrice: amount }),
         time: {
           instant: new Date(Date.UTC(2026, 6, 1 - index, 10)).toISOString(),
           zone: 'Europe/Zagreb',
         },
-        mainPayerId: people[0]!.id,
-        lineItems: [
-          {
-            name: '',
-            unitPrice: amount,
-            quantity: 1,
-            split: { mode: 'even' as const, participantIds: people.map((p) => p.id) },
-          },
-        ],
-      },
-      deleted: false,
-    })),
+      }),
+    ),
   ];
-  const pushed = await request.post(`/api/trips/${id}/push`, {
+  const pushed = await request.post(`/api/trips/${trip.id}/push`, {
     headers: { [TRIP_TOKEN_HEADER]: token, [SYNC_SCHEMA_HEADER]: String(SYNC_SCHEMA_VERSION) },
     data: { changes },
   });
   expect(pushed.ok()).toBe(true);
-  return `/trips/${id}#${token}`;
+  return `/trips/${trip.id}#${token}`;
 }
 
 /** Creates a Trip as someone else's device would, and returns its Trip link. */

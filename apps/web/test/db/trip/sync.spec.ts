@@ -1,20 +1,14 @@
-import { randomBytes } from 'node:crypto';
 import {
   EXPENSE_LIMIT,
   PARTICIPANT_LIMIT,
   PUSH_LIMIT,
   type ChangeResult,
   type Expense,
-  type ExpenseChange,
   type Participant,
-  type ParticipantChange,
   type PullResponse,
   type PushEnvelope,
   type RateEntry,
   type ServerTrip,
-  type StoredExpense,
-  type SyncChange,
-  type TripChange,
   type TripWithParticipants,
 } from '@osi/owe-yeah-domain';
 import { sql } from 'drizzle-orm';
@@ -34,6 +28,18 @@ import {
 } from '../../../server/trip/sync';
 import { startFrankfurter } from '../../e2e/harness/frankfurter';
 import { describeWithDocker } from '../../e2e/harness/postgres';
+import {
+  change,
+  creation,
+  deletion,
+  newToken,
+  newTrip,
+  participant,
+  participantChange,
+  plainExpense,
+  stored,
+  tripChange,
+} from '../../e2e/harness/trip-builders';
 import { useMigratedDatabase } from '../database';
 
 const describeDb = describeWithDocker();
@@ -41,86 +47,6 @@ const describeDb = describeWithDocker();
 // The rate provider the Trip sync's rates fetch from.
 const frankfurter = await startFrankfurter();
 afterAll(frankfurter.close);
-
-// Every change in these tests comes from one device, without a Claim unless given.
-const deviceId = uuidv7();
-
-/** A Trip link token, as the device creating the Trip generates it. */
-function newToken(): string {
-  return randomBytes(32).toString('base64url');
-}
-
-function participant(name: string): Participant {
-  return { id: uuidv7(), name };
-}
-
-function newTrip(name = 'Croatia 2026', participants: Participant[] = []): TripWithParticipants {
-  return { id: uuidv7(), name, currency: 'EUR', participants };
-}
-
-function tripChange(
-  { name, currency }: Pick<TripWithParticipants, 'name' | 'currency'>,
-  claimId: string | null = null,
-): TripChange {
-  return { id: uuidv7(), claimId, deviceId, kind: 'trip', trip: { name, currency } };
-}
-
-function participantChange(changed: Participant, removed = false): ParticipantChange {
-  return {
-    id: uuidv7(),
-    claimId: null,
-    deviceId,
-    kind: 'participant',
-    participant: changed,
-    removed,
-  };
-}
-
-function change(
-  expense: Expense,
-  baseVersion: number | null = null,
-  claimId: string | null = null,
-): ExpenseChange {
-  return { id: uuidv7(), claimId, deviceId, kind: 'expense', baseVersion, expense, deleted: false };
-}
-
-/** A change deleting `expense`, its state kept as it was. */
-function deletion(
-  expense: Expense,
-  baseVersion: number,
-  claimId: string | null = null,
-): ExpenseChange {
-  return { ...change(expense, baseVersion, claimId), deleted: true };
-}
-
-/** `expense` as the pull returns it at `version`, made by `by` at whatever time. */
-function stored(expense: Expense, version: number, by: string | null = null): StoredExpense {
-  return { ...expense, version, deleted: false, edited: { by, at: expect.any(String) } };
-}
-
-/** The Trip's creation and its first Participants, as a device's outbox holds them. */
-function creation(trip: TripWithParticipants): SyncChange[] {
-  return [tripChange(trip), ...trip.participants.map((added) => participantChange(added))];
-}
-
-/** A plain Expense of 24.50 EUR paid by `payer`, split evenly between `ticked`. */
-function plainExpense(payer: Participant, ticked: Participant[] = [payer]): Expense {
-  return {
-    id: uuidv7(),
-    title: 'Lidl Rovinj',
-    currency: 'EUR',
-    time: { instant: '2026-07-14T21:30:00Z', zone: 'Europe/Zagreb' },
-    mainPayerId: payer.id,
-    lineItems: [
-      {
-        name: '',
-        unitPrice: 2450,
-        quantity: 1,
-        split: { mode: 'even', participantIds: ticked.map(({ id }) => id) },
-      },
-    ],
-  };
-}
 
 /** Waits until `check` passes, e.g. for a rate the server fills in after a pull. */
 async function eventually(check: () => void | Promise<void>): Promise<void> {
