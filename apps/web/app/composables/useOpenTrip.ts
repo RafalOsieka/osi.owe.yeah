@@ -39,7 +39,7 @@ export interface OpenTrip extends Omit<TripHandle, 'claim' | 'forget'> {
   link: Readonly<Ref<string | null>>;
 }
 
-/** What the open Trip is provided under; the nuxt specs provide theirs with it through the mount. */
+/** The key the open Trip is provided under. */
 export const openTripKey: InjectionKey<OpenTrip> = Symbol('open-trip');
 
 export function provideOpenTrip(openTrip: OpenTrip): void {

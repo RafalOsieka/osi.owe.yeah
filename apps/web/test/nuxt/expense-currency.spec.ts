@@ -1,6 +1,5 @@
 import { rational, type RateEntry, type RateLookup } from '@osi/owe-yeah-domain';
 import { mountSuspended } from '@nuxt/test-utils/runtime';
-import { fromPartial } from '@total-typescript/shoehorn';
 import { afterEach, describe, expect, it, vi } from 'vitest';
 import { computed, ref } from 'vue';
 import ExpenseCurrency from '../../app/components/ExpenseCurrency.vue';
@@ -14,21 +13,19 @@ const server = vi.hoisted(() => ({
 // The open Trip's rates on the device: none until a lookup brings one.
 const rates = ref<RateEntry[]>([]);
 
-const openTrip = withOpenTrip(
-  fromPartial({
-    trip: computed(() => ({
-      id: '019a2b3c-4d5e-7f00-8a1b-2c3d4e5f6a7b',
-      currency: 'EUR',
-      rates: rates.value,
-    })),
-    // As the device does: a found entry joins the Trip's rates.
-    async lookupRate(from: string, date: string) {
-      const lookup = await server.lookupRate(from, date);
-      if (lookup.status === 'found') rates.value = [...rates.value, lookup.entry];
-      return lookup;
-    },
-  }),
-);
+const openTrip = withOpenTrip({
+  trip: computed(() => ({
+    id: '019a2b3c-4d5e-7f00-8a1b-2c3d4e5f6a7b',
+    currency: 'EUR',
+    rates: rates.value,
+  })),
+  // As the device does: a found entry joins the Trip's rates.
+  async lookupRate(from: string, date: string) {
+    const lookup = await server.lookupRate(from, date);
+    if (lookup.status === 'found') rates.value = [...rates.value, lookup.entry];
+    return lookup;
+  },
+});
 
 afterEach(() => {
   rates.value = [];

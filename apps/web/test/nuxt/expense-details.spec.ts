@@ -1,6 +1,5 @@
 import type { Expense, Participant } from '@osi/owe-yeah-domain';
 import { mountSuspended } from '@nuxt/test-utils/runtime';
-import { fromPartial } from '@total-typescript/shoehorn';
 import { describe, expect, it } from 'vitest';
 import { computed, ref } from 'vue';
 import ExpenseDetails from '../../app/components/ExpenseDetails.vue';
@@ -11,18 +10,16 @@ const marta: Participant = { id: '019a2b3c-4d5e-7f00-8a1b-000000000002', name: '
 // Added to the Trip and removed again, on no Expense.
 const ewa: Participant = { id: '019a2b3c-4d5e-7f00-8a1b-000000000003', name: 'Ewa' };
 
-const openTrip = withOpenTrip(
-  fromPartial({
-    trip: computed(() => ({
-      id: '019a2b3c-4d5e-7f00-8a1b-2c3d4e5f6a7b',
-      currency: 'EUR',
-      participants: [kasia, marta],
-      removedParticipants: [ewa],
-    })),
-    claim: ref(kasia),
-    everyone: ref([kasia, marta, ewa]),
-  }),
-);
+const openTrip = withOpenTrip({
+  trip: computed(() => ({
+    id: '019a2b3c-4d5e-7f00-8a1b-2c3d4e5f6a7b',
+    currency: 'EUR',
+    participants: [kasia, marta],
+    removedParticipants: [ewa],
+  })),
+  claim: ref(kasia),
+  everyone: ref([kasia, marta, ewa]),
+});
 
 // Bread and cheese nobody has been given yet, €10.00 and €30.00, with €4.00 off the Receipt:
 // €9.00 and €27.00 of the €36.00 unassigned after it.

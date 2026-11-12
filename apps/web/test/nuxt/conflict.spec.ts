@@ -1,6 +1,5 @@
 import type { Expense, Participant } from '@osi/owe-yeah-domain';
 import { mountSuspended } from '@nuxt/test-utils/runtime';
-import { fromPartial } from '@total-typescript/shoehorn';
 import { describe, expect, it } from 'vitest';
 import { computed, ref } from 'vue';
 import Conflict from '../../app/pages/trips/[id]/expenses/[expenseId]/conflict.vue';
@@ -52,21 +51,19 @@ const mine: LocalExpense = {
   },
 };
 
-const openTrip = withOpenTrip(
-  fromPartial({
-    trip: computed(() => ({
-      id: tripId,
-      currency: 'EUR',
-      participants: [kasia, marta],
-      removedParticipants: [ewa],
-      expenses: [mine],
-      deletedExpenses: [],
-      rates: [],
-    })),
-    claim: ref(kasia),
-    everyone: ref([kasia, marta, ewa]),
-  }),
-);
+const openTrip = withOpenTrip({
+  trip: computed(() => ({
+    id: tripId,
+    currency: 'EUR',
+    participants: [kasia, marta],
+    removedParticipants: [ewa],
+    expenses: [mine],
+    deletedExpenses: [],
+    rates: [],
+  })),
+  claim: ref(kasia),
+  everyone: ref([kasia, marta, ewa]),
+});
 
 describe('a Conflict over an Expense with a removed Participant', () => {
   it('names the removed Participant on both versions and as the other side', async () => {

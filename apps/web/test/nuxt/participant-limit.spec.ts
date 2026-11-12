@@ -1,6 +1,5 @@
 import { PARTICIPANT_LIMIT, type Participant } from '@osi/owe-yeah-domain';
 import { mountSuspended } from '@nuxt/test-utils/runtime';
-import { fromPartial } from '@total-typescript/shoehorn';
 import { afterEach, describe, expect, it } from 'vitest';
 import { computed, nextTick, ref } from 'vue';
 import NewTrip from '../../app/pages/trips/new.vue';
@@ -19,31 +18,29 @@ function everyone(count: number): Participant[] {
 }
 
 // The Settings tab and its layout read the open Trip only.
-const openTrip = withOpenTrip(
-  fromPartial({
-    trip: computed(() => ({
-      id: '019a2b3c-4d5e-7f00-8a1b-2c3d4e5f6a7b',
-      name: 'Croatia 2026',
-      currency: 'EUR',
-      participants: participants.value,
-      removedParticipants: [],
-      expenses: [],
-    })),
-    claim: ref(null),
-    everyone: participants,
-    unsynced: ref(0),
-    lastFailure: ref(null),
-    notices: ref([]),
-    notifications: ref({ subscription: null, offered: false, registered: null }),
-    sync: async () => {},
-    askWhoYouAre: () => {},
-    invite: async () => {},
-    dismissNotice: async () => {},
-    addParticipant: async () => {},
-    removeParticipant: async () => 0,
-    forget: async () => {},
-  }),
-);
+const openTrip = withOpenTrip({
+  trip: computed(() => ({
+    id: '019a2b3c-4d5e-7f00-8a1b-2c3d4e5f6a7b',
+    name: 'Croatia 2026',
+    currency: 'EUR',
+    participants: participants.value,
+    removedParticipants: [],
+    expenses: [],
+  })),
+  claim: ref(null),
+  everyone: participants,
+  unsynced: ref(0),
+  lastFailure: ref(null),
+  notices: ref([]),
+  notifications: ref({ subscription: null, offered: false, registered: null }),
+  sync: async () => {},
+  askWhoYouAre: () => {},
+  invite: async () => {},
+  dismissNotice: async () => {},
+  addParticipant: async () => {},
+  removeParticipant: async () => 0,
+  forget: async () => {},
+});
 
 describe('New Trip', () => {
   it('offers no more fields once "Your name" and the others make 100 Participants', async () => {

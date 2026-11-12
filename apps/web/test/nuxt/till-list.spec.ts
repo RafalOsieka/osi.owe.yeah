@@ -1,6 +1,5 @@
 import { rational, type Participant, type Rational } from '@osi/owe-yeah-domain';
 import { mountSuspended } from '@nuxt/test-utils/runtime';
-import { fromPartial } from '@total-typescript/shoehorn';
 import type { VueWrapper } from '@vue/test-utils';
 import { describe, expect, it } from 'vitest';
 import { defineComponent, h, ref } from 'vue';
@@ -14,7 +13,7 @@ const participants: Participant[] = [
 ];
 
 // A line on the Receipt marks the claimed Participant; nobody is claimed here.
-const openTrip = withOpenTrip(fromPartial({ claim: ref(null) }));
+const openTrip = withOpenTrip({ claim: ref(null) });
 
 /**
  * The Till list as the Receipt form holds it, with `lines` on it and what their unassigned

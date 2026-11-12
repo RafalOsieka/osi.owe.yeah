@@ -1,6 +1,5 @@
 import type { Participant } from '@osi/owe-yeah-domain';
 import { mountSuspended } from '@nuxt/test-utils/runtime';
-import { fromPartial } from '@total-typescript/shoehorn';
 import { describe, expect, it } from 'vitest';
 import { computed, ref } from 'vue';
 import RecentlyDeleted from '../../app/pages/trips/[id]/deleted.vue';
@@ -12,17 +11,15 @@ const kasia: Participant = { id: '019a2b3c-4d5e-7f00-8a1b-000000000001', name: '
 // The page reads the open Trip only; each test sets what it holds.
 const open = { claim: ref<Participant | null>(null), deleted: ref<LocalExpense[]>([]) };
 
-const openTrip = withOpenTrip(
-  fromPartial({
-    trip: computed(() => ({
-      id: '019a2b3c-4d5e-7f00-8a1b-2c3d4e5f6a7b',
-      deletedExpenses: open.deleted.value,
-    })),
-    claim: open.claim,
-    everyone: ref([kasia]),
-    saveExpense: async () => [],
-  }),
-);
+const openTrip = withOpenTrip({
+  trip: computed(() => ({
+    id: '019a2b3c-4d5e-7f00-8a1b-2c3d4e5f6a7b',
+    deletedExpenses: open.deleted.value,
+  })),
+  claim: open.claim,
+  everyone: ref([kasia]),
+  saveExpense: async () => [],
+});
 
 function deletedLidl(edited: LocalEdited | null): LocalExpense {
   return {
