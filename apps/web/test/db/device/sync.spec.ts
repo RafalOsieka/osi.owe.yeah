@@ -1,11 +1,12 @@
 import 'fake-indexeddb/auto';
 import { randomBytes } from 'node:crypto';
-import type {
-  Expense,
-  Participant,
-  RateEntry,
-  TripSnapshot,
-  TripWithParticipants,
+import {
+  PARTICIPANT_LIMIT,
+  type Expense,
+  type Participant,
+  type RateEntry,
+  type TripSnapshot,
+  type TripWithParticipants,
 } from '@osi/owe-yeah-domain';
 import { eq } from 'drizzle-orm';
 import { v7 as uuidv7 } from 'uuid';
@@ -832,6 +833,54 @@ describeDb('the device, syncing with the real Trip sync', () => {
 
     await croatia.dismissNotice(view!.deviceTrip.notices[0]!.id);
     expect((await device.read(trip.id))?.deviceTrip.notices).toEqual([]);
+  });
+
+  it('notes a Participant and holds an Expense the server refused past the 100th, and syncs the rest', async () => {
+    const made = croatia2026();
+    const { token, kasia, ania, ola } = made;
+    const others = Array.from({ length: PARTICIPANT_LIMIT - 3 }, (_, index) =>
+      participant(`Participant ${index + 4}`),
+    );
+    const trip = { ...made.trip, participants: [...made.trip.participants, ...others] };
+    const { device, connection } = newDevice();
+    await device.createTrip(trip, token);
+    const croatia = device.trip(trip.id);
+    await croatia.sync();
+    const anias = await joined(trip, token, ania);
+
+    // Offline, Kasia's device ticks Ola on Pizza and adds Marta, while Ania's device removes Ola
+    // and adds Basia: the Trip has 100 Participants again.
+    connection.offline = true;
+    const pizza = plainExpense('Pizza', kasia, [kasia, ola]);
+    await croatia.saveExpense(pizza, null);
+    const marta = participant('Marta');
+    await croatia.addParticipant(marta);
+    await croatia.saveExpense(plainExpense('Ferry', kasia, [kasia]), null);
+    expect(await anias.croatia.removeParticipant(ola)).toBe(0);
+    await anias.croatia.addParticipant(participant('Basia'));
+    await anias.croatia.sync();
+    connection.offline = false;
+
+    await croatia.sync();
+
+    expect((await onServer(trip, token)).expenses).toMatchObject([{ title: 'Ferry' }]);
+    expect(await device.read(trip.id)).toMatchObject({
+      unsynced: 1,
+      deviceTrip: { notices: [{ kind: 'tooManyParticipants', participant: marta }] },
+      local: {
+        participants: expect.not.arrayContaining([marta]),
+        expenses: expect.arrayContaining([
+          expect.objectContaining({
+            id: pizza.id,
+            unsynced: expect.objectContaining({
+              status: 'rejected',
+              problems: ['tooManyParticipants'],
+            }),
+          }),
+          expect.objectContaining({ title: 'Ferry', unsynced: null }),
+        ]),
+      },
+    });
   });
 
   it('drops its Claim once a pull shows that Participant removed, noting it', async () => {

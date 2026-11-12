@@ -1,21 +1,24 @@
 import { randomBytes } from 'node:crypto';
-import type {
-  ChangeResult,
-  Expense,
-  ExpenseChange,
-  Participant,
-  ParticipantChange,
-  PullResponse,
-  PushEnvelope,
-  RateEntry,
-  StoredExpense,
-  SyncChange,
-  TripChange,
-  TripSnapshot,
-  TripWithParticipants,
+import {
+  PARTICIPANT_LIMIT,
+  PUSH_LIMIT,
+  type ChangeResult,
+  type Expense,
+  type ExpenseChange,
+  type Participant,
+  type ParticipantChange,
+  type PullResponse,
+  type PushEnvelope,
+  type RateEntry,
+  type StoredExpense,
+  type SyncChange,
+  type TripChange,
+  type TripSnapshot,
+  type TripWithParticipants,
 } from '@osi/owe-yeah-domain';
 import { v7 as uuidv7 } from 'uuid';
 import { afterAll, beforeAll, expect, it } from 'vitest';
+import { participants as participantRows } from '../../../server/db/schema';
 import { createRates } from '../../../server/trip/rates';
 import { createTripStore } from '../../../server/trip/store';
 import {
@@ -176,6 +179,23 @@ describeDb('Trip sync', () => {
     return { trip, token, kasia, ania };
   }
 
+  /** A Trip with as many Participants as a Trip can have, created through the sync. */
+  async function fullTrip() {
+    const everyone = Array.from({ length: PARTICIPANT_LIMIT }, (_, index) =>
+      participant(`Participant ${index + 1}`),
+    );
+    const trip = newTrip('Croatia 2026', everyone);
+    const token = newToken();
+    // The creation is one change more than a push holds.
+    const changes = creation(trip);
+    const results = [
+      ...(await push(trip.id, token, ...changes.slice(0, PUSH_LIMIT))),
+      ...(await push(trip.id, token, ...changes.slice(PUSH_LIMIT))),
+    ];
+    expect(results.every(({ status }) => status === 'accepted')).toBe(true);
+    return { trip, token, everyone };
+  }
+
   /** What the notifier was told about the Trip: the changes and versions of each push. */
   function notifiedOf(tripId: string) {
     return notified
@@ -316,6 +336,66 @@ describeDb('Trip sync', () => {
       { changeId: taken.id, status: 'rejected', problems: ['participantIdTaken'] },
     ]);
     expect(await pulledParticipants(trip.id, token)).toEqual([]);
+  });
+
+  it('refuses a Participant past the 100th, added or brought back, until one is removed', async () => {
+    const { trip, token, everyone } = await fullTrip();
+    const [first] = everyone;
+    const marta = participant('Marta');
+    const tooMany = participantChange(marta);
+
+    expect(await push(trip.id, token, tooMany)).toEqual<ChangeResult[]>([
+      { changeId: tooMany.id, status: 'rejected', problems: ['tooManyParticipants'] },
+    ]);
+
+    const kasia = { ...first!, name: 'Kasia' };
+    const renamed = participantChange(kasia);
+    const removed = participantChange(kasia, true);
+    const added = participantChange(marta);
+    const broughtBack = participantChange(kasia);
+    expect(await push(trip.id, token, renamed, removed, added, broughtBack)).toEqual<
+      ChangeResult[]
+    >([
+      { changeId: renamed.id, status: 'accepted', version: null },
+      { changeId: removed.id, status: 'accepted', version: null },
+      { changeId: added.id, status: 'accepted', version: null },
+      { changeId: broughtBack.id, status: 'rejected', problems: ['tooManyParticipants'] },
+    ]);
+    const pulledTrip = await pulled(trip.id, token);
+    expect(pulledTrip.participants).toHaveLength(100);
+    expect(pulledTrip.participants).toContainEqual(marta);
+    expect(pulledTrip.removedParticipants).toEqual([kasia]);
+  });
+
+  it('refuses an Expense that would bring back a removed Participant past the 100th', async () => {
+    const { trip, token, everyone } = await fullTrip();
+    const [payer, removed] = everyone;
+    // Made offline before the removal and the 100th Participant.
+    const offline = change(plainExpense(payer!, [payer!, removed!]));
+    await push(trip.id, token, participantChange(removed!, true));
+    await push(trip.id, token, participantChange(participant('Marta')));
+
+    expect(await push(trip.id, token, offline)).toEqual<ChangeResult[]>([
+      { changeId: offline.id, status: 'rejected', problems: ['tooManyParticipants'] },
+    ]);
+    expect(await pulled(trip.id, token)).toMatchObject({
+      removedParticipants: [removed],
+      expenses: [],
+    });
+  });
+
+  it('takes an Expense that brings back nobody, even on a Trip past the 100th from before the limit', async () => {
+    const { trip, token, everyone } = await fullTrip();
+    // A 101st Participant, which Trip sync took before it counted them.
+    await db()
+      .insert(participantRows)
+      .values({ ...participant('Marta'), tripId: trip.id, removed: false });
+    const [payer] = everyone;
+    const lunch = change(plainExpense(payer!));
+
+    expect(await push(trip.id, token, lunch)).toEqual<ChangeResult[]>([
+      { changeId: lunch.id, status: 'accepted', version: 1 },
+    ]);
   });
 
   it('removes a Participant softly, but refuses while an Expense references them', async () => {

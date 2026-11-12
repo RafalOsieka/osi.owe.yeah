@@ -95,6 +95,7 @@
     "name": "Imię",
     "addParticipant": "Dodaj uczestnika",
     "addHelp": "Ta osoba może też dodać się sama, gdy otworzy link do podróży.",
+    "limitReached": "Podróż może mieć najwyżej 100 uczestników.",
     "you": "ty",
     "remove": "Usuń z podróży",
     "removeHelp": "Imię zostaje w starszych wersjach i usuniętych wydatkach. Wydatek, który znowu go obejmie, przywróci uczestnika.",
@@ -448,7 +449,8 @@
       "contributionsExceedTotal": "dopłaty wynoszą więcej niż cały wydatek.",
       "chargedWithoutTotal": "pobrana kwota wymaga sumy różnej od zera.",
       "manualRateToOwnCurrency": "kurs ręczny musi przeliczać na inną walutę niż waluta wydatku.",
-      "malformed": "serwer nie mógł odczytać tej zmiany."
+      "malformed": "serwer nie mógł odczytać tej zmiany.",
+      "tooManyParticipants": "przywraca kogoś usuniętego z podróży, która ma już 100 uczestników."
     },
     "pullToRefresh": "Pociągnij, aby zsynchronizować",
     "releaseToRefresh": "Puść, aby zsynchronizować",
@@ -566,6 +568,7 @@
     "tripChangeRefused": "Twoja zmiana nazwy i waluty podróży nie została zapisana: serwer nie mógł jej odczytać.",
     "participantChangeRefused": "Twoja zmiana uczestnika {name} nie została zapisana: serwer nie mógł jej odczytać.",
     "unnamedParticipantChangeRefused": "Twoja zmiana uczestnika nie została zapisana: serwer nie mógł jej odczytać.",
+    "tooManyParticipants": "Uczestnik {name} nie został dodany: podróż ma już 100 uczestników, najwięcej, ile może mieć.",
     "quoted": "„{title}”",
     "showExpense": "Pokaż wydatek"
   },

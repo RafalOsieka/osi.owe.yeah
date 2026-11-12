@@ -23,14 +23,16 @@ import { migrations } from './migrations';
  * Something sync did to this device's changes that the user should hear about, kept until
  * they dismiss it: a removed Participant an Expense of theirs brought back, a removal the
  * server refused, a new Trip currency it refused because the Trip has a Repayment now, their
- * Claim's Participant removed by someone else, or a change of the Trip details or of a
- * Participant the server couldn't read and that is lost (`about` says what it changed).
+ * Claim's Participant removed by someone else, a change of the Trip details or of a
+ * Participant the server couldn't read and that is lost (`about` says what it changed), or a
+ * Participant it refused because the Trip has as many as it can have.
  */
 export type Notice = { id: string } & (
   | { kind: 'participantRestored'; participant: Participant; expenseTitle: string }
   | { kind: 'removalRefused'; participant: Participant }
   | { kind: 'currencyChangeRefused'; currency: TripCurrency }
   | { kind: 'claimRemoved'; participant: Participant }
+  | { kind: 'tooManyParticipants'; participant: Participant }
   | {
       kind: 'changeRefused';
       about: Pick<TripChange, 'kind' | 'trip'> | Pick<ParticipantChange, 'kind' | 'participant'>;

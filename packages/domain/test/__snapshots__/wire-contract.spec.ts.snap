@@ -3828,6 +3828,7 @@ exports[`the wire contract > changes only together with a decision about the syn
                         "participantReferenced",
                         "tripHasRepayments",
                         "malformed",
+                        "tooManyParticipants",
                       ],
                       "type": "string",
                     },
