@@ -1,5 +1,5 @@
-# The osieka.dev instance (ADR 0005): PostgreSQL, the one-shot migrator, the app and the
-# Cloudflare Tunnel that is its only way in. The app publishes no port.
+# The osieka.dev instance (ADR 0005): PostgreSQL, a one-shot dump of it, the one-shot migrator,
+# the app and the Cloudflare Tunnel that is its only way in. The app publishes no port.
 #
 # A template: CI fills in MIGRATOR_IMAGE and APP_IMAGE, pinned by digest, and commits the
 # result to the `deploy` branch. Every other variable stays as written and is a secret or
@@ -25,13 +25,41 @@ services:
       POSTGRES_DB: owe_yeah
     volumes:
       - pg-owe-yeah:/var/lib/postgresql
+      # Read-only, so the runbook can `pg_restore` a dump from inside this container.
+      - backups:/backups:ro
     healthcheck:
       test: ['CMD-SHELL', 'pg_isready -U postgres -d owe_yeah']
       interval: 10s
       timeout: 5s
       retries: 5
 
-  # Runs to completion before `app` starts; a failed migration keeps the app down.
+  # Dumps the database before every deploy migrates it, since migrations only go forward. A
+  # custom-format dump named by its UTC time; only the newest `keep` are kept. It's written under a
+  # temporary name first, so a failed dump leaves no file that looks whole and pushes out none.
+  backup:
+    image: postgres:18-alpine
+    restart: 'no'
+    logging: *logging
+    environment:
+      PGPASSWORD: ${POSTGRES_PASSWORD:?POSTGRES_PASSWORD is required}
+    volumes:
+      - backups:/backups
+    command:
+      - sh
+      - -euc
+      - |
+        keep=5
+        rm -f /backups/*.partial
+        name="/backups/owe_yeah-$$(date -u +%Y%m%dT%H%M%SZ).dump"
+        pg_dump -h db -U postgres -d owe_yeah -Fc -f "$$name.partial"
+        mv "$$name.partial" "$$name"
+        echo "Dumped to $$name"
+        ls -1r /backups/*.dump | tail -n +$$((keep + 1)) | xargs -r rm -v --
+    depends_on:
+      db:
+        condition: service_healthy
+
+  # Runs to completion before `app` starts; a failed dump or migration keeps the app down.
   migrate:
     image: ${MIGRATOR_IMAGE}
     restart: 'no'
@@ -41,6 +69,8 @@ services:
     depends_on:
       db:
         condition: service_healthy
+      backup:
+        condition: service_completed_successfully
 
   app:
     image: ${APP_IMAGE}
@@ -94,3 +124,5 @@ services:
 
 volumes:
   pg-owe-yeah:
+  # The `backup` dumps. Copy them off the host: on it alone, they share the database's fate.
+  backups:

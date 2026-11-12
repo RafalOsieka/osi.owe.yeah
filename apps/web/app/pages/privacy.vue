@@ -24,7 +24,7 @@ const sections = [
   },
   {
     id: 'retention',
-    blocks: [{ p: 'test' }, { p: 'notifications' }, { p: 'ip' }, { p: 'device' }],
+    blocks: [{ p: 'test' }, { p: 'backups' }, { p: 'notifications' }, { p: 'ip' }, { p: 'device' }],
   },
   {
     id: 'rights',

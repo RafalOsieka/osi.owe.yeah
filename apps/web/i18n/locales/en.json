@@ -622,7 +622,7 @@
   },
   "privacy": {
     "title": "Privacy notice",
-    "updated": "Last updated on 4 November 2026.",
+    "updated": "Last updated on 11 November 2026.",
     "intro": "Owe Yeah keeps track of what a group of people spends together and works out who owes whom. This notice says what personal data it processes, why, for how long, and what your rights are. This is a test environment: don't enter anything sensitive.",
     "controller": {
       "title": "Who is responsible",
@@ -660,6 +660,7 @@
     "retention": {
       "title": "How long it is kept",
       "test": "This is a test environment: its data may be wiped at any time without notice, and the whole test database is wiped at least once every 12 months. Until then, Trips are kept with every Revision.",
+      "backups": "Before each update of the app, the server copies its database. The last 5 copies are kept, and data erased from the database stays in them until newer copies replace them.",
       "notifications": "A push subscription is deleted when you turn Notifications off, forget the Trip, or the push service says it no longer exists.",
       "ip": "The server keeps IP addresses for limiting requests only in memory, for a few minutes. Cloudflare keeps its logs as its own policies set.",
       "device": "On your device, a Trip stays until you forget it, clear the site's data or uninstall the app."

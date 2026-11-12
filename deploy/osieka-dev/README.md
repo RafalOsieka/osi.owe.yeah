@@ -6,7 +6,7 @@ These files are built for one instance: Owe Yeah run by osieka.dev at `owe-yeah-
 
 1. A push to `main` runs CI. Once every job is green, `publish` pushes `ghcr.io/rafalosieka/owe-yeah` (the app) and `ghcr.io/rafalosieka/owe-yeah-migrator`, tagged by commit SHA. Pull requests run every job but `publish` and `verify-deploy`.
 2. It renders [`compose.yaml`](compose.yaml) with both images pinned by digest. `MIGRATOR_IMAGE` and `APP_IMAGE` are the only variables it fills in, and it fails if anything else changed. It commits the result to the `deploy` branch as `test/compose.yaml`, creating the branch if it's missing, one `Deploy <commit> to test` commit per deploy. A newer push to `main` cancels an older run still in progress, so deploys land in order.
-3. The host's stack polls `deploy` every ~5 minutes and redeploys on a change: `db`, then `migrate` to completion, then `app`, with `cloudflared` alongside.
+3. The host's stack polls `deploy` every ~5 minutes and redeploys on a change: `db`, then `backup` and `migrate` to completion, then `app`, with `cloudflared` alongside. A failed dump or migration keeps `app` down (see [Dumps](#dumps)).
 4. `verify-deploy` polls `$TEST_URL/healthz` every 30 seconds until it reports the new commit, or fails the run after ~15 minutes. It's skipped while the repository variable `TEST_URL` is unset (see [Opening test to the public](#opening-test-to-the-public)).
 
 ## Setting up an environment
@@ -30,6 +30,7 @@ These files are built for one instance: Owe Yeah run by osieka.dev at `owe-yeah-
 4. **Registry credential.** The host pulls as a bot GitHub account that can read only these two packages. Give the stack a registry credential for `ghcr.io`: the bot's username and a classic token with only `read:packages`, expiring in a year. GitHub emails the bot's address a week before it expires, so that address must reach the operator.
 5. **Stack.** Create a stack from this repo, branch `deploy`, file `test/compose.yaml`, polling every ~5 minutes. Redeploying it by hand is the fallback.
 6. Check that `cloudflared` and `app` turn healthy: `cloudflared` once the tunnel holds a connection to Cloudflare, `app` once `/healthz` answers.
+7. **Off the host.** Copy the stack's `backups` volume off the host after each deploy: a dump that stays on the host is lost with it. Keep the copy a mirror of the volume, so it too holds only the last 5 dumps, as the privacy notice promises. Keep the stack's secrets (above) and the registry credential in a password manager: a restored database is of no use without `POSTGRES_PASSWORD`, and a lost VAPID pair cuts off every subscribed device.
 
 ## Opening test to the public
 
@@ -52,12 +53,41 @@ Only once the privacy notice and terms are live in the deployed build, `owe-yeah
 - **Did the deploy land?** A failed `verify-deploy` job emails, as any failed run does. If `publish` passed but test still runs the old commit, look at the host's pulls first: once the bot's token expires, they fail as unauthorized. Make it a new token and update the stack's registry credential.
 - **Is it down?** Cloudflare emails when the tunnel goes unhealthy. An app that crashes behind a healthy tunnel shows at the next deploy check.
 - **Logs:** the containers' logs on the host, rotated at 10 MB × 3 per container. Nothing is shipped.
-- **Rollback:** fix forward. In an emergency, revert the latest commit on `deploy`; the stack picks it up at its next poll. If the older build breaks on the newer schema, wipe test's database volume and redeploy.
+- **Rollback:** fix forward. In an emergency, revert the latest commit on `deploy`; the stack picks it up at its next poll. If the older build breaks on the newer schema, [restore the dump](#restore-a-dump) made before the deploy that broke it, or wipe test's database volume and redeploy.
 - **Wiping test:** allowed at any time, as the test banner tells its users.
 - **Pausing test:** [`pause-worker.js`](pause-worker.js) is a Cloudflare Worker that answers every request with a `503` page, in English and Polish, saying test is unavailable for now and giving `owe-yeah@osieka.dev`. Nothing reaches the tunnel while it runs, so it works with the host down too.
   - **Set up once:** in the Cloudflare dashboard, **Workers & Pages → Create → Worker**, start from Hello World, name it `owe-yeah-test-paused` and deploy. Then **Edit code**, replace it with the file's and deploy again. It runs on no route yet, so test is unaffected.
   - **Pause:** on the Worker, **Settings → Domains & Routes → Add → Route**, zone `osieka.dev`, route `owe-yeah-test.osieka.dev/*`. **Resume:** delete that route. Either takes effect within seconds.
   - **While paused:** an installed app still opens from its cache. Its syncs fail, so its changes wait on the device and sync once test is back. `verify-deploy` fails, as `/healthz` answers the page.
+
+## Dumps
+
+Every deploy starts with `backup`, which dumps the database before `migrate` touches it: migrations only go forward (ADR 0005), so a dump is the only way back from a bad one. Each dump is `owe_yeah-<UTC time>.dump`, in `pg_dump`'s custom format, on the stack's `backups` volume. Only the newest 5 are kept: each deploy's dump deletes the oldest beyond that. If the dump fails, `migrate` and `app` don't start, and `app` stays down until a deploy dumps successfully. The `backup` container's log says why.
+
+The `db` container sees the dumps read-only at `/backups`, so these commands all run in it. The dumps hold everything the database does, Trip names and Participants' names included: copy them only to places as private as the host.
+
+### Restore a dump
+
+1. Turn off the stack's polling of `deploy`, so no deploy starts halfway through, and stop `app`, so nothing writes to the database:
+
+   ```sh
+   docker stop <app container>
+   ```
+
+2. Pick a dump. Their names sort by time, oldest first:
+
+   ```sh
+   docker exec <db container> ls -l /backups
+   ```
+
+3. Drop and recreate the database, then restore the dump into it:
+
+   ```sh
+   docker exec <db container> psql -U postgres -d postgres -c 'DROP DATABASE owe_yeah WITH (FORCE)' -c 'CREATE DATABASE owe_yeah'
+   docker exec <db container> pg_restore -U postgres -d owe_yeah --exit-on-error /backups/<dump>
+   ```
+
+4. Turn polling back on and start the stack again by redeploying it. That dumps the restored database too, which pushes out the oldest dump, then migrates it to the deployed build's schema. If the deploy that broke the database is still on `deploy`, revert it there first, or `migrate` runs the same migration again.
 
 ## Requests
 
@@ -93,7 +123,7 @@ docker exec -i <db container> psql -U postgres -d owe_yeah -v id=<id> -v token=<
    - Opening the link on a device that doesn't hold the Trip shows "This Trip link doesn't work".
    - A device that holds the Trip keeps its copy and stops syncing, without saying so. It gets no more Notifications, and changes made on it never sync. These copies are on people's devices, out of the operator's reach: the requester should forget the Trip on their devices, and ask the other Participants to do the same.
    - A device whose unsynced changes include the Trip's name or currency (a Trip created offline, or renamed since its last sync) creates the Trip again under the same link on its next sync. The new Trip holds only that device's unsynced changes. Run `find.sql` again a week later, and erase the Trip again if it's back.
-4. Outside the database, container logs hold only warnings, which may quote a query's values, and rotate away (10 MB × 3). If a backup of the database exists, the Trip stays in it until the backup expires: say so in the answer, and erase the Trip again after restoring one.
+4. Outside the database, container logs hold only warnings, which may quote a query's values, and rotate away (10 MB × 3). The last 5 [dumps](#dumps) still hold the Trip: it leaves them once 5 more deploys have dumped the database after the erasure, and leaves the copy off the host when that copy is next mirrored. Say so in the answer, and erase the Trip again after restoring a dump.
 
 **Erasing part of a Trip.** The requester can do part of it in the app, and the change syncs to every device:
 
