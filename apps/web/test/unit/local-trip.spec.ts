@@ -1,4 +1,4 @@
-import type { Expense, TripSnapshot } from '@osi/owe-yeah-domain';
+import type { Expense, ServerTrip } from '@osi/owe-yeah-domain';
 import { describe, expect, it } from 'vitest';
 import type { Held, OutboxEntry, QueuedChange } from '../../app/sync/db';
 import { localTrip } from '../../app/sync/local-trip';
@@ -31,7 +31,7 @@ const ferry = expense('019a2b3c-4d5e-7f00-8a1b-200000000002', 'Ferry');
 
 const edited = { by: kasia.id, at: '2026-07-15T08:00:00.000Z' };
 
-const pulled: TripSnapshot = {
+const pulled: ServerTrip = {
   id: tripId,
   name: 'Croatia 2026',
   currency: 'EUR',
@@ -87,7 +87,7 @@ describe('localTrip', () => {
   });
 
   it('keeps deleted Expenses apart for Recently deleted, also while a deletion is not synced', () => {
-    const snapshot: TripSnapshot = {
+    const serverTrip: ServerTrip = {
       ...pulled,
       expenses: [{ ...lidl, version: 4, deleted: true, edited }, pulled.expenses[1]!],
     };
@@ -101,7 +101,7 @@ describe('localTrip', () => {
       deleted: true,
     } as const;
 
-    const trip = localTrip(snapshot, [entry(deletion)], []);
+    const trip = localTrip(serverTrip, [entry(deletion)], []);
 
     expect(trip?.expenses).toEqual([]);
     expect(trip?.deletedExpenses).toMatchObject([
@@ -160,7 +160,7 @@ describe('localTrip', () => {
 
   it('sets removed Participants apart, and brings back one that a pending Expense references', () => {
     const ola = { id: '019a2b3c-4d5e-7f00-8a1b-000000000003', name: 'Ola' };
-    const snapshot: TripSnapshot = { ...pulled, participants: [kasia], removedParticipants: [ola] };
+    const serverTrip: ServerTrip = { ...pulled, participants: [kasia], removedParticipants: [ola] };
     const removeAnia = {
       ...meta,
       id: '019a2b3c-4d5e-7f00-8a1b-100000000006',
@@ -178,11 +178,11 @@ describe('localTrip', () => {
       deleted: false,
     } as const;
 
-    expect(localTrip(snapshot, [entry(removeAnia)], [])).toMatchObject({
+    expect(localTrip(serverTrip, [entry(removeAnia)], [])).toMatchObject({
       participants: [kasia],
       removedParticipants: [ola, ania],
     });
-    expect(localTrip(snapshot, [entry(withOla)], [])).toMatchObject({
+    expect(localTrip(serverTrip, [entry(withOla)], [])).toMatchObject({
       participants: [kasia, ola],
       removedParticipants: [],
     });

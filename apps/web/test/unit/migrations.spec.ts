@@ -58,12 +58,12 @@ describe('the device store migration chain', () => {
   });
 
   it('v4 keeps Participants queued before removal as kept, and pulls their Trip again', () => {
-    const snapshot = { id: tripId, participants: [ania], version: 7, expenses: [] };
+    const beforeV4 = { id: tripId, participants: [ania], version: 7, expenses: [] };
     const change = { ...meta, id: uuidv7(), kind: 'participant', participant: ania };
 
-    expect(toV4.trip(fromAny({ snapshot }))).toMatchObject({
+    expect(toV4.trip(fromAny({ snapshot: beforeV4 }))).toMatchObject({
       notices: [],
-      snapshot: { ...snapshot, version: 0, edited: null, removedParticipants: [] },
+      snapshot: { ...beforeV4, version: 0, edited: null, removedParticipants: [] },
     });
     expect(toV4.entry(fromAny({ change })).change).toEqual({ ...change, removed: false });
   });

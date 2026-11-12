@@ -1,4 +1,4 @@
-import type { TripSnapshot } from '@osi/owe-yeah-domain';
+import type { ServerTrip } from '@osi/owe-yeah-domain';
 
 /**
  * The avatar colors a Participant can get, in an order that keeps neighbours far apart on the
@@ -50,6 +50,6 @@ export function distinctAvatarColors(ids: readonly string[]): Map<string, Avatar
 export function participantAvatarColors({
   participants,
   removedParticipants,
-}: Pick<TripSnapshot, 'participants' | 'removedParticipants'>): Map<string, AvatarColor> {
+}: Pick<ServerTrip, 'participants' | 'removedParticipants'>): Map<string, AvatarColor> {
   return distinctAvatarColors([...participants, ...removedParticipants].map(({ id }) => id));
 }

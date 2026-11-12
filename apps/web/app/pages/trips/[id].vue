@@ -53,8 +53,8 @@ const notifications = computed(() => view.value?.deviceTrip.notifications ?? NOT
 
 const inviteOpen = ref(false);
 useCloseOnBack(inviteOpen);
-// The Trip link to pass on, once the server has the Trip (it has a snapshot): before that,
-// the link would open nothing.
+// The Trip link to pass on, once the server has the Trip (the device has its `ServerTrip`):
+// before that, the link would open nothing.
 const tripLink = computed(() => {
   const deviceTrip = view.value?.deviceTrip;
   if (!deviceTrip?.snapshot) return null;

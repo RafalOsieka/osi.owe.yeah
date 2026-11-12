@@ -238,7 +238,7 @@ export function createDevice(db: DeviceDb, transport: Transport, deviceId: strin
     const pulled = await transport.pull(tripId, token).catch(() => null);
     if (pulled === null) return 'unreachable';
     if (pulled === 'invalidLink' || !pulled.trip) return 'invalidLink';
-    const { trip: snapshot, rates } = pulled;
+    const { trip: serverTrip, rates } = pulled;
     await db.transaction('rw', db.trips, async () => {
       const known = await db.trips.get(tripId);
       await db.trips.put({
@@ -246,7 +246,7 @@ export function createDevice(db: DeviceDb, transport: Transport, deviceId: strin
         token,
         claim: known?.claim ?? null,
         openedAt: new Date().toISOString(),
-        snapshot,
+        snapshot: serverTrip,
         rates: cachedRates(known?.rates ?? [], rates),
         lastCurrency: known?.lastCurrency ?? null,
         notices: known?.notices ?? [],
@@ -609,11 +609,11 @@ export function createDevice(db: DeviceDb, transport: Transport, deviceId: strin
     }
     const pulled = await transport.pull(tripId, device.token, device.snapshot?.version);
     if (pulled === 'invalidLink') return;
-    const { trip: snapshot } = pulled;
+    const { trip: serverTrip } = pulled;
     const rates = cachedRates(device.rates, pulled.rates);
-    if (snapshot) {
+    if (serverTrip) {
       await db.transaction('rw', db.trips, db.outbox, async () => {
-        await db.trips.update(tripId, { snapshot, rates });
+        await db.trips.update(tripId, { snapshot: serverTrip, rates });
         await dropRemovedClaim(tripId);
       });
     } else {
@@ -644,8 +644,8 @@ export function createDevice(db: DeviceDb, transport: Transport, deviceId: strin
    */
   async function pushRound({ id: tripId, token }: DeviceTrip): Promise<boolean> {
     // Read again: a push round before this one may have taken its changes in.
-    const snapshot = (await db.trips.get(tripId))?.snapshot;
-    const pulled = new Map(snapshot?.expenses.map(({ id, version }) => [id, version]));
+    const serverTrip = (await db.trips.get(tripId))?.snapshot;
+    const pulled = new Map(serverTrip?.expenses.map(({ id, version }) => [id, version]));
     const outdated = (held: Held) =>
       held.status === 'conflict' && (pulled.get(held.current.id) ?? 0) > held.current.version;
     const ready = (await entriesOf(tripId))
@@ -660,7 +660,7 @@ export function createDevice(db: DeviceDb, transport: Transport, deviceId: strin
       changes: ready.map(({ change }) => toSyncChange(change)),
     });
 
-    const known = [...(snapshot?.participants ?? []), ...(snapshot?.removedParticipants ?? [])];
+    const known = [...(serverTrip?.participants ?? []), ...(serverTrip?.removedParticipants ?? [])];
     let accepted = false;
     await db.transaction('rw', db.trips, db.outbox, async () => {
       for (const result of results) {
@@ -682,7 +682,7 @@ export function createDevice(db: DeviceDb, transport: Transport, deviceId: strin
   }
 
   /**
-   * Takes an accepted change out of the outbox into the snapshot. The Expense's next change
+   * Takes an accepted change out of the outbox into the `ServerTrip`. The Expense's next change
    * now has a base: the version this one got.
    */
   async function accept(entry: OutboxEntry, version: number | null): Promise<void> {

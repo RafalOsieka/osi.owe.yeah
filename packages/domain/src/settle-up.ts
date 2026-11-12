@@ -12,14 +12,14 @@ import {
   type Rational,
 } from './rational.ts';
 import { expenseRate, type RateEntry, type TripRates } from './rates.ts';
+import type { ServerTrip } from './server-trip.ts';
 import { expenseShares } from './shares.ts';
-import type { TripSnapshot } from './snapshot.ts';
 
 /**
  * What balances are worked out from: the Trip currency, its Participants, its Expenses and
  * the rate table that converts them into the Trip currency.
  */
-export type TripExpenses = Pick<TripSnapshot, 'currency' | 'participants'> & {
+export type TripExpenses = Pick<ServerTrip, 'currency' | 'participants'> & {
   expenses: readonly Expense[];
   rates: readonly RateEntry[];
 };

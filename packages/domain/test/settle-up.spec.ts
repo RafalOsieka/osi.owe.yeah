@@ -6,7 +6,7 @@ import {
   suggestedRepayments,
   type StoredExpense,
   type RateEntry,
-  type TripSnapshot,
+  type ServerTrip,
 } from '@osi/owe-yeah-domain';
 
 const ania = '019a2b3c-4d5e-7f00-8a1b-000000000001';
@@ -51,7 +51,7 @@ describe('suggestedRepayments', () => {
 });
 
 /** A pulled Trip with the rate table its Expenses are converted with. */
-type Trip = TripSnapshot & { rates: RateEntry[] };
+type Trip = ServerTrip & { rates: RateEntry[] };
 
 const trip: Trip = {
   id: '019a2b3c-4d5e-7f00-8a1b-2c3d4e5f6a7b',

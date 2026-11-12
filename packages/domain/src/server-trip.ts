@@ -54,11 +54,11 @@ export const tripVersionSchema = z.number().int().nonnegative();
  * Removed Participants are kept apart: no new Expense picks them, but older versions and
  * deleted Expenses still name them.
  */
-export const tripSnapshotSchema = tripWithParticipantsSchema.extend({
+export const serverTripSchema = tripWithParticipantsSchema.extend({
   version: tripVersionSchema,
   edited: editedSchema.nullable(),
   removedParticipants: z.array(participantSchema),
   expenses: z.array(storedExpenseSchema),
 });
 
-export type TripSnapshot = z.infer<typeof tripSnapshotSchema>;
+export type ServerTrip = z.infer<typeof serverTripSchema>;

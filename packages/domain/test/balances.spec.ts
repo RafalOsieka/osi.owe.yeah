@@ -5,7 +5,7 @@ import {
   roundMoney,
   type StoredExpense,
   type RateEntry,
-  type TripSnapshot,
+  type ServerTrip,
 } from '@osi/owe-yeah-domain';
 
 const kasia = { id: '019a2b3c-4d5e-7f00-8a1b-000000000001', name: 'Kasia' };
@@ -27,7 +27,7 @@ function expense(id: string, mainPayerId: string, unitPrice: number, participant
 }
 
 /** A pulled Trip with the rate table its Expenses are converted with. */
-type Trip = TripSnapshot & { rates: RateEntry[] };
+type Trip = ServerTrip & { rates: RateEntry[] };
 
 const trip: Trip = {
   id: '019a2b3c-4d5e-7f00-8a1b-2c3d4e5f6a7b',
@@ -60,7 +60,7 @@ describe('balances', () => {
   });
 
   it('splits evenly between ticked Participants, exactly, and credits the Main payer', () => {
-    const snapshot: Trip = {
+    const serverTrip: Trip = {
       ...trip,
       expenses: [
         // 10.00 EUR for three: 10/3 each, which no cent amount matches.
@@ -74,7 +74,7 @@ describe('balances', () => {
       ],
     };
 
-    expect(balances(snapshot)).toMatchObject([
+    expect(balances(serverTrip)).toMatchObject([
       {
         participantId: kasia.id,
         paid: rational(10n),
@@ -120,7 +120,7 @@ describe('Repayments in balances', () => {
     }) satisfies StoredExpense;
 
   // Kasia pays 30.00 EUR for all three; Ania repays her 10.00 and Ola 5.00.
-  const snapshot: Trip = {
+  const serverTrip: Trip = {
     ...trip,
     expenses: [
       expense('019a2b3c-4d5e-7f00-8a1b-0000000000e1', kasia.id, 3000, [kasia.id, ania.id, ola.id]),
@@ -132,7 +132,7 @@ describe('Repayments in balances', () => {
 
   it('keeps what was paid towards Expenses apart from the Repayments made and received', () => {
     expect(
-      balances(snapshot).map(({ paidForExpenses, repaymentsMade, repaymentsReceived }) => ({
+      balances(serverTrip).map(({ paidForExpenses, repaymentsMade, repaymentsReceived }) => ({
         paidForExpenses,
         repaymentsMade,
         repaymentsReceived,
@@ -146,7 +146,7 @@ describe('Repayments in balances', () => {
 
   it('still counts Repayments in what was paid, the share and the balance', () => {
     expect(
-      balances(snapshot).map(({ paid, share, balance }) => ({ paid, share, balance })),
+      balances(serverTrip).map(({ paid, share, balance }) => ({ paid, share, balance })),
     ).toEqual([
       { paid: rational(30n), share: rational(25n), balance: rational(5n) },
       { paid: rational(10n), share: rational(10n), balance: rational(0n) },
@@ -156,13 +156,13 @@ describe('Repayments in balances', () => {
 });
 
 describe('rounded balances', () => {
-  const rounded = (snapshot: Trip) =>
-    balances(snapshot).map(({ rounded }) => roundMoney(rounded, 'EUR').decimal);
+  const rounded = (serverTrip: Trip) =>
+    balances(serverTrip).map(({ rounded }) => roundMoney(rounded, 'EUR').decimal);
 
   it('add up to zero, the cent left over going to the lowest Participant id on a tie', () => {
     // 10.00 EUR for three: +6.666…, −3.333…, −3.333…, all with the same remainder. Ola,
     // with the highest id, comes first in the Trip but last on the tie.
-    const snapshot = {
+    const serverTrip = {
       ...trip,
       participants: [ola, kasia, ania],
       expenses: [
@@ -174,13 +174,13 @@ describe('rounded balances', () => {
       ],
     };
 
-    expect(rounded(snapshot)).toEqual(['-3.34', '6.67', '-3.33']);
+    expect(rounded(serverTrip)).toEqual(['-3.34', '6.67', '-3.33']);
   });
 
   it('give the cent left over to the largest remainder before the lowest id', () => {
     // Ola pays 0.01 EUR for all three and 0.01 EUR for Kasia and Ania. In cents: Kasia and
     // Ania −5/6 each (remainder 1/6), Ola +5/3 (remainder 2/3); one cent is left over.
-    const snapshot = {
+    const serverTrip = {
       ...trip,
       expenses: [
         expense('019a2b3c-4d5e-7f00-8a1b-0000000000e1', ola.id, 1, [kasia.id, ania.id, ola.id]),
@@ -188,7 +188,7 @@ describe('rounded balances', () => {
       ],
     };
 
-    expect(rounded(snapshot)).toEqual(['-0.01', '-0.01', '0.02']);
+    expect(rounded(serverTrip)).toEqual(['-0.01', '-0.01', '0.02']);
   });
 });
 

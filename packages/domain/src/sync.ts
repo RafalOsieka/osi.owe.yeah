@@ -5,10 +5,10 @@ import { rateEntrySchema } from './rates.ts';
 import {
   expenseVersionSchema,
   revisionSchema,
+  serverTripSchema,
   storedExpenseSchema,
-  tripSnapshotSchema,
   tripVersionSchema,
-} from './snapshot.ts';
+} from './server-trip.ts';
 import { tripSchema } from './trip.ts';
 
 /**
@@ -176,7 +176,7 @@ export const pullQuerySchema = z.object({
  * rate becomes fixed once its date is over.
  */
 export const pullResponseSchema = z.object({
-  trip: tripSnapshotSchema.nullable(),
+  trip: serverTripSchema.nullable(),
   rates: z.array(rateEntrySchema),
 });
 
