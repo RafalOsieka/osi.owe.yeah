@@ -40,8 +40,8 @@ const wholeTripSchema = storedTripSchema.extend({
 export type WholeTrip = z.infer<typeof wholeTripSchema>;
 
 /**
- * A Trip's Participants (`WholeTrip`'s) as the domain takes them: those taking part, and the
- * removed ones kept apart, each in the order they were added.
+ * A Trip's stored Participants split the way the domain takes them: those taking part, and
+ * the removed ones kept apart, each in the order they were added.
  */
 export function tripPeople(participants: readonly StoredParticipant[]): TripPeople {
   const shown = ({ id, name }: StoredParticipant) => ({ id, name });

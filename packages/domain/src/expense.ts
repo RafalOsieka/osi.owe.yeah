@@ -241,8 +241,9 @@ export function tripCurrencyLocked(expenses: readonly Expense[]): boolean {
 }
 
 /**
- * The rules an Expense must follow within its Trip; empty when it may be saved. The device
- * checks them before pushing and the server again before accepting. A Repayment's recipient
+ * The rules an Expense must follow within its Trip; empty when it may be saved. The Expense
+ * draft checks them as they are; a change being synced, with removed Participants counted
+ * (`expenseChangeProblems`). A Repayment's recipient
  * counts as its ticked Participant, and so does everyone with a Contribution. Every Line item
  * must fit together (`lineItemProblems`), and the Receipt discount may not take off more than
  * the goods come to after their Line discounts. The total may be negative. The Main payer

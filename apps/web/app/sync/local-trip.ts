@@ -2,7 +2,6 @@ import {
   restoredBy,
   type Edited,
   type Expense,
-  type ExpenseChange,
   type Participant,
   type RateEntry,
   type ServerTrip,
@@ -208,10 +207,7 @@ function withParticipant(
 }
 
 /** The Trip's people with the removed Participants an Expense change brings back (`restoredBy`). */
-function withRestored(
-  people: TripPeople,
-  change: Pick<ExpenseChange, 'expense' | 'deleted'>,
-): TripPeople {
+function withRestored(people: TripPeople, change: Parameters<typeof restoredBy>[1]): TripPeople {
   return restoredBy(people, change).reduce<TripPeople>(
     (restored, participant) => withParticipant(restored, participant, false),
     {
