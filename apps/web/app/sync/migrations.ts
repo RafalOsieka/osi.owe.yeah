@@ -120,12 +120,18 @@ export const toV6 = {
   tables: { forgotten: 'tripId' },
 } satisfies Migration;
 
+/** v6 → v7: the versions this device's Expense changes got, kept for every window of the app. */
+export const toV7 = {
+  trip: (trip) => ({ ...trip, acceptedVersions: {} }),
+  entry: (entry) => entry,
+} satisfies Migration;
+
 /**
  * The chain, oldest first: link `i` takes the store to version `i + 2`. A link is never
  * changed or removed once released, as a device may come back after any number of releases
  * (ADR 0002); a new schema appends one.
  */
-export const migrations: readonly Migration[] = [toV2, toV3, toV4, toV5, toV6];
+export const migrations: readonly Migration[] = [toV2, toV3, toV4, toV5, toV6, toV7];
 
 /** The kinds of Notice there are, to drop those of older versions of the store. */
 const noticeKinds = new Set<string>([

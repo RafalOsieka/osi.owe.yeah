@@ -63,6 +63,7 @@ async function setUp() {
     lastCurrency: null,
     notices: [],
     notifications: NOTIFICATIONS_OFF,
+    acceptedVersions: {},
   });
   return { db, server, tripId, notifications: createNotifications(db, server, uuidv7()) };
 }

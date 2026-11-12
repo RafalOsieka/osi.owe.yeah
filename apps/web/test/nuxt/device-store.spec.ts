@@ -28,6 +28,7 @@ describe('the device store', () => {
         lastCurrency: null,
         notices: [],
         notifications: { subscription: null, offered: false, registered: null },
+        acceptedVersions: {},
       },
     ]);
   });
@@ -70,6 +71,7 @@ describe('the device store', () => {
       lastCurrency: null,
       notices: [],
       notifications: { subscription: null, offered: false, registered: null },
+      acceptedVersions: {},
       snapshot: {
         ...v1Trip,
         version: 0,
