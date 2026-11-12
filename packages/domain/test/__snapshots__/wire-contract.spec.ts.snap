@@ -5175,7 +5175,7 @@ exports[`the wire contract > changes only together with a decision about the syn
                 "action": {
                   "enum": [
                     "added",
-                    "changed",
+                    "edited",
                     "deleted",
                     "restored",
                   ],

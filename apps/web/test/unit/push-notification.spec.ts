@@ -53,6 +53,17 @@ describe('notificationFor', () => {
     );
   });
 
+  it('says an edited Expense was changed', () => {
+    const edited = {
+      ...message,
+      latest: { ...message.latest, action: 'edited' },
+    } satisfies ActivityMessage;
+
+    expect(notify(edited, 0, 'en').options.body).toBe(
+      'Kasia changed “Lidl Rovinj”\nYour share +€15.00',
+    );
+  });
+
   it('collapses into one notification per Trip, counting the one already shown, with no Expense to open', () => {
     expect(notify({ ...message, count: 2 }, 1, 'en')).toEqual({
       title: '3 changes in Croatia 2026',

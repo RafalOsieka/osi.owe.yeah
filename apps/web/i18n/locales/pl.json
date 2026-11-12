@@ -618,7 +618,7 @@
   },
   "push": {
     "added": "Nowy wydatek: „{title}” ({author})",
-    "changed": "Zmieniony wydatek: „{title}” ({author})",
+    "edited": "Zmieniony wydatek: „{title}” ({author})",
     "deleted": "Usunięty wydatek: „{title}” ({author})",
     "restored": "Przywrócony wydatek: „{title}” ({author})",
     "someone": "ktoś",

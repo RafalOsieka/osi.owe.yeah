@@ -2,6 +2,7 @@ import { z } from 'zod';
 import { expenseIdSchema, expenseTitleSchema, type Expense } from './expense.ts';
 import { participantIdSchema, participantNameSchema } from './participant.ts';
 import { subtract, type Rational } from './rational.ts';
+import { REVISION_KINDS } from './server-trip.ts';
 import { balances, type TripExpenses } from './settle-up.ts';
 import { TRIP_CURRENCIES, tripIdSchema, tripNameSchema } from './trip.ts';
 
@@ -40,8 +41,8 @@ const decimalSchema = z.string().regex(/^-?\d+(\.\d+)?$/);
  * What a push notification about a Trip's activity carries: structured data the service
  * worker writes the text from in the device's language, so the server needs no i18n. `count`
  * is how many changes affecting the recipient it stands for; `latest` is the last of them:
- * who made it (`null` without a Claim), what it did, and how it moved what the recipient
- * paid and their share, rounded, in the Trip currency.
+ * who made it (`null` without a Claim), what it did (`revisionKind`), and how it moved what
+ * the recipient paid and their share, rounded, in the Trip currency.
  */
 export const activityMessageSchema = z.object({
   kind: z.literal('activity'),
@@ -53,7 +54,7 @@ export const activityMessageSchema = z.object({
     expenseId: expenseIdSchema,
     title: expenseTitleSchema,
     author: participantNameSchema.nullable(),
-    action: z.enum(['added', 'changed', 'deleted', 'restored']),
+    action: z.enum(REVISION_KINDS),
     paid: decimalSchema,
     share: decimalSchema,
   }),

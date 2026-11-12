@@ -618,7 +618,7 @@
   },
   "push": {
     "added": "{author} added “{title}”",
-    "changed": "{author} changed “{title}”",
+    "edited": "{author} changed “{title}”",
     "deleted": "{author} deleted “{title}”",
     "restored": "{author} restored “{title}”",
     "someone": "Someone",

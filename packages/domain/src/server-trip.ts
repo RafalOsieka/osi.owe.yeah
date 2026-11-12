@@ -45,6 +45,25 @@ export const revisionSchema = z.object({
 
 export type Revision = z.infer<typeof revisionSchema>;
 
+/** What a change did to its Expense, as History and Notifications both say it. */
+export const REVISION_KINDS = ['added', 'edited', 'deleted', 'restored'] as const;
+
+export type RevisionKind = (typeof REVISION_KINDS)[number];
+
+/**
+ * What the change that made a Revision did, from the Revision before it (`null` for the first)
+ * and whether the change left the Expense deleted. The first Revision is always `added`, even
+ * one deleted at once; a deletion is `deleted`, even over another deletion.
+ */
+export function revisionKind(
+  previous: Pick<Revision, 'deleted'> | null,
+  deleted: boolean,
+): RevisionKind {
+  if (!previous) return 'added';
+  if (deleted) return 'deleted';
+  return previous.deleted ? 'restored' : 'edited';
+}
+
 /** A Trip's version: goes up with every change the server accepts into the Trip. */
 export const tripVersionSchema = z.number().int().nonnegative();
 

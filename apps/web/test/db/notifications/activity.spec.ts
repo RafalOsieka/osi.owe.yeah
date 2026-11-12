@@ -3,6 +3,7 @@ import type {
   Expense,
   ExpenseChange,
   Participant,
+  RevisionKind,
   SyncChange,
   TripWithParticipants,
 } from '@osi/owe-yeah-domain';
@@ -67,7 +68,7 @@ function plainExpense(payer: Participant, ticked: Participant[], unitPrice = 245
 function activity(
   trip: TripWithParticipants,
   expense: Expense,
-  latest: { author: string | null; action: string; paid: string; share: string },
+  latest: { author: string | null; action: RevisionKind; paid: string; share: string },
   count = 1,
 ) {
   return {
@@ -176,6 +177,28 @@ describeDb('Notifications', () => {
     const deleted = { author: 'Ania', action: 'deleted', paid: '-30.00', share: '-15.00' };
     expect(pushService.payloadsOf(devices.kasia)).toEqual([activity(trip, lidl, deleted)]);
     expect(pushService.payloadsOf(devices.ania)).toHaveLength(1);
+  });
+
+  it('says an Expense was edited, or restored once deleted', async () => {
+    const { trip, token, kasia, ania, devices } = await subscribedTrip();
+    const lidl = plainExpense(kasia, [kasia, ania], 3000);
+    await push(trip.id, token, change(lidl, kasia.id));
+
+    const dearer = { ...lidl, lineItems: [{ ...lidl.lineItems[0]!, unitPrice: 4000 }] };
+    await push(trip.id, token, change(dearer, ania.id, 1));
+    await push(trip.id, token, { ...change(dearer, ania.id, 2), deleted: true });
+    await push(trip.id, token, change(dearer, ania.id, 3));
+
+    expect(pushService.payloadsOf(devices.kasia)).toEqual([
+      activity(trip, dearer, { author: 'Ania', action: 'edited', paid: '10.00', share: '5.00' }),
+      activity(trip, dearer, {
+        author: 'Ania',
+        action: 'deleted',
+        paid: '-40.00',
+        share: '-20.00',
+      }),
+      activity(trip, dearer, { author: 'Ania', action: 'restored', paid: '40.00', share: '20.00' }),
+    ]);
   });
 
   it('sends one Notification per device for a push, about the latest change in it', async () => {

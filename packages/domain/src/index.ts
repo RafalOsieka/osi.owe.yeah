@@ -6,11 +6,19 @@ export { fromMinor, minorUnits, parseMoney, roundMoney } from './money.ts';
 export {
   editedSchema,
   expenseVersionSchema,
+  revisionKind,
   revisionSchema,
   storedExpenseSchema,
   tripVersionSchema,
 } from './server-trip.ts';
-export type { Edited, Revision, ServerTrip, StoredExpense, TripPeople } from './server-trip.ts';
+export type {
+  Edited,
+  Revision,
+  RevisionKind,
+  ServerTrip,
+  StoredExpense,
+  TripPeople,
+} from './server-trip.ts';
 export { claimView, expenseShares, lineItemShares, receiptShares, spread } from './shares.ts';
 export { BREAKDOWN_PARTS, shareBreakdown, shareBreakdowns } from './breakdown.ts';
 export type { BreakdownPart, ShareBreakdown } from './breakdown.ts';
