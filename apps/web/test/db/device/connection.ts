@@ -35,9 +35,8 @@ function overTheWire<T>(schema: z.ZodType<T>, value: T): T {
  * lost response reaches the server, but its answer never comes back. Calls outside the sync
  * protocol reach the server module behind them too (rate lookups, push subscriptions), or are
  * stubs until they get a module of their own: Reminders. While `failing`, the server answers
- * pushes and pulls with an error instead. The
- * sync schema version is the HTTP adapter's check; an in-process device is always built from the
- * same code as the server.
+ * pushes and pulls with an error instead. The sync schema version is the HTTP adapter's
+ * check; an in-process device is always built from the same code as the server.
  */
 export class Connection implements Transport {
   offline = false;

@@ -1,8 +1,15 @@
 import { subscriptionRequestSchema } from '@osi/owe-yeah-domain';
 import { createError, defineEventHandler, getRouterParam, readValidatedBody } from 'nuxt/server';
 import { z } from 'zod';
+import type { Registration } from '../../../../notifications/subscriptions';
 import { subscriptions } from '../../../../trip';
 import { requireTrip } from '../../../../utils/trip-access';
+
+// The answer to each refused registration.
+const refusals = {
+  unknownPushService: { status: 400, statusText: 'Not a known push service' },
+  tripFull: { status: 409, statusText: 'Too many subscriptions in the Trip' },
+} satisfies Record<Exclude<Registration, 'registered'>, { status: number; statusText: string }>;
 
 /**
  * Registers a device's subscription to Notifications in the Trip (#41), or replaces it
@@ -17,11 +24,6 @@ export default defineEventHandler(async (event): Promise<void> => {
   if (!deviceId.success) throw createError({ status: 400, statusText: 'Invalid device id' });
   const request = await readValidatedBody(event, subscriptionRequestSchema);
   const registration = await subscriptions().register(trip.id, deviceId.data, request);
-  if (registration === 'unknownPushService') {
-    throw createError({ status: 400, statusText: 'Not a known push service' });
-  }
-  if (registration === 'tripFull') {
-    throw createError({ status: 409, statusText: 'Too many subscriptions in the Trip' });
-  }
+  if (registration !== 'registered') throw createError(refusals[registration]);
   event.res.status = 204;
 });

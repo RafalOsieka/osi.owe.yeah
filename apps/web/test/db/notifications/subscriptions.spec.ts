@@ -46,7 +46,8 @@ describeDb('Notification subscriptions', () => {
     expect(registered.filter((answer) => answer === 'registered')).toHaveLength(200);
     expect(registered.filter((answer) => answer === 'tripFull')).toHaveLength(1);
     // A device it has now says it is Ania.
-    const device = devices.find((_, index) => registered[index] === 'registered') ?? '';
+    const device = devices.find((_, index) => registered[index] === 'registered');
+    if (!device) throw new Error('No device was registered');
     expect(await subscriptions.register(tripId, device, registration(device, ania))).toBe(
       'registered',
     );

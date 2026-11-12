@@ -59,7 +59,7 @@ describeDb('Notifications', () => {
   const vapid = { ...webpush.generateVAPIDKeys(), subject: 'mailto:test@example.com' };
   let sync: TripSync;
   // What the tests register devices with: at any endpoint, as the plain http stand-in needs.
-  let subscriptions: Subscriptions;
+  let registering: Subscriptions;
 
   /**
    * The Trip sync with Notifications, sent to any endpoint, as the plain http stand-in needs,
@@ -82,7 +82,7 @@ describeDb('Notifications', () => {
 
   beforeAll(() => {
     sync = syncWith(true);
-    subscriptions = createSubscriptions(db(), { anyEndpoint: true });
+    registering = createSubscriptions(db(), { anyEndpoint: true });
   });
 
   /** Pushes changes, then waits until every device they concern has been sent its Notification. */
@@ -103,7 +103,7 @@ describeDb('Notifications', () => {
   ): Promise<void> {
     const subscription = pushService.subscription(device);
     const request = { ...subscription, keys: keys ?? subscription.keys, claimId };
-    expect(await subscriptions.register(tripId, device, request)).toBe('registered');
+    expect(await registering.register(tripId, device, request)).toBe('registered');
   }
 
   /**
@@ -237,7 +237,7 @@ describeDb('Notifications', () => {
 
     expect(warn).toHaveBeenCalledTimes(2);
     expect(pushService.payloadsOf(devices.ola)).toHaveLength(2);
-    const left = await subscriptions.ofTrip(trip.id);
+    const left = await registering.ofTrip(trip.id);
     expect(left.map(({ deviceId }) => deviceId).toSorted()).toEqual(
       [devices.kasia, devices.ola].toSorted(),
     );
