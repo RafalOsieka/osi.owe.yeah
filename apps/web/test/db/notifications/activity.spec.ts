@@ -206,6 +206,22 @@ describeDb('Notifications', () => {
     ]);
   });
 
+  it('sends at most 10 Notifications at a time, and all of them in the end', async () => {
+    const { trip, token, kasia, ania, devices } = await subscribedTrip();
+    const more = Array.from({ length: 24 }, () => uuidv7());
+    for (const device of more) await subscribe(trip.id, device, ania.id);
+    pushService.answerAfter(50);
+    onTestFinished(() => pushService.answerAfter(0));
+    pushService.mostAtOnce();
+
+    await push(trip.id, token, change(plainExpense(kasia, [kasia, ania]), kasia.id));
+
+    expect(pushService.mostAtOnce()).toBeLessThanOrEqual(10);
+    for (const device of [devices.ania, ...more]) {
+      expect(pushService.payloadsOf(device)).toHaveLength(1);
+    }
+  });
+
   it('prunes a subscription its push service says is gone', async () => {
     const { trip, token, kasia, ania, ola, devices } = await subscribedTrip();
     pushService.gone(devices.ania);

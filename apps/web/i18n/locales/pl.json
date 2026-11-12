@@ -450,7 +450,8 @@
       "chargedWithoutTotal": "pobrana kwota wymaga sumy różnej od zera.",
       "manualRateToOwnCurrency": "kurs ręczny musi przeliczać na inną walutę niż waluta wydatku.",
       "malformed": "serwer nie mógł odczytać tej zmiany.",
-      "tooManyParticipants": "przywraca kogoś usuniętego z podróży, która ma już 100 uczestników."
+      "tooManyParticipants": "przywraca kogoś usuniętego z podróży, która ma już 100 uczestników.",
+      "tooManyExpenses": "podróż ma już 2000 wydatków, licząc usunięte, czyli najwięcej, ile może mieć."
     },
     "pullToRefresh": "Pociągnij, aby zsynchronizować",
     "releaseToRefresh": "Puść, aby zsynchronizować",

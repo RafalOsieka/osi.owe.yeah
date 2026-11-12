@@ -105,7 +105,7 @@ docker build --target migrator -t owe-yeah-migrator .
 The osieka.dev instance runs both from GHCR behind Cloudflare Tunnel, pinned by digest on a `deploy` branch that the host polls ([ADR 0005](docs/adr/0005-environments-pull-digest-pinned-images-from-git.md)). [`deploy/osieka-dev/`](deploy/osieka-dev/README.md) holds its compose file and how it is set up and operated. To run your own instance, copy and adapt it.
 
 > [!IMPORTANT]
-> The rate limiter keys clients by the `CF-Connecting-IP` header, which Cloudflare sets to the real client IP. It never reads `X-Forwarded-For`, which a client can forge. Without Cloudflare in front, every client shares one limit for the whole app. A proxy of your own can set `CF-Connecting-IP` to the client address it sees (nginx: `proxy_set_header CF-Connecting-IP $remote_addr;`), as long as it overwrites any value the client sent.
+> The rate limiter, and the limit of 10 new Trips an hour per client, key clients by the `CF-Connecting-IP` header, which Cloudflare sets to the real client IP. They never read `X-Forwarded-For`, which a client can forge. Without Cloudflare in front, every client shares one limit for the whole app. A proxy of your own can set `CF-Connecting-IP` to the client address it sees (nginx: `proxy_set_header CF-Connecting-IP $remote_addr;`), as long as it overwrites any value the client sent.
 
 Both images carry the notices their contents' licenses ask for in `/app/notices`: the repo's `LICENSE`, `THIRD-PARTY-NOTICES.md` for the bundled npm packages, and `SOURCE-OFFER.md` for the Alpine packages (built by `docker/`). The offer is osieka.dev's, so replace it before publishing images of your own. The app serves its browser bundle's licenses at `/licenses.txt`.
 

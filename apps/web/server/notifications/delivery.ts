@@ -9,6 +9,9 @@ import { isKnownPushService } from './push-services';
 // brings the change anyway.
 const TTL_SECONDS = 24 * 60 * 60;
 
+// How many notifications are on their way at once, however many subscriptions a Trip has.
+const SENDING_AT_ONCE = 10;
+
 /** The server's VAPID keys and subject, which every notification is signed with. */
 export type VapidDetails = webpush.VapidKeys & { subject: string };
 
@@ -21,10 +24,11 @@ export type PushSettings = { vapid: VapidDetails; anyEndpoint: boolean };
 type NotificationSubscriptionRow = typeof notificationSubscriptions.$inferSelect;
 
 /**
- * Sends each subscription the message `messageOf` writes for it (`null`: none), all at once,
- * then deletes from `db` those whose push service answers 404 or 410, as gone. A subscription
- * off the known push services gets nothing (unless `anyEndpoint`), so rows stored before the
- * subscription handler checked endpoints are never sent to. Nothing is retried. Never rejects.
+ * Sends each subscription the message `messageOf` writes for it (`null`: none), at most
+ * `SENDING_AT_ONCE` at a time, then deletes from `db` those whose push service answers 404 or
+ * 410, as gone. A subscription off the known push services gets nothing (unless
+ * `anyEndpoint`), so rows stored before the subscription handler checked endpoints are never
+ * sent to. Nothing is retried. Never rejects.
  */
 export async function deliver(
   db: Database,
@@ -33,16 +37,14 @@ export async function deliver(
   { vapid, anyEndpoint }: PushSettings,
 ): Promise<void> {
   const gone = new Set<string>();
-  await Promise.allSettled(
-    subscriptions.map(async (subscription) => {
-      const { endpoint, p256dh, auth } = subscription;
-      if (!anyEndpoint && !isKnownPushService(endpoint)) return;
-      const message = messageOf(subscription);
-      if (!message) return;
-      const status = await send({ endpoint, keys: { p256dh, auth } }, message, vapid);
-      if (status === 404 || status === 410) gone.add(endpoint);
-    }),
-  );
+  await eachAtMost(SENDING_AT_ONCE, subscriptions, async (subscription) => {
+    const { endpoint, p256dh, auth } = subscription;
+    if (!anyEndpoint && !isKnownPushService(endpoint)) return;
+    const message = messageOf(subscription);
+    if (!message) return;
+    const status = await send({ endpoint, keys: { p256dh, auth } }, message, vapid);
+    if (status === 404 || status === 410) gone.add(endpoint);
+  });
   if (gone.size === 0) return;
   try {
     await db
@@ -51,6 +53,22 @@ export async function deliver(
   } catch (error) {
     console.warn('Gone notification subscriptions could not be pruned', error);
   }
+}
+
+/**
+ * Runs `task` for every item, at most `limit` at a time, as workers that share one iterator.
+ * A task that rejects is skipped; never rejects itself.
+ */
+async function eachAtMost<T>(
+  limit: number,
+  items: readonly T[],
+  task: (item: T) => Promise<void>,
+): Promise<void> {
+  const queue = items.values();
+  const worker = async () => {
+    for (const item of queue) await task(item).catch(() => {});
+  };
+  await Promise.all(Array.from({ length: Math.min(limit, items.length) }, worker));
 }
 
 /**
