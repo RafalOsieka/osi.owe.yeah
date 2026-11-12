@@ -17,6 +17,7 @@ import {
   type TripChange,
   type TripWithParticipants,
 } from '@osi/owe-yeah-domain';
+import { sql } from 'drizzle-orm';
 import { v7 as uuidv7 } from 'uuid';
 import { afterAll, beforeAll, expect, it, onTestFinished, vi } from 'vitest';
 import {
@@ -654,6 +655,33 @@ describeDb('Trip sync', () => {
     const newer = await pull(trip.id, token, version);
     expect(newer.trip).toMatchObject({ id: trip.id, expenses: [{ title: 'Lidl Rovinj' }] });
     expect(newer.trip?.version).toBeGreaterThan(version);
+  });
+
+  it('pulls the Trip as it was when the pull began, even when a change lands while it reads', async () => {
+    const { trip, token } = await tripWithKasiaAndAnia();
+    const before = await pulled(trip.id, token);
+
+    let pulling: Promise<ServerTrip> | undefined;
+    await db().transaction(async (tx) => {
+      // The pull can start reading the Trip, but waits here before it reads the Participants.
+      await tx.execute(sql`lock table ${participantRows} in access exclusive mode`);
+      const [holder] = await tx.execute<{ pid: number }>(sql`select pg_backend_pid() as pid`);
+      pulling = pulled(trip.id, token);
+      await eventually(async () => {
+        const [waiting] = await db().execute<{ count: number }>(
+          sql`select count(*)::int as count from pg_stat_activity
+              where ${holder?.pid}::int = any(pg_blocking_pids(pid))`,
+        );
+        expect(waiting?.count).toBeGreaterThan(0);
+      });
+      // A Participant added while the pull waits, committed before it reads on.
+      await tx
+        .insert(participantRows)
+        .values({ ...participant('Zofia'), tripId: trip.id, removed: false });
+    });
+
+    expect(await pulling).toEqual(before);
+    expect(await pulledParticipants(trip.id, token)).toHaveLength(3);
   });
 
   it('changes the Trip currency without rewriting an Expense in another, converting it at the new pair', async () => {
