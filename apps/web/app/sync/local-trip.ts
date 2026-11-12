@@ -34,7 +34,7 @@ export type LocalExpense = Expense & {
    * top of it.
    */
   revision: number | null;
-  /** What a new edit of the Expense is based on: for the device, which saves it. */
+  /** What a new edit of the Expense is based on, for the device's save; screens read `revision`. */
   base: ExpenseBase;
   /** `null` once the server has the Expense as shown. */
   unsynced: Unsynced | null;

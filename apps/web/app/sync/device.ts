@@ -100,6 +100,7 @@ export type Reminded = 'sent' | ReminderRefusal['refused'];
 
 /** A Trip opened on this device, as a screen shows it. */
 export type DeviceTripView = {
+  /** The Trip's id. */
   id: string;
   /** The Trip with this device's changes on top; `null` before a joined Trip's first pull. */
   trip: LocalTrip | null;
@@ -110,7 +111,9 @@ export type DeviceTripView = {
    * keeps the name it was made with); `null` without a Claim.
    */
   claim: Participant | null;
+  /** What sync has to tell about this device's changes, until dismissed. */
   notices: Notice[];
+  /** The Trip's push notifications on this device. */
   notifications: DeviceNotifications;
   /** The currency of the Expense last saved on this device, which a new Expense starts in. */
   lastCurrency: Currency | null;
@@ -666,10 +669,10 @@ export function createDevice(db: DeviceDb, transport: Transport, deviceId: strin
    * device brings them back, and notes it so the device is asked "Who are you?" again.
    */
   async function dropRemovedClaim(tripId: string): Promise<void> {
-    const claim = (await db.trips.get(tripId))?.claim;
-    if (!claim) return;
-    const removed = (await read(tripId))?.trip?.removedParticipants ?? [];
-    if (!removed.some(({ id }) => id === claim.id)) return;
+    const view = await read(tripId);
+    // A removed Participant has no current name, so the Claim is as it was made.
+    const claim = view?.claim;
+    if (!claim || !view.trip?.removedParticipants.some(({ id }) => id === claim.id)) return;
     await db.trips.update(tripId, { claim: null });
     await notify(tripId, { kind: 'claimRemoved', participant: claim });
   }

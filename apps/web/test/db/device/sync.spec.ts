@@ -240,6 +240,17 @@ describeDb('the device, syncing with the real Trip sync', () => {
     );
   });
 
+  it('gives the Trip link to pass on once the server has the Trip', async () => {
+    const { device, croatia, connection, trip, token } = await setUp({ offline: true });
+    // Before that, the link would open nothing.
+    expect((await device.read(trip.id))?.link).toBe(null);
+
+    connection.offline = false;
+    await croatia.sync();
+
+    expect((await device.read(trip.id))?.link).toBe(`/trips/${trip.id}#${token}`);
+  });
+
   it('sends a saved Expense, and then its deletion, to the server by itself', async () => {
     const { device, croatia, trip, kasia } = await setUp();
     const lidl = plainExpense(kasia, [kasia]);

@@ -29,7 +29,7 @@ const trip = computed(() => view.value?.trip);
 const claim = computed(() => view.value?.claim ?? null);
 // Nothing to show: the Trip isn't on the device and its link doesn't work, or couldn't be
 // tried (e.g. no signal); or it is, but has never been pulled.
-const onDevice = known !== undefined || joined === 'joined';
+const onDevice = known !== undefined || joined === 'joined' || joined === 'known';
 const invalidLink = !onDevice && joined !== 'unreachable';
 const nothingToShow = computed(() => !onDevice || view.value?.trip === null);
 
