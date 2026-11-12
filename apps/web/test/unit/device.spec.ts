@@ -3,11 +3,11 @@ import type { Expense, TripWithParticipants } from '@osi/owe-yeah-domain';
 import { v7 as uuidv7 } from 'uuid';
 import { describe, expect, it } from 'vitest';
 import { DeviceDb } from '../../app/sync/db';
-import { createDevice, type Transport } from '../../app/sync/device';
+import { createDevice, OfflineError, type Transport } from '../../app/sync/device';
 
 // The device's sync is tested against the real Trip sync (`test/db/device`, ADR 0004); these
 // tests never reach a server, as with no signal at all.
-const noSignal = () => Promise.reject(new Error('offline'));
+const noSignal = () => Promise.reject(new OfflineError());
 const unreachable: Transport = {
   push: noSignal,
   pull: noSignal,

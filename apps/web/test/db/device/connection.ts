@@ -33,13 +33,13 @@ function overTheWire<T>(schema: z.ZodType<T>, value: T): T {
  * lost response reaches the server, but its answer never comes back. Calls outside the sync
  * protocol reach the server module behind them too (rate lookups), or are stubs until they
  * get a module of their own: push subscriptions, kept here as the server would have them, and
- * Reminders. While `failing`, the server answers the sync calls with an error instead. The sync
- * schema version is the HTTP adapter's check; an in-process device is always built from the
+ * Reminders. While `failing`, the server answers pushes and pulls with an error instead. The
+ * sync schema version is the HTTP adapter's check; an in-process device is always built from the
  * same code as the server.
  */
 export class Connection implements Transport {
   offline = false;
-  /** Whether the server answers the calls a sync makes with an error, as a 5xx would. */
+  /** Whether the server answers pushes and pulls with an error, as a 5xx would. */
   failing = false;
   /** How many of the next pushes reach the server but lose their answer on the way back. */
   losePushResponses = 0;
@@ -121,14 +121,12 @@ export class Connection implements Transport {
     request: SubscriptionRequest,
   ): Promise<void> {
     this.throwIfOffline();
-    this.throwIfFailing();
     this.subscribeCalls++;
     this.subscriptions.set(tripId, request);
   }
 
   async unsubscribe(tripId: string): Promise<void> {
     this.throwIfOffline();
-    this.throwIfFailing();
     this.subscriptions.delete(tripId);
   }
 

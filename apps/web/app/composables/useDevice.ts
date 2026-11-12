@@ -55,24 +55,18 @@ export const httpTransport: Transport = {
     return revisionsResponseSchema.parse(response).revisions;
   },
   async subscribe(tripId, token, deviceId, request) {
-    const response = await syncApi
-      .raw(`/api/trips/${tripId}/subscriptions/${deviceId}`, {
-        method: 'PUT',
-        headers: { [TRIP_TOKEN_HEADER]: token },
-        body: request,
-        ignoreResponseError: true,
-      })
-      .catch(offline);
-    if (!response.ok) throw new Error(`Subscribe failed with ${response.status}`);
+    await syncApi(`/api/trips/${tripId}/subscriptions/${deviceId}`, {
+      method: 'PUT',
+      headers: { [TRIP_TOKEN_HEADER]: token },
+      body: request,
+    });
   },
   async unsubscribe(tripId, token, deviceId) {
-    const response = await syncApi
-      .raw(`/api/trips/${tripId}/subscriptions/${deviceId}`, {
-        method: 'DELETE',
-        headers: { [TRIP_TOKEN_HEADER]: token },
-        ignoreResponseError: true,
-      })
-      .catch(offline);
+    const response = await syncApi.raw(`/api/trips/${tripId}/subscriptions/${deviceId}`, {
+      method: 'DELETE',
+      headers: { [TRIP_TOKEN_HEADER]: token },
+      ignoreResponseError: true,
+    });
     if (!response.ok && response.status !== 401) {
       throw new Error(`Unsubscribe failed with ${response.status}`);
     }

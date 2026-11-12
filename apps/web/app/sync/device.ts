@@ -56,9 +56,8 @@ export class OfflineError extends Error {
 
 /**
  * How the device reaches the sync API. Every call rejects when no answer comes back (e.g. no
- * signal), with an `OfflineError` from the calls a sync makes (`push`, `pull`, `subscribe`,
- * `unsubscribe`), which reject with another error for an answer they can't take, such as a
- * 5xx; `pull` answers `invalidLink` when the server refuses the token.
+ * signal), `push` and `pull` with an `OfflineError`, and with another error for an answer they
+ * can't take, such as a 5xx; `pull` answers `invalidLink` when the server refuses the token.
  */
 export type Transport = {
   push(tripId: string, token: string, request: PushRequest): Promise<PushResponse>;
@@ -374,6 +373,7 @@ export function createDevice(db: DeviceDb, transport: Transport, deviceId: strin
           await db.outbox.where('tripId').equals(tripId).delete();
           await db.trips.delete(tripId);
         });
+        failures.delete(tripId);
       },
 
       /**
@@ -619,8 +619,9 @@ export function createDevice(db: DeviceDb, transport: Transport, deviceId: strin
     } else {
       await db.trips.update(tripId, { rates });
     }
-    // Last: a Trip created offline exists on the server only after its push.
-    await notifications.reconcile(tripId);
+    // Last: a Trip created offline exists on the server only after its push. Its failure is no
+    // failure of the Trip's sync: a push service the server refuses would never clear it.
+    await notifications.reconcile(tripId).catch(() => {});
   }
 
   /**
