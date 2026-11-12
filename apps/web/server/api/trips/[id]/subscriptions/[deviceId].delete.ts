@@ -1,8 +1,6 @@
-import { and, eq } from 'drizzle-orm';
 import { createError, defineEventHandler, getRouterParam } from 'nuxt/server';
 import { z } from 'zod';
-import { getDb } from '../../../../db';
-import { notificationSubscriptions } from '../../../../db/schema';
+import { subscriptions } from '../../../../trip';
 import { requireTrip } from '../../../../utils/trip-access';
 
 /**
@@ -14,13 +12,6 @@ export default defineEventHandler(async (event): Promise<void> => {
   const trip = await requireTrip(event);
   const deviceId = z.uuid().safeParse(getRouterParam(event, 'deviceId'));
   if (!deviceId.success) throw createError({ status: 400, statusText: 'Invalid device id' });
-  await getDb()
-    .delete(notificationSubscriptions)
-    .where(
-      and(
-        eq(notificationSubscriptions.tripId, trip.id),
-        eq(notificationSubscriptions.deviceId, deviceId.data),
-      ),
-    );
+  await subscriptions().remove(trip.id, deviceId.data);
   event.res.status = 204;
 });

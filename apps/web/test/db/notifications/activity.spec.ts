@@ -1,10 +1,18 @@
-import type { Expense, RevisionKind, SyncChange, TripWithParticipants } from '@osi/owe-yeah-domain';
-import { eq } from 'drizzle-orm';
+import type {
+  Expense,
+  PushKeys,
+  RevisionKind,
+  SyncChange,
+  TripWithParticipants,
+} from '@osi/owe-yeah-domain';
 import { v7 as uuidv7 } from 'uuid';
 import { afterAll, beforeAll, expect, it, onTestFinished, vi } from 'vitest';
 import webpush from 'web-push';
-import { notificationSubscriptions } from '../../../server/db/schema';
 import { createNotifications } from '../../../server/notifications/activity';
+import {
+  createSubscriptions,
+  type Subscriptions,
+} from '../../../server/notifications/subscriptions';
 import { createRates } from '../../../server/trip/rates';
 import { createTripStore } from '../../../server/trip/store';
 import { createTripSync, type Notifier, type TripSync } from '../../../server/trip/sync';
@@ -50,6 +58,8 @@ describeDb('Notifications', () => {
   const sending: Promise<void>[] = [];
   const vapid = { ...webpush.generateVAPIDKeys(), subject: 'mailto:test@example.com' };
   let sync: TripSync;
+  // What the tests register devices with: at any endpoint, as the plain http stand-in needs.
+  let subscriptions: Subscriptions;
 
   /**
    * The Trip sync with Notifications, sent to any endpoint, as the plain http stand-in needs,
@@ -58,7 +68,8 @@ describeDb('Notifications', () => {
   function syncWith(anyEndpoint: boolean): TripSync {
     const store = createTripStore(db());
     const rates = createRates(db(), 'http://127.0.0.1:9');
-    const notifications = createNotifications(db(), store, rates, { vapid, anyEndpoint });
+    const sendingTo = createSubscriptions(db(), { anyEndpoint });
+    const notifications = createNotifications(store, rates, sendingTo, vapid);
     const notifier: Notifier = {
       notifyAffected(tripId, applied) {
         const sent = notifications.notifyAffected(tripId, applied);
@@ -71,6 +82,7 @@ describeDb('Notifications', () => {
 
   beforeAll(() => {
     sync = syncWith(true);
+    subscriptions = createSubscriptions(db(), { anyEndpoint: true });
   });
 
   /** Pushes changes, then waits until every device they concern has been sent its Notification. */
@@ -79,12 +91,19 @@ describeDb('Notifications', () => {
     await Promise.all(sending.splice(0));
   }
 
-  /** Subscribes `device` to the Trip's Notifications, for the Participant it claims. */
-  async function subscribe(tripId: string, device: string, claimId: string): Promise<void> {
-    const { endpoint, keys } = pushService.subscription(device);
-    await db()
-      .insert(notificationSubscriptions)
-      .values({ tripId, deviceId: device, endpoint, ...keys, claimId });
+  /**
+   * Subscribes `device` to the Trip's Notifications, for the Participant it claims, with keys
+   * the stand-in decrypts with, or with `keys`.
+   */
+  async function subscribe(
+    tripId: string,
+    device: string,
+    claimId: string,
+    keys?: PushKeys,
+  ): Promise<void> {
+    const subscription = pushService.subscription(device);
+    const request = { ...subscription, keys: keys ?? subscription.keys, claimId };
+    expect(await subscriptions.register(tripId, device, request)).toBe('registered');
   }
 
   /**
@@ -161,10 +180,7 @@ describeDb('Notifications', () => {
   it("follows a device's Claim once it subscribes with another", async () => {
     const { trip, token, kasia, ania, devices } = await subscribedTrip();
     // Ania's device now says it is Kasia: Kasia's own changes are not news to it.
-    await db()
-      .update(notificationSubscriptions)
-      .set({ claimId: kasia.id })
-      .where(eq(notificationSubscriptions.deviceId, devices.ania));
+    await subscribe(trip.id, devices.ania, kasia.id);
 
     await push(trip.id, token, change(plainExpense(kasia, [kasia, ania]), null, kasia.id));
     const forKasia = plainExpense(ania, [kasia]);
@@ -204,18 +220,15 @@ describeDb('Notifications', () => {
 
   it('warns about a stored subscription its keys cannot encrypt for, and prunes it', async () => {
     const { trip, token, kasia, ania, ola, devices } = await subscribedTrip();
-    // Stored before registration checked the keys' lengths.
-    await db()
-      .update(notificationSubscriptions)
-      .set({ p256dh: 'p256dh', auth: 'auth' })
-      .where(eq(notificationSubscriptions.deviceId, devices.ania));
+    // Stored before registration checked the keys' lengths, which its request schema does.
+    await subscribe(trip.id, devices.ania, ania.id, { p256dh: 'p256dh', auth: 'auth' });
     // Of the right length, but no point on the curve: registration takes it.
     const offCurve = uuidv7();
-    await subscribe(trip.id, offCurve, ola.id);
-    await db()
-      .update(notificationSubscriptions)
-      .set({ p256dh: Buffer.alloc(65).toString('base64url') })
-      .where(eq(notificationSubscriptions.deviceId, offCurve));
+    const { auth } = pushService.subscription(offCurve).keys;
+    await subscribe(trip.id, offCurve, ola.id, {
+      p256dh: Buffer.alloc(65).toString('base64url'),
+      auth,
+    });
     const warn = vi.spyOn(console, 'warn').mockImplementation(() => {});
     onTestFinished(() => warn.mockRestore());
 
@@ -224,10 +237,7 @@ describeDb('Notifications', () => {
 
     expect(warn).toHaveBeenCalledTimes(2);
     expect(pushService.payloadsOf(devices.ola)).toHaveLength(2);
-    const left = await db()
-      .select({ deviceId: notificationSubscriptions.deviceId })
-      .from(notificationSubscriptions)
-      .where(eq(notificationSubscriptions.tripId, trip.id));
+    const left = await subscriptions.ofTrip(trip.id);
     expect(left.map(({ deviceId }) => deviceId).toSorted()).toEqual(
       [devices.kasia, devices.ola].toSorted(),
     );

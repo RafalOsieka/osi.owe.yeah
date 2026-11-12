@@ -14,6 +14,10 @@ import { DeviceDb } from '../../../app/sync/db';
 import { createDevice, OfflineError } from '../../../app/sync/device';
 import { toExpense } from '../../../app/sync/local-trip';
 import { changes } from '../../../server/db/schema';
+import {
+  createSubscriptions,
+  type Subscriptions,
+} from '../../../server/notifications/subscriptions';
 import { createRates, type Rates } from '../../../server/trip/rates';
 import { createTripStore, type TripStore } from '../../../server/trip/store';
 import { createTripSync, type TripSync } from '../../../server/trip/sync';
@@ -51,8 +55,9 @@ function croatia2026() {
 
 /** The browser's push subscription, as the device keeps it while notifications are on. */
 const browserSubscription = {
-  endpoint: 'https://push.example.com/abc',
-  keys: { p256dh: 'p256dh', auth: 'auth' },
+  endpoint: 'https://fcm.googleapis.com/fcm/send/abc',
+  // Of the lengths a browser's keys have.
+  keys: { p256dh: Buffer.alloc(65, 4).toString('base64url'), auth: 'A'.repeat(22) },
 };
 
 /**
@@ -68,21 +73,32 @@ describeDb('the device, syncing with the real Trip sync', () => {
   let sync: TripSync;
   let store: TripStore;
   let rates: Rates;
+  let subscriptions: Subscriptions;
 
   beforeAll(() => {
     store = createTripStore(db());
     rates = createRates(db(), frankfurter.url);
+    subscriptions = createSubscriptions(db(), { anyEndpoint: false });
     // Notifications are no part of these tests: nobody hears of the applied changes.
     sync = createTripSync(db(), store, rates, {
       async notifyAffected() {},
     });
   });
 
+  /** The push subscription the server has of `deviceId` in the Trip, as the device sent it. */
+  async function subscriptionOf(tripId: string, deviceId: string) {
+    const kept = await subscriptions.ofTrip(tripId);
+    const subscription = kept.find((device) => device.deviceId === deviceId);
+    if (!subscription) return undefined;
+    const { endpoint, p256dh, auth, claimId } = subscription;
+    return { endpoint, keys: { p256dh, auth }, claimId };
+  }
+
   /** A device of its own, with its own store, connected to the server. */
   function newDevice() {
     const deviceId = uuidv7();
     const deviceDb = new DeviceDb(uuidv7());
-    const connection = new Connection(sync, store, rates);
+    const connection = new Connection(sync, store, rates, subscriptions);
     return { device: createDevice(deviceDb, connection, deviceId), deviceDb, connection, deviceId };
   }
 
@@ -103,7 +119,7 @@ describeDb('the device, syncing with the real Trip sync', () => {
 
   /** Another window of `kasias`' device: the same device store, with a sync of its own. */
   function anotherWindow({ deviceDb, deviceId }: { deviceDb: DeviceDb; deviceId: string }) {
-    const connection = new Connection(sync, store, rates);
+    const connection = new Connection(sync, store, rates, subscriptions);
     return createDevice(new DeviceDb(deviceDb.name), connection, deviceId);
   }
 
@@ -294,26 +310,26 @@ describeDb('the device, syncing with the real Trip sync', () => {
   });
 
   it('gives the server its push subscription by itself as notifications go on, its Claim changes and they go off', async () => {
-    const { croatia, connection, trip, kasia, ania } = await setUp();
+    const { croatia, deviceId, trip, kasia, ania } = await setUp();
 
     await croatia.turnOnNotifications(browserSubscription);
-    await eventually(() =>
-      expect(connection.subscriptions.get(trip.id)).toEqual({
+    await eventually(async () =>
+      expect(await subscriptionOf(trip.id, deviceId)).toEqual({
         ...browserSubscription,
         claimId: kasia.id,
       }),
     );
 
     await croatia.claim(ania);
-    await eventually(() =>
-      expect(connection.subscriptions.get(trip.id)).toEqual({
+    await eventually(async () =>
+      expect(await subscriptionOf(trip.id, deviceId)).toEqual({
         ...browserSubscription,
         claimId: ania.id,
       }),
     );
 
     await croatia.turnOffNotifications();
-    await eventually(() => expect(connection.subscriptions.has(trip.id)).toBe(false));
+    await eventually(async () => expect(await subscriptionOf(trip.id, deviceId)).toBeUndefined());
   });
 
   it('ends an edit started before a pull brought someone else’s version in a Conflict', async () => {
@@ -987,25 +1003,28 @@ describeDb('the device, syncing with the real Trip sync', () => {
     await reopened.trip(trip.id).sync();
     expect(connection.subscribeCalls).toBe(2);
 
-    const renewed = { ...browserSubscription, endpoint: 'https://push.example.com/renewed' };
+    const renewed = {
+      ...browserSubscription,
+      endpoint: 'https://fcm.googleapis.com/fcm/send/renewed',
+    };
     await reopened.renewSubscription(renewed);
-    await eventually(() =>
-      expect(connection.subscriptions.get(trip.id)).toEqual({ ...renewed, claimId: kasia.id }),
+    await eventually(async () =>
+      expect(await subscriptionOf(trip.id, deviceId)).toEqual({ ...renewed, claimId: kasia.id }),
     );
   });
 
   it('removes the push subscription of a Trip forgotten offline once it is back online', async () => {
-    const { device, croatia, connection, trip } = await setUp();
+    const { device, croatia, connection, deviceId, trip } = await setUp();
     await croatia.turnOnNotifications(browserSubscription);
     await croatia.sync();
 
     connection.offline = true;
     await croatia.forget();
     await device.syncForgotten();
-    expect(connection.subscriptions.has(trip.id)).toBe(true);
+    expect(await subscriptionOf(trip.id, deviceId)).toBeDefined();
 
     connection.offline = false;
     await device.syncForgotten();
-    expect(connection.subscriptions.has(trip.id)).toBe(false);
+    expect(await subscriptionOf(trip.id, deviceId)).toBeUndefined();
   });
 });

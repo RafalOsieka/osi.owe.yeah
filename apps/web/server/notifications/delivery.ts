@@ -1,10 +1,7 @@
 import { ECDH } from 'node:crypto';
 import { pushKeysSchema, type PushKeys, type PushMessage } from '@osi/owe-yeah-domain';
-import { and, eq, inArray, or } from 'drizzle-orm';
 import webpush from 'web-push';
-import type { Database } from '../db/client';
-import { notificationSubscriptions } from '../db/schema';
-import { isKnownPushService } from './push-services';
+import type { NotificationSubscription, Subscriptions } from './subscriptions';
 
 // How long a push service keeps a notification for a device that is offline. The next pull
 // brings the change anyway.
@@ -17,32 +14,23 @@ const SENDING_AT_ONCE = 10;
 export type VapidDetails = webpush.VapidKeys & { subject: string };
 
 /**
- * What Notifications and Reminders are sent with: the server's VAPID keys, and whether they go
- * to any endpoint (`notificationsAnyEndpoint`, in tests only) or to known push services only.
- */
-export type PushSettings = { vapid: VapidDetails; anyEndpoint: boolean };
-
-type NotificationSubscriptionRow = typeof notificationSubscriptions.$inferSelect;
-
-/**
- * Sends each subscription the message `messageOf` writes for it (`null`: none), at most
- * `SENDING_AT_ONCE` at a time, then deletes from `db` those whose push service answers 404 or
- * 410, as gone, and those whose keys can't encrypt a message (`encryptionKeys`), with a
- * warning each. A subscription off the known push services gets nothing (unless
- * `anyEndpoint`), so rows stored before the subscription handler checked endpoints are never
- * sent to. Nothing is retried. Never rejects.
+ * Sends each of `to` the message `messageOf` writes for it (`null`: none), signed with
+ * `vapid`, at most `SENDING_AT_ONCE` at a time, then prunes from `subscriptions` those whose
+ * push service answers 404 or 410, as gone, and those whose keys can't encrypt a message
+ * (`encryptionKeys`), with a warning each. One at an endpoint the server doesn't send to
+ * (`Subscriptions.sendsTo`) gets nothing. Nothing is retried. Never rejects.
  */
 export async function deliver(
-  db: Database,
-  subscriptions: readonly NotificationSubscriptionRow[],
-  messageOf: (subscription: NotificationSubscriptionRow) => PushMessage | null,
-  { vapid, anyEndpoint }: PushSettings,
+  subscriptions: Subscriptions,
+  to: readonly NotificationSubscription[],
+  messageOf: (subscription: NotificationSubscription) => PushMessage | null,
+  vapid: VapidDetails,
 ): Promise<void> {
   const gone = new Set<string>();
-  const unencryptable: NotificationSubscriptionRow[] = [];
-  await eachAtMost(SENDING_AT_ONCE, subscriptions, async (subscription) => {
+  const unencryptable: NotificationSubscription[] = [];
+  await eachAtMost(SENDING_AT_ONCE, to, async (subscription) => {
     const { endpoint, p256dh, auth } = subscription;
-    if (!anyEndpoint && !isKnownPushService(endpoint)) return;
+    if (!subscriptions.sendsTo(endpoint)) return;
     const message = messageOf(subscription);
     if (!message) return;
     const keys = encryptionKeys({ p256dh, auth });
@@ -54,21 +42,8 @@ export async function deliver(
     const status = await send({ endpoint, keys }, message, vapid);
     if (status === 404 || status === 410) gone.add(endpoint);
   });
-  const pruned = [
-    ...(gone.size > 0 ? [inArray(notificationSubscriptions.endpoint, [...gone])] : []),
-    // The row as it was read, so a device that registers valid keys meanwhile keeps them.
-    ...unencryptable.map(({ tripId, deviceId, p256dh, auth }) =>
-      and(
-        eq(notificationSubscriptions.tripId, tripId),
-        eq(notificationSubscriptions.deviceId, deviceId),
-        eq(notificationSubscriptions.p256dh, p256dh),
-        eq(notificationSubscriptions.auth, auth),
-      ),
-    ),
-  ];
-  if (pruned.length === 0) return;
   try {
-    await db.delete(notificationSubscriptions).where(or(...pruned));
+    await subscriptions.prune({ gone: [...gone], unencryptable });
   } catch (error) {
     console.warn('Notification subscriptions could not be pruned', error);
   }
