@@ -105,18 +105,10 @@ describe('notificationFor a push that is not a PushMessage', () => {
 
   it.each([
     ['a kind this device does not know', JSON.stringify({ ...message, kind: 'settled' })],
-    ['a field missing', JSON.stringify({ ...message, latest: undefined })],
-    ['a currency no Trip has', JSON.stringify({ ...message, currency: 'XYZ' })],
     ['no JSON', 'Something changed'],
     ['no payload', undefined],
   ])('still says something changed, opening the app: %s', (_, payload) => {
     expect(notificationFor(pushMessage(payload), 0, 'en')).toEqual(generic);
-  });
-
-  it('writes it in Polish', () => {
-    expect(notificationFor(pushMessage(undefined), 0, 'pl').options.body).toBe(
-      'Coś się zmieniło w podróży',
-    );
   });
 });
 

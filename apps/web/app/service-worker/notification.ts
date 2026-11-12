@@ -75,7 +75,8 @@ export function notificationFor(
   const messages = catalogs[locale];
   const say = (key: keyof Messages, values: Record<string, string | number> = {}) =>
     messages[key].replace(/\{(\w+)\}/g, (_, name: string) => String(values[name]));
-  // The push message schema checks every amount is a plain decimal, already rounded.
+  // The push message schema checks every amount is a plain decimal; the server rounds it
+  // (`roundMoney`), so it shows without "≈".
   const format = (currency: string, amount: string, signed: boolean) =>
     formatMoney(decimal(amount), currency, locale, signed ? 'signedCurrency' : 'currency');
   if (!message) {
