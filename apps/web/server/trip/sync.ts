@@ -17,7 +17,7 @@ import {
   type PushResponse,
   type SyncChange,
   type TripChange,
-  type TripSnapshot,
+  type ServerTrip,
 } from '@osi/owe-yeah-domain';
 import { and, eq, inArray, sql } from 'drizzle-orm';
 import type { Database, Transaction } from '../db/client';
@@ -328,7 +328,7 @@ export function createTripSync(db: Database, store: TripStore, rates: Rates, not
       const trip = linked && (await store.readTrip(linked.id));
       if (!trip) return 'invalidLink';
       return {
-        trip: since === trip.version ? null : snapshotOf(trip),
+        trip: since === trip.version ? null : serverTripOf(trip),
         rates: await rates.forTrip(trip),
       };
     },
@@ -395,7 +395,7 @@ async function recordChange(
 }
 
 /** The whole Trip as the pull returns it, with removed Participants kept apart. */
-function snapshotOf({ participants: everyone, ...trip }: WholeTrip): TripSnapshot {
+function serverTripOf({ participants: everyone, ...trip }: WholeTrip): ServerTrip {
   const shown = ({ id, name }: StoredParticipant) => ({ id, name });
   return {
     ...trip,

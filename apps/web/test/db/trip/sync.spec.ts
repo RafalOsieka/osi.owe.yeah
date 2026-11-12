@@ -14,7 +14,7 @@ import {
   type StoredExpense,
   type SyncChange,
   type TripChange,
-  type TripSnapshot,
+  type ServerTrip,
   type TripWithParticipants,
 } from '@osi/owe-yeah-domain';
 import { v7 as uuidv7 } from 'uuid';
@@ -165,7 +165,7 @@ describeDb('Trip sync', () => {
     return response;
   }
 
-  async function pulled(tripId: string, token: string): Promise<TripSnapshot> {
+  async function pulled(tripId: string, token: string): Promise<ServerTrip> {
     // Without `since`, the pull always carries the Trip.
     return (await pull(tripId, token)).trip!;
   }

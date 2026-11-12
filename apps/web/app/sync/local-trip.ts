@@ -5,7 +5,7 @@ import {
   type Participant,
   type RateEntry,
   type StoredExpense,
-  type TripSnapshot,
+  type ServerTrip,
   type TripWithParticipants,
 } from '@osi/owe-yeah-domain';
 import type { ExpenseBase, Held, OutboxEntry, QueuedChange } from './db';
@@ -35,7 +35,7 @@ export type LocalExpense = Expense & {
 };
 
 /** Who takes part in a Trip, with those removed softly kept apart. */
-type TripPeople = Pick<TripSnapshot, 'participants' | 'removedParticipants'>;
+type TripPeople = Pick<ServerTrip, 'participants' | 'removedParticipants'>;
 
 /**
  * A Trip as this device shows it: the pulled Trip with the outbox on top. Deleted Expenses
@@ -74,7 +74,7 @@ export function toExpense(local: LocalExpense): Expense {
 }
 
 /**
- * The Trip as this device shows it: `snapshot` with every change still in the outbox applied
+ * The Trip as this device shows it: `serverTrip` with every change still in the outbox applied
  * on top, in order, so a pull never hides the device's own changes (ADR 0002). An Expense
  * with a held change stays held, whatever was queued after it. Deleted Expenses are set apart.
  * A pending Expense brings back the removed Participants it references, as the server will.
@@ -82,18 +82,18 @@ export function toExpense(local: LocalExpense): Expense {
  * nothing to show yet: a joined Trip before its first pull.
  */
 export function localTrip(
-  snapshot: TripSnapshot | null,
+  serverTrip: ServerTrip | null,
   outbox: readonly OutboxEntry[],
   rates: readonly RateEntry[],
 ): LocalTrip | null {
-  let trip: AllExpenses | null = snapshot && {
-    id: snapshot.id,
-    name: snapshot.name,
-    currency: snapshot.currency,
-    edited: snapshot.edited,
-    participants: snapshot.participants,
-    removedParticipants: snapshot.removedParticipants,
-    expenses: snapshot.expenses.map(({ version, ...expense }) => ({
+  let trip: AllExpenses | null = serverTrip && {
+    id: serverTrip.id,
+    name: serverTrip.name,
+    currency: serverTrip.currency,
+    edited: serverTrip.edited,
+    participants: serverTrip.participants,
+    removedParticipants: serverTrip.removedParticipants,
+    expenses: serverTrip.expenses.map(({ version, ...expense }) => ({
       ...expense,
       base: { version },
       unsynced: null,
@@ -142,22 +142,22 @@ export function localTrip(
 }
 
 /**
- * The snapshot with a change the server accepted applied, an Expense at the version it got,
- * so the device shows it without waiting for the next pull. The snapshot's own version
- * stays, so that pull still brings whatever others changed meanwhile, with who made the
- * Expense's version and when. A Trip created on this device gets its first snapshot here, at
+ * The `ServerTrip` with a change the server accepted applied, an Expense at the version it
+ * got, so the device shows it without waiting for the next pull. Its own Trip version stays,
+ * so that pull still brings whatever others changed meanwhile, with who made the Expense's
+ * version and when. A Trip created on this device gets its first `ServerTrip` here, at
  * version 0.
  */
 export function withAccepted(
-  snapshot: TripSnapshot | null,
+  serverTrip: ServerTrip | null,
   tripId: string,
   change: QueuedChange,
   version: number | null,
-): TripSnapshot | null {
+): ServerTrip | null {
   switch (change.kind) {
     case 'trip':
-      return snapshot
-        ? { ...snapshot, ...change.trip }
+      return serverTrip
+        ? { ...serverTrip, ...change.trip }
         : {
             id: tripId,
             ...change.trip,
@@ -169,25 +169,27 @@ export function withAccepted(
           };
     case 'participant':
       return (
-        snapshot && {
-          ...snapshot,
-          ...withParticipant(snapshot, change.participant, change.removed),
+        serverTrip && {
+          ...serverTrip,
+          ...withParticipant(serverTrip, change.participant, change.removed),
         }
       );
     case 'expense':
       return (
-        snapshot &&
+        serverTrip &&
         withExpense(
-          change.deleted ? snapshot : { ...snapshot, ...restoredBy(snapshot, change.expense) },
+          change.deleted
+            ? serverTrip
+            : { ...serverTrip, ...restoredBy(serverTrip, change.expense) },
           { ...change.expense, version: version ?? 1, deleted: change.deleted, edited: null },
         )
       );
   }
 }
 
-/** The snapshot with `expense` as the server has it, e.g. the current one from a Conflict. */
-export function withExpense(snapshot: TripSnapshot, expense: StoredExpense): TripSnapshot {
-  return { ...snapshot, expenses: upsert(snapshot.expenses, expense) };
+/** The `ServerTrip` with `expense` as the server has it, e.g. the current one from a Conflict. */
+export function withExpense(serverTrip: ServerTrip, expense: StoredExpense): ServerTrip {
+  return { ...serverTrip, expenses: upsert(serverTrip.expenses, expense) };
 }
 
 /** The Trip's people with `participant` added, renamed, removed or brought back. */

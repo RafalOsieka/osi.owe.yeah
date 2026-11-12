@@ -17,7 +17,7 @@ import {
   type StoredExpense,
   type SyncChange,
   type TripChange,
-  type TripSnapshot,
+  type ServerTrip,
   type TripWithParticipants,
 } from '@osi/owe-yeah-domain';
 import { createTest, fetch, startServer } from '@nuxt/test-utils/e2e';
@@ -159,7 +159,7 @@ function pullTrip(
   });
 }
 
-async function pulled(tripId: string, token: string): Promise<TripSnapshot> {
+async function pulled(tripId: string, token: string): Promise<ServerTrip> {
   // SAFETY: a 200 from the whole-Trip pull without `since` always carries the Trip.
   return ((await (await pullTrip(tripId, token)).json()) as PullResponse).trip!;
 }

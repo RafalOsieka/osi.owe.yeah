@@ -5,7 +5,7 @@ import {
   type Expense,
   type Participant,
   type RateEntry,
-  type TripSnapshot,
+  type ServerTrip,
   type TripWithParticipants,
 } from '@osi/owe-yeah-domain';
 import { eq } from 'drizzle-orm';
@@ -140,7 +140,7 @@ describeDb('the device, syncing with the real Trip sync', () => {
   }
 
   /** The Trip as the server has it now. */
-  async function onServer(trip: TripWithParticipants, token: string): Promise<TripSnapshot> {
+  async function onServer(trip: TripWithParticipants, token: string): Promise<ServerTrip> {
     const pulled = await sync.pull(trip.id, token);
     if (pulled === 'invalidLink' || !pulled.trip) throw new Error('The Trip link was refused');
     return pulled.trip;

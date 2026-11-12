@@ -48,13 +48,13 @@ describe('the device store', () => {
     const v1 = new Dexie(name);
     v1.version(1).stores({ trips: 'id', outbox: '++seq, tripId' });
     const tripId = uuidv7();
-    const snapshot = { id: tripId, name: 'Croatia 2026', currency: 'EUR', participants: [ania] };
+    const serverTrip = { id: tripId, name: 'Croatia 2026', currency: 'EUR', participants: [ania] };
     await v1.table('trips').add({
       id: tripId,
       token: 'the-token',
       claim: ania,
       openedAt: '2026-07-01T10:00:00.000Z',
-      snapshot: { ...snapshot, version: 7, expenses: [{ ...lidl, version: 2 }] },
+      snapshot: { ...serverTrip, version: 7, expenses: [{ ...lidl, version: 2 }] },
     });
     const change = { ...meta, id: uuidv7(), kind: 'expense', base: { version: 2 } };
     await v1.table('outbox').add({ tripId, change: { ...change, expense: lidl }, held: null });
@@ -71,7 +71,7 @@ describe('the device store', () => {
       notices: [],
       notifications: { subscription: null, offered: false, registered: null },
       snapshot: {
-        ...snapshot,
+        ...serverTrip,
         version: 0,
         edited: null,
         removedParticipants: [],

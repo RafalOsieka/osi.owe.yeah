@@ -13,7 +13,7 @@ import {
   type SubscriptionRequest,
   type TripChange,
   type TripCurrency,
-  type TripSnapshot,
+  type ServerTrip,
 } from '@osi/owe-yeah-domain';
 import { Dexie, type EntityTable } from 'dexie';
 import { z } from 'zod';
@@ -86,10 +86,11 @@ export type DeviceTrip = {
   /** ISO time of the last open, for My Trips' order. */
   openedAt: string;
   /**
-   * The Trip as last pulled, with the changes the server has accepted since applied on top;
-   * `null` until the first pull, or the first push of a Trip created on this device.
+   * The `ServerTrip`: the Trip as last pulled, with the changes the server has accepted since
+   * applied on top; `null` until the first pull, or the first push of a Trip created on this
+   * device.
    */
-  snapshot: TripSnapshot | null;
+  snapshot: ServerTrip | null;
   /**
    * Every rate entry pulled for the Trip, the newest of each (ADR 0003): this device's cached
    * rates, which convert the Trip's Expenses into the Trip currency, offline too.
@@ -188,7 +189,7 @@ const legacyTripSchema = z.object({
 
 /**
  * Trips opened before the device store existed, moved over once when the store is created.
- * They have no snapshot until their first pull. Anything unreadable is dropped.
+ * They have no `ServerTrip` until their first pull. Anything unreadable is dropped.
  */
 function tripsFromLocalStorage(): DeviceTrip[] {
   try {
