@@ -27,7 +27,7 @@
     "@typescript-eslint/parser": "^8.72.1",
     "eslint": "^10.14.0",
     "eslint-config-prettier": "^10.1.8",
-    "eslint-plugin-oxlint": "^1.90.0",
+    "eslint-plugin-oxlint": "^1.93.0",
     "eslint-plugin-vuejs-accessibility": "^2.6.3",
     "typescript": "^6.0.3",
     "vite-plus": "catalog:"
