@@ -1119,6 +1119,34 @@ exports[`the wire contract > changes only together with a decision about the syn
       ],
       "type": "object",
     },
+    "pushEnvelope": {
+      "$schema": "https://json-schema.org/draft/2020-12/schema",
+      "properties": {
+        "changes": {
+          "items": {
+            "additionalProperties": {},
+            "properties": {
+              "id": {
+                "format": "uuid",
+                "pattern": "^([0-9a-fA-F]{8}-[0-9a-fA-F]{4}-7[0-9a-fA-F]{3}-[89abAB][0-9a-fA-F]{3}-[0-9a-fA-F]{12})$",
+                "type": "string",
+              },
+            },
+            "required": [
+              "id",
+            ],
+            "type": "object",
+          },
+          "maxItems": 100,
+          "minItems": 1,
+          "type": "array",
+        },
+      },
+      "required": [
+        "changes",
+      ],
+      "type": "object",
+    },
     "rateQuery": {
       "$schema": "https://json-schema.org/draft/2020-12/schema",
       "properties": {
@@ -3799,6 +3827,7 @@ exports[`the wire contract > changes only together with a decision about the syn
                         "participantIdTaken",
                         "participantReferenced",
                         "tripHasRepayments",
+                        "malformed",
                       ],
                       "type": "string",
                     },
@@ -5305,6 +5334,6 @@ exports[`the wire contract > changes only together with a decision about the syn
       ],
     },
   },
-  "version": 2,
+  "version": 3,
 }
 `;

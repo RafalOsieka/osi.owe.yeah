@@ -1,13 +1,17 @@
 import {
+  expenseChangeSchema,
+  expenseVersionSchema,
+  participantChangeSchema,
   participantSchema,
+  tripChangeSchema,
   tripIdSchema,
   type ChangeResult,
   type Currency,
-  type ExpenseChange,
   type Participant,
+  type ParticipantChange,
   type RateEntry,
   type SubscriptionRequest,
-  type SyncChange,
+  type TripChange,
   type TripCurrency,
   type TripSnapshot,
 } from '@osi/owe-yeah-domain';
@@ -18,14 +22,19 @@ import { migrations } from './migrations';
 /**
  * Something sync did to this device's changes that the user should hear about, kept until
  * they dismiss it: a removed Participant an Expense of theirs brought back, a removal the
- * server refused, a new Trip currency it refused because the Trip has a Repayment now, or
- * their Claim's Participant removed by someone else.
+ * server refused, a new Trip currency it refused because the Trip has a Repayment now, their
+ * Claim's Participant removed by someone else, or a change of the Trip details or of a
+ * Participant the server couldn't read and that is lost (`about` says what it changed).
  */
 export type Notice = { id: string } & (
   | { kind: 'participantRestored'; participant: Participant; expenseTitle: string }
   | { kind: 'removalRefused'; participant: Participant }
   | { kind: 'currencyChangeRefused'; currency: TripCurrency }
   | { kind: 'claimRemoved'; participant: Participant }
+  | {
+      kind: 'changeRefused';
+      about: Pick<TripChange, 'kind' | 'trip'> | Pick<ParticipantChange, 'kind' | 'participant'>;
+    }
 );
 
 /** The browser's push subscription: where the server sends to, and the keys it encrypts with. */
@@ -95,12 +104,25 @@ export type DeviceTrip = {
  * new Expense), or an earlier change of the same Expense still in the outbox, whose version
  * it takes once the server accepts that one.
  */
-export type ExpenseBase = { version: number | null } | { after: string };
+const expenseBaseSchema = z.union([
+  z.object({ version: expenseVersionSchema.nullable() }),
+  z.object({ after: z.uuid() }),
+]);
 
-/** A change as the outbox keeps it: an Expense change's base may still be waiting. */
-export type QueuedChange =
-  | Exclude<SyncChange, ExpenseChange>
-  | (Omit<ExpenseChange, 'baseVersion'> & { base: ExpenseBase });
+export type ExpenseBase = z.infer<typeof expenseBaseSchema>;
+
+/**
+ * A change as the outbox keeps it: a sync change (`syncChangeSchema`), except that an Expense
+ * change's base may still be waiting. A change is parsed with it as it is queued, so the
+ * outbox keeps only changes the server can read, as the schema outputs them (names trimmed).
+ */
+export const queuedChangeSchema = z.discriminatedUnion('kind', [
+  tripChangeSchema,
+  participantChangeSchema,
+  expenseChangeSchema.omit({ baseVersion: true }).extend({ base: expenseBaseSchema }),
+]);
+
+export type QueuedChange = z.infer<typeof queuedChangeSchema>;
 
 /** Why the server would not take an Expense change: it waits until someone deals with it. */
 export type Held = Exclude<ChangeResult, { status: 'accepted' }>;

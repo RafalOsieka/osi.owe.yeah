@@ -5,6 +5,7 @@ import {
   SYNC_SCHEMA_HEADER,
   SYNC_SCHEMA_VERSION,
   TRIP_TOKEN_HEADER,
+  type ChangeResult,
   type Expense,
   type ExpenseChange,
   type Participant,
@@ -375,17 +376,34 @@ describeApi('Trip API', () => {
     });
   });
 
-  it('refuses a malformed push as a whole', async () => {
+  it("refuses only the changes it can't read, applying the rest of the push", async () => {
     const kasia = participant('Kasia');
     const trip = newTrip('Croatia 2026', [kasia]);
     const token = await createdToken(trip);
     const blank = participantChange(participant('  '));
-    const hrk = { ...tripChange(newTrip()), trip: { name: 'Zagreb', currency: 'HRK' } };
     const untitled = change({ ...plainExpense(kasia), title: ' ' });
+    const lidl = change(plainExpense(kasia));
 
-    expect((await pushResponse(trip.id, [blank], token)).status).toBe(400);
-    expect((await pushResponse(uuidv7(), [hrk], newToken())).status).toBe(400);
-    expect((await pushResponse(trip.id, [untitled], token)).status).toBe(400);
+    expect(await push(trip.id, token, blank, untitled, lidl)).toEqual<ChangeResult[]>([
+      { changeId: blank.id, status: 'rejected', problems: ['malformed'] },
+      { changeId: untitled.id, status: 'rejected', problems: ['malformed'] },
+      { changeId: lidl.id, status: 'accepted', version: 1 },
+    ]);
+    // A Trip whose creation can't be read isn't created.
+    const hrk = { ...tripChange(newTrip()), trip: { name: 'Zagreb', currency: 'HRK' } };
+    expect((await pushResponse(uuidv7(), [hrk], newToken())).status).toBe(401);
+  });
+
+  it('refuses a push whose envelope or change ids it cannot read as a whole', async () => {
+    const trip = newTrip();
+    const token = await createdToken(trip);
+    const ola = participantChange(participant('Ola'));
+
+    expect((await pushResponse(trip.id, [], token)).status).toBe(400);
+    expect((await pushResponse(trip.id, [{ ...ola, id: 'not-a-uuid' }], token)).status).toBe(400);
+    expect((await pushResponse(trip.id, [{ ...ola, id: uuidv7() }, 'ola'], token)).status).toBe(
+      400,
+    );
   });
 
   it('refuses pulls and pushes without a valid Trip link, as if the Trip did not exist', async () => {

@@ -5,11 +5,12 @@ import type { LocalExpense } from '~/sync/local-trip';
 // What sync has to tell about this device's changes, on top of every Trip tab until
 // dismissed: a removed Participant one of its Expenses brought back, a removal the server
 // refused because an Expense includes them now, or a new Trip currency it refused because
-// someone recorded a Repayment meanwhile. Each says what happened and, when one Expense
+// someone recorded a Repayment meanwhile, or a change of the Trip details or of a Participant
+// the server couldn't read, which is lost. Each says what happened and, when one Expense
 // explains it, offers "Show Expense". An outlined note on the canvas, so it doesn't read as one
 // of the Expenses: nothing is wrong, it only changed. A quoted title never breaks mid-quote.
 // A removed Claim is told in "Who are you?" instead.
-const { trip, notices, dismissNotice } = useOpenTrip();
+const { trip, everyone, notices, dismissNotice } = useOpenTrip();
 
 // The Trip's Expenses that include `participant`, optionally only those titled `title`.
 const including = (participant: Participant, title?: string) =>
@@ -30,10 +31,27 @@ type ShownNotice = {
 };
 
 // Each notice as shown; a refused removal names the Expense when only one includes them, a
-// refused Trip currency names the currency.
+// refused Trip currency names the currency, and a change the server couldn't read names the
+// Participant it was about, if it has a name.
 const shown = computed(() =>
   notices.value.flatMap((notice): ShownNotice[] => {
     if (notice.kind === 'claimRemoved') return [];
+    if (notice.kind === 'changeRefused') {
+      const { id, about } = notice;
+      const plain = { id, currency: null, title: null, expense: null };
+      if (about.kind === 'trip') {
+        return [{ ...plain, keypath: 'notices.tripChangeRefused', name: null }];
+      }
+      // As the Trip names them now: a name the server couldn't read may be blank, e.g. of a
+      // Participant added on this device only.
+      const { participant } = about;
+      const known = everyone.value.find(({ id }) => id === participant.id)?.name;
+      const name = known ?? participant.name.trim();
+      const keypath = name
+        ? 'notices.participantChangeRefused'
+        : 'notices.unnamedParticipantChangeRefused';
+      return [{ ...plain, keypath, name }];
+    }
     if (notice.kind === 'currencyChangeRefused') {
       const keypath = 'notices.currencyChangeRefused';
       const { id, currency } = notice;

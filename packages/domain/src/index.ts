@@ -83,6 +83,7 @@ export {
 } from './trip.ts';
 export type { Trip, TripCurrency, TripWithParticipants } from './trip.ts';
 export {
+  PUSH_LIMIT,
   SYNC_SCHEMA_HEADER,
   SYNC_SCHEMA_VERSION,
   changeResultSchema,
@@ -90,6 +91,7 @@ export {
   participantChangeSchema,
   pullQuerySchema,
   pullResponseSchema,
+  pushEnvelopeSchema,
   pushProblemSchema,
   pushRequestSchema,
   pushResponseSchema,
@@ -102,6 +104,7 @@ export type {
   ExpenseChange,
   ParticipantChange,
   PullResponse,
+  PushEnvelope,
   PushProblem,
   PushRequest,
   PushResponse,

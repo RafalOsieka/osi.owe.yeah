@@ -152,7 +152,8 @@ export function createTripStore(db: Database | Transaction) {
     /**
      * The Trip `tripId` names, if `token` is its Trip link's token: the only credential
      * (ADR 0001). A wrong token, an unknown Trip and an id that is no Trip id all give
-     * `null` alike, so the answer never tells whether a Trip exists.
+     * `null` alike. Only a push creating a Trip can still tell that its id is taken (Trip
+     * sync's `InvalidLink`), which is left as it is: guessing a UUIDv7 Trip id is infeasible.
      */
     async tripByLink(tripId: string, token: string): Promise<StoredTrip | null> {
       const id = tripIdSchema.safeParse(tripId);

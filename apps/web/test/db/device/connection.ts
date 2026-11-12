@@ -1,6 +1,6 @@
 import {
   pullResponseSchema,
-  pushRequestSchema,
+  pushEnvelopeSchema,
   pushResponseSchema,
   rateLookupSchema,
   revisionsResponseSchema,
@@ -42,7 +42,7 @@ export class Connection implements Transport {
   losePushResponses = 0;
   /** How many of the next pulls reach the server but lose their answer on the way back. */
   losePullResponses = 0;
-  /** Every push that reached the server, in order. */
+  /** Every push that reached the server, in order, as the device sent it. */
   readonly pushes: PushRequest[] = [];
   /** The device's push subscription to each Trip, as the server has it. */
   readonly subscriptions = new Map<string, SubscriptionRequest>();
@@ -67,9 +67,9 @@ export class Connection implements Transport {
 
   async push(tripId: string, token: string, request: PushRequest): Promise<PushResponse> {
     this.throwIfOffline();
-    const sent = overTheWire(pushRequestSchema, request);
-    this.pushes.push(sent);
-    const response = await this.sync.push(tripId, token, sent);
+    this.pushes.push(request);
+    // Only the envelope, as the HTTP adapter: Trip sync reads each change on its own.
+    const response = await this.sync.push(tripId, token, overTheWire(pushEnvelopeSchema, request));
     this.throwIfLost('losePushResponses');
     if (response === 'invalidLink') throw new Error('The Trip link was refused');
     return overTheWire(pushResponseSchema, response);
