@@ -105,6 +105,20 @@ async function tripLinkFromInvite(page: Page): Promise<string> {
 }
 
 /**
+ * Claims `name` from the open "Who are you?" sheet. WebKit then offers notifications (on an
+ * iPhone with the Home Screen hint), which this turns down with "Not now"; headless Chromium
+ * blocks notifications, so it offers none.
+ */
+async function claim(page: Page, name: string): Promise<void> {
+  const sheet = page.getByRole('dialog');
+  await sheet.getByRole('button', { name }).click();
+  if (page.context().browser()?.browserType().name() === 'webkit') {
+    await sheet.getByRole('button', { name: 'Not now' }).click();
+  }
+  await expect(sheet).toBeHidden();
+}
+
+/**
  * Stands in for the browser's notification permission and push service: headless Chromium
  * reports notifications blocked, and can't reach a push service. The permission is granted
  * until `setNotificationPermission` changes it, and lasts past a reload.
@@ -506,7 +520,7 @@ test('the terms link the licenses of the bundled dependencies, which open past t
   await expect(page.locator('body')).toContainText('## dexie - ');
 });
 
-test('a Trip and an Expense made offline reach a second device once back online', async ({
+test('a Trip and an Expense made offline reach a second device once back online @webkit', async ({
   page,
   context,
   browser,
@@ -542,7 +556,7 @@ test('a Trip and an Expense made offline reach a second device once back online'
   const other = await browser.newContext();
   const otherPage = await other.newPage();
   await otherPage.goto(await tripLinkFromInvite(page));
-  await otherPage.getByRole('dialog').getByRole('button', { name: 'Ania' }).click();
+  await claim(otherPage, 'Ania');
   await expect(otherPage.getByRole('link', { name: /Ferry tickets/ })).toContainText(
     'Kasia paid · for all 2',
   );
@@ -579,7 +593,7 @@ test('the sync status says when the server, not the connection, holds sync up', 
   await expect(header).not.toContainText("The server couldn't take your changes.");
 });
 
-test('a Receipt entered offline at the till, Line item by Line item, reaches a second device', async ({
+test('a Receipt entered offline at the till, Line item by Line item, reaches a second device @webkit', async ({
   page,
   context,
   browser,
@@ -647,7 +661,7 @@ test('a Receipt entered offline at the till, Line item by Line item, reaches a s
   const other = await browser.newContext();
   const otherPage = await other.newPage();
   await otherPage.goto(await tripLinkFromInvite(page));
-  await otherPage.getByRole('dialog').getByRole('button', { name: 'Ania' }).click();
+  await claim(otherPage, 'Ania');
   const otherRow = otherPage.getByRole('link', { name: /Lidl Rovinj/ });
   // A third of the bread and three waters: 0.83 + 0.87.
   await expect(otherRow).toContainText('your share €1.70');
@@ -1306,7 +1320,7 @@ async function retitle(page: Page, from: string, to: string): Promise<void> {
   await page.getByRole('button', { name: 'Back' }).click();
 }
 
-test('two devices change the same Expenses; the one that syncs second keeps its own or theirs', async ({
+test('two devices change the same Expenses; the one that syncs second keeps its own or theirs @webkit', async ({
   page,
   request,
   browser,
@@ -1321,11 +1335,11 @@ test('two devices change the same Expenses; the one that syncs second keeps its 
     ],
   );
   await page.goto(link);
-  await page.getByRole('dialog').getByRole('button', { name: 'Kasia' }).click();
+  await claim(page, 'Kasia');
   const ania = await browser.newContext();
   const other = await ania.newPage();
   await other.goto(link);
-  await other.getByRole('dialog').getByRole('button', { name: 'Ania' }).click();
+  await claim(other, 'Ania');
   await other.waitForFunction(() => navigator.serviceWorker.controller !== null);
 
   // Ania edits both offline while Kasia's edits of them reach the server first.

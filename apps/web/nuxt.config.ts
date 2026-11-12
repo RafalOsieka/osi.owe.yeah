@@ -168,12 +168,15 @@ export default defineNuxtConfig({
     // and what those load; without `https:` and `'unsafe-inline'` a browser that can't do
     // `'strict-dynamic'` still runs nothing but the app's own scripts. The service worker
     // serves the shell without its headers, so its `<meta>` copy is the policy most pages run
-    // under. The other directives keep nuxt-security's defaults.
+    // under. The other directives keep nuxt-security's defaults, except that the ui e2e suite
+    // serves plain `http://localhost`, where WebKit, unlike Chromium, would upgrade every load
+    // to an `https:` nothing answers.
     headers: {
       contentSecurityPolicy: {
         'default-src': ["'self'"],
         'connect-src': ["'self'"],
         'script-src': ["'self'", "'strict-dynamic'", "'nonce-{{nonce}}'"],
+        'upgrade-insecure-requests': !process.env.UI_E2E,
       },
     },
   },

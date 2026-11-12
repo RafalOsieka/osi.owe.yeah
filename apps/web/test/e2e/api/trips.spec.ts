@@ -360,7 +360,7 @@ describeApi('Trip API', () => {
     expect((await fetch(script!)).headers.get('cache-control')).toContain('immutable');
   });
 
-  it("allows only its own origin by default, and scripts neither by 'unsafe-inline' nor from any https: site", async () => {
+  it("allows only its own origin by default, upgrades http: loads, and scripts neither by 'unsafe-inline' nor from any https: site", async () => {
     const shell = await fetch('/');
     // The service worker serves the shell's `index.html` for every page, without the headers.
     const meta = /<meta http-equiv="Content-Security-Policy" content="([^"]+)"/.exec(
@@ -378,6 +378,7 @@ describeApi('Trip API', () => {
       expect(csp.get('connect-src'), served).toEqual(["'self'"]);
       expect(csp.get('script-src'), served).not.toContain("'unsafe-inline'");
       expect(csp.get('script-src'), served).not.toContain('https:');
+      expect(csp.has('upgrade-insecure-requests'), served).toBe(true);
     }
   });
 
