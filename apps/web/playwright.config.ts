@@ -33,12 +33,20 @@ export default defineConfig({
   },
   // iOS Safari is the riskiest browser, so the offline and sync journeys, tagged `@webkit`,
   // also run in WebKit as an iPhone. Not on Windows, whose WebKit build closes the page once
-  // it goes offline; CI runs them on Linux.
+  // it goes offline; CI runs them on Linux. WebKit is slower, and on CI the Conflict journey
+  // can outlast the default 30 s.
   projects: [
     { name: 'chromium', use: { ...devices['Desktop Chrome'] } },
     ...(process.platform === 'win32'
       ? []
-      : [{ name: 'webkit', use: { ...devices['iPhone 15'] }, grep: /@webkit/ }]),
+      : [
+          {
+            name: 'webkit',
+            use: { ...devices['iPhone 15'] },
+            grep: /@webkit/,
+            timeout: 60_000,
+          },
+        ]),
   ],
   // Two servers of one build, on one database: the first switched off as a test environment,
   // like production, and the second switched on (`test-environment.spec.ts`). Playwright
