@@ -163,6 +163,19 @@ export default defineNuxtConfig({
       process.env.NODE_ENV === 'development' || process.env.UI_E2E || process.env.VITEST
         ? false
         : { ipHeader: 'cf-connecting-ip' },
+    // The app loads and connects to its own origin only: rates come through its own server.
+    // Scripts run only by the hash of the prerendered shell or the nonce of a rendered page,
+    // and what those load; without `https:` and `'unsafe-inline'` a browser that can't do
+    // `'strict-dynamic'` still runs nothing but the app's own scripts. The service worker
+    // serves the shell without its headers, so its `<meta>` copy is the policy most pages run
+    // under. The other directives keep nuxt-security's defaults.
+    headers: {
+      contentSecurityPolicy: {
+        'default-src': ["'self'"],
+        'connect-src': ["'self'"],
+        'script-src': ["'self'", "'strict-dynamic'", "'nonce-{{nonce}}'"],
+      },
+    },
   },
   typescript: {
     // Disabled: the in-dev checker breaks under Nuxt's `/_nuxt/` base

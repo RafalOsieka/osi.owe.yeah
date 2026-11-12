@@ -86,6 +86,16 @@ function stored(expense: Expense, version: number, by: string | null = null): St
   return { ...expense, version, deleted: false, edited: { by, at: expect.any(String) } };
 }
 
+/** A Content Security Policy's directives by name, each with its sources. */
+function directives(policy: string | null | undefined): Map<string, string[]> {
+  const parsed = (policy ?? '')
+    .split(';')
+    .map((directive) => directive.trim().split(/\s+/))
+    .filter(([name]) => name)
+    .map(([name, ...sources]): [string, string[]] => [name!, sources]);
+  return new Map(parsed);
+}
+
 /** A client address of its own, as Cloudflare names it in `CF-Connecting-IP`. */
 function newAddress(): string {
   return [10, ...randomBytes(3)].join('.');
@@ -349,6 +359,27 @@ describeApi('Trip API', () => {
     }
     expect(script).toBeDefined();
     expect((await fetch(script!)).headers.get('cache-control')).toContain('immutable');
+  });
+
+  it('allows only its own origin by default, and no inline or outside scripts but its own', async () => {
+    const shell = await fetch('/');
+    // The service worker serves the shell's `index.html` for every page, without the headers.
+    const meta = /<meta http-equiv="Content-Security-Policy" content="([^"]+)"/.exec(
+      await shell.text(),
+    )?.[1];
+    const policies = {
+      shell: shell.headers.get('content-security-policy'),
+      'shell meta': meta,
+      page: (await fetch('/trips/new')).headers.get('content-security-policy'),
+    };
+
+    for (const [served, policy] of Object.entries(policies)) {
+      const csp = directives(policy);
+      expect(csp.get('default-src'), served).toEqual(["'self'"]);
+      expect(csp.get('connect-src'), served).toEqual(["'self'"]);
+      expect(csp.get('script-src'), served).not.toContain("'unsafe-inline'");
+      expect(csp.get('script-src'), served).not.toContain('https:');
+    }
   });
 
   it('says it is no test environment unless switched on', async () => {

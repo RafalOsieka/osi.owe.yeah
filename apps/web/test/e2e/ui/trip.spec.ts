@@ -7,8 +7,9 @@ import {
   type PushRequest,
   type SyncChange,
 } from '@osi/owe-yeah-domain';
-import { expect, test, type APIRequestContext, type Page } from '@playwright/test';
+import type { APIRequestContext, Page } from '@playwright/test';
 import { v7 as uuidv7 } from 'uuid';
+import { expect, test } from './fixtures';
 
 /**
  * Creates a Trip as someone else's device would, by its first push, with `expenses` Expenses
