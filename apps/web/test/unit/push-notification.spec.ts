@@ -1,6 +1,11 @@
-import type { ActivityMessage, ReminderMessage } from '@osi/owe-yeah-domain';
+import type { ActivityMessage, PushMessage, ReminderMessage } from '@osi/owe-yeah-domain';
 import { describe, expect, it } from 'vitest';
-import { notificationFor, notificationLocale } from '../../app/service-worker/notification';
+import {
+  notificationFor,
+  notificationLocale,
+  pushMessage,
+  type NotificationLocale,
+} from '../../app/service-worker/notification';
 
 const message: ActivityMessage = {
   kind: 'activity',
@@ -21,9 +26,13 @@ const message: ActivityMessage = {
 // Intl puts a no-break space between an amount and its currency code or Polish symbol.
 const nbsp = ' ';
 
+// The notification for a push carrying `message`, read as the service worker reads it.
+const notify = (message: PushMessage, shown: number, locale: NotificationLocale) =>
+  notificationFor(pushMessage(JSON.stringify(message)), shown, locale);
+
 describe('notificationFor', () => {
   it('says who changed which Expense and how it moved your share, tagged with the Trip', () => {
-    expect(notificationFor(message, 0, 'en')).toEqual({
+    expect(notify(message, 0, 'en')).toEqual({
       title: 'Croatia 2026',
       options: {
         tag: `trip:${message.tripId}`,
@@ -39,13 +48,13 @@ describe('notificationFor', () => {
       latest: { ...message.latest, author: null, action: 'deleted', paid: '-30.00' },
     } satisfies ActivityMessage;
 
-    expect(notificationFor(deleted, 0, 'pl').options.body).toBe(
-      `Usunięty wydatek: „Lidl Rovinj” (ktoś)\nTwój udział +15,00${nbsp}€ · Zapłacone przez ciebie -30,00${nbsp}€`,
+    expect(notify(deleted, 0, 'pl').options.body).toBe(
+      `Usunięty wydatek: „Lidl Rovinj” (ktoś)\nTwój udział +15,00${nbsp}€ · Zapłacone przez ciebie −30,00${nbsp}€`,
     );
   });
 
   it('collapses into one notification per Trip, counting the one already shown, with no Expense to open', () => {
-    expect(notificationFor({ ...message, count: 2 }, 1, 'en')).toEqual({
+    expect(notify({ ...message, count: 2 }, 1, 'en')).toEqual({
       title: '3 changes in Croatia 2026',
       options: {
         tag: `trip:${message.tripId}`,
@@ -67,7 +76,7 @@ describe('notificationFor a Reminder', () => {
   };
 
   it('says who reminds you and how much, and opens Balances with that suggestion', () => {
-    expect(notificationFor(reminder, 0, 'en')).toEqual({
+    expect(notify(reminder, 0, 'en')).toEqual({
       title: 'Croatia 2026',
       options: {
         tag: `reminder:${reminder.tripId}:${reminder.from.id}`,
@@ -81,10 +90,33 @@ describe('notificationFor a Reminder', () => {
   });
 
   it("writes it in Polish, never collapsing into the Trip's activity", () => {
-    const shown = notificationFor(reminder, 4, 'pl');
+    const shown = notify(reminder, 4, 'pl');
 
     expect(shown.options.body).toBe(`Kasia przypomina: do oddania 123,45${nbsp}zł`);
     expect(shown.options.data.count).toBe(1);
+  });
+});
+
+describe('notificationFor a push that is not a PushMessage', () => {
+  const generic = {
+    title: 'Owe Yeah',
+    options: { tag: 'generic', body: 'Something changed in a Trip', data: { url: '/', count: 1 } },
+  };
+
+  it.each([
+    ['a kind this device does not know', JSON.stringify({ ...message, kind: 'settled' })],
+    ['a field missing', JSON.stringify({ ...message, latest: undefined })],
+    ['a currency no Trip has', JSON.stringify({ ...message, currency: 'XYZ' })],
+    ['no JSON', 'Something changed'],
+    ['no payload', undefined],
+  ])('still says something changed, opening the app: %s', (_, payload) => {
+    expect(notificationFor(pushMessage(payload), 0, 'en')).toEqual(generic);
+  });
+
+  it('writes it in Polish', () => {
+    expect(notificationFor(pushMessage(undefined), 0, 'pl').options.body).toBe(
+      'Coś się zmieniło w podróży',
+    );
   });
 });
 

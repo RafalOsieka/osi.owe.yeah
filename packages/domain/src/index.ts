@@ -121,6 +121,7 @@ export type { ManualRate } from './manual-rate.ts';
 export {
   balanceChanges,
   pushKeyResponseSchema,
+  pushMessageSchema,
   reminderMessageSchema,
   reminderRefusalSchema,
   reminderRequestSchema,

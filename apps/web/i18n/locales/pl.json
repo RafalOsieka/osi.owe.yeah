@@ -625,7 +625,8 @@
     "share": "Twój udział {amount}",
     "paid": "Zapłacone przez ciebie {amount}",
     "collapsed": "Zmiany w podróży {trip}: {count}",
-    "reminder": "{name} przypomina: do oddania {amount}"
+    "reminder": "{name} przypomina: do oddania {amount}",
+    "generic": "Coś się zmieniło w podróży"
   },
   "legal": {
     "title": "Informacje prawne",
