@@ -100,6 +100,8 @@ export const pushKeysSchema = z.object({
   auth: z.string().regex(/^[\w-]{22,200}={0,2}$/),
 });
 
+export type PushKeys = z.infer<typeof pushKeysSchema>;
+
 /**
  * A device's push subscription to one Trip, as it registers it: the browser's push endpoint
  * and keys, the device's opaque id, and the Participant it claims, whose changes it is told

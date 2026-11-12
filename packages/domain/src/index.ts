@@ -141,6 +141,7 @@ export type {
   ActivityMessage,
   BalanceChange,
   PushKeyResponse,
+  PushKeys,
   PushMessage,
   ReminderMessage,
   ReminderRefusal,

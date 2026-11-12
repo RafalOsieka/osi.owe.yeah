@@ -1,4 +1,5 @@
-import { pushKeysSchema, type PushMessage } from '@osi/owe-yeah-domain';
+import { ECDH } from 'node:crypto';
+import { pushKeysSchema, type PushKeys, type PushMessage } from '@osi/owe-yeah-domain';
 import { and, eq, inArray, or } from 'drizzle-orm';
 import webpush from 'web-push';
 import type { Database } from '../db/client';
@@ -26,8 +27,8 @@ type NotificationSubscriptionRow = typeof notificationSubscriptions.$inferSelect
 /**
  * Sends each subscription the message `messageOf` writes for it (`null`: none), at most
  * `SENDING_AT_ONCE` at a time, then deletes from `db` those whose push service answers 404 or
- * 410, as gone, and those whose keys can't encrypt a message (the keys registration refuses),
- * with a warning each. A subscription off the known push services gets nothing (unless
+ * 410, as gone, and those whose keys can't encrypt a message (`encryptionKeys`), with a
+ * warning each. A subscription off the known push services gets nothing (unless
  * `anyEndpoint`), so rows stored before the subscription handler checked endpoints are never
  * sent to. Nothing is retried. Never rejects.
  */
@@ -44,13 +45,13 @@ export async function deliver(
     if (!anyEndpoint && !isKnownPushService(endpoint)) return;
     const message = messageOf(subscription);
     if (!message) return;
-    const keys = pushKeysSchema.safeParse({ p256dh, auth });
-    if (!keys.success) {
+    const keys = encryptionKeys({ p256dh, auth });
+    if (!keys) {
       console.warn("A notification subscription whose keys can't encrypt is removed");
       unencryptable.push(subscription);
       return;
     }
-    const status = await send({ endpoint, keys: keys.data }, message, vapid);
+    const status = await send({ endpoint, keys }, message, vapid);
     if (status === 404 || status === 410) gone.add(endpoint);
   });
   const pruned = [
@@ -70,6 +71,21 @@ export async function deliver(
     await db.delete(notificationSubscriptions).where(or(...pruned));
   } catch (error) {
     console.warn('Notification subscriptions could not be pruned', error);
+  }
+}
+
+/**
+ * The keys a message can be encrypted with, or `null` when they can't encrypt: keys
+ * registration refuses, or a public key of the right length that is no point on the P-256 curve,
+ * which only a hand-written registration sends.
+ */
+function encryptionKeys(keys: PushKeys): PushKeys | null {
+  if (!pushKeysSchema.safeParse(keys).success) return null;
+  try {
+    ECDH.convertKey(keys.p256dh, 'prime256v1', 'base64url');
+    return keys;
+  } catch {
+    return null;
   }
 }
 

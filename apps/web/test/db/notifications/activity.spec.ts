@@ -263,13 +263,20 @@ describeDb('Notifications', () => {
       .update(notificationSubscriptions)
       .set({ p256dh: 'p256dh', auth: 'auth' })
       .where(eq(notificationSubscriptions.deviceId, devices.ania));
+    // Of the right length, but no point on the curve: registration takes it.
+    const offCurve = uuidv7();
+    await subscribe(trip.id, offCurve, ola.id);
+    await db()
+      .update(notificationSubscriptions)
+      .set({ p256dh: Buffer.alloc(65).toString('base64url') })
+      .where(eq(notificationSubscriptions.deviceId, offCurve));
     const warn = vi.spyOn(console, 'warn').mockImplementation(() => {});
     onTestFinished(() => warn.mockRestore());
 
     await push(trip.id, token, change(plainExpense(kasia, [ania, ola]), kasia.id));
     await push(trip.id, token, change(plainExpense(kasia, [ania, ola]), kasia.id));
 
-    expect(warn).toHaveBeenCalledOnce();
+    expect(warn).toHaveBeenCalledTimes(2);
     expect(pushService.payloadsOf(devices.ola)).toHaveLength(2);
     const left = await db()
       .select({ deviceId: notificationSubscriptions.deviceId })
