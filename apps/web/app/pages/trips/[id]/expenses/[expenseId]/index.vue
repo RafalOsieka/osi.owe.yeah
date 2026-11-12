@@ -61,7 +61,7 @@ const labels = computed(() => {
 const conflict = computed(() => {
   const unsynced = expense.value?.unsynced;
   if (unsynced?.status !== 'conflict') return null;
-  const author = trip.value.participants.find(({ id }) => id === unsynced.currentClaimId);
+  const author = everyone.value.find(({ id }) => id === unsynced.currentClaimId);
   return {
     title: author ? t('sync.conflictBy', { name: author.name }) : t('sync.conflictBySomeone'),
   };

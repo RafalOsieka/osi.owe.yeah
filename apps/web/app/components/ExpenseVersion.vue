@@ -1,53 +1,52 @@
 <script setup lang="ts">
-import { expenseKind, expenseShares, type Expense, type Participant } from '@osi/owe-yeah-domain';
+import { expenseKind, expenseShares, type Expense } from '@osi/owe-yeah-domain';
 import type { ExpenseField } from '~/utils/revisions';
 
-// One version of an Expense on the Conflict screen, as a card under `heading` (and
-// `subtitle`, e.g. when it was made): whether it
-// deletes the Expense, its title, total, when it was paid, who paid and who it is for, the
-// claimed Participant as "you". What differs from the other version (`changed`) is
-// highlighted and the rest stays quiet, with a line for differences it doesn't show (Line
-// items, a Manual rate). The default slot ends the card, for the choice that keeps it.
+// One version of an Expense on the Conflict screen of the open Trip, as a card under `heading`
+// (and `subtitle`, e.g. when it was made): whether it deletes the Expense, its title, total,
+// when it was paid, who paid and who it is for, the claimed Participant as "you" and removed
+// Participants by name. What differs from the other version (`changed`) is highlighted and the
+// rest stays quiet, with a line for differences it doesn't show (Line items, a Manual rate).
+// The default slot ends the card, for the choice that keeps it.
 const {
   expense,
   heading,
   subtitle = '',
   deleted,
   changed,
-  claimId,
-  participants,
 } = defineProps<{
   expense: Expense;
   heading: string;
   subtitle?: string;
   deleted: boolean;
   changed: readonly ExpenseField[];
-  claimId: string | null;
-  participants: readonly Participant[];
 }>();
 
+const { trip, claim, everyone } = useOpenTrip();
 const { t, locale } = useI18n();
 const headingId = useId();
 
 const nameOf = (id: string) =>
-  id === claimId ? t('participants.you') : participants.find((p) => p.id === id)?.name;
+  id === claim.value?.id ? t('participants.you') : everyone.value.find((p) => p.id === id)?.name;
 
 const shown = computed(() => {
   const { total, shares } = expenseShares(expense);
+  const { participants } = trip.value;
   const hidden = changed.filter((field) => field === 'lineItems' || field === 'rate');
   return {
     total: formatMoney(total, expense.currency, locale.value),
     when: formatExpenseTime(expense.time, locale.value),
     payer: nameOf(expense.mainPayerId) ?? '?',
     income: expenseKind(expense).kind === 'income',
-    // In the Trip's order.
-    // "For all 4" when it is everyone, as the Expense list says it.
+    // "For all 4" when it is exactly everyone in the Trip now, in the Expense list's words: a
+    // version here may name a removed Participant, so the count alone can't tell. Otherwise
+    // the names in the Trip's order, removed Participants last.
     forWhom:
-      shares.size === participants.length
+      shares.size === participants.length && participants.every(({ id }) => shares.has(id))
         ? t('conflict.forAll', { count: shares.size })
         : t('conflict.forWhom', {
             names: new Intl.ListFormat(locale.value).format(
-              participants.filter(({ id }) => shares.has(id)).map(({ id }) => nameOf(id) ?? '?'),
+              everyone.value.filter(({ id }) => shares.has(id)).map(({ id }) => nameOf(id) ?? '?'),
             ),
           }),
     alsoDiffers:
