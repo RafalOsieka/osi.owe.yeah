@@ -1,12 +1,12 @@
 import { describe, expect, it } from 'vite-plus/test';
 import {
   expenseChangeProblems,
-  pushRequestSchema,
   restoredBy,
   tripTokenSchema,
   type Expense,
   type TripPeople,
 } from '@osi/owe-yeah-domain';
+import { pushRequestSchema } from '../src/sync.ts';
 
 describe('tripTokenSchema', () => {
   it('refuses a token shorter than 256 bits', () => {

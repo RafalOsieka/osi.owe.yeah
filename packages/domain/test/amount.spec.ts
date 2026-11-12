@@ -1,5 +1,6 @@
 import { describe, expect, it } from 'vite-plus/test';
-import { parseAmount, rational } from '@osi/owe-yeah-domain';
+import { rational } from '@osi/owe-yeah-domain';
+import { parseAmount } from '../src/amount.ts';
 
 describe('parseAmount', () => {
   it.each([
