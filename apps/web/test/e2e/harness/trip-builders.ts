@@ -23,10 +23,12 @@ export function newToken(): string {
   return randomBytes(32).toString('base64url');
 }
 
+/** A Participant called `name`, with a fresh id. */
 export function participant(name: string): Participant {
   return { id: uuidv7(), name };
 }
 
+/** A Trip in EUR, not yet on the server. */
 export function newTrip(
   name = 'Croatia 2026',
   participants: Participant[] = [],
@@ -34,6 +36,7 @@ export function newTrip(
   return { id: uuidv7(), name, currency: 'EUR', participants };
 }
 
+/** A change setting the Trip's name and currency, as `claimId` if given. */
 export function tripChange(
   { name, currency }: Pick<TripWithParticipants, 'name' | 'currency'>,
   claimId: string | null = null,
@@ -41,6 +44,7 @@ export function tripChange(
   return { id: uuidv7(), claimId, deviceId, kind: 'trip', trip: { name, currency } };
 }
 
+/** A change adding or renaming `changed`, or removing them when `removed`; with no Claim. */
 export function participantChange(changed: Participant, removed = false): ParticipantChange {
   return {
     id: uuidv7(),
@@ -52,7 +56,10 @@ export function participantChange(changed: Participant, removed = false): Partic
   };
 }
 
-/** A change saving `expense` over its Revision `baseVersion`, or adding it without one. */
+/**
+ * A change saving `expense` over its Revision `baseVersion`, or adding it without one, as
+ * `claimId` if given.
+ */
 export function change(
   expense: Expense,
   baseVersion: number | null = null,

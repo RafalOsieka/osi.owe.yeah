@@ -89,7 +89,7 @@ describeDb('Notifications', () => {
 
   /**
    * A Trip with Kasia, Ania and Ola, with a device subscribed for each of them, named after
-   * the Participant it claims.
+   * the Participant it claims. None is the device the builders make changes on.
    */
   async function subscribedTrip() {
     const kasia = participant('Kasia');
