@@ -4,10 +4,12 @@ import {
   expenseKind,
   expenseShares,
   isRepayment,
+  revisionKind,
   type Currency,
   type Expense,
   type Rational,
   type Revision,
+  type RevisionKind,
 } from '@osi/owe-yeah-domain';
 
 /**
@@ -81,7 +83,7 @@ export function sameTotal(a: RevisionTotal, b: RevisionTotal): boolean {
 export type RevisionEntry = {
   revision: Revision;
   /** What the change that made it did. */
-  kind: 'added' | 'edited' | 'deleted' | 'restored';
+  kind: RevisionKind;
   /** The Expense's total before the change; `null` for the first Revision. */
   before: RevisionTotal | null;
   after: RevisionTotal;
@@ -95,16 +97,12 @@ export type RevisionEntry = {
  */
 export function revisionEntries(newestFirst: readonly Revision[]): RevisionEntry[] {
   return newestFirst.map((revision, index) => {
-    const previous = newestFirst[index + 1];
+    const previous = newestFirst[index + 1] ?? null;
+    const kind = revisionKind(previous, revision.deleted);
+    const before = previous && revisionTotal(previous.expense);
     const after = revisionTotal(revision.expense);
-    if (!previous) return { revision, kind: 'added', before: null, after, changed: [] };
-
-    const before = revisionTotal(previous.expense);
-    if (revision.deleted === previous.deleted) {
-      const changed = changedFields(previous.expense, revision.expense);
-      return { revision, kind: 'edited', before, after, changed };
-    }
-    const kind = revision.deleted ? 'deleted' : 'restored';
-    return { revision, kind, before, after, changed: [] };
+    const changed =
+      previous && kind === 'edited' ? changedFields(previous.expense, revision.expense) : [];
+    return { revision, kind, before, after, changed };
   });
 }

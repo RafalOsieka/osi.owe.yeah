@@ -165,7 +165,7 @@ They found no reason to reopen ADR 0001–0003, and 121 of the 126 stories are d
 - [ ] **S17. Playwright tests only Chromium**, though the spec's top risk is iOS Safari. Add a WebKit project for the offline and sync journeys. **Issue:** #220.
 - [x] **S18. Deploys build on the production host**, without tagged images, and migrations only go forward. Acceptable for now, with a backup (S1) before every deploy. Done in #124 and #127 (ADR 0005): hosts pull GHCR images pinned by digest. Forward-only migrations are now a decision recorded in ADR 0005. A dump before each deploy is done in #206.
 - [x] **S19. Spec story 101 is half done.** The Revision keeps its `deviceId`, but the endpoint doesn't return it. Either use it or drop the story. Dropped on 2026-11-11 through #19's amendments.
-- [ ] **S20. Classifying a change** (added, changed, deleted, restored) exists twice: in the server's Notifications code and in the app's Revisions utilities. **Issue:** #210. A domain `revisionKind`, and "edited" everywhere, the Web Push payload included.
+- [x] **S20. Classifying a change** (added, changed, deleted, restored) exists twice: in the server's Notifications code and in the app's Revisions utilities. **Issue:** #210. A domain `revisionKind`, and "edited" everywhere, the Web Push payload included. Done in #210.
 
 ### Spec #19 has aged, not the code
 

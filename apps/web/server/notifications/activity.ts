@@ -1,10 +1,12 @@
 import {
   balanceChanges,
+  revisionKind,
   roundMoney,
   type BalanceChange,
   type Expense,
   type ExpenseChange,
   type ActivityMessage,
+  type RevisionKind,
   type Trip,
 } from '@osi/owe-yeah-domain';
 import { eq } from 'drizzle-orm';
@@ -18,7 +20,7 @@ import { deliver, type PushSettings } from './delivery';
 /** One applied change as Notifications tell it: what it did, who made it, whom it moved. */
 type Activity = {
   change: ExpenseChange;
-  action: ActivityMessage['latest']['action'];
+  action: RevisionKind;
   author: string | null;
   affected: ReadonlyMap<string, BalanceChange>;
 };
@@ -163,14 +165,11 @@ function messageFor(
   };
 }
 
-/** What a change did to its Expense, as a Notification says. */
-function actionOf(
-  change: ExpenseChange,
-  version: number,
-  before: Expense | null,
-): ActivityMessage['latest']['action'] {
-  if (change.deleted) return 'deleted';
-  if (version === 1) return 'added';
-  // Not there before, though it had a version: it was deleted.
-  return before === null ? 'restored' : 'changed';
+/**
+ * What a change that made `version` did to its Expense (`revisionKind`), from what the Expense
+ * was `before` it: with no live Expense before, though it had a version, it was deleted.
+ */
+function actionOf(change: ExpenseChange, version: number, before: Expense | null): RevisionKind {
+  const previous = version === 1 ? null : { deleted: before === null };
+  return revisionKind(previous, change.deleted);
 }

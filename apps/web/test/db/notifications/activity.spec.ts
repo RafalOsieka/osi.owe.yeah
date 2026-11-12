@@ -178,6 +178,28 @@ describeDb('Notifications', () => {
     expect(pushService.payloadsOf(devices.ania)).toHaveLength(1);
   });
 
+  it('says an Expense was edited, or restored once deleted', async () => {
+    const { trip, token, kasia, ania, devices } = await subscribedTrip();
+    const lidl = plainExpense(kasia, [kasia, ania], 3000);
+    await push(trip.id, token, change(lidl, kasia.id));
+
+    const dearer = { ...lidl, lineItems: [{ ...lidl.lineItems[0]!, unitPrice: 4000 }] };
+    await push(trip.id, token, change(dearer, ania.id, 1));
+    await push(trip.id, token, { ...change(dearer, ania.id, 2), deleted: true });
+    await push(trip.id, token, change(dearer, ania.id, 3));
+
+    expect(pushService.payloadsOf(devices.kasia)).toEqual([
+      activity(trip, dearer, { author: 'Ania', action: 'edited', paid: '10.00', share: '5.00' }),
+      activity(trip, dearer, {
+        author: 'Ania',
+        action: 'deleted',
+        paid: '-40.00',
+        share: '-20.00',
+      }),
+      activity(trip, dearer, { author: 'Ania', action: 'restored', paid: '40.00', share: '20.00' }),
+    ]);
+  });
+
   it('sends one Notification per device for a push, about the latest change in it', async () => {
     const { trip, token, kasia, ola, devices } = await subscribedTrip();
     const first = plainExpense(kasia, [ola]);
