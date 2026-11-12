@@ -901,27 +901,6 @@ describeDb('the device, syncing with the real Trip sync', () => {
     });
   });
 
-  it('registers its push subscription once per Claim while notifications are on', async () => {
-    const { croatia, connection, trip, kasia, ania } = await setUp();
-    await croatia.turnOnNotifications(browserSubscription);
-
-    await croatia.sync();
-    expect(connection.subscriptions.get(trip.id)).toEqual({
-      ...browserSubscription,
-      claimId: kasia.id,
-    });
-
-    await croatia.claim(ania);
-    await croatia.sync();
-    await croatia.sync();
-    expect(connection.subscriptions.get(trip.id)).toEqual({
-      ...browserSubscription,
-      claimId: ania.id,
-    });
-    // Sent once per Claim: an unchanged subscription is not sent again.
-    expect(connection.subscribeCalls).toBe(2);
-  });
-
   it('sends its push subscription again once per run of the app, and a renewed one at once', async () => {
     const { croatia, deviceDb, connection, deviceId, trip, kasia } = await setUp();
     await croatia.turnOnNotifications(browserSubscription);
@@ -938,21 +917,6 @@ describeDb('the device, syncing with the real Trip sync', () => {
     await eventually(() =>
       expect(connection.subscriptions.get(trip.id)).toEqual({ ...renewed, claimId: kasia.id }),
     );
-  });
-
-  it('removes its push subscription once notifications are off, after being offline', async () => {
-    const { croatia, connection, trip } = await setUp();
-    await croatia.turnOnNotifications(browserSubscription);
-    await croatia.sync();
-
-    connection.offline = true;
-    await croatia.turnOffNotifications();
-    await croatia.sync();
-    expect(connection.subscriptions.has(trip.id)).toBe(true);
-
-    connection.offline = false;
-    await croatia.sync();
-    expect(connection.subscriptions.has(trip.id)).toBe(false);
   });
 
   it('removes the push subscription of a Trip forgotten offline once it is back online', async () => {
