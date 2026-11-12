@@ -3,6 +3,7 @@ import type {
   Expense,
   ExpenseChange,
   Participant,
+  RevisionKind,
   SyncChange,
   TripWithParticipants,
 } from '@osi/owe-yeah-domain';
@@ -67,7 +68,7 @@ function plainExpense(payer: Participant, ticked: Participant[], unitPrice = 245
 function activity(
   trip: TripWithParticipants,
   expense: Expense,
-  latest: { author: string | null; action: string; paid: string; share: string },
+  latest: { author: string | null; action: RevisionKind; paid: string; share: string },
   count = 1,
 ) {
   return {

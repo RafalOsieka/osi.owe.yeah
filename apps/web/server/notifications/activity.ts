@@ -80,7 +80,9 @@ export function createNotifications(
     );
     return changed.map(({ change, version, was, now }) => ({
       change,
-      action: actionOf(change, version, was),
+      // What it did (`revisionKind`): with a version before it but no live Expense, the Revision
+      // before it was deleted.
+      action: revisionKind(version === 1 ? null : { deleted: was === null }, change.deleted),
       author: change.claimId ? (names.get(change.claimId) ?? null) : null,
       affected: new Map(
         balanceChanges({ currency: trip.currency, participants, rates: entries }, was, now).map(
@@ -163,13 +165,4 @@ function messageFor(
       share: roundMoney(moved.share, trip.currency).decimal,
     },
   };
-}
-
-/**
- * What a change that made `version` did to its Expense (`revisionKind`), from what the Expense
- * was `before` it: with no live Expense before, though it had a version, it was deleted.
- */
-function actionOf(change: ExpenseChange, version: number, before: Expense | null): RevisionKind {
-  const previous = version === 1 ? null : { deleted: before === null };
-  return revisionKind(previous, change.deleted);
 }
