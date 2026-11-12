@@ -625,7 +625,8 @@
     "share": "Your share {amount}",
     "paid": "You paid {amount}",
     "collapsed": "{count} changes in {trip}",
-    "reminder": "{name} reminds you to pay them back {amount}"
+    "reminder": "{name} reminds you to pay them back {amount}",
+    "generic": "Something changed in a Trip"
   },
   "legal": {
     "title": "Legal",

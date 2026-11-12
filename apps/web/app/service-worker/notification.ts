@@ -1,11 +1,18 @@
-import type { ActivityMessage, PushMessage, ReminderMessage } from '@osi/owe-yeah-domain';
+import {
+  decimal,
+  pushMessageSchema,
+  type ActivityMessage,
+  type PushMessage,
+  type ReminderMessage,
+} from '@osi/owe-yeah-domain';
 import en from '../../i18n/locales/en.json';
 import pl from '../../i18n/locales/pl.json';
+import { formatMoney } from '../utils/money';
 
-// The service worker's own copy of the catalogs' `push` messages, bundled into it, so it
-// writes notifications offline and the server needs no i18n. They are plain text with
-// `{name}` placeholders: no plurals, links or escapes.
-const catalogs = { en: en.push, pl: pl.push };
+// The service worker's own copy of the catalogs' `push` messages and the app's name, bundled
+// into it, so it writes notifications offline and the server needs no i18n. They are plain
+// text with `{name}` placeholders: no plurals, links or escapes.
+const catalogs = { en: { ...en.push, app: en.app.title }, pl: { ...pl.push, app: pl.app.title } };
 
 export type NotificationLocale = keyof typeof catalogs;
 
@@ -41,31 +48,50 @@ export function notificationLocale(languages: readonly string[]): NotificationLo
 export const activityTag = (tripId: string) => `trip:${tripId}`;
 
 /**
- * The notification to show for a push message: about a Trip's activity
- * (`activityNotification`), or a Reminder (`reminderNotification`). `shown` is how many
- * changes the Trip's activity notification on screen already stands for (0 without one).
+ * A push's payload (`PushMessageData.text()`) as the PushMessage the server sends, or `null`
+ * without a payload or when it doesn't parse as one, e.g. from an older or newer server.
+ */
+export function pushMessage(payload: string | undefined): PushMessage | null {
+  if (payload === undefined) return null;
+  try {
+    return pushMessageSchema.safeParse(JSON.parse(payload)).data ?? null;
+  } catch {
+    return null;
+  }
+}
+
+/**
+ * The notification to show for a push message (see `pushMessage`): about a Trip's activity
+ * (`activityNotification`), a Reminder (`reminderNotification`), or, for a push that is no
+ * PushMessage, that something changed in a Trip, opening the app, so the push isn't wasted.
+ * `shown` is how many changes the Trip's activity notification on screen already stands for
+ * (0 without one).
  */
 export function notificationFor(
-  message: PushMessage,
+  message: PushMessage | null,
   shown: number,
   locale: NotificationLocale,
 ): ShownNotification {
   const messages = catalogs[locale];
   const say = (key: keyof Messages, values: Record<string, string | number> = {}) =>
     messages[key].replace(/\{(\w+)\}/g, (_, name: string) => String(values[name]));
-  const format = (currency: string, amount: `${number}`, signed: boolean) =>
-    new Intl.NumberFormat(locale, {
-      style: 'currency',
-      currency,
-      signDisplay: signed ? 'exceptZero' : 'auto',
-    }).format(amount);
+  // The push message schema checks every amount is a plain decimal; the server rounds it
+  // (`roundMoney`), so it shows without "≈".
+  const format = (currency: string, amount: string, signed: boolean) =>
+    formatMoney(decimal(amount), currency, locale, signed ? 'signedCurrency' : 'currency');
+  if (!message) {
+    return {
+      title: say('app'),
+      options: { tag: 'generic', body: say('generic'), data: { url: '/', count: 1 } },
+    };
+  }
   return message.kind === 'reminder'
     ? reminderNotification(message, say, format)
     : activityNotification(message, shown, say, format);
 }
 
 type Say = (key: keyof Messages, values?: Record<string, string | number>) => string;
-type Format = (currency: string, amount: `${number}`, signed: boolean) => string;
+type Format = (currency: string, amount: string, signed: boolean) => string;
 
 /**
  * Tagged with its Trip so a burst replaces one notification instead of piling up: with more
@@ -89,10 +115,9 @@ function activityNotification(
     };
   }
 
-  // SAFETY: the push message schema checks both are plain decimals.
   const amounts = (['share', 'paid'] as const)
     .filter((part) => Number(latest[part]) !== 0)
-    .map((part) => say(part, { amount: format(currency, latest[part] as `${number}`, true) }));
+    .map((part) => say(part, { amount: format(currency, latest[part], true) }));
   const author = latest.author ?? say('someone');
   const done = say(latest.action, { author, title: latest.title });
   return {
@@ -116,8 +141,7 @@ function reminderNotification(
   format: Format,
 ): ShownNotification {
   const { tripId, tripName, currency, from, to, amount } = message;
-  // SAFETY: the push message schema checks it is a plain decimal.
-  const owed = format(currency, amount as `${number}`, false);
+  const owed = format(currency, amount, false);
   return {
     title: tripName,
     options: {

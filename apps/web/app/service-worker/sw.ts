@@ -1,5 +1,4 @@
 /// <reference lib="webworker" />
-import type { PushMessage } from '@osi/owe-yeah-domain';
 import { clientsClaim } from 'workbox-core';
 import {
   cleanupOutdatedCaches,
@@ -11,6 +10,7 @@ import {
   activityTag,
   notificationFor,
   notificationLocale,
+  pushMessage,
   type NotificationData,
 } from './notification';
 
@@ -35,16 +35,15 @@ registerRoute(
 );
 
 // A push about a Trip's activity, written in the browser's language and collapsed into the
-// Trip's notification on screen, if there is one; or a Reminder, shown on its own.
+// Trip's notification on screen, if there is one; or a Reminder, shown on its own; or, when
+// the push is no PushMessage (e.g. from an older or newer server), a generic notification.
 self.addEventListener('push', (event) => {
-  // SAFETY: only the server sends to this device's subscription, and it sends a PushMessage.
-  const message = event.data?.json() as PushMessage | undefined;
-  if (!message) return;
+  const message = pushMessage(event.data?.text());
   event.waitUntil(
     (async () => {
-      const [shown] = await self.registration.getNotifications({
-        tag: activityTag(message.tripId),
-      });
+      const [shown] = message
+        ? await self.registration.getNotifications({ tag: activityTag(message.tripId) })
+        : [];
       // SAFETY: every notification this worker shows carries NotificationData.
       const count = (shown?.data as NotificationData | undefined)?.count ?? 0;
       const locale = notificationLocale(self.navigator.languages);
