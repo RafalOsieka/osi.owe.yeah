@@ -4,12 +4,21 @@
 // the zone picker under it, listing each zone by its city and UTC offset, and Done to fold it
 // back into the chip. The native picker button stays where the browser puts it, unseen. Times follow the
 // device's 12- or 24-hour clock, as the field does. Sits inside a `UForm`, as its `local` field.
+// A Trip rule the time breaks (`error`) unfolds the field and shows under it, with no Done.
 const local = defineModel<string>('local', { required: true });
 const zone = defineModel<string>('zone', { required: true });
+const { error } = defineProps<{ error?: string }>();
 
 const { locale } = useI18n();
 
 const open = ref(false);
+watch(
+  () => error,
+  (broken) => {
+    if (broken) open.value = true;
+  },
+  { immediate: true },
+);
 // The device's zone may be an alias missing from the list, so it is always offered. Listed by
 // city and offset, and found by either or by its identifier.
 const zones = computed(() => {
@@ -45,8 +54,14 @@ const time = computed(() => {
 </script>
 
 <template>
-  <UFormField v-if="open" name="local" :label="$t('expense.when')" :ui="{ hint: 'flex' }">
-    <template #hint>
+  <UFormField
+    v-if="open"
+    name="local"
+    :label="$t('expense.when')"
+    :error="error"
+    :ui="{ hint: 'flex' }"
+  >
+    <template v-if="!error" #hint>
       <UButton variant="link" :label="$t('form.done')" class="-my-3 -me-4" @click="open = false" />
     </template>
     <UInput

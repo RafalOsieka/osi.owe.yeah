@@ -3822,6 +3822,7 @@ exports[`the wire contract > changes only together with a decision about the syn
                         "contributionsExceedTotal",
                         "chargedWithoutTotal",
                         "manualRateToOwnCurrency",
+                        "timeOutOfRange",
                         "expenseIdTaken",
                         "unknownExpense",
                         "participantIdTaken",

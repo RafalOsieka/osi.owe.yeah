@@ -178,7 +178,11 @@ async function submit(): Promise<void> {
           />
         </UFormField>
 
-        <ExpenseTimeField v-model:local="state.local" v-model:zone="state.zone" />
+        <ExpenseTimeField
+          v-model:local="state.local"
+          v-model:zone="state.zone"
+          :error="problemAt(reading.reasons, 'local')"
+        />
       </div>
 
       <div class="card p-4">

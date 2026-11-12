@@ -171,7 +171,8 @@
       "contributionFromMainPayer": "Główny płatnik nie może mieć też dopłaty.",
       "contributionsExceedTotal": "Dopłaty wynoszą więcej niż cały wydatek.",
       "chargedWithoutTotal": "Pobrana kwota wymaga sumy różnej od zera.",
-      "manualRateToOwnCurrency": "Kurs ręczny musi przeliczać na inną walutę niż waluta wydatku."
+      "manualRateToOwnCurrency": "Kurs ręczny musi przeliczać na inną walutę niż waluta wydatku.",
+      "timeOutOfRange": "Data musi przypadać między 4 stycznia 1999 r. a dniem za rok od dziś."
     },
     "emptyHelp": "Dodaj, za co ktoś zapłacił w podróży. Udział każdego policzy się sam.",
     "addShort": "Wydatek",
@@ -449,6 +450,7 @@
       "contributionsExceedTotal": "dopłaty wynoszą więcej niż cały wydatek.",
       "chargedWithoutTotal": "pobrana kwota wymaga sumy różnej od zera.",
       "manualRateToOwnCurrency": "kurs ręczny musi przeliczać na inną walutę niż waluta wydatku.",
+      "timeOutOfRange": "data musi przypadać między 4 stycznia 1999 r. a dniem za rok od dziś.",
       "malformed": "serwer nie mógł odczytać tej zmiany.",
       "tooManyParticipants": "przywraca kogoś usuniętego z podróży, która ma już 100 uczestników.",
       "tooManyExpenses": "podróż ma już 2000 wydatków, licząc usunięte, czyli najwięcej, ile może mieć."

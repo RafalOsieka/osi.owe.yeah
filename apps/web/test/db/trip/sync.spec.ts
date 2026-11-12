@@ -18,12 +18,12 @@ import {
   type TripWithParticipants,
 } from '@osi/owe-yeah-domain';
 import { v7 as uuidv7 } from 'uuid';
-import { afterAll, beforeAll, expect, it } from 'vitest';
+import { afterAll, beforeAll, expect, it, onTestFinished, vi } from 'vitest';
 import {
   expenses as expenseRows,
   participants as participantRows,
 } from '../../../server/db/schema';
-import { createRates } from '../../../server/trip/rates';
+import { createRates, type Rates } from '../../../server/trip/rates';
 import { createTripStore } from '../../../server/trip/store';
 import {
   createTripSync,
@@ -121,6 +121,11 @@ function plainExpense(payer: Participant, ticked: Participant[] = [payer]): Expe
   };
 }
 
+/** Waits until `check` passes, e.g. for a rate the server fills in after a pull. */
+async function eventually(check: () => void | Promise<void>): Promise<void> {
+  await vi.waitFor(check, { timeout: 5_000, interval: 20 });
+}
+
 const iso = expect.stringMatching(/^\d{4}-\d{2}-\d{2}T[\d:.]+Z$/);
 
 describeDb('Trip sync', () => {
@@ -133,12 +138,13 @@ describeDb('Trip sync', () => {
     },
   };
   let sync: TripSync;
+  let rates: Rates;
 
   beforeAll(() => {
     sync = createTripSync(
       db(),
       createTripStore(db()),
-      createRates(db(), frankfurter.url),
+      (rates = createRates(db(), frankfurter.url)),
       recorder,
     );
   });
@@ -660,10 +666,12 @@ describeDb('Trip sync', () => {
     expect(await push(trip.id, token, toPln)).toEqual<ChangeResult[]>([
       { changeId: toPln.id, status: 'accepted', version: null },
     ]);
-    expect(await pull(trip.id, token)).toMatchObject({
-      trip: { currency: 'PLN', expenses: [stored(expense, 1)] },
-      rates: [{ date: '2026-07-14', from: 'CHF', to: 'PLN', rate: '4.5', fixed: true }],
-    });
+    await eventually(async () =>
+      expect(await pull(trip.id, token)).toMatchObject({
+        trip: { currency: 'PLN', expenses: [stored(expense, 1)] },
+        rates: [{ date: '2026-07-14', from: 'CHF', to: 'PLN', rate: '4.5', fixed: true }],
+      }),
+    );
   });
 
   it('refuses a new Trip currency while the Trip has a Repayment, but still takes a rename', async () => {
@@ -697,6 +705,30 @@ describeDb('Trip sync', () => {
     expect(await pulled(trip.id, token)).toMatchObject({ currency: 'PLN' });
   });
 
+  it('answers a pull without waiting for the provider, and brings the rate it fetched meanwhile on a later one', async () => {
+    const { trip, token, kasia } = await tripWithKasiaAndAnia();
+    frankfurter.set('2026-07-14', 'NOK', 'EUR', 0.085);
+    await push(trip.id, token, change({ ...plainExpense(kasia), currency: 'NOK' }));
+    const release = frankfurter.hold();
+    onTestFinished(release);
+
+    expect((await pull(trip.id, token)).rates).toEqual([]);
+    // The provider got the request, and holds its answer.
+    await eventually(() =>
+      expect(frankfurter.requests.map((query) => query.get('base'))).toContain('NOK'),
+    );
+
+    release();
+    const nok: RateEntry = {
+      date: '2026-07-14',
+      from: 'NOK',
+      to: 'EUR',
+      rate: '0.085',
+      fixed: true,
+    };
+    await eventually(async () => expect((await pull(trip.id, token)).rates).toEqual([nok]));
+  });
+
   it('fills the fixed rate a foreign Expense needs on the pull, once, and never changes it', async () => {
     const { trip, token, kasia } = await tripWithKasiaAndAnia();
     frankfurter.set('2026-07-14', 'USD', 'EUR', 0.87593);
@@ -709,13 +741,15 @@ describeDb('Trip sync', () => {
       fixed: true,
     };
 
-    const { trip: first, rates } = await pull(trip.id, token);
-    expect(rates).toEqual([usd]);
-    const fetched = frankfurter.requests.length;
+    const { trip: first } = await pull(trip.id, token);
+    await eventually(async () => expect((await pull(trip.id, token)).rates).toEqual([usd]));
+    // Another test's fill may still be under way.
+    const inUsd = () => frankfurter.requests.filter((query) => query.get('base') === 'USD');
+    const fetched = inUsd().length;
     frankfurter.set('2026-07-14', 'USD', 'EUR', 0.9);
     // Brought even while the Trip is unchanged.
     expect(await pull(trip.id, token, first!.version)).toEqual({ trip: null, rates: [usd] });
-    expect(frankfurter.requests.length).toBe(fetched);
+    expect(inUsd()).toHaveLength(fetched);
   });
 
   it('fixes the latest rate before a date the provider skipped, once it published a later one', async () => {
@@ -725,9 +759,11 @@ describeDb('Trip sync', () => {
     const time = { instant: '2026-07-12T10:00:00Z', zone: 'Europe/Stockholm' };
     await push(trip.id, token, change({ ...plainExpense(kasia), currency: 'SEK', time }));
 
-    expect((await pull(trip.id, token)).rates).toEqual<RateEntry[]>([
-      { date: '2026-07-12', from: 'SEK', to: 'EUR', rate: '0.088', fixed: true },
-    ]);
+    await eventually(async () =>
+      expect((await pull(trip.id, token)).rates).toEqual<RateEntry[]>([
+        { date: '2026-07-12', from: 'SEK', to: 'EUR', rate: '0.088', fixed: true },
+      ]),
+    );
   });
 
   it("fills today's rate as one not fixed yet, from the latest the provider has", async () => {
@@ -740,17 +776,23 @@ describeDb('Trip sync', () => {
     const time = { instant: now.toISOString(), zone: 'UTC' };
     await push(trip.id, token, change({ ...plainExpense(kasia), currency: 'GBP', time }));
 
-    expect((await pull(trip.id, token)).rates).toEqual<RateEntry[]>([
-      { date: today, from: 'GBP', to: 'EUR', rate: '1.15', fixed: false },
-    ]);
+    await eventually(async () =>
+      expect((await pull(trip.id, token)).rates).toEqual<RateEntry[]>([
+        { date: today, from: 'GBP', to: 'EUR', rate: '1.15', fixed: false },
+      ]),
+    );
   });
 
   it('pulls no rate for a currency the provider does not cover', async () => {
     const { trip, token, kasia } = await tripWithKasiaAndAnia();
     await push(trip.id, token, change({ ...plainExpense(kasia), currency: 'KPW' }));
 
-    const { trip: pulledTrip, rates } = await pull(trip.id, token);
-    expect(rates).toEqual([]);
+    await pull(trip.id, token);
+    // Joins the fetch the pull started.
+    expect(await rates.lookup('2026-07-14', 'KPW', 'EUR')).toEqual({ status: 'notCovered' });
+
+    const { trip: pulledTrip, rates: pulled } = await pull(trip.id, token);
+    expect(pulled).toEqual([]);
     expect(pulledTrip?.expenses).toHaveLength(1);
   });
 
@@ -766,10 +808,12 @@ describeDb('Trip sync', () => {
     await push(trip.id, token, change(expense));
     const fetched = frankfurter.requests.length;
 
-    expect(await pull(trip.id, token)).toMatchObject({
-      trip: { expenses: [stored(expense, 1)] },
-      rates: [{ date: '2026-07-14', from: 'PLN', to: 'EUR', rate: '0.235', fixed: true }],
-    });
+    await eventually(async () =>
+      expect(await pull(trip.id, token)).toMatchObject({
+        trip: { expenses: [stored(expense, 1)] },
+        rates: [{ date: '2026-07-14', from: 'PLN', to: 'EUR', rate: '0.235', fixed: true }],
+      }),
+    );
     const bases = frankfurter.requests.slice(fetched).map((query) => query.get('base'));
     expect(bases).not.toContain('KPW');
   });

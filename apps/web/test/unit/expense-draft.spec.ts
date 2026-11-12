@@ -499,6 +499,16 @@ describe('the Trip rules a draft would break', () => {
       plain({ mainPayerId: '019a2b3c-4d5e-7f00-8a1b-000000000009' }),
       [{ field: 'mainPayerId', code: 'unknownMainPayer' }],
     ],
+    [
+      'a day before the first one with a rate',
+      plain({ local: '1999-01-03T23:30' }),
+      [{ field: 'local', code: 'timeOutOfRange' }],
+    ],
+    [
+      'a Repayment years ahead',
+      repayment({ local: '2999-07-14T12:00' }),
+      [{ field: 'local', code: 'timeOutOfRange' }],
+    ],
   ])('%s', (_, draft, reasons) => {
     const reading = readDraft(draft, trip);
 
