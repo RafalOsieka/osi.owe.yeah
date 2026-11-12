@@ -5,8 +5,8 @@ import { rateEntrySchema } from './rates.ts';
 import {
   expenseVersionSchema,
   revisionSchema,
-  storedExpenseSchema,
   serverTripSchema,
+  storedExpenseSchema,
   tripVersionSchema,
 } from './server-trip.ts';
 import { tripSchema } from './trip.ts';

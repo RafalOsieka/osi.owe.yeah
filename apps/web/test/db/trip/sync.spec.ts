@@ -11,10 +11,10 @@ import {
   type PullResponse,
   type PushEnvelope,
   type RateEntry,
+  type ServerTrip,
   type StoredExpense,
   type SyncChange,
   type TripChange,
-  type ServerTrip,
   type TripWithParticipants,
 } from '@osi/owe-yeah-domain';
 import { v7 as uuidv7 } from 'uuid';

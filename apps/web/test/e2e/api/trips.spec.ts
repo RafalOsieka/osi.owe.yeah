@@ -14,10 +14,10 @@ import {
   type PushResponse,
   type RateLookup,
   type ReminderStatus,
+  type ServerTrip,
   type StoredExpense,
   type SyncChange,
   type TripChange,
-  type ServerTrip,
   type TripWithParticipants,
 } from '@osi/owe-yeah-domain';
 import { createTest, fetch, startServer } from '@nuxt/test-utils/e2e';

@@ -4,8 +4,8 @@ import {
   type Expense,
   type Participant,
   type RateEntry,
-  type StoredExpense,
   type ServerTrip,
+  type StoredExpense,
   type TripWithParticipants,
 } from '@osi/owe-yeah-domain';
 import type { ExpenseBase, Held, OutboxEntry, QueuedChange } from './db';

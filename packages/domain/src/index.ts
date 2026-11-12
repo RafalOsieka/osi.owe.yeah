@@ -6,11 +6,11 @@ export {
   editedSchema,
   expenseVersionSchema,
   revisionSchema,
-  storedExpenseSchema,
   serverTripSchema,
+  storedExpenseSchema,
   tripVersionSchema,
 } from './server-trip.ts';
-export type { Edited, Revision, StoredExpense, ServerTrip } from './server-trip.ts';
+export type { Edited, Revision, ServerTrip, StoredExpense } from './server-trip.ts';
 export { claimView, expenseShares, lineItemShares, receiptShares, spread } from './shares.ts';
 export { BREAKDOWN_PARTS, shareBreakdown, shareBreakdowns } from './breakdown.ts';
 export type { BreakdownPart, ShareBreakdown } from './breakdown.ts';

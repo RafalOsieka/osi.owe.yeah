@@ -10,10 +10,10 @@ import {
   type Participant,
   type ParticipantChange,
   type RateEntry,
+  type ServerTrip,
   type SubscriptionRequest,
   type TripChange,
   type TripCurrency,
-  type ServerTrip,
 } from '@osi/owe-yeah-domain';
 import { Dexie, type EntityTable } from 'dexie';
 import { z } from 'zod';
@@ -88,7 +88,7 @@ export type DeviceTrip = {
   /**
    * The `ServerTrip`: the Trip as last pulled, with the changes the server has accepted since
    * applied on top; `null` until the first pull, or the first push of a Trip created on this
-   * device.
+   * device. The field keeps its older name: renaming a stored field needs a store migration.
    */
   snapshot: ServerTrip | null;
   /**

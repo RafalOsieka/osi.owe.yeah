@@ -15,9 +15,9 @@ import {
   type PullResponse,
   type PushEnvelope,
   type PushResponse,
+  type ServerTrip,
   type SyncChange,
   type TripChange,
-  type ServerTrip,
 } from '@osi/owe-yeah-domain';
 import { and, eq, inArray, sql } from 'drizzle-orm';
 import type { Database, Transaction } from '../db/client';
