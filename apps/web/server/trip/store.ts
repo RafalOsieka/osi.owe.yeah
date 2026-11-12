@@ -1,5 +1,6 @@
 import {
   editedSchema,
+  expenseStateSchema,
   participantSchema,
   revisionSchema,
   storedExpenseSchema,
@@ -39,7 +40,8 @@ export type WholeTrip = z.infer<typeof wholeTripSchema>;
 
 /**
  * Every server read of a Trip, each parsed by the domain schemas on the way out, so their
- * defaults apply to rows stored before them. Built on the database, or on a transaction to
+ * defaults apply to rows stored before them. Expense state is untyped JSON until
+ * `expenseStateSchema` parses it. Built on the database, or on a transaction to
  * read inside it. Reads are whole: consumers filter for themselves. Writes are the sync push's.
  */
 export function createTripStore(db: Database | Transaction) {
@@ -78,7 +80,7 @@ export function createTripStore(db: Database | Transaction) {
       .where(eq(expenses.tripId, tripId))
       .orderBy(asc(expenses.createdAt), asc(expenses.id));
     return rows.map(({ id, version, state, deleted, editedBy, editedAt }) => ({
-      ...state,
+      ...expenseStateSchema.parse(state),
       id,
       version,
       deleted,
@@ -140,7 +142,7 @@ export function createTripStore(db: Database | Transaction) {
       return rows.map(({ version, state, deleted, claimId, createdAt }) =>
         revisionSchema.parse({
           version,
-          expense: { ...state, id: expenseId },
+          expense: { ...expenseStateSchema.parse(state), id: expenseId },
           deleted,
           edited: { by: claimId, at: createdAt.toISOString() },
         }),

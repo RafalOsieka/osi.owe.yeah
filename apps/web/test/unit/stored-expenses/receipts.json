@@ -1,0 +1,152 @@
+{
+  "plainExpense": {
+    "title": "Dinner",
+    "currency": "EUR",
+    "time": { "instant": "2026-07-14T19:30:00Z", "zone": "Europe/Zagreb" },
+    "mainPayerId": "019a2b3c-4d5e-7f00-8a1b-000000000001",
+    "lineItems": [
+      {
+        "name": "",
+        "unitPrice": 4800,
+        "quantity": 1,
+        "split": {
+          "mode": "even",
+          "participantIds": [
+            "019a2b3c-4d5e-7f00-8a1b-000000000001",
+            "019a2b3c-4d5e-7f00-8a1b-000000000002"
+          ]
+        }
+      }
+    ]
+  },
+  "income": {
+    "title": "Apartment deposit refund",
+    "currency": "EUR",
+    "time": { "instant": "2026-07-15T08:00:00Z", "zone": "Europe/Zagreb" },
+    "mainPayerId": "019a2b3c-4d5e-7f00-8a1b-000000000002",
+    "lineItems": [
+      {
+        "name": "",
+        "unitPrice": -1200,
+        "quantity": 1,
+        "split": {
+          "mode": "even",
+          "participantIds": [
+            "019a2b3c-4d5e-7f00-8a1b-000000000001",
+            "019a2b3c-4d5e-7f00-8a1b-000000000002"
+          ]
+        }
+      }
+    ]
+  },
+  "receipt": {
+    "title": "Lidl Rovinj",
+    "currency": "EUR",
+    "time": { "instant": "2026-07-14T09:15:00Z", "zone": "Europe/Zagreb" },
+    "mainPayerId": "019a2b3c-4d5e-7f00-8a1b-000000000001",
+    "lineItems": [
+      {
+        "name": "Water 1.5 l",
+        "unitPrice": 59,
+        "quantity": 6,
+        "discount": { "kind": "amount", "amount": 60 },
+        "depositPerUnit": 10,
+        "split": {
+          "mode": "units",
+          "parts": [
+            { "participantId": "019a2b3c-4d5e-7f00-8a1b-000000000001", "units": 4 },
+            { "participantId": "019a2b3c-4d5e-7f00-8a1b-000000000002", "units": 2 }
+          ]
+        }
+      },
+      {
+        "name": "Bread",
+        "unitPrice": 189,
+        "quantity": 1,
+        "discount": { "kind": "percent", "basisPoints": 3000 },
+        "split": {
+          "mode": "amounts",
+          "parts": [{ "participantId": "019a2b3c-4d5e-7f00-8a1b-000000000002", "amount": 100 }]
+        }
+      },
+      {
+        "name": "Deposit refund",
+        "unitPrice": -10,
+        "quantity": 12,
+        "split": { "mode": "even", "participantIds": [] }
+      }
+    ],
+    "discount": { "kind": "percent", "basisPoints": 500 }
+  },
+  "contributions": {
+    "title": "Boat tour",
+    "currency": "EUR",
+    "time": { "instant": "2026-07-16T10:00:00Z", "zone": "Europe/Zagreb" },
+    "mainPayerId": "019a2b3c-4d5e-7f00-8a1b-000000000001",
+    "lineItems": [
+      {
+        "name": "",
+        "unitPrice": 12000,
+        "quantity": 1,
+        "split": {
+          "mode": "even",
+          "participantIds": [
+            "019a2b3c-4d5e-7f00-8a1b-000000000001",
+            "019a2b3c-4d5e-7f00-8a1b-000000000002"
+          ]
+        }
+      }
+    ],
+    "contributions": [{ "participantId": "019a2b3c-4d5e-7f00-8a1b-000000000002", "amount": 1000 }]
+  },
+  "manualRate": {
+    "title": "Museum tickets",
+    "currency": "HUF",
+    "time": { "instant": "2026-07-18T12:00:00Z", "zone": "Europe/Budapest" },
+    "mainPayerId": "019a2b3c-4d5e-7f00-8a1b-000000000002",
+    "manualRate": { "kind": "rate", "rate": "0.00253", "currency": "EUR" },
+    "lineItems": [
+      {
+        "name": "",
+        "unitPrice": 760000,
+        "quantity": 1,
+        "split": {
+          "mode": "even",
+          "participantIds": [
+            "019a2b3c-4d5e-7f00-8a1b-000000000001",
+            "019a2b3c-4d5e-7f00-8a1b-000000000002"
+          ]
+        }
+      }
+    ]
+  },
+  "chargedManualRate": {
+    "title": "Lunch",
+    "currency": "HUF",
+    "time": { "instant": "2026-07-18T11:00:00Z", "zone": "Europe/Budapest" },
+    "mainPayerId": "019a2b3c-4d5e-7f00-8a1b-000000000001",
+    "manualRate": { "kind": "charged", "amount": 2140, "currency": "EUR" },
+    "lineItems": [
+      {
+        "name": "",
+        "unitPrice": 840000,
+        "quantity": 1,
+        "split": {
+          "mode": "even",
+          "participantIds": [
+            "019a2b3c-4d5e-7f00-8a1b-000000000001",
+            "019a2b3c-4d5e-7f00-8a1b-000000000002"
+          ]
+        }
+      }
+    ]
+  },
+  "repayment": {
+    "title": "Taxi",
+    "currency": "EUR",
+    "time": { "instant": "2026-07-15T21:00:00Z", "zone": "Europe/Zagreb" },
+    "mainPayerId": "019a2b3c-4d5e-7f00-8a1b-000000000002",
+    "recipientId": "019a2b3c-4d5e-7f00-8a1b-000000000001",
+    "amount": 900
+  }
+}

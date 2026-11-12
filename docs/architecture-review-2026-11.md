@@ -118,7 +118,7 @@ They found no reason to reopen ADR 0001–0003, and 121 of the 126 stories are d
 
 ### P2: before the next change to the shape of stored data
 
-- [ ] **S6. The server's stored Expense JSON has no way to evolve** (system H3).
+- [x] **S6. The server's stored Expense JSON has no way to evolve** (system H3). Done: the cast is gone, and `apps/web/test/unit/stored-expenses.spec.ts` parses a fixture of every stored shape and says how a change to the shape keeps them parsing.
   - **The problem:** `jsonb().$type<ExpenseState>()` is a cast, not a parse, and Revisions keep every historical shape forever. If one bad row fails to parse, the whole pull for that Trip answers 500.
   - **Fix:** drop the `$type` cast so that skipping the parse is a type error; keep a JSON fixture per historical shape, with a test that each still parses; break changes with a SQL JSONB migration for `expenses.state`, and upgrade Revisions when they are read.
   - **Overlap:** #77 (Trip store) parses every read through the domain schemas. The fixtures, the cast and the policy for upgrading Revisions are not in #77.

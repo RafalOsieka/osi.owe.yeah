@@ -165,12 +165,15 @@ export function expenseKind<E extends Expense>(expense: E): KindedExpense<E> {
   return { kind: isDepositRefund(only!) ? 'income' : 'plain', expense: single };
 }
 
-/** An Expense without its id, as the server keeps its state; one type per kind of Expense. */
-export type ExpenseState = Expense extends infer E
-  ? E extends unknown
-    ? Omit<E, 'id'>
-    : never
-  : never;
+/**
+ * An Expense without its id, as the server keeps its state in `expenses.state` and
+ * `revisions.state`. Every read of those columns goes through it, so rows stored in an older
+ * shape get the defaults added since.
+ */
+export const expenseStateSchema = z.union([
+  splitExpenseSchema.omit({ id: true }),
+  repaymentSchema.omit({ id: true }),
+]);
 
 /** Why an Expense that is well-formed on its own does not fit its Trip. */
 export const expenseProblemSchema = z.enum([

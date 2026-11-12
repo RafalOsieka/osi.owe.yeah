@@ -1,4 +1,3 @@
-import type { ExpenseState } from '@osi/owe-yeah-domain';
 import { sql } from 'drizzle-orm';
 import { boolean, index, integer, jsonb, pgTable, timestamp, uuid } from 'drizzle-orm/pg-core';
 import { trips } from './trips';
@@ -21,8 +20,9 @@ export const expenses = pgTable(
       .references(() => trips.id, { onDelete: 'cascade' }),
     // Starts at 1 and goes up by one with every accepted change; a change must be based on it.
     version: integer().notNull(),
-    // The Expense's state as the domain package validated it, without its id.
-    state: jsonb().$type<ExpenseState>().notNull(),
+    // The Expense's state as the domain package validated it, without its id. Untyped, so a
+    // read must parse it with `expenseStateSchema` (stored shapes: test/unit/stored-expenses).
+    state: jsonb().notNull(),
     // Deleted softly: it stays, with its state, so it can be restored from Recently deleted.
     deleted: boolean().notNull().default(false),
     createdAt: timestamp({ withTimezone: true }).notNull().defaultNow(),
