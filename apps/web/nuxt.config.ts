@@ -111,10 +111,11 @@ export default defineNuxtConfig({
     vapidPublicKey: '',
     vapidPrivateKey: '',
     vapidSubject: '',
-    // Push services are https only, so a device can't make the server post anywhere else;
-    // `NUXT_NOTIFICATIONS_ALLOW_HTTP` lets the api e2e suite's stand-in push service be
-    // plain http.
-    notificationsAllowHttp: false,
+    // Notifications go only to the browsers' known push services
+    // (`server/notifications/push-services.ts`), so a device can't make the server post into
+    // the network it runs in. Tests only: `NUXT_NOTIFICATIONS_ANY_ENDPOINT` takes any endpoint,
+    // plain http included, for the stand-in push service on 127.0.0.1.
+    notificationsAnyEndpoint: false,
     // The Git commit the server was built from, which `/healthz` reports. The runtime image
     // bakes it in as `NUXT_COMMIT_SHA` from its `COMMIT_SHA` build arg; the prerendered app
     // can't carry it.

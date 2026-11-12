@@ -3,6 +3,7 @@ import { inArray } from 'drizzle-orm';
 import webpush from 'web-push';
 import type { Database } from '../db/client';
 import { notificationSubscriptions } from '../db/schema';
+import { isKnownPushService } from './push-services';
 
 // How long a push service keeps a notification for a device that is offline. The next pull
 // brings the change anyway.
@@ -11,25 +12,33 @@ const TTL_SECONDS = 24 * 60 * 60;
 /** The server's VAPID keys and subject, which every notification is signed with. */
 export type VapidDetails = webpush.VapidKeys & { subject: string };
 
+/**
+ * What Notifications and Reminders are sent with: the server's VAPID keys, and whether they go
+ * to any endpoint (`notificationsAnyEndpoint`, in tests only) or to known push services only.
+ */
+export type PushSettings = { vapid: VapidDetails; anyEndpoint: boolean };
+
 type NotificationSubscriptionRow = typeof notificationSubscriptions.$inferSelect;
 
 /**
  * Sends each subscription the message `messageOf` writes for it (`null`: none), all at once,
- * then deletes from `db` those whose push service answers 404 or 410, as gone. Nothing is
- * retried. Never rejects.
+ * then deletes from `db` those whose push service answers 404 or 410, as gone. A subscription
+ * off the known push services gets nothing (unless `anyEndpoint`), so rows stored before the
+ * subscription handler checked endpoints are never sent to. Nothing is retried. Never rejects.
  */
 export async function deliver(
   db: Database,
   subscriptions: readonly NotificationSubscriptionRow[],
   messageOf: (subscription: NotificationSubscriptionRow) => PushMessage | null,
-  vapid: VapidDetails,
+  { vapid, anyEndpoint }: PushSettings,
 ): Promise<void> {
   const gone = new Set<string>();
   await Promise.allSettled(
     subscriptions.map(async (subscription) => {
+      const { endpoint, p256dh, auth } = subscription;
+      if (!anyEndpoint && !isKnownPushService(endpoint)) return;
       const message = messageOf(subscription);
       if (!message) return;
-      const { endpoint, p256dh, auth } = subscription;
       const status = await send({ endpoint, keys: { p256dh, auth } }, message, vapid);
       if (status === 404 || status === 410) gone.add(endpoint);
     }),
@@ -47,7 +56,8 @@ export async function deliver(
 /**
  * Sends one notification, encrypted for the subscription, and resolves to the push service's
  * status, or `null` when it can't be reached. `web-push` builds the request; it is sent with
- * `fetch` here, which also speaks the plain http of the api e2e suite's stand-in.
+ * `fetch` here, which also speaks the plain http of the api e2e suite's stand-in. A redirect
+ * isn't followed, so it can't lead anywhere off the push service: it counts as unreachable.
  */
 async function send(
   subscription: webpush.PushSubscription,
@@ -65,6 +75,7 @@ async function send(
       method: request.method,
       headers,
       body: request.body && new Uint8Array(request.body),
+      redirect: 'error',
       signal: AbortSignal.timeout(10_000),
     });
     return response.status;

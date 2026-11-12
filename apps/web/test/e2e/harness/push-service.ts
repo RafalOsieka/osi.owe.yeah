@@ -9,11 +9,13 @@ export type ReceivedPush = { device: string; payload: unknown };
  * A stand-in for the browsers' push services at the HTTP boundary: every endpoint is a path
  * on it, and `subscription` makes one with real keys, as a browser does, so what the server
  * sends can be decrypted (RFC 8291, aes128gcm) and checked. Each endpoint answers 201, or the
- * status `gone` set for it, as a push service answers an endpoint it no longer has.
+ * status `gone` set for it, as a push service answers an endpoint it no longer has, or a 307
+ * to the endpoint `redirect` set for it.
  */
 export async function startPushService() {
   const received: ReceivedPush[] = [];
   const statuses = new Map<string, number>();
+  const redirects = new Map<string, string>();
   const keys = new Map<string, { ecdh: ReturnType<typeof createECDH>; auth: Buffer }>();
 
   const server = createServer((request, response) => {
@@ -26,7 +28,9 @@ export async function startPushService() {
         const text = decrypt(Buffer.concat(chunks), key.ecdh, key.auth);
         received.push({ device, payload: JSON.parse(text) });
       }
-      response.statusCode = statuses.get(device) ?? 201;
+      const location = redirects.get(device);
+      if (location) response.setHeader('Location', location);
+      response.statusCode = location ? 307 : (statuses.get(device) ?? 201);
       response.end();
     });
   });
@@ -53,6 +57,10 @@ export async function startPushService() {
     /** Makes `device`'s endpoint answer `status` from now on, e.g. 410 once it is gone. */
     gone(device: string, status = 410): void {
       statuses.set(device, status);
+    },
+    /** Makes `device`'s endpoint redirect to `to`'s from now on. */
+    redirect(device: string, to: string): void {
+      redirects.set(device, `http://127.0.0.1:${port}/${to}`);
     },
     /** The payloads `device` got, in the order they came. */
     payloadsOf(device: string): unknown[] {
