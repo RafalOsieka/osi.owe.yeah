@@ -82,6 +82,12 @@ _Polish_: Zwrot kaucji
 _Avoid_: Bottle return, refund, cashback
 _Polish avoid_: Zwrot (on its own), cashback
 
+**Subtotal**:
+What a Receipt's Line items come to after their own discounts, before the Receipt discount, Deposits and Deposit refunds.
+_Polish_: Suma pozycji
+_Avoid_: Net, sum, goods total
+_Polish avoid_: Suma częściowa, netto
+
 **Revision**:
 One saved version of an Expense, with who made it and when. Editing, deleting or restoring an Expense adds a Revision; Revisions are never changed or removed.
 _Polish_: Wersja
