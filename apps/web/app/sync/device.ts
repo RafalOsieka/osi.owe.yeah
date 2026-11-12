@@ -24,6 +24,7 @@ import {
   type TripWithParticipants,
 } from '@osi/owe-yeah-domain';
 import { v7 as uuidv7 } from 'uuid';
+import { computed, shallowReactive } from 'vue';
 import {
   NOTIFICATIONS_OFF,
   type BrowserSubscription,
@@ -46,9 +47,18 @@ import {
 } from './local-trip';
 import { createNotifications } from './notifications';
 
+/** A sync API call that got no answer back, e.g. with no signal. */
+export class OfflineError extends Error {
+  constructor() {
+    super('No answer from the server');
+  }
+}
+
 /**
  * How the device reaches the sync API. Every call rejects when no answer comes back (e.g. no
- * signal); `pull` answers `invalidLink` when the server refuses the token.
+ * signal), with an `OfflineError` from the calls a sync makes (`push`, `pull`, `subscribe`,
+ * `unsubscribe`), which reject with another error for an answer they can't take, such as a
+ * 5xx; `pull` answers `invalidLink` when the server refuses the token.
  */
 export type Transport = {
   push(tripId: string, token: string, request: PushRequest): Promise<PushResponse>;
@@ -96,6 +106,12 @@ export type DeviceTripView = {
   unsynced: number;
 };
 
+/**
+ * Why a Trip's last sync didn't get through: no answer came back (`offline`), or the server
+ * answered with an error (`server`), such as a 5xx or a rate limit.
+ */
+export type SyncFailure = 'offline' | 'server';
+
 /** A change about to be queued, before the device stamps it with its id, Claim and device. */
 type NewChange = {
   [K in QueuedChange['kind']]: Omit<
@@ -123,6 +139,8 @@ export function createDevice(db: DeviceDb, transport: Transport, deviceId: strin
   // The sync running for each Trip, and whether a change was made meanwhile.
   const running = new Map<string, Promise<void>>();
   const again = new Set<string>();
+  // Why each Trip's last sync failed, until one gets through; reactive, for the Trip header.
+  const failures = shallowReactive(new Map<string, SyncFailure>());
   const notifications = createNotifications(db, transport, deviceId);
 
   async function entriesOf(tripId: string): Promise<OutboxEntry[]> {
@@ -538,6 +556,12 @@ export function createDevice(db: DeviceDb, transport: Transport, deviceId: strin
         return transport.remind(tripId, device.token, { from: device.claim.id, to });
       },
 
+      /**
+       * Why the Trip's last sync failed on this device, kept in memory only: `null` until one
+       * fails, and again once one gets through.
+       */
+      lastFailure: computed(() => failures.get(tripId) ?? null),
+
       /** Syncs the Trip now, e.g. on pull-to-refresh, as `sync` does. */
       sync: (): Promise<void> => sync(tripId),
     };
@@ -557,7 +581,10 @@ export function createDevice(db: DeviceDb, transport: Transport, deviceId: strin
     const run = (async () => {
       do {
         again.delete(tripId);
-        await syncOnce(tripId).catch(() => {});
+        await syncOnce(tripId).then(
+          () => failures.delete(tripId),
+          (error) => failures.set(tripId, error instanceof OfflineError ? 'offline' : 'server'),
+        );
       } while (again.has(tripId));
       // Right after the last check, so a change made from now on starts a sync of its own.
       running.delete(tripId);

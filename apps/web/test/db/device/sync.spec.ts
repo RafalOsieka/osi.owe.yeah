@@ -12,7 +12,7 @@ import { eq } from 'drizzle-orm';
 import { v7 as uuidv7 } from 'uuid';
 import { afterAll, beforeAll, expect, it, onTestFinished, vi } from 'vitest';
 import { DeviceDb } from '../../../app/sync/db';
-import { createDevice } from '../../../app/sync/device';
+import { createDevice, OfflineError } from '../../../app/sync/device';
 import { toExpense } from '../../../app/sync/local-trip';
 import { changes } from '../../../server/db/schema';
 import { createRates, type Rates } from '../../../server/trip/rates';
@@ -379,6 +379,25 @@ describeDb('the device, syncing with the real Trip sync', () => {
       .from(changes)
       .where(eq(changes.tripId, trip.id));
     expect(recorded).toEqual(Array(5).fill({ claimId: kasia.id, deviceId }));
+  });
+
+  it('says whether its last sync failed offline or on the server, until a sync gets through', async () => {
+    const { croatia, connection, kasia } = await setUp();
+    expect(croatia.lastFailure.value).toBeNull();
+
+    connection.offline = true;
+    await croatia.saveExpense(plainExpense('Lidl Rovinj', kasia, [kasia]), null);
+    await croatia.sync();
+    expect(croatia.lastFailure.value).toBe('offline');
+
+    connection.offline = false;
+    connection.failing = true;
+    await croatia.sync();
+    expect(croatia.lastFailure.value).toBe('server');
+
+    connection.failing = false;
+    await croatia.sync();
+    expect(croatia.lastFailure.value).toBeNull();
   });
 
   it('resends a change whose answer was lost under the same id: applied once, its result reaching the device', async () => {
@@ -780,7 +799,7 @@ describeDb('the device, syncing with the real Trip sync', () => {
     await croatia.sync();
     expect((await device.read(trip.id))?.local?.rates).toEqual([entry]);
     connection.offline = true;
-    await expect(croatia.lookupRate('BAM', '2026-07-15')).rejects.toThrow('offline');
+    await expect(croatia.lookupRate('BAM', '2026-07-15')).rejects.toThrow(OfflineError);
   });
 
   it('notes the removed Participants the server brought back for its Expense, also from the answer to a retry', async () => {
