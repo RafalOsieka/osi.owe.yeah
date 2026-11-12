@@ -20,3 +20,17 @@ export function formatTimeAgo(at: string, now: Date, locale: string, justNow?: s
   if (unit) return format.format(Math.round(seconds / unit[1]), unit[0]);
   return justNow ?? format.format(0, 'second');
 }
+
+/**
+ * When a change was made, as "last edited", "last changed" and Recently deleted say it: how
+ * long ago by the server's clock (`formatTimeAgo`), or `notSyncedYet` while the server hasn't
+ * answered (`at` missing).
+ */
+export function formatEditedAt(
+  at: string | null | undefined,
+  now: Date,
+  locale: string,
+  words: { justNow: string; notSyncedYet: string },
+): string {
+  return at ? formatTimeAgo(at, now, locale, words.justNow) : words.notSyncedYet;
+}

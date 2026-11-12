@@ -17,6 +17,7 @@ const tripPage = computed(() => `/trips/${trip.value.id}`);
 
 const rows = computed(() => {
   const now = new Date();
+  const words = { justNow: t('history.justNow'), notSyncedYet: t('history.notSyncedYet') };
   // Newest first: a deletion not synced yet (no server time) on top, then by ISO instant,
   // which sorts as text.
   const newestFirst = (a: LocalExpense, b: LocalExpense) => {
@@ -26,20 +27,17 @@ const rows = computed(() => {
   };
   return trip.value.deletedExpenses.toSorted(newestFirst).map((expense) => {
     const { edited, unsynced } = expense;
-    // "by you" needs both a Claim and a known author; without them `undefined === undefined`.
-    const byYou = claim.value !== null && edited?.by === claim.value.id;
-    const name = everyone.value.find(({ id }) => id === edited?.by)?.name;
-    const when = edited?.at
-      ? formatTimeAgo(edited.at, now, locale.value, t('history.justNow'))
-      : t('history.notSyncedYet');
+    const author = whoMadeIt(edited?.by, claim.value, everyone.value);
+    const when = formatEditedAt(edited?.at, now, locale.value, words);
     return {
       expense,
       total: formatMoney(expenseShares(expense).total, expense.currency, locale.value),
-      deleted: byYou
-        ? t('deleted.byYou', { when })
-        : name
-          ? t('deleted.by', { name, when })
-          : t('deleted.at', { when }),
+      deleted:
+        author.is === 'you'
+          ? t('deleted.byYou', { when })
+          : author.is === 'named'
+            ? t('deleted.by', { name: author.participant.name, when })
+            : t('deleted.at', { when }),
       conflict: unsynced?.status === 'conflict',
       notSynced: unsynced !== null && unsynced.status !== 'conflict',
     };

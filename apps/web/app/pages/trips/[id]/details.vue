@@ -31,14 +31,19 @@ const changed = computed(
 const lastChanged = computed(() => {
   const { edited } = trip.value;
   if (!edited) return null;
-  const name = everyone.value.find(({ id }) => id === edited.by)?.name;
-  const when = edited.at
-    ? formatTimeAgo(edited.at, new Date(), locale.value, t('history.justNow'))
-    : t('history.notSyncedYet');
-  if (edited.by === claim.value?.id) return t('trip.details.lastChangedByYou', { when });
-  return name
-    ? t('trip.details.lastChangedBy', { name, when })
-    : t('trip.details.lastChanged', { when });
+  const author = whoMadeIt(edited.by, claim.value, everyone.value);
+  const when = formatEditedAt(edited.at, new Date(), locale.value, {
+    justNow: t('history.justNow'),
+    notSyncedYet: t('history.notSyncedYet'),
+  });
+  switch (author.is) {
+    case 'you':
+      return t('trip.details.lastChangedByYou', { when });
+    case 'named':
+      return t('trip.details.lastChangedBy', { name: author.participant.name, when });
+    case 'nobody':
+      return t('trip.details.lastChanged', { when });
+  }
 });
 
 function validate(details: Partial<typeof state>): FormError[] {

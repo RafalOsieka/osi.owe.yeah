@@ -32,19 +32,19 @@ const rows = computed(() => {
     const { by, at } = revision.edited;
     const money = ({ amount, currency }: RevisionTotal) =>
       formatMoney(amount, currency, locale.value);
-    const name =
-      by === claim.value?.id
-        ? t('history.you')
-        : (everyone.value.find(({ id }) => id === by)?.name ?? t('history.someone'));
+    const author = whoMadeIt(by, claim.value, everyone.value);
+    const when = formatTimeAgo(at, now, locale.value, t('history.justNow'));
     return {
       version: revision.version,
       kind: t(`history.kind.${kind}`),
       current: revision.version === currentVersion.value,
-      author: everyone.value.find(({ id }) => id === by),
-      byline: t('history.byline', {
-        name,
-        when: formatTimeAgo(at, now, locale.value, t('history.justNow')),
-      }),
+      author: author.is === 'nobody' ? null : author.participant,
+      byline:
+        author.is === 'you'
+          ? t('history.rowByYou', { when })
+          : author.is === 'named'
+            ? t('history.rowBy', { name: author.participant.name, when })
+            : t('history.rowByNobody', { when }),
       changed:
         changed.length > 0
           ? t('history.changed', {
