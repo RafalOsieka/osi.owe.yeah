@@ -5,10 +5,10 @@ import {
   rational,
   shareBreakdown,
   shareBreakdowns,
-  subtract,
   type Expense,
   type Rational,
 } from '@osi/owe-yeah-domain';
+import { subtract } from '../src/rational.ts';
 
 const rafal = '019a2b3c-4d5e-7f00-8a1b-000000000001';
 const ania = '019a2b3c-4d5e-7f00-8a1b-000000000002';

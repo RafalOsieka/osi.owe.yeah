@@ -1,12 +1,10 @@
-export { add, compare, multiply, negate, rational, subtract } from './rational.ts';
+export { add, compare, multiply, negate, rational } from './rational.ts';
 export type { Rational } from './rational.ts';
-export { parseAmount } from './amount.ts';
 export { fromMinor, minorUnits, parseMoney, roundMoney } from './money.ts';
 export {
   editedSchema,
   expenseVersionSchema,
   revisionSchema,
-  serverTripSchema,
   storedExpenseSchema,
   tripVersionSchema,
 } from './server-trip.ts';
@@ -14,19 +12,17 @@ export type { Edited, Revision, ServerTrip, StoredExpense, TripPeople } from './
 export { claimView, expenseShares, lineItemShares, receiptShares, spread } from './shares.ts';
 export { BREAKDOWN_PARTS, shareBreakdown, shareBreakdowns } from './breakdown.ts';
 export type { BreakdownPart, ShareBreakdown } from './breakdown.ts';
-export { discountSchema, parsePercent } from './discount.ts';
+export { parsePercent } from './discount.ts';
 export type { Discount } from './discount.ts';
 export {
   MAX_UNITS,
   isDepositRefund,
   lineItemProblems,
-  lineItemSchema,
   newLineItemSplit,
   splitFromScratch,
   splitParticipantIds,
-  splitSchema,
 } from './line-item.ts';
-export type { LineItem, LineItemProblem, Split, SplitMode } from './line-item.ts';
+export type { LineItem, Split, SplitMode } from './line-item.ts';
 export {
   balances,
   isSettled,
@@ -34,14 +30,8 @@ export {
   spendingTotal,
   suggestedRepayments,
 } from './settle-up.ts';
-export type {
-  Converted,
-  ParticipantBalance,
-  SuggestedRepayment,
-  TripExpenses,
-} from './settle-up.ts';
-export type { ClaimView, ExpenseShares, LineItemShares, ReceiptShares } from './shares.ts';
-export type { RoundedMoney } from './money.ts';
+export type { ParticipantBalance, SuggestedRepayment } from './settle-up.ts';
+export type { LineItemShares, ReceiptShares } from './shares.ts';
 export {
   deviceTimeZone,
   expenseIdSchema,
@@ -50,14 +40,12 @@ export {
   expenseProblems,
   expenseSchema,
   expenseTimeFromLocal,
-  expenseTimeSchema,
   expensesReferencing,
   groupByLocalDay,
   isRepayment,
   expenseStateSchema,
   expenseTitleSchema,
   localDateTime,
-  localDay,
   receiptDiscountExceeds,
   referencedParticipantIds,
   tripCurrencyLocked,
@@ -88,7 +76,6 @@ export {
   PUSH_LIMIT,
   SYNC_SCHEMA_HEADER,
   SYNC_SCHEMA_VERSION,
-  changeResultSchema,
   expenseChangeProblems,
   expenseChangeSchema,
   participantChangeSchema,
@@ -96,7 +83,6 @@ export {
   pullResponseSchema,
   pushEnvelopeSchema,
   pushProblemSchema,
-  pushRequestSchema,
   pushResponseSchema,
   restoredBy,
   revisionsResponseSchema,
@@ -109,14 +95,13 @@ export type {
   ParticipantChange,
   PullResponse,
   PushEnvelope,
-  PushProblem,
   PushRequest,
   PushResponse,
   RevisionsResponse,
   SyncChange,
   TripChange,
 } from './sync.ts';
-export { CURRENCIES, currencySchema } from './currency.ts';
+export { CURRENCIES } from './currency.ts';
 export type { Currency } from './currency.ts';
 export {
   conversionRate,
@@ -128,14 +113,12 @@ export {
   rateQuerySchema,
   rateSummary,
 } from './rates.ts';
-export type { Conversion, ExpenseRate, RateEntry, RateLookup, TripRates } from './rates.ts';
-export { decimal, manualRateSchema, parseRate, rateSchema } from './manual-rate.ts';
+export type { RateEntry, RateLookup } from './rates.ts';
+export { decimal, parseRate } from './manual-rate.ts';
 export type { ManualRate } from './manual-rate.ts';
 export {
-  activityMessageSchema,
   balanceChanges,
   pushKeyResponseSchema,
-  pushMessageSchema,
   reminderMessageSchema,
   reminderRefusalSchema,
   reminderRequestSchema,

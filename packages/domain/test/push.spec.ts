@@ -1,5 +1,6 @@
 import { describe, expect, it } from 'vite-plus/test';
-import { balanceChanges, rational, type Expense, type TripExpenses } from '@osi/owe-yeah-domain';
+import { balanceChanges, rational, type Expense } from '@osi/owe-yeah-domain';
+import type { TripExpenses } from '../src/settle-up.ts';
 
 const kasia = { id: '019a2b3c-4d5e-7f00-8a1b-000000000001', name: 'Kasia' };
 const ania = { id: '019a2b3c-4d5e-7f00-8a1b-000000000002', name: 'Ania' };

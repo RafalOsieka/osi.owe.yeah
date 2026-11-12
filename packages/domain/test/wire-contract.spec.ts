@@ -9,8 +9,6 @@ import {
   pullResponseSchema,
   pushEnvelopeSchema,
   pushKeyResponseSchema,
-  pushMessageSchema,
-  pushRequestSchema,
   pushResponseSchema,
   rateLookupSchema,
   rateQuerySchema,
@@ -20,6 +18,8 @@ import {
   revisionsResponseSchema,
   subscriptionRequestSchema,
 } from '@osi/owe-yeah-domain';
+import { pushMessageSchema } from '../src/push.ts';
+import { pushRequestSchema } from '../src/sync.ts';
 
 /**
  * The wire contract: the request headers and every schema that crosses `/api` or Web Push, with
