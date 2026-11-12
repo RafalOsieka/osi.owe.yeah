@@ -18,7 +18,7 @@ export default defineNuxtPlugin(() => {
   async function renew(): Promise<void> {
     if (!('Notification' in window) || Notification.permission !== 'granted') return;
     const trips = await device.readAll();
-    if (!trips.some(({ deviceTrip }) => deviceTrip.notifications.subscription)) return;
+    if (!trips.some(({ notifications }) => notifications.subscription)) return;
     await device.renewSubscription(await browserSubscription());
   }
   // Best effort: without a connection it is tried again on the next open.

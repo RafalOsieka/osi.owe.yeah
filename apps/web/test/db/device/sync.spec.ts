@@ -136,7 +136,7 @@ describeDb('the device, syncing with the real Trip sync', () => {
     connection.offline = true;
     await croatia.saveExpense(lidl, null);
     await croatia.sync();
-    const [asRead] = (await other.read(trip.id))!.local!.expenses;
+    const [asRead] = (await other.read(trip.id))!.trip!.expenses;
     connection.offline = false;
     await croatia.sync();
     return { ...set, windowCroatia: other.trip(trip.id), lidl, asRead: asRead! };
@@ -213,10 +213,10 @@ describeDb('the device, syncing with the real Trip sync', () => {
     const lidl = plainExpense(kasia, [kasia, ania]);
     await croatia.saveExpense(lidl, null);
     await croatia.sync();
-    const [synced] = (await device.read(trip.id))!.local!.expenses;
+    const [synced] = (await device.read(trip.id))!.trip!.expenses;
 
     await anias.croatia.sync();
-    const [seen] = (await anias.device.read(trip.id))!.local!.expenses;
+    const [seen] = (await anias.device.read(trip.id))!.trip!.expenses;
     await anias.croatia.saveExpense({ ...lidl, title: 'Spar' }, seen!);
     await anias.croatia.sync();
 
@@ -251,7 +251,7 @@ describeDb('the device, syncing with the real Trip sync', () => {
       ]),
     );
 
-    const [saved] = (await device.read(trip.id))!.local!.expenses;
+    const [saved] = (await device.read(trip.id))!.trip!.expenses;
     await croatia.deleteExpense(lidl, saved!);
     await eventually(async () =>
       expect((await revisionsOf(trip, lidl))[0]).toEqual({
@@ -291,7 +291,7 @@ describeDb('the device, syncing with the real Trip sync', () => {
     await olas.croatia.sync();
 
     for (const each of [device, olas.device]) {
-      expect((await each.read(trip.id))?.local?.participants[1]).toEqual({ ...ania, name: 'Ana' });
+      expect((await each.read(trip.id))?.trip?.participants[1]).toEqual({ ...ania, name: 'Ana' });
     }
   });
 
@@ -339,19 +339,19 @@ describeDb('the device, syncing with the real Trip sync', () => {
     await croatia.saveExpense(lidl, null);
     await croatia.sync();
     // Kasia opens Lidl Rovinj to edit it…
-    const [asRead] = (await device.read(trip.id))!.local!.expenses;
+    const [asRead] = (await device.read(trip.id))!.trip!.expenses;
     // …while Ania makes it Spar, and Kasia's device pulls that.
     await anias.croatia.sync();
-    const [seen] = (await anias.device.read(trip.id))!.local!.expenses;
+    const [seen] = (await anias.device.read(trip.id))!.trip!.expenses;
     await anias.croatia.saveExpense({ ...lidl, title: 'Spar' }, seen!);
     await anias.croatia.sync();
     await croatia.sync();
-    expect((await device.read(trip.id))?.local?.expenses).toMatchObject([{ title: 'Spar' }]);
+    expect((await device.read(trip.id))?.trip?.expenses).toMatchObject([{ title: 'Spar' }]);
 
     await croatia.saveExpense({ ...lidl, title: 'Konzum' }, asRead!);
     await croatia.sync();
 
-    expect((await device.read(trip.id))?.local?.expenses).toMatchObject([
+    expect((await device.read(trip.id))?.trip?.expenses).toMatchObject([
       {
         title: 'Konzum',
         unsynced: { status: 'conflict', current: { title: 'Spar', version: 2 } },
@@ -365,7 +365,7 @@ describeDb('the device, syncing with the real Trip sync', () => {
       await readInAnotherWindow();
     // Ania makes Lidl Rovinj Spar, and the first window pulls that.
     const anias = await joined(trip, token, ania);
-    const [seen] = (await anias.device.read(trip.id))!.local!.expenses;
+    const [seen] = (await anias.device.read(trip.id))!.trip!.expenses;
     await anias.croatia.saveExpense({ ...lidl, title: 'Spar' }, seen!);
     await anias.croatia.sync();
     await croatia.sync();
@@ -373,7 +373,7 @@ describeDb('the device, syncing with the real Trip sync', () => {
     await windowCroatia.saveExpense({ ...lidl, title: 'Konzum' }, asRead);
     await windowCroatia.sync();
 
-    expect((await device.read(trip.id))?.local?.expenses).toMatchObject([
+    expect((await device.read(trip.id))?.trip?.expenses).toMatchObject([
       {
         title: 'Konzum',
         unsynced: { status: 'conflict', current: { title: 'Spar', version: 2 } },
@@ -402,14 +402,14 @@ describeDb('the device, syncing with the real Trip sync', () => {
 
   it('ends an edit based on a change another window synced in a Conflict once a later change of the Expense was accepted', async () => {
     const { device, croatia, windowCroatia, trip, lidl, asRead } = await readInAnotherWindow();
-    const [seen] = (await device.read(trip.id))!.local!.expenses;
+    const [seen] = (await device.read(trip.id))!.trip!.expenses;
     await croatia.saveExpense({ ...lidl, title: 'Spar' }, seen!);
     await croatia.sync();
 
     await windowCroatia.saveExpense({ ...lidl, title: 'Konzum' }, asRead);
     await windowCroatia.sync();
 
-    expect((await device.read(trip.id))?.local?.expenses).toMatchObject([
+    expect((await device.read(trip.id))?.trip?.expenses).toMatchObject([
       {
         title: 'Konzum',
         unsynced: { status: 'conflict', current: { title: 'Spar', version: 2 } },
@@ -429,7 +429,7 @@ describeDb('the device, syncing with the real Trip sync', () => {
     await croatia.sync();
 
     expect(await device.read(trip.id)).toMatchObject({
-      local: { name: 'Croatia 2026', expenses: [{ title: 'Lidl Rovinj' }] },
+      trip: { name: 'Croatia 2026', expenses: [{ title: 'Lidl Rovinj' }] },
       unsynced: 5,
     });
 
@@ -486,7 +486,7 @@ describeDb('the device, syncing with the real Trip sync', () => {
     ]);
     expect(await device.read(trip.id)).toMatchObject({
       unsynced: 0,
-      local: { expenses: [{ title: 'Lidl Rovinj', base: { version: 1 }, unsynced: null }] },
+      trip: { expenses: [{ title: 'Lidl Rovinj', base: { version: 1 }, unsynced: null }] },
     });
   });
 
@@ -495,7 +495,7 @@ describeDb('the device, syncing with the real Trip sync', () => {
     connection.offline = true;
     const lidl = plainExpense(kasia, [kasia]);
     await croatia.saveExpense(lidl, null);
-    const [saved] = (await device.read(trip.id))!.local!.expenses;
+    const [saved] = (await device.read(trip.id))!.trip!.expenses;
     await croatia.saveExpense({ ...lidl, title: 'Konzum' }, saved!);
     await croatia.sync();
 
@@ -524,7 +524,7 @@ describeDb('the device, syncing with the real Trip sync', () => {
     expect((await onServer(trip, token)).expenses).toMatchObject([{ title: 'Ferry' }]);
     expect(await device.read(trip.id)).toMatchObject({
       unsynced: 1,
-      local: {
+      trip: {
         expenses: expect.arrayContaining([
           expect.objectContaining({
             id: pizza.id,
@@ -541,7 +541,7 @@ describeDb('the device, syncing with the real Trip sync', () => {
 
   it('sends a fix of a rejected change in its place', async () => {
     const { device, croatia, trip, token, kasia, pizza } = await rejected();
-    const [shown] = (await device.read(trip.id))!.local!.expenses;
+    const [shown] = (await device.read(trip.id))!.trip!.expenses;
 
     const fixed = { ...pizza, title: 'Pizza Napoli', mainPayerId: kasia.id };
     await croatia.saveExpense(fixed, shown!);
@@ -552,7 +552,7 @@ describeDb('the device, syncing with the real Trip sync', () => {
     ]);
     expect(await device.read(trip.id)).toMatchObject({
       unsynced: 0,
-      local: { expenses: [{ title: 'Pizza Napoli', unsynced: null }] },
+      trip: { expenses: [{ title: 'Pizza Napoli', unsynced: null }] },
     });
   });
 
@@ -567,7 +567,7 @@ describeDb('the device, syncing with the real Trip sync', () => {
 
     expect(await device.read(trip.id)).toMatchObject({
       unsynced: 2,
-      local: {
+      trip: {
         name: 'Croatia 2027',
         participants: expect.arrayContaining([{ id: marta.id, name: 'Marta' }]),
       },
@@ -606,10 +606,8 @@ describeDb('the device, syncing with the real Trip sync', () => {
     expect((await onServer(trip, token)).expenses).toMatchObject([{ title: 'Ferry' }]);
     expect(await device.read(trip.id)).toMatchObject({
       unsynced: 1,
-      deviceTrip: {
-        notices: [{ kind: 'changeRefused', about: { kind: 'participant', participant: marta } }],
-      },
-      local: {
+      notices: [{ kind: 'changeRefused', about: { kind: 'participant', participant: marta } }],
+      trip: {
         expenses: expect.arrayContaining([
           expect.objectContaining({
             id: pizza.id,
@@ -625,17 +623,19 @@ describeDb('the device, syncing with the real Trip sync', () => {
 
     await croatia.discardChanges(pizza.id);
 
-    expect(await device.read(trip.id)).toMatchObject({ unsynced: 0, local: { expenses: [] } });
+    expect(await device.read(trip.id)).toMatchObject({ unsynced: 0, trip: { expenses: [] } });
   });
 
   it('keeps its own changes on top of every pulled Trip', async () => {
-    const { device, croatia, trip, kasia, ania } = await inConflict();
+    const { device, deviceDb, croatia, trip, kasia, ania } = await inConflict();
 
     await croatia.sync();
 
+    // The Trip as the server last answered it, as the device keeps it.
+    const kept = await deviceDb.trips.get(trip.id);
+    expect(kept?.snapshot?.expenses).toMatchObject([{ title: 'Spar', version: 2 }]);
     const view = await device.read(trip.id);
-    expect(view?.deviceTrip.snapshot?.expenses).toMatchObject([{ title: 'Spar', version: 2 }]);
-    expect(view?.local?.expenses).toMatchObject([
+    expect(view?.trip?.expenses).toMatchObject([
       // Both versions say who made them: this device's by its Claim then.
       {
         title: 'Konzum',
@@ -646,10 +646,10 @@ describeDb('the device, syncing with the real Trip sync', () => {
 
   it('keeps edits made during a Conflict on its own version, and keeping it sends them on the current one', async () => {
     const { device, croatia, trip, lidl } = await inConflict();
-    const [shown] = (await device.read(trip.id))!.local!.expenses;
+    const [shown] = (await device.read(trip.id))!.trip!.expenses;
     await croatia.saveExpense({ ...lidl, title: 'Konzum Poreč' }, shown!);
     await croatia.sync();
-    expect((await device.read(trip.id))?.local?.expenses).toMatchObject([
+    expect((await device.read(trip.id))?.trip?.expenses).toMatchObject([
       { title: 'Konzum Poreč', unsynced: { status: 'conflict' } },
     ]);
 
@@ -664,20 +664,20 @@ describeDb('the device, syncing with the real Trip sync', () => {
     ]);
     expect(await device.read(trip.id)).toMatchObject({
       unsynced: 0,
-      local: { expenses: [{ title: 'Konzum Poreč', base: { version: 4 }, unsynced: null }] },
+      trip: { expenses: [{ title: 'Konzum Poreč', base: { version: 4 }, unsynced: null }] },
     });
   });
 
   it('asks again about a Conflict once a pull brings a newer version of theirs', async () => {
     const { device, croatia, anias, trip, ania, lidl } = await inConflict();
-    const [seen] = (await anias.device.read(trip.id))!.local!.expenses;
+    const [seen] = (await anias.device.read(trip.id))!.trip!.expenses;
     await anias.croatia.saveExpense({ ...lidl, title: 'Spar Poreč' }, seen!);
     await anias.croatia.sync();
 
     await croatia.sync();
     await croatia.sync();
 
-    expect((await device.read(trip.id))?.local?.expenses).toMatchObject([
+    expect((await device.read(trip.id))?.trip?.expenses).toMatchObject([
       {
         title: 'Konzum',
         unsynced: { current: { title: 'Spar Poreč', version: 3 }, currentClaimId: ania.id },
@@ -693,7 +693,7 @@ describeDb('the device, syncing with the real Trip sync', () => {
 
     expect(await device.read(trip.id)).toMatchObject({
       unsynced: 0,
-      local: { expenses: [{ title: 'Spar', base: { version: 2 }, unsynced: null }] },
+      trip: { expenses: [{ title: 'Spar', base: { version: 2 }, unsynced: null }] },
     });
   });
 
@@ -702,14 +702,14 @@ describeDb('the device, syncing with the real Trip sync', () => {
     const lidl = plainExpense(kasia, [kasia]);
     await croatia.saveExpense(lidl, null);
     await croatia.sync();
-    const [saved] = (await device.read(trip.id))!.local!.expenses;
+    const [saved] = (await device.read(trip.id))!.trip!.expenses;
 
     await croatia.deleteExpense(lidl, saved!);
-    expect((await device.read(trip.id))?.local).toMatchObject({
+    expect((await device.read(trip.id))?.trip).toMatchObject({
       expenses: [],
       deletedExpenses: [{ title: 'Lidl Rovinj', deleted: true }],
     });
-    const [deleted] = (await device.read(trip.id))!.local!.deletedExpenses;
+    const [deleted] = (await device.read(trip.id))!.trip!.deletedExpenses;
     await croatia.saveExpense(toExpense(deleted!), deleted!);
     await croatia.sync();
 
@@ -718,7 +718,7 @@ describeDb('the device, syncing with the real Trip sync', () => {
       { version: 2, title: 'Lidl Rovinj', deleted: true },
       { version: 1, title: 'Lidl Rovinj', deleted: false },
     ]);
-    expect((await device.read(trip.id))?.local).toMatchObject({
+    expect((await device.read(trip.id))?.trip).toMatchObject({
       expenses: [{ title: 'Lidl Rovinj', deleted: false, base: { version: 3 }, unsynced: null }],
       deletedExpenses: [],
     });
@@ -746,7 +746,7 @@ describeDb('the device, syncing with the real Trip sync', () => {
 
     const participants = { participants: [kasia, ania], removedParticipants: [ola] };
     expect(await onServer(trip, token)).toMatchObject(participants);
-    expect((await device.read(trip.id))?.local).toMatchObject(participants);
+    expect((await device.read(trip.id))?.trip).toMatchObject(participants);
   });
 
   it('saves a new Trip currency while Expenses are in another, rewriting none', async () => {
@@ -762,7 +762,7 @@ describeDb('the device, syncing with the real Trip sync', () => {
       expenses: [{ title: 'Ferry', currency: 'EUR' }],
     };
     expect(await onServer(trip, token)).toMatchObject(details);
-    expect((await device.read(trip.id))?.local).toMatchObject(details);
+    expect((await device.read(trip.id))?.trip).toMatchObject(details);
   });
 
   it("keeps the Trip currency once there's a Repayment, deleted ones aside, but takes a rename", async () => {
@@ -775,7 +775,7 @@ describeDb('the device, syncing with the real Trip sync', () => {
     await croatia.sync();
     expect(await onServer(trip, token)).toMatchObject({ name: 'Mazury', currency: 'EUR' });
 
-    const recorded = (await device.read(trip.id))?.local?.expenses[0];
+    const recorded = (await device.read(trip.id))?.trip?.expenses[0];
     await croatia.deleteExpense(repayment, recorded!);
     expect(await croatia.saveTripDetails({ name: 'Mazury', currency: 'PLN' })).toBe(true);
     await croatia.sync();
@@ -797,10 +797,8 @@ describeDb('the device, syncing with the real Trip sync', () => {
 
     const view = await device.read(trip.id);
     expect(view?.unsynced).toBe(0);
-    expect(view?.local).toMatchObject({ name: 'Croatia 2026', currency: 'EUR' });
-    expect(view?.deviceTrip.notices).toMatchObject([
-      { kind: 'currencyChangeRefused', currency: 'PLN' },
-    ]);
+    expect(view?.trip).toMatchObject({ name: 'Croatia 2026', currency: 'EUR' });
+    expect(view?.notices).toMatchObject([{ kind: 'currencyChangeRefused', currency: 'PLN' }]);
     expect((await onServer(trip, token)).currency).toBe('EUR');
   });
 
@@ -822,7 +820,7 @@ describeDb('the device, syncing with the real Trip sync', () => {
     const synced = async (rates: RateEntry[]) =>
       eventually(async () => {
         await croatia.sync();
-        expect((await device.read(trip.id))?.local?.rates).toEqual(rates);
+        expect((await device.read(trip.id))?.trip?.rates).toEqual(rates);
       });
     const provisional: RateEntry = {
       date: '2026-07-14',
@@ -841,7 +839,7 @@ describeDb('the device, syncing with the real Trip sync', () => {
 
     // One no Expense needs any more stays as the latest cached rate, e.g. for a new Expense.
     frankfurter.set('2026-07-14', 'CZK', 'EUR', 0.04);
-    const [saved] = (await kasias.device.read(trip.id))!.local!.expenses;
+    const [saved] = (await kasias.device.read(trip.id))!.trip!.expenses;
     await kasias.croatia.saveExpense({ ...langos, currency: 'CZK' }, saved!);
     await kasias.croatia.sync();
     const czk: RateEntry = { ...fixed, from: 'CZK', rate: '0.04' };
@@ -850,7 +848,7 @@ describeDb('the device, syncing with the real Trip sync', () => {
     // Offline, the rates it has stay.
     connection.offline = true;
     await croatia.sync();
-    expect((await device.read(trip.id))?.local?.rates).toEqual([fixed, czk]);
+    expect((await device.read(trip.id))?.trip?.rates).toEqual([fixed, czk]);
   });
 
   it('keeps a rate looked up for the Expense form with the rates it has, before any Expense needs it', async () => {
@@ -866,10 +864,10 @@ describeDb('the device, syncing with the real Trip sync', () => {
 
     expect(await croatia.lookupRate('BAM', '2026-07-14')).toEqual({ status: 'found', entry });
 
-    expect((await device.read(trip.id))?.local?.rates).toEqual([entry]);
+    expect((await device.read(trip.id))?.trip?.rates).toEqual([entry]);
     // A pull that brings no rate for it keeps it, as it does any cached rate.
     await croatia.sync();
-    expect((await device.read(trip.id))?.local?.rates).toEqual([entry]);
+    expect((await device.read(trip.id))?.trip?.rates).toEqual([entry]);
     connection.offline = true;
     await expect(croatia.lookupRate('BAM', '2026-07-15')).rejects.toThrow(OfflineError);
   });
@@ -897,16 +895,14 @@ describeDb('the device, syncing with the real Trip sync', () => {
     });
     expect(await device.read(trip.id)).toMatchObject({
       unsynced: 0,
-      deviceTrip: {
-        notices: [
-          {
-            id: expect.any(String),
-            kind: 'participantRestored',
-            participant: ola,
-            expenseTitle: 'Lidl Rovinj',
-          },
-        ],
-      },
+      notices: [
+        {
+          id: expect.any(String),
+          kind: 'participantRestored',
+          participant: ola,
+          expenseTitle: 'Lidl Rovinj',
+        },
+      ],
     });
   });
 
@@ -923,11 +919,11 @@ describeDb('the device, syncing with the real Trip sync', () => {
 
     const view = await device.read(trip.id);
     expect(view?.unsynced).toBe(0);
-    expect(view?.deviceTrip.notices).toMatchObject([{ kind: 'removalRefused', participant: ola }]);
+    expect(view?.notices).toMatchObject([{ kind: 'removalRefused', participant: ola }]);
     expect((await onServer(trip, token)).participants).toContainEqual(ola);
 
-    await croatia.dismissNotice(view!.deviceTrip.notices[0]!.id);
-    expect((await device.read(trip.id))?.deviceTrip.notices).toEqual([]);
+    await croatia.dismissNotice(view!.notices[0]!.id);
+    expect((await device.read(trip.id))?.notices).toEqual([]);
   });
 
   it('notes a Participant and holds an Expense the server refused past the 100th, and syncs the rest', async () => {
@@ -961,8 +957,8 @@ describeDb('the device, syncing with the real Trip sync', () => {
     expect((await onServer(trip, token)).expenses).toMatchObject([{ title: 'Ferry' }]);
     expect(await device.read(trip.id)).toMatchObject({
       unsynced: 1,
-      deviceTrip: { notices: [{ kind: 'tooManyParticipants', participant: marta }] },
-      local: {
+      notices: [{ kind: 'tooManyParticipants', participant: marta }],
+      trip: {
         participants: expect.not.arrayContaining([marta]),
         expenses: expect.arrayContaining([
           expect.objectContaining({
@@ -986,7 +982,7 @@ describeDb('the device, syncing with the real Trip sync', () => {
 
     await croatia.sync();
 
-    expect((await device.read(trip.id))?.deviceTrip).toMatchObject({
+    expect(await device.read(trip.id)).toMatchObject({
       claim: null,
       notices: [{ kind: 'claimRemoved', participant: kasia }],
     });

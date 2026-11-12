@@ -34,6 +34,7 @@ const mine: LocalExpense = {
   ...dinner([kasia.id, marta.id]),
   deleted: false,
   edited: { by: kasia.id, at: null },
+  revision: null,
   base: { version: 1 },
   unsynced: {
     status: 'conflict',

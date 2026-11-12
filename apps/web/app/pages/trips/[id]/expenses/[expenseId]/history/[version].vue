@@ -30,7 +30,7 @@ const current = computed(() => findExpense(trip.value, expenseId));
 
 const isCurrent = computed(() => {
   const shown = current.value;
-  return !!shown && 'version' in shown.base && shown.base.version === version && !shown.deleted;
+  return !!shown && shown.revision === version && !shown.deleted;
 });
 
 // Who made the change and exactly when, e.g. "Changed by Kasia · Jul 5, 2026, 21:14", or

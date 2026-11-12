@@ -22,7 +22,7 @@ const { data, status } = useRevisions(expenseId);
 // The Revision the Expense is at, unless this device has changed it since.
 const currentVersion = computed(() => {
   const shown = expense.value;
-  return shown && !shown.unsynced && 'version' in shown.base ? shown.base.version : null;
+  return shown && !shown.unsynced ? shown.revision : null;
 });
 
 const rows = computed(() => {

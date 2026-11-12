@@ -9,8 +9,8 @@ export default defineNuxtPlugin(() => {
   async function syncTrips(all: boolean): Promise<void> {
     const open = router.currentRoute.value.params.id;
     void device.syncForgotten();
-    for (const { deviceTrip: trip, unsynced } of await device.readAll()) {
-      if (all || unsynced > 0 || trip.id === open) void device.sync(trip.id);
+    for (const { id, unsynced } of await device.readAll()) {
+      if (all || unsynced > 0 || id === open) void device.sync(id);
     }
   }
   const visible = () => document.visibilityState === 'visible';

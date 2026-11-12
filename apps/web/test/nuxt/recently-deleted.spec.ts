@@ -37,6 +37,7 @@ function deletedLidl(edited: LocalEdited | null): LocalExpense {
     ],
     deleted: true,
     edited,
+    revision: 2,
     base: { version: 2 },
     unsynced: null,
   };
