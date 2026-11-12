@@ -49,8 +49,9 @@ export type TooManyTrips = 'tooManyTrips';
 /**
  * The server side of the sync (ADR 0002), mirroring the device's `Transport`: the push and the
  * whole-Trip pull, each for a Trip id and its Trip link's token (ADR 0001). Writes go to `db`;
- * Trips are read through `store` and converted at `rates`; `notifier` hears of the Expense
- * changes each push applies.
+ * Trips are read through `store`, or a Trip store on a transaction of `db` where a read must be
+ * consistent, and converted at `rates`; `notifier` hears of the Expense changes each push
+ * applies.
  */
 export function createTripSync(db: Database, store: TripStore, rates: Rates, notifier: Notifier) {
   /** The first result of a change this Trip has applied before, if it has. */
@@ -321,11 +322,20 @@ export function createTripSync(db: Database, store: TripStore, rates: Rates, not
      * Trip version the device has, it answers `trip: null` while the Trip is still at that
      * version. Either way it brings the rate entries the Trip's Expenses need that the rate
      * table has (ADR 0003), without waiting for the provider: the rest are filled in the
-     * background for a later pull, and rates become fixed without the Trip changing.
+     * background for a later pull, and rates become fixed without the Trip changing. The Trip
+     * is read in one repeatable-read transaction, so it is as it was at one moment, between two
+     * applied changes and never inside one: e.g. never with an Expense whose new Participant it
+     * doesn't show.
      */
     async pull(tripId: string, token: string, since?: number): Promise<PullResponse | InvalidLink> {
-      const linked = await store.tripByLink(tripId, token);
-      const trip = linked && (await store.readTrip(linked.id));
+      const trip = await db.transaction(
+        async (tx) => {
+          const snapshot = createTripStore(tx);
+          const linked = await snapshot.tripByLink(tripId, token);
+          return linked && (await snapshot.readTrip(linked.id));
+        },
+        { isolationLevel: 'repeatable read', accessMode: 'read only' },
+      );
       if (!trip) return 'invalidLink';
       return {
         trip: since === trip.version ? null : serverTripOf(trip),
