@@ -76,7 +76,7 @@ Run everything from the repo root:
 | `vp run db:generate`  | Write a SQL migration from the Drizzle schema                         |
 | `vp run db:migrate`   | Apply the committed migrations to `DATABASE_URL`                      |
 
-The Docker-backed suites start their own `postgres:18-alpine` container, so they don't touch the dev database. The UI suite needs Chromium once: `vp exec playwright install chromium` in `apps/web`.
+The Docker-backed suites start their own `postgres:18-alpine` container, so they don't touch the dev database. The UI suite needs Chromium and WebKit once: `vp exec playwright install chromium webkit` in `apps/web`.
 
 ## Project structure
 

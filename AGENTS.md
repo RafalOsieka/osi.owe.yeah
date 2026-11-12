@@ -80,7 +80,7 @@ Pick the suite by what the code touches:
 
 - Test files are `*.spec.ts`. Each `apps/web` suite is a Vitest project in `apps/web/vitest.config.ts`; the UI suite is `apps/web/playwright.config.ts`.
 - Run one file: `vp test run test/money.spec.ts` in `packages/domain`, or `vp test run --project unit test/unit/avatar.spec.ts` in `apps/web`. Add `-t "<test name>"` to focus a test.
-- The `db`, `e2e-db`, `e2e-api` and `ui` suites need Docker: they start their own `postgres:18-alpine` (and stub Frankfurter and the push service, `test/e2e/harness`). The UI suite also needs `vp exec playwright install chromium` in `apps/web` once.
+- The `db`, `e2e-db`, `e2e-api` and `ui` suites need Docker: they start their own `postgres:18-alpine` (and stub Frankfurter and the push service, `test/e2e/harness`). The UI suite also needs `vp exec playwright install chromium webkit` in `apps/web` once: the offline and sync journeys, tagged `@webkit`, also run in WebKit as an iPhone (not on Windows, whose WebKit build closes the page once offline; CI runs them).
 - `test/db` gives each file a fresh, migrated database (`useMigratedDatabase`). Client sync is tested through an in-process transport over the real server module, never a fake server (ADR 0004); a Conflict comes from a real scenario, not a scripted answer.
 - No module mocking (lint rule `anti-slop/no-module-mocking`). For partial test data use `fromPartial` from `@total-typescript/shoehorn`, not `as`.
 - `test/unit/locale-parity.spec.ts` checks that `en.json` and `pl.json` have the same keys; `test/unit/locale-glossary.spec.ts` checks Polish copy against the glossary's _Polish avoid_ words.

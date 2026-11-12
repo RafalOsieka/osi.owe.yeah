@@ -341,9 +341,9 @@ jobs:
       - name: Install dependencies
         run: vp install --frozen-lockfile
 
-      - name: Install Playwright browser
+      - name: Install Playwright browsers
         working-directory: apps/web
-        run: vp exec playwright install --with-deps chromium
+        run: vp exec playwright install --with-deps chromium webkit
 
       # Builds the app and serves it against its own postgres:18-alpine container.
       - name: Run UI e2e tests
