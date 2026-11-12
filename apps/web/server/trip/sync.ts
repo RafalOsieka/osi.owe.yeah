@@ -1,9 +1,9 @@
 import {
   EXPENSE_LIMIT,
   PARTICIPANT_LIMIT,
-  expenseProblems,
+  expenseChangeProblems,
   expensesReferencing,
-  referencedParticipantIds,
+  restoredBy,
   syncChangeSchema,
   tripChangeSchema,
   tripCurrencyLocked,
@@ -18,13 +18,14 @@ import {
   type ServerTrip,
   type SyncChange,
   type TripChange,
+  type TripPeople,
 } from '@osi/owe-yeah-domain';
 import { and, eq, inArray, sql } from 'drizzle-orm';
 import type { Database, Transaction } from '../db/client';
 import { changes, expenses, participants, revisions, trips } from '../db/schema';
 import { hashTripToken } from '../utils/trip-token';
 import type { Rates } from './rates';
-import { createTripStore, type StoredParticipant, type TripStore, type WholeTrip } from './store';
+import { createTripStore, tripPeople, type TripStore, type WholeTrip } from './store';
 
 /** An Expense change the sync push has just applied (not a retry), with the version it made. */
 export type AppliedExpenseChange = { change: ExpenseChange; version: number };
@@ -123,8 +124,9 @@ export function createTripSync(db: Database, store: TripStore, rates: Rates, not
       const live = trip.expenses.filter(({ deleted }) => !deleted);
       const referenced = removed && expensesReferencing(live, participant.id) > 0;
       if (referenced) return { changeId, status: 'rejected', problems: ['participantReferenced'] };
-      const alreadyIn = trip.participants.some((p) => p.id === participant.id && !p.removed);
-      if (!removed && !alreadyIn && tooMany(trip, 1)) {
+      const people = tripPeople(trip.participants);
+      const alreadyIn = people.participants.some(({ id }) => id === participant.id);
+      if (!removed && !alreadyIn && tooMany(people, 1)) {
         return { changeId, status: 'rejected', problems: ['tooManyParticipants'] };
       }
 
@@ -161,18 +163,16 @@ export function createTripSync(db: Database, store: TripStore, rates: Rates, not
     const { id: changeId, deleted } = change;
     return db.transaction(async (tx): Promise<ChangeResult | null> => {
       const trip = await lockTrip(tx, tripId);
-      const problems = expenseProblems(change.expense, trip);
+      const people = tripPeople(trip.participants);
+      const problems = expenseChangeProblems(change, people);
       if (problems.length > 0) return { changeId, status: 'rejected', problems };
       // A creation of an Expense the Trip has already is left to end as a Conflict.
       const creating = change.baseVersion === null && !trip.expenses.some((e) => e.id === id);
       if (creating && trip.expenses.length >= EXPENSE_LIMIT) {
         return { changeId, status: 'rejected', problems: ['tooManyExpenses'] };
       }
-      const referenced = referencedParticipantIds(change.expense);
-      const restored = deleted
-        ? []
-        : trip.participants.filter((p) => p.removed && referenced.has(p.id)).map((p) => p.id);
-      if (restored.length > 0 && tooMany(trip, restored.length)) {
+      const restored = restoredBy(people, change).map(({ id }) => id);
+      if (restored.length > 0 && tooMany(people, restored.length)) {
         return { changeId, status: 'rejected', problems: ['tooManyParticipants'] };
       }
 
@@ -352,8 +352,8 @@ async function lockTrip(tx: Transaction, tripId: string): Promise<WholeTrip> {
 }
 
 /** Whether `adding` more live Participants would make the Trip's more than `PARTICIPANT_LIMIT`. */
-function tooMany(trip: WholeTrip, adding: number): boolean {
-  return trip.participants.filter(({ removed }) => !removed).length + adding > PARTICIPANT_LIMIT;
+function tooMany({ participants }: TripPeople, adding: number): boolean {
+  return participants.length + adding > PARTICIPANT_LIMIT;
 }
 
 /** An accepted change's result, naming the Participants it brought back only if there are any. */
@@ -395,11 +395,6 @@ async function recordChange(
 }
 
 /** The whole Trip as the pull returns it, with removed Participants kept apart. */
-function serverTripOf({ participants: everyone, ...trip }: WholeTrip): ServerTrip {
-  const shown = ({ id, name }: StoredParticipant) => ({ id, name });
-  return {
-    ...trip,
-    participants: everyone.filter(({ removed }) => !removed).map(shown),
-    removedParticipants: everyone.filter(({ removed }) => removed).map(shown),
-  };
+function serverTripOf({ participants, ...trip }: WholeTrip): ServerTrip {
+  return { ...trip, ...tripPeople(participants) };
 }

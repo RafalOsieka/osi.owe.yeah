@@ -1,5 +1,5 @@
 import {
-  expenseProblems,
+  expenseChangeProblems,
   isRepayment,
   expensesReferencing,
   PUSH_LIMIT,
@@ -296,9 +296,7 @@ export function createDevice(db: DeviceDb, transport: Transport, deviceId: strin
   ): Promise<ExpenseProblem[]> {
     return db.transaction('rw', db.trips, db.outbox, async () => {
       const local = await readLocal(tripId);
-      // A removed Participant still counts: the Expense brings them back.
-      const participants = [...local.participants, ...local.removedParticipants];
-      const problems = expenseProblems(expense, { ...local, participants });
+      const problems = expenseChangeProblems({ expense }, local);
       if (problems.length > 0) return problems;
 
       const entries = await expenseEntries(tripId, expense.id);

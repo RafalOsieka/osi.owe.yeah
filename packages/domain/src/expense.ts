@@ -254,7 +254,7 @@ export function tripCurrencyLocked(expenses: readonly Expense[]): boolean {
  */
 export function expenseProblems(
   expense: Expense,
-  trip: TripWithParticipants,
+  trip: Pick<TripWithParticipants, 'participants'>,
   now: string = Temporal.Now.instant().toString(),
 ): ExpenseProblem[] {
   const known = new Set(trip.participants.map(({ id }) => id));

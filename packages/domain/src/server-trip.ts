@@ -62,3 +62,6 @@ export const serverTripSchema = tripWithParticipantsSchema.extend({
 });
 
 export type ServerTrip = z.infer<typeof serverTripSchema>;
+
+/** Who takes part in a Trip, with those removed softly kept apart. */
+export type TripPeople = Pick<ServerTrip, 'participants' | 'removedParticipants'>;

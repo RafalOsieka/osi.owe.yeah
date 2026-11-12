@@ -1,11 +1,13 @@
 import {
-  referencedParticipantIds,
+  restoredBy,
   type Edited,
   type Expense,
+  type ExpenseChange,
   type Participant,
   type RateEntry,
   type ServerTrip,
   type StoredExpense,
+  type TripPeople,
   type TripWithParticipants,
 } from '@osi/owe-yeah-domain';
 import type { ExpenseBase, Held, OutboxEntry, QueuedChange } from './db';
@@ -33,9 +35,6 @@ export type LocalExpense = Expense & {
   /** `null` once the server has the Expense as shown. */
   unsynced: Unsynced | null;
 };
-
-/** Who takes part in a Trip, with those removed softly kept apart. */
-type TripPeople = Pick<ServerTrip, 'participants' | 'removedParticipants'>;
 
 /**
  * A Trip as this device shows it: the pulled Trip with the outbox on top. Deleted Expenses
@@ -116,7 +115,7 @@ export function localTrip(
     } else if (trip && change.kind === 'participant') {
       trip = { ...trip, ...withParticipant(trip, change.participant, change.removed) };
     } else if (trip && change.kind === 'expense') {
-      if (!change.deleted) trip = { ...trip, ...restoredBy(trip, change.expense) };
+      trip = { ...trip, ...withRestored(trip, change) };
       const before = trip.expenses.find(({ id }) => id === change.expense.id)?.unsynced;
       const heldBefore = before && before.status !== 'pending' ? before : null;
       trip = {
@@ -178,9 +177,7 @@ export function withAccepted(
       return (
         serverTrip &&
         withExpense(
-          change.deleted
-            ? serverTrip
-            : { ...serverTrip, ...restoredBy(serverTrip, change.expense) },
+          { ...serverTrip, ...withRestored(serverTrip, change) },
           { ...change.expense, version: version ?? 1, deleted: change.deleted, edited: null },
         )
       );
@@ -210,15 +207,18 @@ function withParticipant(
       };
 }
 
-/** The Trip's people with the removed Participants `expense` references brought back. */
-function restoredBy(people: TripPeople, expense: Expense): TripPeople {
-  const referenced = referencedParticipantIds(expense);
-  return people.removedParticipants
-    .filter(({ id }) => referenced.has(id))
-    .reduce<TripPeople>((restored, participant) => withParticipant(restored, participant, false), {
+/** The Trip's people with the removed Participants an Expense change brings back (`restoredBy`). */
+function withRestored(
+  people: TripPeople,
+  change: Pick<ExpenseChange, 'expense' | 'deleted'>,
+): TripPeople {
+  return restoredBy(people, change).reduce<TripPeople>(
+    (restored, participant) => withParticipant(restored, participant, false),
+    {
       participants: people.participants,
       removedParticipants: people.removedParticipants,
-    });
+    },
+  );
 }
 
 /** `items` with `item` in place of the one with its id, or added at the end. */
