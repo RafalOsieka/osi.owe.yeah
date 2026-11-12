@@ -16,6 +16,7 @@ import {
   type ReminderStatus,
   type ServerTrip,
   type StoredExpense,
+  type SubscriptionRequest,
   type SyncChange,
   type TripChange,
   type TripWithParticipants,
@@ -221,20 +222,20 @@ async function tripWithKasiaAndAnia() {
 
 /**
  * Registers `device`'s push subscription to the Trip, for the Participant it claims: at the
- * stand-in push service, or at `endpoint`.
+ * stand-in push service with keys it decrypts with, or with the endpoint or keys of `instead`.
  */
 function subscribe(
   tripId: string,
   token: string | undefined,
   device: string,
   claimId: string,
-  endpoint?: string,
+  instead: Partial<Pick<SubscriptionRequest, 'endpoint' | 'keys'>> = {},
 ) {
   const subscription = pushService.subscription(device);
   return fetch(`/api/trips/${tripId}/subscriptions/${device}`, {
     method: 'PUT',
     headers: deviceHeaders(token),
-    body: JSON.stringify({ ...subscription, endpoint: endpoint ?? subscription.endpoint, claimId }),
+    body: JSON.stringify({ ...subscription, ...instead, claimId }),
   });
 }
 
@@ -578,7 +579,22 @@ describeApi('Trip API', () => {
 
     expect((await subscribe(trip.id, token, device, kasia.id)).status).toBe(400);
     const fcm = `https://fcm.googleapis.com/fcm/send/${device}`;
-    expect((await subscribe(trip.id, token, device, kasia.id, fcm)).status).toBe(204);
+    expect((await subscribe(trip.id, token, device, kasia.id, { endpoint: fcm })).status).toBe(204);
+  });
+
+  it('refuses a push subscription whose keys are too short to encrypt with', async () => {
+    const { trip, token, kasia } = await tripWithKasiaAndAnia();
+    const device = uuidv7();
+    const { keys } = pushService.subscription(device);
+    // A browser's public key is 65 bytes and its auth secret 16: these are a byte short.
+    const p256dh = randomBytes(64).toString('base64url');
+    const auth = randomBytes(15).toString('base64url');
+    const subscribeWith = (instead: SubscriptionRequest['keys']) =>
+      subscribe(trip.id, token, device, kasia.id, { keys: instead });
+
+    expect((await subscribeWith({ ...keys, p256dh })).status).toBe(400);
+    expect((await subscribeWith({ ...keys, auth })).status).toBe(400);
+    expect((await subscribeWith(keys)).status).toBe(204);
   });
 
   it("notifies the devices of the Participants a change affects, but not the author's", async () => {

@@ -88,13 +88,26 @@ export const pushMessageSchema = z.discriminatedUnion('kind', [
 export type PushMessage = z.infer<typeof pushMessageSchema>;
 
 /**
+ * A browser's push subscription keys, which a message to it is encrypted with: base64url as the
+ * browser writes them (padding allowed), and only of lengths a message can be encrypted with, a
+ * 65-byte public key and an auth secret of at least 16 bytes. The server refuses to register
+ * other keys, and prunes a stored subscription that has them.
+ */
+export const pushKeysSchema = z.object({
+  // 87 characters are 65 bytes.
+  p256dh: z.string().regex(/^[\w-]{87}=?$/),
+  // 22 characters are 16 bytes.
+  auth: z.string().regex(/^[\w-]{22,200}={0,2}$/),
+});
+
+/**
  * A device's push subscription to one Trip, as it registers it: the browser's push endpoint
  * and keys, the device's opaque id, and the Participant it claims, whose changes it is told
  * about. Registering again replaces it, e.g. when the Claim changes.
  */
 export const subscriptionRequestSchema = z.object({
   endpoint: z.url({ protocol: /^https?$/ }).max(2000),
-  keys: z.object({ p256dh: z.string().min(1).max(200), auth: z.string().min(1).max(200) }),
+  keys: pushKeysSchema,
   claimId: participantIdSchema,
 });
 

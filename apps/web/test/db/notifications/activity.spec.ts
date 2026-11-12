@@ -9,7 +9,7 @@ import type {
 } from '@osi/owe-yeah-domain';
 import { eq } from 'drizzle-orm';
 import { v7 as uuidv7 } from 'uuid';
-import { afterAll, beforeAll, expect, it, onTestFinished } from 'vitest';
+import { afterAll, beforeAll, expect, it, onTestFinished, vi } from 'vitest';
 import webpush from 'web-push';
 import { notificationSubscriptions } from '../../../server/db/schema';
 import { createNotifications } from '../../../server/notifications/activity';
@@ -254,6 +254,30 @@ describeDb('Notifications', () => {
 
     expect(pushService.payloadsOf(devices.ania)).toHaveLength(1);
     expect(pushService.payloadsOf(devices.ola)).toHaveLength(2);
+  });
+
+  it('warns about a stored subscription its keys cannot encrypt for, and prunes it', async () => {
+    const { trip, token, kasia, ania, ola, devices } = await subscribedTrip();
+    // Stored before registration checked the keys' lengths.
+    await db()
+      .update(notificationSubscriptions)
+      .set({ p256dh: 'p256dh', auth: 'auth' })
+      .where(eq(notificationSubscriptions.deviceId, devices.ania));
+    const warn = vi.spyOn(console, 'warn').mockImplementation(() => {});
+    onTestFinished(() => warn.mockRestore());
+
+    await push(trip.id, token, change(plainExpense(kasia, [ania, ola]), kasia.id));
+    await push(trip.id, token, change(plainExpense(kasia, [ania, ola]), kasia.id));
+
+    expect(warn).toHaveBeenCalledOnce();
+    expect(pushService.payloadsOf(devices.ola)).toHaveLength(2);
+    const left = await db()
+      .select({ deviceId: notificationSubscriptions.deviceId })
+      .from(notificationSubscriptions)
+      .where(eq(notificationSubscriptions.tripId, trip.id));
+    expect(left.map(({ deviceId }) => deviceId).toSorted()).toEqual(
+      [devices.kasia, devices.ola].toSorted(),
+    );
   });
 
   it('sends nothing to an endpoint off the known push services', async () => {

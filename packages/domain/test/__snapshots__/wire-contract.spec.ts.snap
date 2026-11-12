@@ -1358,13 +1358,11 @@ exports[`the wire contract > changes only together with a decision about the syn
         "keys": {
           "properties": {
             "auth": {
-              "maxLength": 200,
-              "minLength": 1,
+              "pattern": "^[\\w-]{22,200}={0,2}$",
               "type": "string",
             },
             "p256dh": {
-              "maxLength": 200,
-              "minLength": 1,
+              "pattern": "^[\\w-]{87}=?$",
               "type": "string",
             },
           },
