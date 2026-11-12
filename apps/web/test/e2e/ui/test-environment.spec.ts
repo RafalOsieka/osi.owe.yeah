@@ -1,4 +1,5 @@
-import { expect, test, type Locator, type Page } from '@playwright/test';
+import type { Locator, Page } from '@playwright/test';
+import { expect, test } from './fixtures';
 
 // The suite's second server runs the same build switched on as a test environment
 // (`playwright.config.ts`); the first one, every other test's, is switched off.

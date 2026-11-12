@@ -152,10 +152,10 @@ They found no reason to reopen ADR 0001–0003, and 121 of the 126 stories are d
 ### P3: hardening and small items
 
 - [ ] **S11. The app connects to Postgres as the superuser.** The app gets a role with read/write on the tables only; the migrator keeps the owner role. Deferred on 2026-11-11 to "Before a production instance": the role's password can't live in a generated, committed migration, and on test it is only defence in depth.
-- [ ] **S12. The CSP is weak.**
+- [x] **S12. The CSP is weak.**
   - **The gaps:** no `default-src` or `connect-src`, and `script-src` allows `'unsafe-inline'` and `https:`.
   - **Fix:** add `default-src 'self'` and `connect-src 'self'`, then check the headers a production build actually sends.
-  - **Issue:** #217.
+  - **Issue:** #217. Done: `default-src` and `connect-src` are `'self'`, and `script-src` drops `'unsafe-inline'` and `https:`, as every script runs by hash or nonce. The service worker serves the shell without its headers, so the shell's `<meta>` policy is the one most pages run under; the api suite checks both, and a ui test fails on a violation in any of its pages.
 - [x] **S13. The Tricount share token is a CLI argument**, so it lands in shell history and the process list. Read it from stdin, a hidden prompt or an environment variable. Goes with the tool in #221. Done in #221.
 - [ ] **S14. The sync push parses its body before checking the token**, and a creation push tells whether a Trip id exists, which contradicts a comment in the Trip access code.
   - **Fix:** check the link first. In #78 this means the HTTP adapter must not fully parse before the module checks the link, or the comment changes.
