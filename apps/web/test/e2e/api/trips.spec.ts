@@ -88,11 +88,10 @@ function stored(expense: Expense, version: number, by: string | null = null): St
 
 /** A Content Security Policy's directives by name, each with its sources. */
 function directives(policy: string | null | undefined): Map<string, string[]> {
-  const parsed = (policy ?? '')
-    .split(';')
-    .map((directive) => directive.trim().split(/\s+/))
-    .filter(([name]) => name)
-    .map(([name, ...sources]): [string, string[]] => [name!, sources]);
+  const parsed = (policy ?? '').split(';').flatMap((directive): [string, string[]][] => {
+    const [name, ...sources] = directive.trim().split(/\s+/);
+    return name ? [[name, sources]] : [];
+  });
   return new Map(parsed);
 }
 
@@ -361,7 +360,7 @@ describeApi('Trip API', () => {
     expect((await fetch(script!)).headers.get('cache-control')).toContain('immutable');
   });
 
-  it('allows only its own origin by default, and no inline or outside scripts but its own', async () => {
+  it("allows only its own origin by default, and scripts neither by 'unsafe-inline' nor from any https: site", async () => {
     const shell = await fetch('/');
     // The service worker serves the shell's `index.html` for every page, without the headers.
     const meta = /<meta http-equiv="Content-Security-Policy" content="([^"]+)"/.exec(
