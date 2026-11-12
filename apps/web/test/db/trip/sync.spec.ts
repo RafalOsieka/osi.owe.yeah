@@ -68,12 +68,7 @@ describeDb('Trip sync', () => {
   let rates: Rates;
 
   beforeAll(() => {
-    sync = createTripSync(
-      db(),
-      createTripStore(db()),
-      (rates = createRates(db(), frankfurter.url)),
-      recorder,
-    );
+    sync = createTripSync(db(), (rates = createRates(db(), frankfurter.url)), recorder);
   });
 
   /** Pushes changes and returns their results, expecting the push to be taken. */

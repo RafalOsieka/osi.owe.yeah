@@ -77,7 +77,7 @@ describeDb('Notifications', () => {
         return sent;
       },
     };
-    return createTripSync(db(), store, rates, notifier);
+    return createTripSync(db(), rates, notifier);
   }
 
   beforeAll(() => {

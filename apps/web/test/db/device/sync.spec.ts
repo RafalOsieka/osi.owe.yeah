@@ -80,7 +80,7 @@ describeDb('the device, syncing with the real Trip sync', () => {
     rates = createRates(db(), frankfurter.url);
     subscriptions = createSubscriptions(db(), { anyEndpoint: false });
     // Notifications are no part of these tests: nobody hears of the applied changes.
-    sync = createTripSync(db(), store, rates, {
+    sync = createTripSync(db(), rates, {
       async notifyAffected() {},
     });
   });

@@ -48,6 +48,4 @@ const notifications = lazy(() =>
   createNotifications(tripStore(), tripRates(), subscriptions(), vapid()),
 );
 
-export const tripSync = lazy(() =>
-  createTripSync(getDb(), tripStore(), tripRates(), notifications()),
-);
+export const tripSync = lazy(() => createTripSync(getDb(), tripRates(), notifications()));
