@@ -1,10 +1,10 @@
 <script setup lang="ts">
 import {
   MAX_UNITS,
+  absolute,
   fromMinor,
   lineItemProblems,
   lineItemShares,
-  negate,
   parseMoney,
   type Participant,
   type Rational,
@@ -193,7 +193,7 @@ const assignedAmounts = computed(() => {
   return {
     text: t('receipt.amountsAssigned', {
       assigned: money(fromMinor(minor, currency)),
-      total: money(total.numerator < 0n ? negate(total) : total),
+      total: money(absolute(total)),
     }),
     complete: unassigned.value === null,
   };

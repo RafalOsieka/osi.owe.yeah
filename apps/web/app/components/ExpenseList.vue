@@ -1,11 +1,11 @@
 <script setup lang="ts">
 import {
+  absolute,
   claimView,
   expenseKind,
   expenseRate,
   expenseShares,
   groupByLocalDay,
-  negate,
   rateSummary,
   spendingTotal,
   type Rational,
@@ -105,7 +105,7 @@ const days = computed(() =>
       return {
         expense,
         // Income as the money received.
-        total: total.numerator < 0n ? negate(total) : total,
+        total: absolute(total),
         payer: participants.value.get(expense.mainPayerId),
         repayment: expenseKind(expense).kind === 'repayment',
         receipt: expenseKind(expense).kind === 'receipt',

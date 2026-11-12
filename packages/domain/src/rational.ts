@@ -63,6 +63,11 @@ export function negate(value: Rational): Rational {
   return rational(-value.numerator, value.denominator);
 }
 
+/** `value` without its sign. */
+export function absolute(value: Rational): Rational {
+  return value.numerator < 0n ? negate(value) : value;
+}
+
 /** The largest whole number not above `value`. */
 export function floor(value: Rational): bigint {
   const quotient = value.numerator / value.denominator;

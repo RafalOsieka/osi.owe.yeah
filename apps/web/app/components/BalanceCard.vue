@@ -1,7 +1,7 @@
 <script setup lang="ts">
 import {
+  absolute,
   compare,
-  rational,
   shareOfSpending,
   type ParticipantBalance,
   type Rational,
@@ -37,9 +37,8 @@ const card = computed(() => {
   if (!balance) {
     return { ...tones.total, label: t('balances.tripTotal'), amount: money(total), sub: '' };
   }
-  const { numerator, denominator } = balance.rounded;
   const sign = shownSign(balance.rounded, currency);
-  const amount = money(rational(numerator < 0n ? -numerator : numerator, denominator));
+  const amount = money(absolute(balance.rounded));
   const { paidForExpenses, repaymentsMade, repaymentsReceived } = balance;
   // The Share of spending that adds up with the rest; "≈" while it differs from the exact one.
   const { exact, shown } = shareOfSpending(balance);
