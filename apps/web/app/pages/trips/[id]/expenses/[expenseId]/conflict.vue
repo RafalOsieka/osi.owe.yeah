@@ -11,7 +11,7 @@ import { findExpense } from '~/sync/local-trip';
 // never reached the server, for good. Either returns to the detail page.
 definePageMeta({ viewTransition: { toTypes: ['forward'], fromTypes: ['back'] } });
 
-const { trip, claim, keepMine, discardChanges } = useOpenTrip();
+const { trip, everyone, keepMine, discardChanges } = useOpenTrip();
 const { t, locale } = useI18n();
 const route = useRoute();
 const back = useBack();
@@ -23,7 +23,7 @@ const conflict = computed(() => {
   const mine = findExpense(trip.value, expenseId);
   if (mine?.unsynced?.status !== 'conflict') return null;
   const held = mine.unsynced;
-  const author = trip.value.participants.find(({ id }) => id === held.currentClaimId)?.name;
+  const author = everyone.value.find(({ id }) => id === held.currentClaimId)?.name;
   const at = held.current.edited?.at;
   return {
     mine,
@@ -71,8 +71,6 @@ useHead({ title: () => t('conflict.title') });
           :expense="conflict.mine"
           :deleted="conflict.mine.deleted"
           :changed="conflict.changed"
-          :claim-id="claim?.id ?? null"
-          :participants="trip.participants"
         >
           <!-- AttentionNote's shape in neutral: what is kept needs no attention. -->
           <p
@@ -108,8 +106,6 @@ useHead({ title: () => t('conflict.title') });
           :expense="conflict.theirs"
           :deleted="conflict.theirs.deleted"
           :changed="conflict.changed"
-          :claim-id="claim?.id ?? null"
-          :participants="trip.participants"
         >
           <AttentionNote icon="i-lucide-triangle-alert" class="mb-2.5">
             {{ $t('conflict.keepTheirsHelp') }}
