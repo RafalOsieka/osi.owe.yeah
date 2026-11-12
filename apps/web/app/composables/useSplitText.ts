@@ -104,19 +104,69 @@ export function useUnassignedText() {
     if (shares.unassigned.numerator === 0n) return null;
     const money = (amount: Rational) => formatMoney(amount, currency, locale.value);
     const discounted = after && t('receipt.afterReceiptDiscount', { amount: money(after) });
-    if (item.split.mode !== 'units') {
+    if (shares.unassignedUnits === undefined) {
       const text = t('receipt.notAssigned', { amount: money(shares.unassigned) });
       return discounted ? `${text} (${discounted})` : text;
     }
-    const assigned = item.split.parts.reduce((sum, { units }) => sum + units, 0);
     const text = t('receipt.unitsUnassigned', {
-      unassigned: item.quantity - assigned,
+      unassigned: shares.unassignedUnits,
       quantity: item.quantity,
     });
     if (!withValue) return text;
     const value = money(shares.unassigned);
     return `${text} · ${discounted ? `${value} (${discounted})` : value}`;
   };
+}
+
+/**
+ * What of a Receipt is not assigned yet, as its form and detail page head it: in units while
+ * every Line item with unassigned value is split by Units ("1 unit unassigned"), the amount
+ * otherwise, and whose it is for now: the Main `payer`'s ("Kasia's for now", or "yours" when
+ * `yours`). `inUnits` says which, so the form can show the value under it. `null` while
+ * every Line item is assigned in full.
+ */
+export function useUnassignedHeadline() {
+  const { t, locale } = useI18n();
+
+  return ({
+    lineItems,
+    unassigned,
+    currency,
+    payer,
+    yours,
+  }: {
+    lineItems: readonly LineItemShares[];
+    unassigned: Rational;
+    currency: string;
+    payer: Participant | undefined;
+    yours: boolean;
+  }): { text: string; inUnits: boolean } | null => {
+    const open = lineItems.filter((shares) => shares.unassigned.numerator !== 0n);
+    if (open.length === 0) return null;
+    const units = open.map(({ unassignedUnits }) => unassignedUnits);
+    const inUnits = units.every((count) => count !== undefined);
+    const what = inUnits
+      ? t(
+          'receipt.unitsUnassignedTotal',
+          units.reduce<number>((sum, count) => sum + (count ?? 0), 0),
+        )
+      : t('receipt.amountUnassigned', { amount: formatMoney(unassigned, currency, locale.value) });
+    const whose = yours
+      ? t('receipt.countedAsYours')
+      : t('receipt.countedAs', { name: payer?.name ?? '?' });
+    return { text: `${what} · ${whose}`, inUnits };
+  };
+}
+
+/**
+ * A Line item's name as the Receipt shows it: its own, or for one without a name "Deposit
+ * refund" when it is one, else "Line item 3" by its `position` on the Receipt, from 1.
+ */
+export function useLineItemName() {
+  const { t } = useI18n();
+
+  return ({ name, refund }: { name: string; refund: boolean }, position: number): string =>
+    name.trim() || (refund ? t('receipt.depositRefund') : t('receipt.unnamed', { position }));
 }
 
 /**

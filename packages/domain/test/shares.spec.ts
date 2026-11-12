@@ -93,11 +93,48 @@ describe('claimView', () => {
     expect(claimView(expense(kasia, 1000, [kasia, ola]), ania)).toEqual({ kind: 'notForYou' });
   });
 
-  it('shows the whole of an Income you received, and what others get back from it', () => {
+  it("shows the others' part of an Income you received for them too as what you owe", () => {
     const income = expense(kasia, -900, [kasia, ania, ola]);
 
-    expect(claimView(income, kasia)).toEqual({ kind: 'received', amount: rational(9n) });
+    expect(claimView(income, kasia)).toEqual({ kind: 'owe', amount: rational(6n) });
     expect(claimView(income, ania)).toEqual({ kind: 'getBack', amount: rational(3n) });
+  });
+
+  it('shows the whole of an Income you received only for others as what you owe', () => {
+    expect(claimView(expense(kasia, -900, [ania, ola]), kasia)).toEqual({
+      kind: 'owe',
+      amount: rational(9n),
+    });
+  });
+
+  it('shows the whole of an Income you received for yourself only as received', () => {
+    expect(claimView(expense(kasia, -900, [kasia]), kasia)).toEqual({
+      kind: 'received',
+      amount: rational(9n),
+    });
+  });
+
+  it("shows the others' part of a Receipt whose Deposit refunds outweigh its goods as what you owe", () => {
+    // 3.00 of water and a 12.00 bottle voucher, both for all three, paid by Kasia: -9.00.
+    const returns: Expense = {
+      ...expense(kasia, 300, [kasia, ania, ola]),
+      lineItems: [
+        {
+          name: 'Water',
+          unitPrice: 300,
+          quantity: 1,
+          split: { mode: 'even', participantIds: [kasia, ania, ola] },
+        },
+        {
+          name: 'Bottle voucher',
+          unitPrice: -1200,
+          quantity: 1,
+          split: { mode: 'even', participantIds: [kasia, ania, ola] },
+        },
+      ],
+    };
+
+    expect(claimView(returns, kasia)).toEqual({ kind: 'owe', amount: rational(6n) });
   });
 
   it('shows a part of a Deposit refund as money you get back, whoever paid', () => {

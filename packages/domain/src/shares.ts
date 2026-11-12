@@ -33,6 +33,8 @@ export type LineItemShares = {
   shares: ReadonlyMap<string, Rational>;
   /** The part of `net` plus `deposit` nobody has been given yet; zero once fully assigned. */
   unassigned: Rational;
+  /** How many of its units nobody has been given yet; only for a Units split. */
+  unassignedUnits?: number;
 };
 
 /**
@@ -46,10 +48,17 @@ export type ReceiptShares = {
    * Deposit refunds. Negative when the refunds are bigger than the shopping.
    */
   total: Rational;
+  /**
+   * The Subtotal: what the Line items come to after their own discounts, before the Receipt
+   * discount, Deposits and Deposit refunds.
+   */
+  subtotal: Rational;
   /** What the Receipt discount takes off; zero without one. */
   discountOff: Rational;
   /** The Line items' Deposits together, to check against those printed on the Receipt. */
   deposits: Rational;
+  /** The Deposit refunds together, negative as their row shows them; zero without any. */
+  depositRefunds: Rational;
   /** Each assigned Participant's part by id, in the order the splits name them. */
   assigned: ReadonlyMap<string, Rational>;
   /** The value not assigned to anyone yet: non-zero for an incomplete Receipt. */
@@ -102,7 +111,7 @@ export function spread(item: LineItem, amount: Rational) {
 /**
  * A Line item's full price less its Line discount, plus its Deposit, shared by its split
  * (`spread`), so the discount and the Deposit land on whoever had the item; the weight nobody
- * has been given is the unassigned part.
+ * has been given is the unassigned part, counted in units too for a Units split.
  */
 export function lineItemShares(item: LineItem, currency: string): LineItemShares {
   const unit = fromMinor(1, currency);
@@ -115,6 +124,7 @@ export function lineItemShares(item: LineItem, currency: string): LineItemShares
     net,
     deposit,
     ...spread(item, add(net, deposit)),
+    ...(item.split.mode === 'units' && { unassignedUnits: Number(splitWeights(item).rest) }),
   };
 }
 
@@ -139,6 +149,7 @@ export function receiptShares({
 
   const assigned = new Map<string, Rational>();
   let deposits = zero;
+  let depositRefunds = zero;
   const unassignedByLine = lineItems.map((item, index) => {
     const { net, deposit } = lines[index]!;
     // A Deposit refund is not goods, so the Receipt discount leaves it whole.
@@ -146,12 +157,15 @@ export function receiptShares({
     const parts = spread(item, left);
     for (const [id, part] of parts.shares) assigned.set(id, add(assigned.get(id) ?? zero, part));
     deposits = add(deposits, deposit);
+    if (isDepositRefund(item)) depositRefunds = add(depositRefunds, net);
     return parts.unassigned;
   });
   return {
     total: multiply(receiptTotalMinor(lineItems, discount), unit),
+    subtotal: multiply(goods, unit),
     discountOff: multiply(off, unit),
     deposits,
+    depositRefunds,
     assigned,
     unassigned: unassignedByLine.reduce(add, zero),
     unassignedByLine,
@@ -172,8 +186,10 @@ export function expenseShares(expense: Expense): ExpenseShares {
     const amount = fromMinor(expense.amount, currency);
     return {
       total: amount,
+      subtotal: zero,
       discountOff: zero,
       deposits: zero,
+      depositRefunds: zero,
       paid: new Map([[mainPayerId, amount]]),
       shares: new Map([[expense.recipientId, amount]]),
       unassigned: zero,
@@ -201,14 +217,17 @@ export function expenseShares(expense: Expense): ExpenseShares {
  * - `share`: their Share, always the whole of it: when someone else paid, and also when they
  *   paid less than their Share (a Contribution below it, or a Deposit refund shared with
  *   others). What is left for them to pay shows on Balances, not here;
- * - `received`: the whole of an Income they received, or of a Repayment handed to them;
+ * - `received`: money they received that is all theirs: an Income for themselves only, or a
+ *   Repayment handed to them;
+ * - `owe`: the others' part of money they received for others too: an Income, or a Receipt
+ *   whose Deposit refunds outweigh its goods (Income of 9 received for three: they owe 6);
  * - `getBack`: their part of money someone else received: an Income, or a Deposit refund;
  * - `repaid`: a Repayment they handed over;
  * - `notForYou`: it does not involve them.
  * Amounts are never negative.
  */
 export type ClaimView =
-  | { kind: 'lent' | 'share' | 'received' | 'getBack' | 'repaid'; amount: Rational }
+  | { kind: 'lent' | 'share' | 'received' | 'owe' | 'getBack' | 'repaid'; amount: Rational }
   | { kind: 'notForYou' };
 
 /** The Claim's view of an Expense (see `ClaimView`); `claimId` is the claimed Participant. */
@@ -221,7 +240,13 @@ export function claimView(expense: Expense, claimId: string): ClaimView {
     if (payer) return { kind: 'repaid', amount: total };
     return own ? { kind: 'received', amount: total } : { kind: 'notForYou' };
   }
-  if (payer && total.numerator < 0n) return { kind: 'received', amount: negate(total) };
+  if (payer && total.numerator < 0n) {
+    // Their own part of it is negative (what they keep); the rest is the others'.
+    const owed = add(negate(total), own ?? zero);
+    return owed.numerator > 0n
+      ? { kind: 'owe', amount: owed }
+      : { kind: 'received', amount: negate(total) };
+  }
   // The Main payer's part, or a Contribution. Below their Share, it falls through to the Share.
   const part = paid.get(claimId);
   if (part) {
