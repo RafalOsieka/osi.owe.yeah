@@ -172,8 +172,8 @@ export type ReceiptReading = Pick<
 > & {
   /** The Receipt discount, while it can be read. */
   discount: Discount | undefined;
-  /** Each readable line and its shares by its draft key, in the Receipt's order. */
-  lineItems: ReadonlyMap<string, { lineItem: LineItem; shares: LineItemShares }>;
+  /** Each readable line's shares by its draft key, in the Receipt's order. */
+  lineItems: ReadonlyMap<string, LineItemShares>;
   /**
    * Each readable line's part of `unassigned` after the Receipt discount, by its draft key
    * (`ReceiptShares['unassignedByLine']`).
@@ -722,12 +722,7 @@ function readLines(
       deposits: shares.deposits,
       depositRefunds: shares.depositRefunds,
       unassigned: shares.unassigned,
-      lineItems: new Map(
-        read.map(({ key, lineItem }, index) => [
-          key,
-          { lineItem, shares: shares.lineItems[index]! },
-        ]),
-      ),
+      lineItems: new Map(read.map(({ key }, index) => [key, shares.lineItems[index]!])),
       unassignedByKey: new Map(
         read.map(({ key }, index) => [key, shares.unassignedByLine[index]!]),
       ),

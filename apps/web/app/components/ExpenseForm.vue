@@ -157,8 +157,8 @@ const {
 // through the draft's reading, which has each readable line's shares.
 const unassignedLines = computed(() =>
   (state.lineItems ?? []).flatMap((line, index) => {
-    const read = reading.value.receipt?.lineItems.get(line.key);
-    if (!read || read.shares.unassigned.numerator === 0n) return [];
+    const shares = reading.value.receipt?.lineItems.get(line.key);
+    if (!shares || shares.unassigned.numerator === 0n) return [];
     return [{ key: line.key, name: lineItemName(line, index + 1) }];
   }),
 );
@@ -173,10 +173,11 @@ const unassignedAfter = computed(() =>
 // the value under it when it is counted in units.
 const unassignedSummary = computed(() => {
   const receipt = reading.value.receipt;
-  if (!receipt) return null;
+  // Nothing to head once the Receipt discount leaves nothing unassigned.
+  if (!receipt || receipt.unassigned.numerator === 0n) return null;
   const payer = trip.value.participants.find(({ id }) => id === state.mainPayerId);
   const headline = unassignedHeadline({
-    lineItems: [...receipt.lineItems.values()].map(({ shares }) => shares),
+    lineItems: [...receipt.lineItems.values()],
     unassigned: receipt.unassigned,
     currency: state.currency,
     payer,

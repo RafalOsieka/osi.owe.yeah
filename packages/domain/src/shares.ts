@@ -219,8 +219,8 @@ export function expenseShares(expense: Expense): ExpenseShares {
  *   others). What is left for them to pay shows on Balances, not here;
  * - `received`: money they received that is all theirs: an Income for themselves only, or a
  *   Repayment handed to them;
- * - `owe`: the others' part of money they received for others too: an Income, or a Receipt
- *   whose Deposit refunds outweigh its goods (Income of 9 received for three: they owe 6);
+ * - `owe`: the others' part of money they received for others too: an Income (9 received
+ *   for three: they owe 6), or a Receipt whose Deposit refunds outweigh its goods;
  * - `getBack`: their part of money someone else received: an Income, or a Deposit refund;
  * - `repaid`: a Repayment they handed over;
  * - `notForYou`: it does not involve them.

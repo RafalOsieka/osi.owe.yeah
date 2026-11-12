@@ -566,18 +566,7 @@ describe('what a draft comes to so far', () => {
       depositRefunds: rational(0n),
       unassigned: rational(9n),
       lineItems: new Map([
-        [
-          read!.key,
-          {
-            lineItem: {
-              name: '',
-              unitPrice: 200,
-              quantity: 5,
-              split: { mode: 'even', participantIds: [] },
-            },
-            shares: expect.objectContaining({ net: rational(10n), unassigned: rational(10n) }),
-          },
-        ],
+        [read!.key, expect.objectContaining({ net: rational(10n), unassigned: rational(10n) })],
       ]),
       unassignedByKey: new Map([[read!.key, rational(9n)]]),
     });
