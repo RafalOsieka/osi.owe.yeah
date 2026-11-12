@@ -75,7 +75,8 @@ export type ForgottenTrip = { tripId: string; token: string };
 /**
  * A Trip opened on this device: how it reopens the Trip link, who the device says it is
  * there, the Trip as the server last answered it, its cached rate entries, the currency of
- * the last Expense saved here, what sync has to tell, and its push notifications.
+ * the last Expense saved here, what sync has to tell, its push notifications, and the versions
+ * its own Expense changes got.
  */
 export type DeviceTrip = {
   id: string;
@@ -100,7 +101,16 @@ export type DeviceTrip = {
   lastCurrency: Currency | null;
   notices: Notice[];
   notifications: DeviceNotifications;
+  /**
+   * The last change of each Expense this device had accepted, by Expense id, with the version
+   * it got. An edit started while that change was in the outbox, in any window of the app,
+   * goes on that version; one started on an older change has no version to go on.
+   */
+  acceptedVersions: Record<string, AcceptedVersion>;
 };
+
+/** A change of an Expense made on this device, and the version the server gave it. */
+export type AcceptedVersion = { changeId: string; version: number };
 
 /**
  * What an Expense change is based on: a version the server gave the Expense (`null` for a
@@ -205,6 +215,7 @@ function tripsFromLocalStorage(): DeviceTrip[] {
               lastCurrency: null,
               notices: [],
               notifications: NOTIFICATIONS_OFF,
+              acceptedVersions: {},
             },
           ]
         : [];

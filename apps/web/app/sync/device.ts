@@ -27,6 +27,7 @@ import { v7 as uuidv7 } from 'uuid';
 import { computed, shallowReactive } from 'vue';
 import {
   NOTIFICATIONS_OFF,
+  type AcceptedVersion,
   type BrowserSubscription,
   type DeviceDb,
   type DeviceTrip,
@@ -132,9 +133,6 @@ type ExpenseEntry = OutboxEntry & { change: Extract<QueuedChange, { kind: 'expen
  * through `read`, which shows the outbox on top of the pulled Trip.
  */
 export function createDevice(db: DeviceDb, transport: Transport, deviceId: string) {
-  // Versions this session's accepted changes gave their Expenses, for an edit started
-  // while the change it was based on was still in the outbox.
-  const acceptedVersions = new Map<string, number>();
   // The sync running for each Trip, and whether a change was made meanwhile.
   const running = new Map<string, Promise<void>>();
   const again = new Set<string>();
@@ -219,6 +217,7 @@ export function createDevice(db: DeviceDb, transport: Transport, deviceId: strin
         lastCurrency: null,
         notices: [],
         notifications: NOTIFICATIONS_OFF,
+        acceptedVersions: {},
       });
       await enqueue(id, { kind: 'trip', trip: { name, currency } });
       for (const participant of participants)
@@ -251,6 +250,7 @@ export function createDevice(db: DeviceDb, transport: Transport, deviceId: strin
         lastCurrency: known?.lastCurrency ?? null,
         notices: known?.notices ?? [],
         notifications: known?.notifications ?? NOTIFICATIONS_OFF,
+        acceptedVersions: known?.acceptedVersions ?? {},
       });
     });
     return 'joined';
@@ -302,11 +302,12 @@ export function createDevice(db: DeviceDb, transport: Transport, deviceId: strin
       const entries = await expenseEntries(tripId, expense.id);
       const rejected = entries[0]?.held?.status === 'rejected' ? entries[0] : null;
       if (rejected) await db.outbox.bulkDelete(entries.map(({ seq }) => seq));
+      const accepted = (await db.trips.get(tripId))?.acceptedVersions[expense.id];
       await enqueue(tripId, {
         kind: 'expense',
         base: rejected
           ? rejected.change.base
-          : resolveBase(local, expense.id, asRead?.base ?? { version: null }),
+          : resolveBase(local, expense.id, asRead?.base ?? { version: null }, accepted),
         expense,
         deleted,
       });
@@ -316,14 +317,23 @@ export function createDevice(db: DeviceDb, transport: Transport, deviceId: strin
 
   /**
    * The base a new change of an Expense goes on. Behind the Expense's last change still in
-   * the outbox, if there is one. An edit started on a change accepted meanwhile takes the
-   * version it got (or, from another tab, the version the device has now).
+   * the outbox, if there is one. An edit started on a change accepted meanwhile, in any window
+   * of the app, takes the version it got, if `accepted` (the Expense's last) is still that change.
+   * Otherwise (a later change of it was accepted, or it was dropped) the edit claims no version:
+   * for an Expense the server has, it answers a Conflict rather than let the edit overwrite a
+   * version it never saw; one it doesn't have (a new Expense whose change was dropped) is
+   * created again.
    */
-  function resolveBase(trip: LocalTrip, expenseId: string, base: ExpenseBase): ExpenseBase {
+  function resolveBase(
+    trip: LocalTrip,
+    expenseId: string,
+    base: ExpenseBase,
+    accepted: AcceptedVersion | undefined,
+  ): ExpenseBase {
     const current = findExpense(trip, expenseId)?.base ?? { version: null };
     if ('after' in current) return current;
-    if ('after' in base) return { version: acceptedVersions.get(base.after) ?? current.version };
-    return base;
+    if (!('after' in base)) return base;
+    return { version: accepted?.changeId === base.after ? accepted.version : null };
   }
 
   /** The Trip as this device keeps it, for a call to the server; rejects if it is not here. */
@@ -681,18 +691,24 @@ export function createDevice(db: DeviceDb, transport: Transport, deviceId: strin
 
   /**
    * Takes an accepted change out of the outbox into the `ServerTrip`. The Expense's next change
-   * now has a base: the version this one got.
+   * now has a base: the version this one got, which is also kept as the Expense's last
+   * accepted version for an edit started before (`resolveBase`).
    */
   async function accept(entry: OutboxEntry, version: number | null): Promise<void> {
     const { tripId, change } = entry;
     await db.outbox.delete(entry.seq);
     const device = await db.trips.get(tripId);
+    if (!device) return;
+    const expenseVersion =
+      change.kind === 'expense' && version !== null
+        ? { [change.expense.id]: { changeId: change.id, version } }
+        : {};
     await db.trips.update(tripId, {
-      snapshot: withAccepted(device?.snapshot ?? null, tripId, change, version),
+      snapshot: withAccepted(device.snapshot, tripId, change, version),
+      acceptedVersions: { ...device.acceptedVersions, ...expenseVersion },
     });
     if (change.kind !== 'expense' || version === null) return;
 
-    acceptedVersions.set(change.id, version);
     const next = (await entriesOf(tripId)).find(
       (other) =>
         other.change.kind === 'expense' &&

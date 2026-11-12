@@ -129,6 +129,31 @@ describeDb('the device, syncing with the real Trip sync', () => {
     return { ...kasias, ...made, croatia };
   }
 
+  /** Another window of `kasias`' device: the same device store, with a sync of its own. */
+  function anotherWindow({ deviceDb, deviceId }: { deviceDb: DeviceDb; deviceId: string }) {
+    const connection = new Connection(sync, store, rates);
+    return createDevice(new DeviceDb(deviceDb.name), connection, deviceId);
+  }
+
+  /**
+   * A synced Trip whose new Expense "Lidl Rovinj" Kasia saved offline and opened to edit in
+   * another window while it waited in the outbox. The first window synced it after that, as version 1.
+   * `asRead` is Lidl Rovinj as that window read it.
+   */
+  async function readInAnotherWindow() {
+    const set = await setUp();
+    const { croatia, connection, trip, kasia, ania } = set;
+    const other = anotherWindow(set);
+    const lidl = plainExpense('Lidl Rovinj', kasia, [kasia, ania]);
+    connection.offline = true;
+    await croatia.saveExpense(lidl, null);
+    await croatia.sync();
+    const [asRead] = (await other.read(trip.id))!.local!.expenses;
+    connection.offline = false;
+    await croatia.sync();
+    return { ...set, windowCroatia: other.trip(trip.id), lidl, asRead: asRead! };
+  }
+
   /** Another device that opened the Trip from its Trip link and claimed `claim`, synced. */
   async function joined(trip: TripWithParticipants, token: string, claim: Participant) {
     const other = newDevice();
@@ -350,6 +375,67 @@ describeDb('the device, syncing with the real Trip sync', () => {
       },
     ]);
     expect(await revisionsOf(trip, lidl)).toHaveLength(2);
+  });
+
+  it('ends an edit based on a change another window synced in a Conflict once someone else made a newer version', async () => {
+    const { device, croatia, windowCroatia, trip, token, ania, lidl, asRead } =
+      await readInAnotherWindow();
+    // Ania makes Lidl Rovinj Spar, and the first window pulls that.
+    const anias = await joined(trip, token, ania);
+    const [seen] = (await anias.device.read(trip.id))!.local!.expenses;
+    await anias.croatia.saveExpense({ ...lidl, title: 'Spar' }, seen!);
+    await anias.croatia.sync();
+    await croatia.sync();
+
+    await windowCroatia.saveExpense({ ...lidl, title: 'Konzum' }, asRead);
+    await windowCroatia.sync();
+
+    expect((await device.read(trip.id))?.local?.expenses).toMatchObject([
+      {
+        title: 'Konzum',
+        unsynced: { status: 'conflict', current: { title: 'Spar', version: 2 } },
+      },
+    ]);
+    expect((await revisionsOf(trip, lidl)).map(({ title }) => title)).toEqual([
+      'Spar',
+      'Lidl Rovinj',
+    ]);
+  });
+
+  it('sends an edit based on a change another window synced on the version that change got, after a reload', async () => {
+    const set = await readInAnotherWindow();
+    const { device, windowCroatia, trip, lidl, asRead } = set;
+    anotherWindow(set);
+
+    await windowCroatia.saveExpense({ ...lidl, title: 'Konzum' }, asRead);
+    await windowCroatia.sync();
+
+    expect(await revisionsOf(trip, lidl)).toEqual([
+      { version: 2, title: 'Konzum', deleted: false },
+      { version: 1, title: 'Lidl Rovinj', deleted: false },
+    ]);
+    expect((await device.read(trip.id))?.unsynced).toBe(0);
+  });
+
+  it('ends an edit based on a change another window synced in a Conflict once a later change of the Expense was accepted', async () => {
+    const { device, croatia, windowCroatia, trip, lidl, asRead } = await readInAnotherWindow();
+    const [seen] = (await device.read(trip.id))!.local!.expenses;
+    await croatia.saveExpense({ ...lidl, title: 'Spar' }, seen!);
+    await croatia.sync();
+
+    await windowCroatia.saveExpense({ ...lidl, title: 'Konzum' }, asRead);
+    await windowCroatia.sync();
+
+    expect((await device.read(trip.id))?.local?.expenses).toMatchObject([
+      {
+        title: 'Konzum',
+        unsynced: { status: 'conflict', current: { title: 'Spar', version: 2 } },
+      },
+    ]);
+    expect((await revisionsOf(trip, lidl)).map(({ title }) => title)).toEqual([
+      'Spar',
+      'Lidl Rovinj',
+    ]);
   });
 
   it('pushes a Trip created offline once it is back online, in order, as its creator', async () => {
