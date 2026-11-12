@@ -8,24 +8,35 @@ import {
   TRIP_TOKEN_HEADER,
 } from '@osi/owe-yeah-domain';
 import { DeviceDb } from '~/sync/db';
-import { createDevice, type Device, type Transport } from '~/sync/device';
+import { createDevice, OfflineError, type Device, type Transport } from '~/sync/device';
+
+/** Rejects with an `OfflineError`: the fetch itself failed, as no answer came back. */
+function offline(): never {
+  throw new OfflineError();
+}
 
 /** The sync API over `syncApi`. Answers are checked before they reach the device store. */
 export const httpTransport: Transport = {
   async push(tripId, token, request) {
-    const response = await syncApi(`/api/trips/${tripId}/push`, {
-      method: 'POST',
-      headers: { [TRIP_TOKEN_HEADER]: token },
-      body: request,
-    });
-    return pushResponseSchema.parse(response);
+    const response = await syncApi
+      .raw(`/api/trips/${tripId}/push`, {
+        method: 'POST',
+        headers: { [TRIP_TOKEN_HEADER]: token },
+        body: request,
+        ignoreResponseError: true,
+      })
+      .catch(offline);
+    if (!response.ok) throw new Error(`Push failed with ${response.status}`);
+    return pushResponseSchema.parse(response._data);
   },
   async pull(tripId, token, since) {
-    const response = await syncApi.raw(`/api/trips/${tripId}`, {
-      headers: { [TRIP_TOKEN_HEADER]: token },
-      query: since === undefined ? {} : { since },
-      ignoreResponseError: true,
-    });
+    const response = await syncApi
+      .raw(`/api/trips/${tripId}`, {
+        headers: { [TRIP_TOKEN_HEADER]: token },
+        query: since === undefined ? {} : { since },
+        ignoreResponseError: true,
+      })
+      .catch(offline);
     if (response.status === 401) return 'invalidLink';
     if (!response.ok) throw new Error(`Pull failed with ${response.status}`);
     return pullResponseSchema.parse(response._data);

@@ -548,6 +548,36 @@ test('a Trip and an Expense made offline reach a second device once back online'
   await other.close();
 });
 
+test('the sync status says when the server, not the connection, holds sync up', async ({
+  page,
+  context,
+  request,
+}) => {
+  await page.goto(await tripLinkFor(request, 'Hel 2026', ['Kasia', 'Ania']));
+  await page.getByRole('dialog').getByRole('button', { name: 'Kasia' }).click();
+  const header = page.getByRole('banner');
+  await expect(header.getByRole('button', { name: 'Everything is synced.' })).toBeVisible();
+  await page.waitForFunction(() => navigator.serviceWorker.controller !== null);
+
+  // The server fails the pull of the Trip opened again, with nothing waiting on this device.
+  const pull = (url: URL) => /^\/api\/trips\/[^/]+$/.test(url.pathname);
+  await page.route(pull, (route) => route.fulfill({ status: 500 }));
+  await page.reload();
+  await header.getByRole('button', { name: 'Sync failed' }).click();
+  await expect(header).toContainText("The server couldn't take your changes. Retrying.");
+  await page.unroute(pull);
+
+  // Offline, a new Expense waits on this device.
+  await context.setOffline(true);
+  await page.getByRole('link', { name: 'Add Expense' }).click();
+  await page.getByLabel('Amount').fill('12');
+  await page.getByLabel('Title').fill('Ferry');
+  await page.getByRole('button', { name: 'Save Expense' }).click();
+  await header.getByRole('button', { name: '1 change not synced' }).click();
+  await expect(header).toContainText("Will sync when you're online");
+  await expect(header).not.toContainText("The server couldn't take your changes.");
+});
+
 test('a Receipt entered offline at the till, Line item by Line item, reaches a second device', async ({
   page,
   context,

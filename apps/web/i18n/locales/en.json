@@ -423,6 +423,8 @@
     "status": "Sync status",
     "unsynced": "Everything is synced. | 1 change not synced | {count} changes not synced",
     "unsyncedHelp": "Saved on this device. Will sync when you're online.",
+    "serverFailed": "Sync failed",
+    "serverFailedHelp": "The server couldn't take your changes. Retrying.",
     "unsyncedShort": "· {count} not synced",
     "notSynced": "not synced",
     "pending": "Not synced yet. The others will see it after the next sync.",

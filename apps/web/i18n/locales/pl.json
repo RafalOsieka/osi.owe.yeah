@@ -423,6 +423,8 @@
     "status": "Stan synchronizacji",
     "unsynced": "Wszystko zsynchronizowane. | Niezsynchronizowane zmiany: 1 | Niezsynchronizowane zmiany: {count}",
     "unsyncedHelp": "Zapisane na tym urządzeniu. Zsynchronizują się same, gdy będziesz online.",
+    "serverFailed": "Synchronizacja nie powiodła się",
+    "serverFailedHelp": "Serwer nie mógł przyjąć twoich zmian. Próbujemy ponownie.",
     "unsyncedShort": "· niezsynchronizowane: {count}",
     "notSynced": "niezsynchronizowany",
     "pending": "Jeszcze niezsynchronizowany. Pozostali zobaczą go po następnej synchronizacji.",

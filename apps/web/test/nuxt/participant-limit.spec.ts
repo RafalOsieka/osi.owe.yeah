@@ -28,6 +28,7 @@ mockNuxtImport('useOpenTrip', () => () => ({
   claim: ref(null),
   everyone: participants,
   unsynced: ref(0),
+  lastFailure: ref(null),
   notices: ref([]),
   notifications: ref({ subscription: null, offered: false, registered: null }),
   sync: async () => {},

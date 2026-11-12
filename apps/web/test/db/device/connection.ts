@@ -14,7 +14,7 @@ import {
   type SubscriptionRequest,
 } from '@osi/owe-yeah-domain';
 import type { z } from 'zod';
-import type { Reminded, Transport } from '../../../app/sync/device';
+import { OfflineError, type Reminded, type Transport } from '../../../app/sync/device';
 import type { Rates } from '../../../server/trip/rates';
 import type { TripStore } from '../../../server/trip/store';
 import type { TripSync } from '../../../server/trip/sync';
@@ -33,11 +33,14 @@ function overTheWire<T>(schema: z.ZodType<T>, value: T): T {
  * lost response reaches the server, but its answer never comes back. Calls outside the sync
  * protocol reach the server module behind them too (rate lookups), or are stubs until they
  * get a module of their own: push subscriptions, kept here as the server would have them, and
- * Reminders. The sync schema version is the HTTP adapter's check; an in-process device is
- * always built from the same code as the server.
+ * Reminders. While `failing`, the server answers pushes and pulls with an error instead. The
+ * sync schema version is the HTTP adapter's check; an in-process device is always built from the
+ * same code as the server.
  */
 export class Connection implements Transport {
   offline = false;
+  /** Whether the server answers pushes and pulls with an error, as a 5xx would. */
+  failing = false;
   /** How many of the next pushes reach the server but lose their answer on the way back. */
   losePushResponses = 0;
   /** How many of the next pulls reach the server but lose their answer on the way back. */
@@ -55,18 +58,23 @@ export class Connection implements Transport {
   ) {}
 
   private throwIfOffline(): void {
-    if (this.offline) throw new Error('offline');
+    if (this.offline) throw new OfflineError();
+  }
+
+  private throwIfFailing(): void {
+    if (this.failing) throw new Error('The server failed');
   }
 
   /** Throws for an answer lost on the way back, using up one of `counter`'s. */
   private throwIfLost(counter: 'losePushResponses' | 'losePullResponses'): void {
     if (this[counter] === 0) return;
     this[counter]--;
-    throw new Error('response lost');
+    throw new OfflineError();
   }
 
   async push(tripId: string, token: string, request: PushRequest): Promise<PushResponse> {
     this.throwIfOffline();
+    this.throwIfFailing();
     this.pushes.push(request);
     // Only the envelope, as the HTTP adapter: Trip sync reads each change on its own.
     const response = await this.sync.push(tripId, token, overTheWire(pushEnvelopeSchema, request));
@@ -79,6 +87,7 @@ export class Connection implements Transport {
 
   async pull(tripId: string, token: string, since?: number): Promise<PullResponse | 'invalidLink'> {
     this.throwIfOffline();
+    this.throwIfFailing();
     const response = await this.sync.pull(tripId, token, since);
     this.throwIfLost('losePullResponses');
     if (response === 'invalidLink') return response;

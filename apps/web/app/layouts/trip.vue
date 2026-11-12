@@ -1,15 +1,23 @@
 <script setup lang="ts">
 // The Trip's tabs (Expenses · Balances · Trip): the Trip header on top with the sync status
-// (the list's mark while something isn't synced: a cloud with an amber dot; its popover points
-// at it and spans the content column) and Invite, what sync has to tell (`TripNotices`) above
-// the tab, the tab bar at the bottom and an optional `#action` floating just above it. Pulling
-// a tab down syncs the Trip. Only for pages under `pages/trips/[id].vue`, which provides the
-// open Trip.
-const { trip, claim, unsynced, sync, askWhoYouAre, invite } = useOpenTrip();
+// (the list's mark while something isn't synced, or the server failed the last sync, as what
+// was pulled may be stale: a cloud with an amber dot; its popover points at it, spans the
+// content column and says whether the connection or the server holds sync up) and Invite,
+// what sync has to tell (`TripNotices`) above the tab, the tab bar at the bottom and an
+// optional `#action` floating just above it. Pulling a tab down syncs the Trip. Only for pages
+// under `pages/trips/[id].vue`, which provides the open Trip.
+const { trip, claim, unsynced, lastFailure, sync, askWhoYouAre, invite } = useOpenTrip();
 const { t } = useI18n();
 const back = useBack();
 const { pulled, ready, refreshing } = usePullToRefresh(sync);
 const syncOpen = ref(false);
+const serverFailed = computed(() => lastFailure.value === 'server');
+const needsSync = computed(() => unsynced.value > 0 || serverFailed.value);
+const syncStatus = computed(() =>
+  unsynced.value === 0 && serverFailed.value
+    ? t('sync.serverFailed')
+    : t('sync.unsynced', unsynced.value),
+);
 
 const tabs = computed(() => {
   const base = `/trips/${trip.value.id}`;
@@ -51,18 +59,18 @@ const tabs = computed(() => {
       <UButton
         color="neutral"
         variant="ghost"
-        :aria-label="$t('sync.unsynced', unsynced)"
+        :aria-label="syncStatus"
         :aria-expanded="syncOpen"
         aria-controls="sync-status"
         @click="syncOpen = !syncOpen"
       >
         <span class="relative">
           <UIcon
-            :name="unsynced > 0 ? 'i-lucide-cloud' : 'i-lucide-cloud-check'"
+            :name="needsSync ? 'i-lucide-cloud' : 'i-lucide-cloud-check'"
             class="block size-5 text-muted"
           />
           <span
-            v-if="unsynced > 0"
+            v-if="needsSync"
             class="absolute -end-0.5 -top-0.5 size-2 rounded-full bg-warning"
           />
         </span>
@@ -80,19 +88,16 @@ const tabs = computed(() => {
     <div v-if="syncOpen" id="sync-status" class="flex gap-3 border-t border-default px-4 py-3">
       <span class="relative mt-0.5 shrink-0">
         <UIcon
-          :name="unsynced > 0 ? 'i-lucide-cloud' : 'i-lucide-cloud-check'"
+          :name="needsSync ? 'i-lucide-cloud' : 'i-lucide-cloud-check'"
           class="block size-5"
-          :class="unsynced > 0 ? 'text-muted' : 'text-success'"
+          :class="needsSync ? 'text-muted' : 'text-success'"
         />
-        <span
-          v-if="unsynced > 0"
-          class="absolute -end-0.5 -top-0.5 size-2 rounded-full bg-warning"
-        />
+        <span v-if="needsSync" class="absolute -end-0.5 -top-0.5 size-2 rounded-full bg-warning" />
       </span>
       <div>
-        <p class="font-semibold text-highlighted">{{ $t('sync.unsynced', unsynced) }}</p>
-        <p v-if="unsynced > 0" class="mt-0.5 text-sm text-muted">
-          {{ $t('sync.unsyncedHelp') }}
+        <p class="font-semibold text-highlighted">{{ syncStatus }}</p>
+        <p v-if="needsSync" class="mt-0.5 text-sm text-muted">
+          {{ serverFailed ? $t('sync.serverFailedHelp') : $t('sync.unsyncedHelp') }}
         </p>
       </div>
     </div>
