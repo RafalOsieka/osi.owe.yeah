@@ -10,7 +10,7 @@ export {
   storedExpenseSchema,
   tripVersionSchema,
 } from './server-trip.ts';
-export type { Edited, Revision, ServerTrip, StoredExpense } from './server-trip.ts';
+export type { Edited, Revision, ServerTrip, StoredExpense, TripPeople } from './server-trip.ts';
 export { claimView, expenseShares, lineItemShares, receiptShares, spread } from './shares.ts';
 export { BREAKDOWN_PARTS, shareBreakdown, shareBreakdowns } from './breakdown.ts';
 export type { BreakdownPart, ShareBreakdown } from './breakdown.ts';
@@ -89,6 +89,7 @@ export {
   SYNC_SCHEMA_HEADER,
   SYNC_SCHEMA_VERSION,
   changeResultSchema,
+  expenseChangeProblems,
   expenseChangeSchema,
   participantChangeSchema,
   pullQuerySchema,
@@ -97,6 +98,7 @@ export {
   pushProblemSchema,
   pushRequestSchema,
   pushResponseSchema,
+  restoredBy,
   revisionsResponseSchema,
   syncChangeSchema,
   tripChangeSchema,

@@ -1,6 +1,12 @@
 import { z } from 'zod';
-import { expenseProblemSchema, expenseSchema } from './expense.ts';
-import { participantIdSchema, participantSchema } from './participant.ts';
+import {
+  expenseProblemSchema,
+  expenseProblems,
+  expenseSchema,
+  referencedParticipantIds,
+  type ExpenseProblem,
+} from './expense.ts';
+import { participantIdSchema, participantSchema, type Participant } from './participant.ts';
 import { rateEntrySchema } from './rates.ts';
 import {
   expenseVersionSchema,
@@ -8,6 +14,7 @@ import {
   serverTripSchema,
   storedExpenseSchema,
   tripVersionSchema,
+  type TripPeople,
 } from './server-trip.ts';
 import { tripSchema } from './trip.ts';
 
@@ -83,6 +90,32 @@ export type TripChange = z.infer<typeof tripChangeSchema>;
 export type ParticipantChange = z.infer<typeof participantChangeSchema>;
 export type ExpenseChange = z.infer<typeof expenseChangeSchema>;
 export type SyncChange = z.infer<typeof syncChangeSchema>;
+
+/**
+ * The removed Participants an Expense change brings back: those its Expense references, unless
+ * it deletes the Expense. The server applies them under the Trip lock, the device on top of
+ * its pulled Trip.
+ */
+export function restoredBy(
+  people: TripPeople,
+  { expense, deleted }: Pick<ExpenseChange, 'expense' | 'deleted'>,
+): Participant[] {
+  if (deleted) return [];
+  const referenced = referencedParticipantIds(expense);
+  return people.removedParticipants.filter(({ id }) => referenced.has(id));
+}
+
+/**
+ * Why an Expense change can't be applied (`expenseProblems`); empty when it can. A removed
+ * Participant still counts as the Trip's, since the change brings them back (`restoredBy`).
+ * The device checks it before queuing the change and the server again before accepting it.
+ */
+export function expenseChangeProblems(
+  { expense }: Pick<ExpenseChange, 'expense'>,
+  { participants, removedParticipants }: TripPeople,
+): ExpenseProblem[] {
+  return expenseProblems(expense, { participants: [...participants, ...removedParticipants] });
+}
 
 /** How many changes one push holds at most. */
 export const PUSH_LIMIT = 100;

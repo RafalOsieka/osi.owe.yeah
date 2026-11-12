@@ -8,6 +8,7 @@ import {
   tripSchema,
   tripVersionSchema,
   type Revision,
+  type TripPeople,
 } from '@osi/owe-yeah-domain';
 import { and, asc, desc, eq } from 'drizzle-orm';
 import { z } from 'zod';
@@ -37,6 +38,18 @@ const wholeTripSchema = storedTripSchema.extend({
  * and its Expenses, deleted ones included, in the order they were created.
  */
 export type WholeTrip = z.infer<typeof wholeTripSchema>;
+
+/**
+ * A Trip's stored Participants split the way the domain takes them: those taking part, and
+ * the removed ones kept apart, each in the order they were added.
+ */
+export function tripPeople(participants: readonly StoredParticipant[]): TripPeople {
+  const shown = ({ id, name }: StoredParticipant) => ({ id, name });
+  return {
+    participants: participants.filter(({ removed }) => !removed).map(shown),
+    removedParticipants: participants.filter(({ removed }) => removed).map(shown),
+  };
+}
 
 /**
  * Every server read of a Trip, each parsed by the domain schemas on the way out, so their
