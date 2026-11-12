@@ -7,16 +7,18 @@ import {
   revisionSchema,
   storedExpenseSchema,
   tripSnapshotSchema,
+  tripVersionSchema,
 } from './snapshot.ts';
 import { tripSchema } from './trip.ts';
 
 /**
  * The sync schema: the shape of pushes, pulls and Revisions. The server speaks only the
  * newest one and answers an older app's requests to `/api` with 426 "update needed" (ADR
- * 0002). Bump it whenever an older app could no longer talk to the server. It counts apart
- * from the device store's version: not every store change touches the wire. A bump that
- * changes what the outbox has to send also appends a link to the store's migration chain
- * (`migrations` in the web app), so queued changes go out in the new schema.
+ * 0002). Bump it whenever an older app could no longer talk to the server: the wire contract
+ * test (`test/wire-contract.spec.ts`) fails on any wire schema change until that is decided.
+ * It counts apart from the device store's version: not every store change touches the wire. A
+ * bump that changes what the outbox has to send also appends a link to the store's migration
+ * chain (`migrations` in the web app), so queued changes go out in the new schema.
  */
 export const SYNC_SCHEMA_VERSION = 2;
 
@@ -138,6 +140,11 @@ export type ChangeResult = z.infer<typeof changeResultSchema>;
 export const pushResponseSchema = z.object({ results: z.array(changeResultSchema) });
 
 export type PushResponse = z.infer<typeof pushResponseSchema>;
+
+/** The pull's query: `since`, the Trip version the device has, if it has the Trip. */
+export const pullQuerySchema = z.object({
+  since: z.coerce.number().pipe(tripVersionSchema).optional(),
+});
 
 /**
  * The whole-Trip pull (ADR 0002). Asked with the Trip version the device has, it answers

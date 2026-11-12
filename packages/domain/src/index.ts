@@ -88,6 +88,7 @@ export {
   changeResultSchema,
   expenseChangeSchema,
   participantChangeSchema,
+  pullQuerySchema,
   pullResponseSchema,
   pushProblemSchema,
   pushRequestSchema,
@@ -117,6 +118,7 @@ export {
   neededRates,
   rateEntrySchema,
   rateLookupSchema,
+  rateQuerySchema,
   rateSummary,
 } from './rates.ts';
 export type { Conversion, ExpenseRate, RateEntry, RateLookup, TripRates } from './rates.ts';

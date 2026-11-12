@@ -1,6 +1,5 @@
-import { currencySchema, type RateLookup } from '@osi/owe-yeah-domain';
+import { rateQuerySchema, type RateLookup } from '@osi/owe-yeah-domain';
 import { createError, defineEventHandler, getValidatedQuery } from 'nuxt/server';
-import { z } from 'zod';
 import { tripRates } from '../../../trip';
 import { requireTrip } from '../../../utils/trip-access';
 
@@ -12,10 +11,7 @@ import { requireTrip } from '../../../utils/trip-access';
  */
 export default defineEventHandler(async (event): Promise<RateLookup> => {
   const trip = await requireTrip(event);
-  const { from, date } = await getValidatedQuery(
-    event,
-    z.object({ from: currencySchema, date: z.iso.date() }),
-  );
+  const { from, date } = await getValidatedQuery(event, rateQuerySchema);
   if (from === trip.currency) {
     throw createError({ status: 400, statusText: 'No rate of the Trip currency in itself' });
   }
