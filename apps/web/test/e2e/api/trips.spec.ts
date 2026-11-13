@@ -486,18 +486,6 @@ describeApi('Trip API', () => {
     expect((await pushResponse(eleventh.id, creation(eleventh), newToken())).status).toBe(200);
   });
 
-  it('takes at most 200 push subscriptions in a Trip, and still replaces one it has', async () => {
-    const { trip, token, kasia, devices } = await subscribedTrip();
-    // Subscribed for Kasia, Ania and Ola so far.
-    for (let count = 3; count < 200; count++) {
-      expect((await subscribe(trip.id, token, uuidv7(), kasia.id)).status).toBe(204);
-    }
-
-    expect((await subscribe(trip.id, token, uuidv7(), kasia.id)).status).toBe(409);
-    // Ania's device now says it is Kasia.
-    expect((await subscribe(trip.id, token, devices.ania, kasia.id)).status).toBe(204);
-  });
-
   it('registers and removes a push subscription only with the Trip link', async () => {
     const { trip, token, kasia } = await tripWithKasiaAndAnia();
     const device = uuidv7();

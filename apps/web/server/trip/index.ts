@@ -1,8 +1,9 @@
 import { useRuntimeConfig } from 'nuxt/server';
 import { getDb } from '../db';
-import type { PushSettings } from '../notifications/delivery';
 import { createNotifications } from '../notifications/activity';
-import { createReminders } from '../utils/reminders';
+import type { VapidDetails } from '../notifications/delivery';
+import { createReminders } from '../notifications/reminders';
+import { createSubscriptions } from '../notifications/subscriptions';
 import { createRates } from './rates';
 import { createTripStore } from './store';
 import { createTripSync } from './sync';
@@ -18,27 +19,33 @@ function lazy<T>(make: () => T): () => T {
 }
 
 /**
- * What Notifications and Reminders are sent with (`PushSettings`); `null` when no VAPID keys
- * are set, so nothing is sent.
+ * What Notifications and Reminders are signed with; `null` when no VAPID keys are set, so
+ * nothing is sent.
  */
-const pushSettings = lazy((): PushSettings | null => {
-  const { vapidPublicKey, vapidPrivateKey, vapidSubject, notificationsAnyEndpoint } =
-    useRuntimeConfig();
+const vapid = lazy((): VapidDetails | null => {
+  const { vapidPublicKey, vapidPrivateKey, vapidSubject } = useRuntimeConfig();
   if (!vapidPublicKey || !vapidPrivateKey) return null;
-  const vapid = { subject: vapidSubject, publicKey: vapidPublicKey, privateKey: vapidPrivateKey };
-  return { vapid, anyEndpoint: notificationsAnyEndpoint };
+  return { subject: vapidSubject, publicKey: vapidPublicKey, privateKey: vapidPrivateKey };
 });
 
 export const tripStore = lazy(() => createTripStore(getDb()));
 
 export const tripRates = lazy(() => createRates(getDb(), useRuntimeConfig().frankfurterUrl));
 
+/**
+ * Notification subscriptions, taken and sent to at any endpoint only where
+ * `notificationsAnyEndpoint` says so (in tests).
+ */
+export const subscriptions = lazy(() =>
+  createSubscriptions(getDb(), { anyEndpoint: useRuntimeConfig().notificationsAnyEndpoint }),
+);
+
 export const reminders = lazy(() =>
-  createReminders(getDb(), tripStore(), tripRates(), pushSettings()),
+  createReminders(getDb(), tripStore(), tripRates(), subscriptions(), vapid()),
 );
 
 const notifications = lazy(() =>
-  createNotifications(getDb(), tripStore(), tripRates(), pushSettings()),
+  createNotifications(tripStore(), tripRates(), subscriptions(), vapid()),
 );
 
 export const tripSync = lazy(() =>

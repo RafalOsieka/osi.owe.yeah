@@ -85,7 +85,7 @@ export const httpTransport: Transport = {
       ignoreResponseError: true,
     });
     if (response.ok) return 'sent';
-    // Only the server's own refusals name one (`server/utils/reminders.ts`): a WAF block or a
+    // Only the server's own refusals name one (`server/notifications/reminders.ts`): a WAF block or a
     // rate limit in front of it answers 403 or 429 too, and is no refusal.
     const refusal = reminderRefusalSchema.safeParse(response._data);
     if (!refusal.success) throw new Error(`Reminder failed with ${response.status}`);

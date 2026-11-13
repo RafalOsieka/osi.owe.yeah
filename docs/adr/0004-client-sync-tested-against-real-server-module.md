@@ -4,6 +4,6 @@ The device's sync (outbox, pull, Conflicts, retries) is tested through an in-pro
 
 ## Consequences
 
-- The only stand-ins allowed are a network decorator (offline, lost responses) and stubs for calls outside the sync protocol (subscriptions, Reminders).
+- The only stand-ins allowed are a network decorator (offline, lost responses) and stubs for calls outside the sync protocol (Reminders). Push subscriptions go through their real server module.
 - A server answer a test needs, such as a Conflict, is produced by a real scenario, e.g. two devices editing the same Expense. It is never scripted.
 - The sync schema version check stays in the HTTP adapter. An in-process client is always built from the same code as the server.

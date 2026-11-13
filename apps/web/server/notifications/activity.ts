@@ -9,13 +9,11 @@ import {
   type RevisionKind,
   type Trip,
 } from '@osi/owe-yeah-domain';
-import { eq } from 'drizzle-orm';
-import type { Database } from '../db/client';
-import { notificationSubscriptions } from '../db/schema';
 import type { Rates } from '../trip/rates';
 import type { TripStore, WholeTrip } from '../trip/store';
 import type { AppliedExpenseChange, Notifier } from '../trip/sync';
-import { deliver, type PushSettings } from './delivery';
+import { deliver, type VapidDetails } from './delivery';
+import type { Subscriptions } from './subscriptions';
 
 /** One applied change as Notifications tell it: what it did, who made it, whom it moved. */
 type Activity = {
@@ -27,14 +25,14 @@ type Activity = {
 
 /**
  * Notifications about Expense changes (#41), the Trip sync's `Notifier` in production: reading
- * the Trip through `store` and converting at `rates`, with subscriptions kept in `db`. Sent
- * with `pushSettings`; nothing is sent without them.
+ * the Trip through `store`, converting at `rates`, sent to `subscriptions` signed with
+ * `vapid`; nothing is sent without it.
  */
 export function createNotifications(
-  db: Database,
   store: TripStore,
   rates: Rates,
-  pushSettings: PushSettings | null,
+  subscriptions: Subscriptions,
+  vapid: VapidDetails | null,
 ): Notifier {
   /**
    * What each changed Expense was before its change, by change id: the Revision before the
@@ -93,22 +91,14 @@ export function createNotifications(
   }
 
   async function notify(tripId: string, applied: readonly AppliedExpenseChange[]): Promise<void> {
-    if (applied.length === 0 || !pushSettings) return;
-    const subscriptions = await db
-      .select()
-      .from(notificationSubscriptions)
-      .where(eq(notificationSubscriptions.tripId, tripId));
-    if (subscriptions.length === 0) return;
+    if (applied.length === 0 || !vapid) return;
+    const devices = await subscriptions.ofTrip(tripId);
+    if (devices.length === 0) return;
 
     const trip = await store.readTrip(tripId);
     if (!trip) return;
     const activities = await activitiesOf(trip, applied);
-    await deliver(
-      db,
-      subscriptions,
-      (device) => messageFor(trip, activities, device),
-      pushSettings,
-    );
+    await deliver(subscriptions, devices, (device) => messageFor(trip, activities, device), vapid);
   }
 
   return {

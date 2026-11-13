@@ -4,6 +4,7 @@ import {
   pushResponseSchema,
   rateLookupSchema,
   revisionsResponseSchema,
+  subscriptionRequestSchema,
   type Currency,
   type PullResponse,
   type PushRequest,
@@ -15,6 +16,7 @@ import {
 } from '@osi/owe-yeah-domain';
 import type { z } from 'zod';
 import { OfflineError, type Reminded, type Transport } from '../../../app/sync/device';
+import type { Subscriptions } from '../../../server/notifications/subscriptions';
 import type { Rates } from '../../../server/trip/rates';
 import type { TripStore } from '../../../server/trip/store';
 import type { TripSync } from '../../../server/trip/sync';
@@ -31,11 +33,10 @@ function overTheWire<T>(schema: z.ZodType<T>, value: T): T {
  * A device's connection to the server's real Trip sync, in process (ADR 0004): the device's
  * `Transport`, behind a network the test controls. While `offline` nothing gets through; a
  * lost response reaches the server, but its answer never comes back. Calls outside the sync
- * protocol reach the server module behind them too (rate lookups), or are stubs until they
- * get a module of their own: push subscriptions, kept here as the server would have them, and
- * Reminders. While `failing`, the server answers pushes and pulls with an error instead. The
- * sync schema version is the HTTP adapter's check; an in-process device is always built from the
- * same code as the server.
+ * protocol reach the server module behind them too (rate lookups, push subscriptions), or are
+ * stubs until they get a module of their own: Reminders. While `failing`, the server answers
+ * pushes and pulls with an error instead. The sync schema version is the HTTP adapter's
+ * check; an in-process device is always built from the same code as the server.
  */
 export class Connection implements Transport {
   offline = false;
@@ -47,14 +48,14 @@ export class Connection implements Transport {
   losePullResponses = 0;
   /** Every push that reached the server, in order, as the device sent it. */
   readonly pushes: PushRequest[] = [];
-  /** The device's push subscription to each Trip, as the server has it. */
-  readonly subscriptions = new Map<string, SubscriptionRequest>();
+  /** How many registrations of a push subscription reached the server. */
   subscribeCalls = 0;
 
   constructor(
     private readonly sync: TripSync,
     private readonly store: TripStore,
     private readonly rates: Rates,
+    private readonly subscriptions: Subscriptions,
   ) {}
 
   private throwIfOffline(): void {
@@ -116,18 +117,27 @@ export class Connection implements Transport {
 
   async subscribe(
     tripId: string,
-    _token: string,
-    _deviceId: string,
+    token: string,
+    deviceId: string,
     request: SubscriptionRequest,
   ): Promise<void> {
     this.throwIfOffline();
     this.subscribeCalls++;
-    this.subscriptions.set(tripId, request);
+    const trip = await this.store.tripByLink(tripId, token);
+    if (!trip) throw new Error('The Trip link was refused');
+    const registration = await this.subscriptions.register(
+      trip.id,
+      deviceId,
+      overTheWire(subscriptionRequestSchema, request),
+    );
+    if (registration !== 'registered')
+      throw new Error(`The subscription was refused: ${registration}`);
   }
 
-  async unsubscribe(tripId: string): Promise<void> {
+  async unsubscribe(tripId: string, token: string, deviceId: string): Promise<void> {
     this.throwIfOffline();
-    this.subscriptions.delete(tripId);
+    const trip = await this.store.tripByLink(tripId, token);
+    if (trip) await this.subscriptions.remove(trip.id, deviceId);
   }
 
   async reminderStatus(): Promise<ReminderStatus> {

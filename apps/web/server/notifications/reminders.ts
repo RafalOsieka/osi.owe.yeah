@@ -9,23 +9,25 @@ import {
 } from '@osi/owe-yeah-domain';
 import { and, eq, gte, sql } from 'drizzle-orm';
 import type { Database } from '../db/client';
-import { notificationSubscriptions, reminders } from '../db/schema';
-import { deliver, type PushSettings } from '../notifications/delivery';
+import { reminders } from '../db/schema';
 import type { Rates } from '../trip/rates';
 import type { TripStore, WholeTrip } from '../trip/store';
+import { deliver, type VapidDetails } from './delivery';
+import type { Subscriptions } from './subscriptions';
 
 // A pair is reminded at most once per calendar day, in UTC: the Trip has no time zone of its own.
 const startOfToday = sql`date_trunc('day', now(), 'UTC')`;
 
 /**
- * Reminders (#42), reading the Trip through `store` and converting at `rates`, sent with
- * `pushSettings`: nobody can be reminded without them.
+ * Reminders (#42), kept in `db`, reading the Trip through `store`, converting at `rates`,
+ * sent to `subscriptions` signed with `vapid`: nobody can be reminded without it.
  */
 export function createReminders(
   db: Database,
   store: TripStore,
   rates: Rates,
-  pushSettings: PushSettings | null,
+  subscriptions: Subscriptions,
+  vapid: VapidDetails | null,
 ) {
   /**
    * The Repayment `to` owes `from` as the server's balances suggest it now (`suggestedRepayments`),
@@ -62,18 +64,8 @@ export function createReminders(
       const creditor = trip?.participants.find(({ id }) => id === from);
       if (!trip || !suggestion || !creditor) return { refused: 'notSuggested' };
 
-      const devices = pushSettings
-        ? await db
-            .select()
-            .from(notificationSubscriptions)
-            .where(
-              and(
-                eq(notificationSubscriptions.tripId, trip.id),
-                eq(notificationSubscriptions.claimId, to),
-              ),
-            )
-        : [];
-      if (!pushSettings || devices.length === 0) return { refused: 'unreachable' };
+      const devices = vapid ? await subscriptions.ofParticipant(trip.id, to) : [];
+      if (!vapid || devices.length === 0) return { refused: 'unreachable' };
 
       // One statement, so two Reminders sent at once can't both get through.
       const [sent] = await db
@@ -96,7 +88,7 @@ export function createReminders(
         to,
         amount: roundMoney(suggestion.amount, trip.currency).decimal,
       };
-      void deliver(db, devices, () => message, pushSettings);
+      void deliver(subscriptions, devices, () => message, vapid);
       return undefined;
     },
 
@@ -105,19 +97,14 @@ export function createReminders(
      * Nobody is reachable while the server has no VAPID keys.
      */
     async status(tripId: string): Promise<ReminderStatus> {
-      const [subscribed, today] = await Promise.all([
-        pushSettings
-          ? db
-              .selectDistinct({ claimId: notificationSubscriptions.claimId })
-              .from(notificationSubscriptions)
-              .where(eq(notificationSubscriptions.tripId, tripId))
-          : [],
+      const [reachable, today] = await Promise.all([
+        vapid ? subscriptions.reachable(tripId) : [],
         db
           .select({ from: reminders.fromId, to: reminders.toId })
           .from(reminders)
           .where(and(eq(reminders.tripId, tripId), gte(reminders.sentAt, startOfToday))),
       ]);
-      return { reachable: subscribed.map(({ claimId }) => claimId), remindedToday: today };
+      return { reachable, remindedToday: today };
     },
   };
 }
