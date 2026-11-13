@@ -22,6 +22,7 @@ import {
   type ExpenseProblem,
   type ExpenseTime,
   type LineItem,
+  type LineItemShares,
   type ManualRate,
   type Rational,
   type ReceiptShares,
@@ -167,10 +168,12 @@ export type LineItemReading =
 /** A Receipt as far as it can be read: its readable Line items and Receipt discount. */
 export type ReceiptReading = Pick<
   ReceiptShares,
-  'total' | 'discountOff' | 'deposits' | 'unassigned'
+  'total' | 'subtotal' | 'discountOff' | 'deposits' | 'depositRefunds' | 'unassigned'
 > & {
   /** The Receipt discount, while it can be read. */
   discount: Discount | undefined;
+  /** Each readable line's shares by its draft key, in the Receipt's order. */
+  lineItems: ReadonlyMap<string, LineItemShares>;
   /**
    * Each readable line's part of `unassigned` after the Receipt discount, by its draft key
    * (`ReceiptShares['unassignedByLine']`).
@@ -714,9 +717,12 @@ function readLines(
     receipt: {
       discount,
       total: shares.total,
+      subtotal: shares.subtotal,
       discountOff: shares.discountOff,
       deposits: shares.deposits,
+      depositRefunds: shares.depositRefunds,
       unassigned: shares.unassigned,
+      lineItems: new Map(read.map(({ key }, index) => [key, shares.lineItems[index]!])),
       unassignedByKey: new Map(
         read.map(({ key }, index) => [key, shares.unassignedByLine[index]!]),
       ),

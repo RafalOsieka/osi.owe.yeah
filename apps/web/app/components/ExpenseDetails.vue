@@ -1,6 +1,5 @@
 <script setup lang="ts">
 import {
-  add,
   compare,
   expenseKind,
   expenseRate,
@@ -9,7 +8,6 @@ import {
   isDepositRefund,
   decimal,
   multiply,
-  rational,
   roundMoney,
   shareBreakdown,
   type Expense,
@@ -54,6 +52,8 @@ const { trip, claim, everyone } = useOpenTrip();
 const { t, locale } = useI18n();
 const splitText = useSplitText();
 const unassignedOf = useUnassignedText();
+const unassignedHeadline = useUnassignedHeadline();
+const lineItemName = useLineItemName();
 const discountText = useDiscountText();
 
 // What differs from `against`, and that version's parts paid and shares, to compare by row.
@@ -85,12 +85,6 @@ const splitOf = (item: LineItem) =>
   });
 const isYou = (participant: Participant) => participant.id === claim.value?.id;
 
-// The units of a Line item nobody has been given yet, for a Units split; `null` otherwise.
-function unassignedUnits(item: LineItem): number | null {
-  if (item.split.mode !== 'units') return null;
-  return item.quantity - item.split.parts.reduce((sum, { units }) => sum + units, 0);
-}
-
 // What is not assigned yet of a Line item, said on it as the form says it, with the money
 // after the units of a Units split ("1 of 4 units unassigned · ≈ €1.12"), and `after`, what
 // it comes to after the Receipt discount, so the lines add up to the amount in the Main
@@ -100,59 +94,45 @@ function unassignedText(
   shares: LineItemShares,
   after: Rational | null,
 ): string | null {
-  const text = unassignedOf(item, shares, expense.currency);
-  if (!text) return null;
-  const discounted = after && t('receipt.afterReceiptDiscount', { amount: money(after) });
-  const withAfter = (said: string) => (discounted ? `${said} (${discounted})` : said);
-  if (unassignedUnits(item) === null) return keepApprox(withAfter(text));
-  return keepApprox(`${text} · ${withAfter(money(shares.unassigned))}`);
+  const text = unassignedOf(item, shares, expense.currency, { withValue: true, after });
+  return text && keepApprox(text);
 }
 
 const kinded = computed(() => expenseKind(expense));
 
 const details = computed(() => {
-  const { total, discountOff, deposits, paid, shares, unassigned, unassignedByLine, lineItems } =
-    expenseShares(expense);
+  const {
+    total,
+    subtotal,
+    discountOff,
+    deposits,
+    depositRefunds,
+    paid,
+    shares,
+    unassigned,
+    unassignedByLine,
+    lineItems,
+  } = expenseShares(expense);
   const { kind, expense: narrowed } = kinded.value;
   const receipt = kind === 'receipt' ? narrowed : null;
-  const refunds = lineItems.filter(
-    (_, index) => receipt && isDepositRefund(receipt.lineItems[index]!),
-  );
-  const sum = (amounts: readonly Rational[]) => amounts.reduce(add, rational(0n));
-  // Where what is not assigned yet is: in units when every such Line item is split by Units.
-  const open = receipt
-    ? receipt.lineItems.flatMap((item, index) =>
-        lineItems[index]!.unassigned.numerator === 0n ? [] : [{ item, index }],
-      )
-    : [];
-  const openUnits = open.map(({ item }) => unassignedUnits(item));
   const payer = everyone.value.find(({ id }) => id === expense.mainPayerId);
-  // Whose it is for now: "Kasia's for now".
-  const countedAs =
-    payer && isYou(payer)
-      ? t('receipt.countedAsYours')
-      : t('receipt.countedAs', { name: payer?.name ?? '?' });
+  // The headline of what is not assigned yet, and the first Line item it is on.
+  const headline =
+    receipt &&
+    unassignedHeadline({
+      lineItems,
+      unassigned,
+      currency: expense.currency,
+      payer,
+      yours: !!payer && isYou(payer),
+    });
+  const firstOpen = lineItems.findIndex((line) => line.unassigned.numerator !== 0n);
   return {
     total,
     unassigned: unassigned.numerator === 0n ? null : unassigned,
     discount: receipt?.discount && discountText(receipt.discount, discountOff, expense.currency),
-    refunds: refunds.length > 0 ? sum(refunds.map(({ net }) => net)) : null,
-    // The headline of what is not assigned yet, and the first Line item it is on.
-    unassignedSummary:
-      open.length > 0
-        ? {
-            text: [
-              openUnits.every((units) => units !== null)
-                ? t(
-                    'receipt.unitsUnassignedTotal',
-                    openUnits.reduce<number>((total, units) => total + (units ?? 0), 0),
-                  )
-                : t('receipt.amountUnassigned', { amount: money(unassigned) }),
-              countedAs,
-            ].join(' · '),
-            lineId: lineId(open[0]!.index),
-          }
-        : null,
+    refunds: depositRefunds.numerator === 0n ? null : depositRefunds,
+    unassignedSummary: headline ? { text: headline.text, lineId: lineId(firstOpen) } : null,
     deposits: deposits.numerator === 0n ? null : deposits,
     lineItems: receipt
       ? receipt.lineItems.map((item, index) => ({
@@ -161,11 +141,7 @@ const details = computed(() => {
             discountText(item.discount, lineItems[index]!.discountOff, expense.currency, true),
           id: lineId(index),
           refund: isDepositRefund(item),
-          name:
-            item.name ||
-            (isDepositRefund(item)
-              ? t('receipt.depositRefund')
-              : t('receipt.unnamed', { position: index + 1 })),
+          name: lineItemName({ name: item.name, refund: isDepositRefund(item) }, index + 1),
           // E.g. "6 × €1.29 · Units · Ania 1, Tomek 3", a named Deposit refund marked as one.
           facts: [
             isDepositRefund(item) && item.name ? t('receipt.depositRefund') : null,
@@ -187,9 +163,7 @@ const details = computed(() => {
           ...lineItems[index]!,
         }))
       : null,
-    // The goods after their Line discounts: the Line items but the Deposit refunds, before
-    // the Receipt discount and Deposits.
-    subtotal: sum(lineItems.filter((line) => !refunds.includes(line)).map(({ net }) => net)),
+    subtotal,
     repayment: kind === 'repayment',
     recipient:
       kind === 'repayment'

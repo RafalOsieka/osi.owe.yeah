@@ -556,13 +556,19 @@ describe('what a draft comes to so far', () => {
     draft.contributions = [{ participantId: ania, amount: '1' }];
     const reading = readDraft(draft, trip);
 
+    const [read] = draft.lineItems!;
     expect(reading.receipt).toEqual({
       discount: { kind: 'percent', basisPoints: 1000 },
       total: rational(9n),
+      subtotal: rational(10n),
       discountOff: rational(1n),
       deposits: rational(0n),
+      depositRefunds: rational(0n),
       unassigned: rational(9n),
-      unassignedByKey: new Map([[draft.lineItems![0]!.key, rational(9n)]]),
+      lineItems: new Map([
+        [read!.key, expect.objectContaining({ net: rational(10n), unassigned: rational(10n) })],
+      ]),
+      unassignedByKey: new Map([[read!.key, rational(9n)]]),
     });
     expect(reading.mainPayerPart).toEqual(rational(8n));
     expect(reading.time).toEqual({ instant: '2026-07-14T21:30:00Z', zone: 'Europe/Zagreb' });

@@ -1,9 +1,7 @@
 <script setup lang="ts">
 import {
-  add,
   conversionRate,
   deviceTimeZone,
-  lineItemShares,
   multiply,
   negate,
   rational,
@@ -20,7 +18,6 @@ import {
   newExpenseDraft,
   pickMainPayer,
   readDraft,
-  readLineItem,
   type SplitDraft,
 } from '~/utils/expense-draft';
 
@@ -60,6 +57,8 @@ const { t, locale } = useI18n();
 const back = useBack();
 const { draftReason, formErrors, problemAt } = useDraftReasons();
 const discountText = useDiscountText();
+const unassignedHeadline = useUnassignedHeadline();
+const lineItemName = useLineItemName();
 
 // Read once: the form is mounted afresh each time it opens. What it started with is kept apart,
 // to tell whether anything was changed.
@@ -154,42 +153,13 @@ const {
   leave,
 } = useDiscardConfirm(() => pendingLine.value || draftChanged(start, state));
 
-// The Receipt's readable lines, each with its shares, in order.
-const lines = computed(() =>
-  (state.lineItems ?? []).flatMap((line, index) => {
-    const { lineItem } = readLineItem(line, state.currency);
-    return lineItem
-      ? [{ line, index, lineItem, shares: lineItemShares(lineItem, state.currency) }]
-      : [];
-  }),
-);
-
-// The goods after their Line discounts, and the Deposit refunds, as the Receipt's sums show
-// them: refunds are their own row, not part of the Subtotal.
-const sums = computed(() => {
-  const zero = rational(0n);
-  return lines.value.reduce(
-    (sums, { line, shares }) =>
-      line.refund
-        ? { ...sums, refunds: add(sums.refunds, shares.net) }
-        : { ...sums, subtotal: add(sums.subtotal, shares.net) },
-    { subtotal: zero, refunds: zero },
-  );
-});
-
-// The lines with value not assigned yet, by name and how many of their units, for the Receipt
-// total to point at.
+// The lines with value not assigned yet, by name, for the Receipt total to point at. Read
+// through the draft's reading, which has each readable line's shares.
 const unassignedLines = computed(() =>
-  lines.value.flatMap(({ line, index, lineItem, shares }) => {
-    if (shares.unassigned.numerator === 0n) return [];
-    const name =
-      line.name.trim() ||
-      (line.refund ? t('receipt.depositRefund') : t('receipt.unnamed', { position: index + 1 }));
-    const units =
-      lineItem.split.mode === 'units'
-        ? lineItem.quantity - lineItem.split.parts.reduce((sum, part) => sum + part.units, 0)
-        : null;
-    return [{ key: line.key, name, units }];
+  (state.lineItems ?? []).flatMap((line, index) => {
+    const shares = reading.value.receipt?.lineItems.get(line.key);
+    if (!shares || shares.unassigned.numerator === 0n) return [];
+    return [{ key: line.key, name: lineItemName(line, index + 1) }];
   }),
 );
 
@@ -199,30 +169,23 @@ const unassignedAfter = computed(() =>
   reading.value.receipt?.discount ? reading.value.receipt.unassignedByKey : null,
 );
 
-// What is not assigned yet in all, as the detail page heads it: in units while every line it
-// is on has them ("1 unit unassigned"), the value otherwise, and whose it is for now; with the
-// value after it in units.
+// What is not assigned yet in all, headed as on the detail page (`useUnassignedHeadline`), with
+// the value under it when it is counted in units.
 const unassignedSummary = computed(() => {
-  const unassigned = reading.value.receipt?.unassigned;
-  if (!unassigned || unassigned.numerator === 0n) return null;
-  const counts = unassignedLines.value.map(({ units }) => units);
-  const units = counts.every((count) => count !== null)
-    ? counts.reduce<number>((sum, count) => sum + (count ?? 0), 0)
-    : null;
+  const receipt = reading.value.receipt;
+  // Nothing to head once the Receipt discount leaves nothing unassigned.
+  if (!receipt || receipt.unassigned.numerator === 0n) return null;
   const payer = trip.value.participants.find(({ id }) => id === state.mainPayerId);
-  const whose =
-    payer && payer.id === claim.value?.id
-      ? t('receipt.countedAsYours')
-      : t('receipt.countedAs', { name: payer?.name ?? '?' });
-  return {
-    text: [
-      units === null
-        ? t('receipt.amountUnassigned', { amount: money(unassigned) })
-        : t('receipt.unitsUnassignedTotal', units),
-      whose,
-    ].join(' · '),
-    value: units === null ? null : money(unassigned),
-  };
+  const headline = unassignedHeadline({
+    lineItems: [...receipt.lineItems.values()],
+    unassigned: receipt.unassigned,
+    currency: state.currency,
+    payer,
+    yours: !!payer && payer.id === claim.value?.id,
+  });
+  return (
+    headline && { text: headline.text, value: headline.inUnits ? money(receipt.unassigned) : null }
+  );
 });
 
 async function showLine(key: string): Promise<void> {
@@ -360,11 +323,14 @@ async function submit(): Promise<void> {
           <div v-if="reading.receipt" class="space-y-3 tabular-nums">
             <dl class="flex justify-between gap-3 text-sm">
               <dt class="text-muted">{{ $t('receipt.subtotal') }}</dt>
-              <dd>{{ money(sums.subtotal) }}</dd>
+              <dd>{{ money(reading.receipt.subtotal) }}</dd>
             </dl>
-            <dl v-if="sums.refunds.numerator !== 0n" class="flex justify-between gap-3 text-sm">
+            <dl
+              v-if="reading.receipt.depositRefunds.numerator !== 0n"
+              class="flex justify-between gap-3 text-sm"
+            >
               <dt class="text-muted">{{ $t('receipt.depositRefunds') }}</dt>
-              <dd>{{ money(sums.refunds) }}</dd>
+              <dd>{{ money(reading.receipt.depositRefunds) }}</dd>
             </dl>
             <DiscountField
               v-model="state.discount"

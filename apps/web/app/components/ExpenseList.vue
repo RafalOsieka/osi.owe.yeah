@@ -1,6 +1,5 @@
 <script setup lang="ts">
 import {
-  add,
   claimView,
   expenseKind,
   expenseRate,
@@ -8,7 +7,6 @@ import {
   groupByLocalDay,
   negate,
   rateSummary,
-  rational,
   spendingTotal,
   type Rational,
 } from '@osi/owe-yeah-domain';
@@ -42,10 +40,10 @@ const participants = computed(() => new Map(trip.participants.map((p) => [p.id, 
 
 const money = (amount: Rational, currency: string) => formatMoney(amount, currency, locale.value);
 
-// What the claimed Participant sees on the right of a row, under the total: what they lent
-// or get back in green; their share, or money that only changed hands (a Repayment), in
-// neutral, as a share is not a debt; and, for an Income they received for others too, the
-// others' part they now owe, in red, as Balances says it.
+// What the claimed Participant sees on the right of a row, under the total (`claimView`): what
+// they lent or get back in green; their share, or money received that is all theirs (a
+// Repayment), in neutral, as a share is not a debt; and the others' part of money they received
+// for them too, which they now owe, in red, as Balances says it.
 function forYou(expense: LocalExpense): { text: string; tone: string } | null {
   if (claimId === null) return null;
   const view = claimView(expense, claimId);
@@ -55,19 +53,10 @@ function forYou(expense: LocalExpense): { text: string; tone: string } | null {
       return { text: t('expense.youLent', { amount }), tone: 'text-success' };
     case 'share':
       return { text: t('expense.yourShare', { amount }), tone: 'text-muted' };
-    case 'received': {
-      // A Repayment's recipient only received it. Their own part of an Income is negative
-      // (what they keep); the rest is the others'.
-      const own = expenseShares(expense).shares.get(claimId) ?? rational(0n);
-      const owed = add(view.amount, own);
-      if (expenseKind(expense).kind === 'repayment' || owed.numerator <= 0n) {
-        return { text: t('expense.youReceived', { amount }), tone: 'text-muted' };
-      }
-      return {
-        text: t('expense.youOwe', { amount: money(owed, expense.currency) }),
-        tone: 'text-error',
-      };
-    }
+    case 'received':
+      return { text: t('expense.youReceived', { amount }), tone: 'text-muted' };
+    case 'owe':
+      return { text: t('expense.youOwe', { amount }), tone: 'text-error' };
     case 'getBack':
       return { text: t('expense.youGetBack', { amount }), tone: 'text-success' };
     case 'repaid':

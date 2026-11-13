@@ -319,6 +319,49 @@ describe('Deposits', () => {
   });
 });
 
+describe("a Receipt's sums", () => {
+  it('give the Subtotal, the Deposit refunds and the units of a Units split nobody has yet', () => {
+    // 2 × 1.50 juice with 0.50 off and 0.25 Deposit a bottle, 6 × 0.29 water of which Rafał
+    // took 2 and Ania 1, a 0.40 bottle voucher, and 0.25 off the Receipt.
+    const shopping: Expense = {
+      ...receipt(
+        {
+          name: 'Juice',
+          unitPrice: 150,
+          quantity: 2,
+          discount: { kind: 'amount', amount: 50 },
+          depositPerUnit: 25,
+          split: even([ania, kuba]),
+        },
+        {
+          name: 'Water 1.5l',
+          unitPrice: 29,
+          quantity: 6,
+          split: {
+            mode: 'units',
+            parts: [
+              { participantId: rafal, units: 2 },
+              { participantId: ania, units: 1 },
+            ],
+          },
+        },
+        { name: 'Bottle voucher', unitPrice: -40, quantity: 1, split: even([kuba]) },
+      ),
+      discount: { kind: 'amount', amount: 25 },
+    };
+
+    const { subtotal, depositRefunds, deposits, total, lineItems } = expenseShares(shopping);
+
+    // 2.50 of juice after its Line discount and 1.74 of water, before the Receipt discount.
+    expect(subtotal).toEqual(rational(424n, 100n));
+    expect(depositRefunds).toEqual(rational(-40n, 100n));
+    expect(deposits).toEqual(rational(50n, 100n));
+    expect(total).toEqual(rational(409n, 100n));
+    expect(lineItems.map((line) => line.unassignedUnits)).toEqual([undefined, 3, undefined]);
+    expect(lineItems[0]).not.toHaveProperty('unassignedUnits');
+  });
+});
+
 describe('the split a Line item starts with', () => {
   it("copies the previous Line item's split when it was Even", () => {
     const previous = { name: 'Bread', unitPrice: 249, quantity: 1, split: even([ania, ola]) };

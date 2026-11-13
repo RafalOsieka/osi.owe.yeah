@@ -60,6 +60,7 @@ const { t, locale } = useI18n();
 const { claim } = useOpenTrip();
 const splitText = useSplitText();
 const unassignedText = useUnassignedText();
+const lineItemName = useLineItemName();
 const discountText = useDiscountText();
 const { lineItemReason } = useDraftReasons();
 const editorId = useId();
@@ -89,11 +90,7 @@ const missing = computed(() =>
     ? unassignedText(item.value, shares.value, currency, { withValue: true, after })
     : null,
 );
-const name = computed(
-  () =>
-    line.value.name.trim() ||
-    (line.value.refund ? t('receipt.depositRefund') : t('receipt.unnamed', { position })),
-);
+const name = computed(() => lineItemName(line.value, position));
 const unitPrice = computed(() =>
   item.value ? money(fromMinor(item.value.unitPrice, currency)) : line.value.price,
 );
