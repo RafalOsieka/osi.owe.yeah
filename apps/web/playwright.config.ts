@@ -1,12 +1,12 @@
 import { defineConfig, devices } from '@playwright/test';
-import webpush from 'web-push';
+import { generateVAPIDKeys } from 'web-push';
 import { UI_FRANKFURTER_PORT } from './test/e2e/harness/frankfurter';
 import { DEFAULT_DATABASE_URL } from './test/e2e/harness/postgres';
 
 const PORT = 3100;
 const TEST_ENVIRONMENT_PORT = 3101;
 // Push notifications need a VAPID key pair on the server; any will do here.
-const vapid = webpush.generateVAPIDKeys();
+const vapid = generateVAPIDKeys();
 const env = {
   DATABASE_URL: DEFAULT_DATABASE_URL,
   UI_E2E: '1',
