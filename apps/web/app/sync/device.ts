@@ -30,6 +30,7 @@ import {
   type AcceptedVersion,
   type BrowserSubscription,
   type DeviceDb,
+  type DeviceNotifications,
   type DeviceTrip,
   type ExpenseBase,
   type Held,
@@ -97,14 +98,47 @@ export type Transport = {
  */
 export type Reminded = 'sent' | ReminderRefusal['refused'];
 
-/** A Trip opened on this device, as it shows it. */
+/** A Trip opened on this device, as a screen shows it. */
 export type DeviceTripView = {
-  deviceTrip: DeviceTrip;
+  /** The Trip's id. */
+  id: string;
   /** The Trip with this device's changes on top; `null` before a joined Trip's first pull. */
-  local: LocalTrip | null;
+  trip: LocalTrip | null;
   /** How many of this device's changes the server has not accepted yet. */
   unsynced: number;
+  /**
+   * The Participant this device says it is in the Trip, under their current name (the Claim
+   * keeps the name it was made with); `null` without a Claim.
+   */
+  claim: Participant | null;
+  /** What sync has to tell about this device's changes, until dismissed. */
+  notices: Notice[];
+  /** The Trip's push notifications on this device. */
+  notifications: DeviceNotifications;
+  /** The currency of the Expense last saved on this device, which a new Expense starts in. */
+  lastCurrency: Currency | null;
+  /**
+   * The Trip link's path and token, `/trips/<id>#<token>`, to pass on; `null` until the server
+   * has the Trip, as before that the link would open nothing.
+   */
+  link: string | null;
 };
+
+/** The Trip as a screen shows it, from what the device keeps of it and its outbox. */
+function viewOf(stored: DeviceTrip, entries: readonly OutboxEntry[]): DeviceTripView {
+  const trip = localTrip(stored.snapshot, entries, stored.rates);
+  const { claim } = stored;
+  return {
+    id: stored.id,
+    trip,
+    unsynced: entries.length,
+    claim: claim && (trip?.participants.find(({ id }) => id === claim.id) ?? claim),
+    notices: stored.notices,
+    notifications: stored.notifications,
+    lastCurrency: stored.lastCurrency,
+    link: stored.snapshot && `/trips/${stored.id}#${stored.token}`,
+  };
+}
 
 /**
  * Why a Trip's last sync didn't get through: no answer came back (`offline`), or the server
@@ -130,7 +164,7 @@ type ExpenseEntry = OutboxEntry & { change: Extract<QueuedChange, { kind: 'expen
  * The device's Trips and sync (ADR 0002): every change is written to the device store first
  * and queued in the outbox, and then syncs its Trip by itself; `sync` pushes the outbox in
  * order and pulls the Trip. Changes of a Trip go through its handle, `trip(tripId)`. Reads go
- * through `read`, which shows the outbox on top of the pulled Trip.
+ * through `read` and `readAll`: what a screen shows, the outbox on top of the pulled Trip.
  */
 export function createDevice(db: DeviceDb, transport: Transport, deviceId: string) {
   // The sync running for each Trip, and whether a change was made meanwhile.
@@ -152,26 +186,22 @@ export function createDevice(db: DeviceDb, transport: Transport, deviceId: strin
     );
   }
 
+  /** One Trip opened on this device, as a screen shows it; `undefined` when it isn't here. */
   async function read(tripId: string): Promise<DeviceTripView | undefined> {
     return db.transaction('r', db.trips, db.outbox, async () => {
-      const deviceTrip = await db.trips.get(tripId);
-      if (!deviceTrip) return undefined;
-      const entries = await entriesOf(tripId);
-      return {
-        deviceTrip,
-        local: localTrip(deviceTrip.snapshot, entries, deviceTrip.rates),
-        unsynced: entries.length,
-      };
+      const stored = await db.trips.get(tripId);
+      return stored && viewOf(stored, await entriesOf(tripId));
     });
   }
 
-  /** Every Trip opened on this device, most recently opened first. */
+  /** Every Trip opened on this device, as a screen shows it, most recently opened first. */
   async function readAll(): Promise<DeviceTripView[]> {
-    const trips = await db.trips.toArray();
-    const views = await Promise.all(trips.map(({ id }) => read(id)));
-    return views
-      .filter((view) => view !== undefined)
-      .toSorted((a, b) => b.deviceTrip.openedAt.localeCompare(a.deviceTrip.openedAt));
+    return db.transaction('r', db.trips, db.outbox, async () => {
+      const trips = (await db.trips.toArray()).toSorted((a, b) =>
+        b.openedAt.localeCompare(a.openedAt),
+      );
+      return Promise.all(trips.map(async (stored) => viewOf(stored, await entriesOf(stored.id))));
+    });
   }
 
   /**
@@ -228,12 +258,14 @@ export function createDevice(db: DeviceDb, transport: Transport, deviceId: strin
 
   /**
    * Opens a Trip from its Trip link on this device, keeping any Claim it had: pulls it with
-   * `token` and keeps it on the device. Needs a connection.
+   * `token` and keeps it on the device. Needs a connection, unless the device has the Trip
+   * with that token already: then it answers `known` and asks nothing of the server.
    */
   async function joinTrip(
     tripId: string,
     token: string,
-  ): Promise<'joined' | 'invalidLink' | 'unreachable'> {
+  ): Promise<'joined' | 'known' | 'invalidLink' | 'unreachable'> {
+    if ((await db.trips.get(tripId))?.token === token) return 'known';
     const pulled = await transport.pull(tripId, token).catch(() => null);
     if (pulled === null) return 'unreachable';
     if (pulled === 'invalidLink' || !pulled.trip) return 'invalidLink';
@@ -603,7 +635,7 @@ export function createDevice(db: DeviceDb, transport: Transport, deviceId: strin
 
   /** The Trip as this device shows it, for a change made on it. */
   async function readLocal(tripId: string): Promise<LocalTrip> {
-    const local = (await read(tripId))?.local;
+    const local = (await read(tripId))?.trip;
     if (!local) throw new Error(`Trip ${tripId} is not on this device`);
     return local;
   }
@@ -638,8 +670,9 @@ export function createDevice(db: DeviceDb, transport: Transport, deviceId: strin
    */
   async function dropRemovedClaim(tripId: string): Promise<void> {
     const view = await read(tripId);
-    const claim = view?.deviceTrip.claim;
-    if (!claim || !view.local?.removedParticipants.some(({ id }) => id === claim.id)) return;
+    // A removed Participant has no current name, so the Claim is as it was made.
+    const claim = view?.claim;
+    if (!claim || !view.trip?.removedParticipants.some(({ id }) => id === claim.id)) return;
     await db.trips.update(tripId, { claim: null });
     await notify(tripId, { kind: 'claimRemoved', participant: claim });
   }

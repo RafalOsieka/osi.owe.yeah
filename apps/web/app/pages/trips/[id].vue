@@ -20,26 +20,18 @@ const tripId = String(route.params.id);
 const handle = device.trip(tripId);
 const linkToken = route.hash.slice(1);
 const known = await device.read(tripId);
-// A link with a token the device doesn't have yet joins, or rejoins, the Trip.
-const joined =
-  linkToken && linkToken !== known?.deviceTrip.token
-    ? await device.joinTrip(tripId, linkToken)
-    : null;
+// A link joins, or rejoins, the Trip, unless the device has its token already.
+const joined = linkToken ? await device.joinTrip(tripId, linkToken) : null;
 if (known) void handle.open();
 
 const view = useLiveQuery(() => device.read(tripId));
-const trip = computed(() => view.value?.local);
-// The Claim keeps the name it was made with: shown, it follows the Participant's current one.
-const claim = computed(() => {
-  const claimed = view.value?.deviceTrip.claim;
-  if (!claimed) return null;
-  return trip.value?.participants.find(({ id }) => id === claimed.id) ?? claimed;
-});
+const trip = computed(() => view.value?.trip);
+const claim = computed(() => view.value?.claim ?? null);
 // Nothing to show: the Trip isn't on the device and its link doesn't work, or couldn't be
 // tried (e.g. no signal); or it is, but has never been pulled.
-const onDevice = known !== undefined || joined === 'joined';
+const onDevice = known !== undefined || joined === 'joined' || joined === 'known';
 const invalidLink = !onDevice && joined !== 'unreachable';
-const nothingToShow = computed(() => !onDevice || view.value?.local === null);
+const nothingToShow = computed(() => !onDevice || view.value?.trip === null);
 
 const whoAreYouOpen = ref(false);
 useCloseOnBack(whoAreYouOpen);
@@ -49,16 +41,14 @@ watch(whoAreYouOpen, (open) => {
   if (!open) offering.value = false;
 });
 const { support } = usePushNotifications();
-const notifications = computed(() => view.value?.deviceTrip.notifications ?? NOTIFICATIONS_OFF);
+const notifications = computed(() => view.value?.notifications ?? NOTIFICATIONS_OFF);
 
 const inviteOpen = ref(false);
 useCloseOnBack(inviteOpen);
-// The Trip link to pass on, once the server has the Trip (the device has its `ServerTrip`):
-// before that, the link would open nothing.
+// The Trip link to pass on, once the server has the Trip.
 const tripLink = computed(() => {
-  const deviceTrip = view.value?.deviceTrip;
-  if (!deviceTrip?.snapshot) return null;
-  return new URL(`/trips/${tripId}#${deviceTrip.token}`, location.origin).href;
+  const link = view.value?.link;
+  return link ? new URL(link, location.origin).href : null;
 });
 // Who this device was before someone else removed them, while it is asked again.
 const removedClaim = ref<Participant | null>(null);
@@ -70,7 +60,7 @@ onMounted(async () => {
   // Opened after the URL change: an open sheet cancels navigation.
   if (!known && claim.value === null) whoAreYouOpen.value = true;
   watch(
-    () => view.value?.deviceTrip.notices.find(({ kind }) => kind === 'claimRemoved'),
+    () => view.value?.notices.find(({ kind }) => kind === 'claimRemoved'),
     (notice) => {
       if (notice?.kind !== 'claimRemoved') return;
       removedClaim.value = notice.participant;
@@ -114,13 +104,13 @@ provideOpenTrip({
   // Only read by the pages under it, which render once there is a Trip to show.
   trip: computed(() => trip.value!),
   claim,
-  lastCurrency: computed(() => view.value?.deviceTrip.lastCurrency ?? null),
+  lastCurrency: computed(() => view.value?.lastCurrency ?? null),
   unsynced: computed(() => view.value?.unsynced ?? 0),
   everyone: computed(() => [
     ...(trip.value?.participants ?? []),
     ...(trip.value?.removedParticipants ?? []),
   ]),
-  notices: computed(() => view.value?.deviceTrip.notices ?? []),
+  notices: computed(() => view.value?.notices ?? []),
   notifications,
   // My Trips first, so nothing on screen still reads the Trip as it goes.
   async forget() {

@@ -19,12 +19,10 @@ const device = useDevice();
 const trips = useLiveQuery(() => device.readAll());
 
 // Each Trip's tile tint, different for every Trip on this device while a free one is left.
-const tints = computed(() =>
-  distinctAvatarColors((trips.value ?? []).map(({ deviceTrip }) => deviceTrip.id)),
-);
+const tints = computed(() => distinctAvatarColors((trips.value ?? []).map(({ id }) => id)));
 
 const rows = computed(() =>
-  (trips.value ?? []).flatMap(({ deviceTrip: { id, claim }, local, unsynced }) => {
+  (trips.value ?? []).flatMap(({ id, claim, trip: local, unsynced }) => {
     // A Trip moved over from before the device store shows once it has been pulled.
     if (!local) return [];
     const settled = isSettled(local);
@@ -35,7 +33,7 @@ const rows = computed(() =>
     const balance = (): { label: string; text: string | null; tone: string } | null => {
       if (settled || !dates) return null;
       if (!claim) return { label: t('claim.title'), text: null, tone: '' };
-      const name = local.participants.find(({ id }) => id === claim.id)?.name ?? claim.name;
+      const { name } = claim;
       if (!mine || sign === 0) return { label: t('myTrips.even', { name }), text: null, tone: '' };
       return {
         label: sign > 0 ? t('myTrips.owed', { name }) : t('myTrips.owes', { name }),

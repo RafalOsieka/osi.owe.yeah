@@ -40,13 +40,13 @@ describe('the device', () => {
       );
 
     expect(problems).toEqual(['unknownMainPayer']);
-    expect((await device.read(trip.id))?.local?.expenses).toEqual([]);
+    expect((await device.read(trip.id))?.trip?.expenses).toEqual([]);
   });
 
   it('remembers the currency of the Expense it saved last in the Trip', async () => {
     const device = setUp();
     await device.createTrip(trip, 'x'.repeat(43));
-    expect((await device.read(trip.id))?.deviceTrip.lastCurrency).toBe(null);
+    expect((await device.read(trip.id))?.lastCurrency).toBe(null);
 
     await device
       .trip(trip.id)
@@ -55,6 +55,26 @@ describe('the device', () => {
         null,
       );
 
-    expect((await device.read(trip.id))?.deviceTrip.lastCurrency).toBe('HUF');
+    expect((await device.read(trip.id))?.lastCurrency).toBe('HUF');
+  });
+
+  it("shows its Claim under the Participant's current name", async () => {
+    const device = setUp();
+    await device.createTrip(trip, 'x'.repeat(43));
+
+    await device.trip(trip.id).addParticipant({ ...kasia, name: 'Kasia N.' });
+
+    expect((await device.read(trip.id))?.claim).toEqual({ ...kasia, name: 'Kasia N.' });
+    expect((await device.readAll())[0]?.claim).toEqual({ ...kasia, name: 'Kasia N.' });
+  });
+
+  it('answers that a Trip whose token it has is known, without asking the server', async () => {
+    const device = setUp();
+    const token = 'x'.repeat(43);
+    await device.createTrip(trip, token);
+
+    // Any request would get no answer here.
+    expect(await device.joinTrip(trip.id, token)).toBe('known');
+    expect(await device.joinTrip(trip.id, 'y'.repeat(43))).toBe('unreachable');
   });
 });

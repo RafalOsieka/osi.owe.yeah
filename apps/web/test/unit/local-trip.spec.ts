@@ -79,10 +79,31 @@ describe('localTrip', () => {
         deleted: false,
         // Made on this device: the server has no time for it yet.
         edited: { by: null, at: null },
+        revision: null,
         base: { after: edit.id },
         unsynced: { status: 'pending', claimId: null },
       },
-      { ...ferry, deleted: false, edited, base: { version: 1 }, unsynced: null },
+      { ...ferry, deleted: false, edited, revision: 1, base: { version: 1 }, unsynced: null },
+    ]);
+  });
+
+  it('says which Revision each Expense is at, none while a change of this device is on top', () => {
+    const edit = {
+      ...meta,
+      id: '019a2b3c-4d5e-7f00-8a1b-100000000007',
+      kind: 'expense',
+      base: { version: 3 },
+      expense: { ...lidl, title: 'Konzum' },
+      deleted: false,
+    } as const;
+
+    expect(localTrip(pulled, [], [])?.expenses).toMatchObject([
+      { title: 'Lidl Rovinj', revision: 3 },
+      { title: 'Ferry', revision: 1 },
+    ]);
+    expect(localTrip(pulled, [entry(edit)], [])?.expenses).toMatchObject([
+      { title: 'Konzum', revision: null },
+      { title: 'Ferry', revision: 1 },
     ]);
   });
 

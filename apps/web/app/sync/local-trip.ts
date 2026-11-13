@@ -29,7 +29,12 @@ export type LocalExpense = Expense & {
   deleted: boolean;
   /** Who made the version shown and when; `null` where not known. */
   edited: LocalEdited | null;
-  /** What a new edit of the Expense is based on. */
+  /**
+   * The number of the Revision the Expense is at; `null` while a change of this device sits on
+   * top of it.
+   */
+  revision: number | null;
+  /** What a new edit of the Expense is based on, for the device's save; screens read `revision`. */
   base: ExpenseBase;
   /** `null` once the server has the Expense as shown. */
   unsynced: Unsynced | null;
@@ -64,6 +69,7 @@ export function toExpense(local: LocalExpense): Expense {
   const {
     deleted: _deleted,
     edited: _edited,
+    revision: _revision,
     base: _base,
     unsynced: _unsynced,
     ...expense
@@ -93,6 +99,7 @@ export function localTrip(
     removedParticipants: serverTrip.removedParticipants,
     expenses: serverTrip.expenses.map(({ version, ...expense }) => ({
       ...expense,
+      revision: version,
       base: { version },
       unsynced: null,
     })),
@@ -123,6 +130,7 @@ export function localTrip(
           ...change.expense,
           deleted: change.deleted,
           edited: { by: change.claimId, at: null },
+          revision: null,
           base: { after: change.id },
           unsynced: { ...(heldBefore ?? held ?? { status: 'pending' }), claimId: change.claimId },
         }),
