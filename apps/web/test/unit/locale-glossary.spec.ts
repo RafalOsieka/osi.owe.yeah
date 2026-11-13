@@ -57,6 +57,9 @@ const PLAIN_SENSE = new Set([
   'terms.provider.register: wpis', // the entry in the business register
   'terms.requirements.notifications: push', // the browser technology the terms require
   'terms.content.sensitive: tożsamość', // legal wording, not a Claim
+  'privacy.storage.intro: plik', // cookie files, not a Photo
+  'privacy.storage.serviceWorker: plik', // the app's own files, not a Photo
+  'terms.requirements.cookies: plik', // cookie files, not a Photo
 ]);
 
 function isMessage(entry: string | Catalog): entry is string {
