@@ -34,14 +34,19 @@ watch(expense, (now, before) => {
 const lastEdited = computed(() => {
   const edited = expense.value?.edited;
   if (!edited) return null;
-  const name =
-    edited.by === claim.value?.id
-      ? t('history.byYou')
-      : everyone.value.find(({ id }) => id === edited.by)?.name;
-  const when = edited.at
-    ? formatTimeAgo(edited.at, new Date(), locale.value, t('history.justNow'))
-    : t('history.notSyncedYet');
-  return name ? t('history.lastEditedBy', { name, when }) : t('history.lastEdited', { when });
+  const author = whoMadeIt(edited.by, claim.value, everyone.value);
+  const when = formatEditedAt(edited.at, new Date(), locale.value, {
+    justNow: t('history.justNow'),
+    notSyncedYet: t('history.notSyncedYet'),
+  });
+  switch (author.is) {
+    case 'you':
+      return t('history.lastEditedByYou', { when });
+    case 'named':
+      return t('history.lastEditedBy', { name: author.participant.name, when });
+    case 'nobody':
+      return t('history.lastEdited', { when });
+  }
 });
 
 // What the Expense is, for Edit's and Delete's names.

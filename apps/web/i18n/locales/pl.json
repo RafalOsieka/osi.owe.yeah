@@ -72,8 +72,8 @@
       "currencyHelp": "W tej walucie salda są pokazywane i rozliczane. Jej zmiana zostawia każdy wydatek tak, jak go wpisano; każdy jest przeliczany po kursie ze swojego dnia.",
       "currencyChange": "Salda zostaną przeliczone na {currency}. Każdy wydatek zachowa swoją kwotę i walutę; każdy jest przeliczany po kursie ze swojego dnia.",
       "currencyLocked": "Waluty podróży nie można zmienić, gdy podróż ma spłaty: wyrównują one salda po kursach tej waluty, a w innej walucie zostałyby drobne kwoty do oddania. Aby ją zmienić, najpierw usuń spłaty.",
-      "lastChangedBy": "Ostatnia zmiana: {name} · {when}",
-      "lastChangedByYou": "Ostatnia zmiana: ty · {when}",
+      "lastChangedBy": "Ostatnio zmienione przez: {name} · {when}",
+      "lastChangedByYou": "Ostatnio zmienione przez ciebie · {when}",
       "lastChanged": "Ostatnia zmiana: {when}"
     },
     "forget": {
@@ -507,14 +507,16 @@
   },
   "history": {
     "title": "Historia",
-    "lastEditedBy": "Ostatnia zmiana: {name} · {when}",
+    "lastEditedBy": "Ostatnio zmienione przez: {name} · {when}",
+    "lastEditedByYou": "Ostatnio zmienione przez ciebie · {when}",
     "lastEdited": "Ostatnia zmiana: {when}",
     "notSyncedYet": "jeszcze niezsynchronizowana",
-    "someone": "Ktoś",
     "offline": "Historia wymaga połączenia z internetem. Spróbuj ponownie, gdy będziesz online.",
     "empty": "Nie ma jeszcze historii. Pojawi się, gdy wydatek się zsynchronizuje.",
     "notFound": "Ta wersja nie istnieje.",
-    "byline": "{name} · {when}",
+    "rowBy": "Przez: {name} · {when}",
+    "rowByYou": "Przez ciebie · {when}",
+    "rowByNobody": "Ktoś · {when}",
     "changedBy": "Zmienione przez: {name} · {when}",
     "changedByYou": "Zmienione przez ciebie · {when}",
     "changedAt": "Zmienione {when}",
@@ -530,8 +532,6 @@
       "deleted": "Usunięto",
       "restored": "Przywrócono"
     },
-    "byYou": "ty",
-    "you": "Ty",
     "justNow": "przed chwilą",
     "current": "Aktualna",
     "changed": "Zmiany: {fields}",
@@ -557,7 +557,7 @@
   "deleted": {
     "title": "Ostatnio usunięte",
     "by": "Usunięte przez: {name} · {when}",
-    "byYou": "Usunięte przez: ty · {when}",
+    "byYou": "Usunięte przez ciebie · {when}",
     "at": "Usunięto {when}",
     "restore": "Przywróć",
     "restoreTitle": "Przywróć: {title}",

@@ -41,9 +41,15 @@ const byline = computed(() => {
   const { by, at } = revision.value.edited;
   const verb = entry.value?.kind === 'added' ? 'added' : 'changed';
   const when = formatInstant(at, locale.value);
-  if (by === claim.value?.id) return t(`history.${verb}ByYou`, { when });
-  const name = everyone.value.find(({ id }) => id === by)?.name;
-  return name ? t(`history.${verb}By`, { name, when }) : t(`history.${verb}At`, { when });
+  const author = whoMadeIt(by, claim.value, everyone.value);
+  switch (author.is) {
+    case 'you':
+      return t(`history.${verb}ByYou`, { when });
+    case 'named':
+      return t(`history.${verb}By`, { name: author.participant.name, when });
+    case 'nobody':
+      return t(`history.${verb}At`, { when });
+  }
 });
 
 // What of this Revision differs from the Expense now, named in the notice.
