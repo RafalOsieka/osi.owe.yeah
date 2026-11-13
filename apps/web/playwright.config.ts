@@ -1,5 +1,6 @@
 import { defineConfig, devices } from '@playwright/test';
 import webpush from 'web-push';
+import { UI_FRANKFURTER_PORT } from './test/e2e/harness/frankfurter';
 import { DEFAULT_DATABASE_URL } from './test/e2e/harness/postgres';
 
 const PORT = 3100;
@@ -9,17 +10,20 @@ const vapid = webpush.generateVAPIDKeys();
 const env = {
   DATABASE_URL: DEFAULT_DATABASE_URL,
   UI_E2E: '1',
+  // Rates come from the stand-in the global setup starts, never from the real Frankfurter.
+  NUXT_FRANKFURTER_URL: `http://127.0.0.1:${UI_FRANKFURTER_PORT}`,
   NUXT_VAPID_PUBLIC_KEY: vapid.publicKey,
   NUXT_VAPID_PRIVATE_KEY: vapid.privateKey,
   NUXT_VAPID_SUBJECT: 'mailto:test@example.com',
-  // The journeys subscribe at `push.example.com`, no known push service.
+  // The journeys subscribe at the push-service stand-in (`fixtures.ts`), no known push service.
   NUXT_NOTIFICATIONS_ANY_ENDPOINT: 'true',
   // Every journey creates its Trips from one client address.
   NUXT_TRIPS_PER_HOUR: '1000',
 };
 
 // The ui e2e suite: user journeys in a real browser against the built app and a disposable
-// Postgres. The server connects lazily, so it may start before the global setup migrates.
+// Postgres. The server connects lazily, so it may start before the global setup migrates and
+// starts the Frankfurter stand-in.
 export default defineConfig({
   testDir: 'test/e2e/ui',
   globalSetup: './test/e2e/harness/global-setup-ui.ts',

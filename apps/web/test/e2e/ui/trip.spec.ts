@@ -9,7 +9,7 @@ import {
 } from '@osi/owe-yeah-domain';
 import type { APIRequestContext, Page } from '@playwright/test';
 import { v7 as uuidv7 } from 'uuid';
-import { expect, test } from './fixtures';
+import { expect, test, type PushService } from './fixtures';
 
 /**
  * Creates a Trip as someone else's device would, by its first push, with `expenses` Expenses
@@ -119,27 +119,28 @@ async function claim(page: Page, name: string): Promise<void> {
 }
 
 /**
- * Stands in for the browser's notification permission and push service: headless Chromium
- * reports notifications blocked, and can't reach a push service. The permission is granted
- * until `setNotificationPermission` changes it, and lasts past a reload.
+ * Stands in for the browser's notification permission and push subscription: headless Chromium
+ * reports notifications blocked, and can't reach a push service. The browser subscribes at
+ * `pushService` instead, with keys it can encrypt for. The permission is granted until
+ * `setNotificationPermission` changes it, and lasts past a reload.
  */
-async function standInForNotifications(page: Page): Promise<void> {
-  await page.addInitScript(() => {
+async function standInForNotifications(page: Page, pushService: PushService): Promise<void> {
+  const pushSubscription = pushService.subscription(uuidv7());
+  await page.addInitScript((subscriptionJson) => {
     Object.defineProperty(Notification, 'permission', {
       get: () => localStorage.getItem('test-notification-permission') ?? 'granted',
     });
     Notification.requestPermission = async () => Notification.permission;
-    const endpoint = 'https://push.example.com/ui-e2e';
     const subscription = {
-      endpoint,
+      endpoint: subscriptionJson.endpoint,
       options: { applicationServerKey: null, userVisibleOnly: true },
-      toJSON: () => ({ endpoint, keys: { p256dh: 'p256dh', auth: 'auth' } }),
+      toJSON: () => subscriptionJson,
       unsubscribe: async () => true,
     };
     // SAFETY: the app reads only these members of a PushSubscription.
     PushManager.prototype.subscribe = async () => subscription as PushSubscription;
     PushManager.prototype.getSubscription = async () => null;
-  });
+  }, pushSubscription);
 }
 
 /** Allows or blocks notifications for the app, as the browser's site settings do. */
@@ -284,10 +285,10 @@ test('"Add me", and changing who you are from the Trip tab, last past a reload',
 
 test('notifications are offered once after a Claim, and turned on and off from the Trip tab', async ({
   page,
-
   request,
+  pushService,
 }) => {
-  await standInForNotifications(page);
+  await standInForNotifications(page, pushService);
   const tripLink = await tripLinkFor(request, 'Mazury 2026', ['Kasia', 'Ania']);
   await page.goto(tripLink);
   await page.waitForFunction(() => navigator.serviceWorker.controller !== null);
@@ -325,8 +326,9 @@ test('notifications are offered once after a Claim, and turned on and off from t
 test('notifications turned on say Blocked once the browser blocks them, and On again once allowed and checked', async ({
   page,
   request,
+  pushService,
 }) => {
-  await standInForNotifications(page);
+  await standInForNotifications(page, pushService);
   const tripLink = await tripLinkFor(request, 'Mazury 2026', ['Kasia', 'Ania']);
   await page.goto(tripLink);
   await page.waitForFunction(() => navigator.serviceWorker.controller !== null);
@@ -362,6 +364,7 @@ test('notifications turned on say Blocked once the browser blocks them, and On a
 test('Remind shares a message while the debtor cannot be notified, then sends one Reminder a day; a tapped one highlights its suggestion', async ({
   page,
   request,
+  pushService,
 }) => {
   // Kasia paid 24.50 for herself and Ania: Ania pays Kasia 12.25.
   const tripLink = await tripWithExpenses(
@@ -400,19 +403,29 @@ test('Remind shares a message while the debtor cannot be notified, then sends on
   );
 
   // Once her phone has notifications on, Remind notifies her, once a day.
-  const subscribed = await request.put(`/api/trips/${tripId}/subscriptions/${uuidv7()}`, {
+  const aniasPhone = uuidv7();
+  const subscribed = await request.put(`/api/trips/${tripId}/subscriptions/${aniasPhone}`, {
     headers,
-    data: {
-      endpoint: 'https://push.example.com/ui-e2e-ania',
-      keys: { p256dh: 'p256dh', auth: 'auth' },
-      claimId: ania.id,
-    },
+    data: { ...pushService.subscription(aniasPhone), claimId: ania.id },
   });
   expect(subscribed.ok()).toBe(true);
   await page.reload();
   await expect(toSettle).not.toContainText("can't get notifications");
   await row.getByRole('button', { name: 'Remind Ania with a notification' }).click();
   await expect(page.getByText('Reminder sent to Ania', { exact: true })).toBeVisible();
+  await expect
+    .poll(() => pushService.payloadsOf(aniasPhone))
+    .toEqual([
+      {
+        kind: 'reminder',
+        tripId,
+        tripName: 'Hel 2026',
+        currency: 'EUR',
+        from: { id: kasia.id, name: 'Kasia' },
+        to: ania.id,
+        amount: '12.25',
+      },
+    ]);
   await expect(row.getByRole('button', { name: 'Reminded today' })).toBeDisabled();
   await page.reload();
   await expect(row.getByRole('button', { name: 'Reminded today' })).toBeDisabled();
@@ -924,11 +937,9 @@ test('a Manual rate: the amount the card charged in the Trip currency', async ({
   await page.getByRole('button', { name: 'Currency' }).click();
   await page.keyboard.type('USD');
   await page.getByRole('option', { name: /^USD/ }).click();
-  // The field opens by itself while the device has no automatic rate for USD.
-  const typeManual = page.getByRole('button', { name: 'Type a Manual rate' });
+  // The field opens by itself while the device has no automatic rate for USD, and the suite's
+  // Frankfurter stand-in has none.
   const manualRate = page.getByRole('textbox', { name: 'Amount charged in EUR' });
-  await expect(typeManual.or(manualRate)).toBeVisible();
-  if (await typeManual.isVisible()) await typeManual.click();
   await manualRate.fill('92');
   await expect(page.getByRole('main')).toContainText('Rate: 1 EUR ≈ 1.087 USD');
   await page.getByRole('button', { name: 'Save Expense' }).click();
