@@ -4,8 +4,8 @@ import { trips } from './trips';
 /**
  * A device's subscription to Notifications in one Trip (#41): one per device per Trip,
  * replaced when the device registers it again, e.g. with a new Claim, and deleted when it
- * turns notifications off, forgets the Trip, or the push service says the endpoint is gone.
- * One browser has one endpoint, so its Trips share it.
+ * turns notifications off, forgets the Trip, the push service says the endpoint is gone, or
+ * its keys can't encrypt a message. One browser has one endpoint, so its Trips share it.
  */
 export const notificationSubscriptions = pgTable(
   'notification_subscriptions',

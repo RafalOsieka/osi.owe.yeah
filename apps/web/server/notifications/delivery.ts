@@ -1,5 +1,6 @@
-import type { PushMessage } from '@osi/owe-yeah-domain';
-import { inArray } from 'drizzle-orm';
+import { ECDH } from 'node:crypto';
+import { pushKeysSchema, type PushKeys, type PushMessage } from '@osi/owe-yeah-domain';
+import { and, eq, inArray, or } from 'drizzle-orm';
 import webpush from 'web-push';
 import type { Database } from '../db/client';
 import { notificationSubscriptions } from '../db/schema';
@@ -26,7 +27,8 @@ type NotificationSubscriptionRow = typeof notificationSubscriptions.$inferSelect
 /**
  * Sends each subscription the message `messageOf` writes for it (`null`: none), at most
  * `SENDING_AT_ONCE` at a time, then deletes from `db` those whose push service answers 404 or
- * 410, as gone. A subscription off the known push services gets nothing (unless
+ * 410, as gone, and those whose keys can't encrypt a message (`encryptionKeys`), with a
+ * warning each. A subscription off the known push services gets nothing (unless
  * `anyEndpoint`), so rows stored before the subscription handler checked endpoints are never
  * sent to. Nothing is retried. Never rejects.
  */
@@ -37,21 +39,53 @@ export async function deliver(
   { vapid, anyEndpoint }: PushSettings,
 ): Promise<void> {
   const gone = new Set<string>();
+  const unencryptable: NotificationSubscriptionRow[] = [];
   await eachAtMost(SENDING_AT_ONCE, subscriptions, async (subscription) => {
     const { endpoint, p256dh, auth } = subscription;
     if (!anyEndpoint && !isKnownPushService(endpoint)) return;
     const message = messageOf(subscription);
     if (!message) return;
-    const status = await send({ endpoint, keys: { p256dh, auth } }, message, vapid);
+    const keys = encryptionKeys({ p256dh, auth });
+    if (!keys) {
+      console.warn("A notification subscription whose keys can't encrypt is removed");
+      unencryptable.push(subscription);
+      return;
+    }
+    const status = await send({ endpoint, keys }, message, vapid);
     if (status === 404 || status === 410) gone.add(endpoint);
   });
-  if (gone.size === 0) return;
+  const pruned = [
+    ...(gone.size > 0 ? [inArray(notificationSubscriptions.endpoint, [...gone])] : []),
+    // The row as it was read, so a device that registers valid keys meanwhile keeps them.
+    ...unencryptable.map(({ tripId, deviceId, p256dh, auth }) =>
+      and(
+        eq(notificationSubscriptions.tripId, tripId),
+        eq(notificationSubscriptions.deviceId, deviceId),
+        eq(notificationSubscriptions.p256dh, p256dh),
+        eq(notificationSubscriptions.auth, auth),
+      ),
+    ),
+  ];
+  if (pruned.length === 0) return;
   try {
-    await db
-      .delete(notificationSubscriptions)
-      .where(inArray(notificationSubscriptions.endpoint, [...gone]));
+    await db.delete(notificationSubscriptions).where(or(...pruned));
   } catch (error) {
-    console.warn('Gone notification subscriptions could not be pruned', error);
+    console.warn('Notification subscriptions could not be pruned', error);
+  }
+}
+
+/**
+ * The keys a message can be encrypted with, or `null` when they can't encrypt: keys
+ * registration refuses, or a public key of the right length that is no point on the P-256 curve,
+ * which only a hand-written registration sends.
+ */
+function encryptionKeys(keys: PushKeys): PushKeys | null {
+  if (!pushKeysSchema.safeParse(keys).success) return null;
+  try {
+    ECDH.convertKey(keys.p256dh, 'prime256v1', 'base64url');
+    return keys;
+  } catch {
+    return null;
   }
 }
 
@@ -73,22 +107,23 @@ async function eachAtMost<T>(
 
 /**
  * Sends one notification, encrypted for the subscription, and resolves to the push service's
- * status, or `null` when it can't be reached. `web-push` builds the request; it is sent with
- * `fetch` here, which also speaks the plain http of the api e2e suite's stand-in. A redirect
- * isn't followed, so it can't lead anywhere off the push service: it counts as unreachable.
+ * status, or `null` when it can't be built or the push service can't be reached. `web-push`
+ * builds the request; it is sent with `fetch` here, which also speaks the plain http of the api
+ * e2e suite's stand-in. A redirect isn't followed, so it can't lead anywhere off the push
+ * service: it counts as unreachable.
  */
 async function send(
   subscription: webpush.PushSubscription,
   message: PushMessage,
   vapid: VapidDetails,
 ): Promise<number | null> {
-  const request = webpush.generateRequestDetails(subscription, JSON.stringify(message), {
-    vapidDetails: vapid,
-    TTL: TTL_SECONDS,
-  });
-  // `fetch` works the length out itself and refuses to be told.
-  const { 'Content-Length': _, ...headers } = request.headers;
   try {
+    const request = webpush.generateRequestDetails(subscription, JSON.stringify(message), {
+      vapidDetails: vapid,
+      TTL: TTL_SECONDS,
+    });
+    // `fetch` works the length out itself and refuses to be told.
+    const { 'Content-Length': _, ...headers } = request.headers;
     const response = await fetch(request.endpoint, {
       method: request.method,
       headers,
