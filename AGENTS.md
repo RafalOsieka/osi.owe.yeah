@@ -1,6 +1,8 @@
 # osi.owe.yeah
 
-Owe Yeah ("Owe Yeah - Split expenses") is an offline-first, phone-first web app that tracks a travelling group's shared expenses and works out who owes whom. There are no accounts: the secret Trip link is the credential (ADR 0001). Devices keep whole Trips in IndexedDB and sync through the app's own protocol on top of PostgreSQL (ADR 0002).
+Owe Yeah is an offline-first, phone-first web app that tracks a travelling group's shared expenses and works out who owes whom. There are no accounts: the secret Trip link is the credential (ADR 0001). Devices keep whole Trips in IndexedDB and sync through the app's own protocol on top of PostgreSQL (ADR 0002).
+
+The MVP (spec #19) is built and in use on the test instance, so changes extend a live app: devices already hold Trips and queued changes, and the database holds their data (see [Device store and sync schema](#device-store-and-sync-schema) and [Database](#database)). New features are planned as a spec or a wayfinder map in GitHub Issues.
 
 Stack: Nuxt 4 SPA (`ssr: false`) with Nuxt UI 4 and Tailwind 4, Dexie for device storage, a Nitro server with Drizzle ORM on PostgreSQL 18, zod, and Vite+ (`vp`) for install, lint (Oxlint), format (Oxfmt) and tests (Vitest). UI journeys run in Playwright.
 
@@ -100,6 +102,13 @@ Pick the suite by what the code touches:
 ## Server code
 
 In `apps/web/server`, import `defineEventHandler` and the request helpers explicitly from `nuxt/server` (Nuxt 4.6+), not the implicit h3 auto-imports, so the move to Nuxt 5 / Nitro v3 stays small. Don't mix the two in one handler (it throws `NUXT_E8012`). Note `createError` there takes `status`/`statusText`, and validators accept zod schemas directly.
+
+## Device store and sync schema
+
+Installed apps keep Trips and an outbox in Dexie, and an app can stay open for days on an older build.
+
+- A change to what the device keeps appends a link to the migration chain in `apps/web/app/sync/migrations.ts`; existing links stay as they are.
+- `SYNC_SCHEMA_VERSION` (`packages/domain/src/sync.ts`) says which wire contract an app speaks, and the server answers any other with 426 or 409. When the wire contract test fails, decide whether an older app could still talk to the server, and bump the version if not. Its doc comment says when a bump also needs a migration link.
 
 ## Database
 

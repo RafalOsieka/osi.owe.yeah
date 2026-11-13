@@ -2,7 +2,7 @@
 
 <img src="apps/web/public/icon.svg" alt="Owe Yeah icon" width="96" height="96">
 
-# Owe Yeah - Split expenses
+# Owe Yeah
 
 **Keep track of shared expenses and see who owes whom, on trips, weekends away, or whenever a group shares costs.**
 
@@ -12,14 +12,14 @@
 ![PostgreSQL](https://img.shields.io/badge/PostgreSQL-18-4169E1?logo=postgresql&logoColor=white)
 [![License: MIT](https://img.shields.io/badge/license-MIT-blue.svg)](LICENSE)
 
-[Features](#features) • [Getting started](#getting-started) • [Development](#development) • [Project structure](#project-structure) • [Deployment](#deployment) • [Documentation](#documentation)
+[Try it](https://owe-yeah-test.osieka.dev) • [Features](#features) • [What's next](#whats-next) • [Getting started](#getting-started) • [Development](#development) • [Project structure](#project-structure) • [Deployment](#deployment) • [Documentation](#documentation)
 
 </div>
 
 Owe Yeah is a phone-first web app for a group of people travelling together. Everyone records what they paid and who it was for, and the app works out each person's Balance and the fewest Repayments that settle the Trip. There are no accounts: whoever has the Trip link can join, and the app keeps working offline.
 
 > [!NOTE]
-> Owe Yeah is in active development. The core flow works end to end and runs in a test environment, but features and data may still change.
+> The MVP is complete: everything in the [MVP spec](https://github.com/RafalOsieka/osi.owe.yeah/issues/19) is built and runs on the test instance at [owe-yeah-test.osieka.dev](https://owe-yeah-test.osieka.dev). It is a test environment, so its data can be wiped at any time. New features build on it from here.
 
 ## Features
 
@@ -35,6 +35,12 @@ Owe Yeah is a phone-first web app for a group of people travelling together. Eve
 - **English and Polish**, in light and dark mode.
 
 The capitalised words have precise meanings in this project. [`GLOSSARY.md`](GLOSSARY.md) defines each one.
+
+## What's next
+
+Work after the MVP is planned in [GitHub Issues](https://github.com/RafalOsieka/osi.owe.yeah/issues): a feature starts as a map of open questions, which becomes a spec once they are answered.
+
+- **Photos on Expenses and Receipt scanning** ([#274](https://github.com/RafalOsieka/osi.owe.yeah/issues/274), on hold): attach pictures to an Expense, then turn a photo of a Receipt into Line items to check and save.
 
 ## Getting started
 
@@ -52,9 +58,6 @@ docker compose -f compose.dev.yml up -d    # dev PostgreSQL 18 on 127.0.0.1:5433
 vp run db:migrate                          # apply the committed migrations
 vp run dev                                 # web app on http://localhost:3000
 ```
-
-> [!TIP]
-> When the committed migrations are rewritten rather than added to, an existing dev database no longer migrates. Rebuild it with `docker compose -f compose.dev.yml down -v` (this deletes the dev database), then `up -d` and `vp run db:migrate` again.
 
 ## Development
 
@@ -119,5 +122,5 @@ Both images carry the notices their contents' licenses ask for in `/app/notices`
 
 ## Naming
 
-- **Full app name:** Owe Yeah - Split expenses
-- **Codename:** `osi.owe.yeah`
+- **App name:** Owe Yeah, as the UI, the installed app and the legal pages show it.
+- **Codename:** `osi.owe.yeah`, the repository. Packages are `@osi/owe-yeah-*` and images `owe-yeah` and `owe-yeah-migrator`.
