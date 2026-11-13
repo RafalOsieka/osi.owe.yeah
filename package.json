@@ -24,10 +24,10 @@
   "devDependencies": {
     "@intlify/eslint-plugin-vue-i18n": "^4.5.1",
     "@types/node": "^26.6.6",
-    "@typescript-eslint/parser": "^8.72.1",
+    "@typescript-eslint/parser": "^8.72.2",
     "eslint": "^10.14.0",
     "eslint-config-prettier": "^10.1.8",
-    "eslint-plugin-oxlint": "^1.90.0",
+    "eslint-plugin-oxlint": "^1.93.0",
     "eslint-plugin-vuejs-accessibility": "^2.6.3",
     "typescript": "^6.0.3",
     "vite-plus": "catalog:"

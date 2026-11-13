@@ -21,7 +21,7 @@ import {
 import { createTest, fetch, startServer } from '@nuxt/test-utils/e2e';
 import { v7 as uuidv7 } from 'uuid';
 import { afterAll, beforeAll, expect, inject, it, onTestFinished } from 'vitest';
-import webpush from 'web-push';
+import { generateVAPIDKeys } from 'web-push';
 import { startFrankfurter } from '../harness/frankfurter';
 import { describeWithDocker } from '../harness/postgres';
 import { startPushService } from '../harness/push-service';
@@ -43,7 +43,7 @@ const describeApi = describeWithDocker();
 const frankfurter = await startFrankfurter();
 // The push services devices subscribe with, and the server's VAPID keys.
 const pushService = await startPushService();
-const vapid = webpush.generateVAPIDKeys();
+const vapid = generateVAPIDKeys();
 
 // The commit the server under test is started with, as an image built with `COMMIT_SHA` has it.
 const commit = '0123456789abcdef0123456789abcdef01234567';

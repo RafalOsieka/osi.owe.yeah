@@ -7,7 +7,7 @@ import type {
 } from '@osi/owe-yeah-domain';
 import { v7 as uuidv7 } from 'uuid';
 import { afterAll, beforeAll, expect, it, onTestFinished, vi } from 'vitest';
-import webpush from 'web-push';
+import { generateVAPIDKeys } from 'web-push';
 import { createNotifications } from '../../../server/notifications/activity';
 import {
   createSubscriptions,
@@ -56,7 +56,7 @@ describeDb('Notifications', () => {
   const db = useMigratedDatabase();
   // The Notifications under way, so a test can wait for them all to be sent.
   const sending: Promise<void>[] = [];
-  const vapid = { ...webpush.generateVAPIDKeys(), subject: 'mailto:test@example.com' };
+  const vapid = { ...generateVAPIDKeys(), subject: 'mailto:test@example.com' };
   let sync: TripSync;
   // What the tests register devices with: at any endpoint, as the plain http stand-in needs.
   let registering: Subscriptions;

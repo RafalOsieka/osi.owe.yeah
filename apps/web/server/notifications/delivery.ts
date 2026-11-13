@@ -1,6 +1,6 @@
 import { ECDH } from 'node:crypto';
 import { pushKeysSchema, type PushKeys, type PushMessage } from '@osi/owe-yeah-domain';
-import webpush from 'web-push';
+import { generateRequestDetails, type PushSubscription, type VapidKeys } from 'web-push';
 import type { NotificationSubscription, Subscriptions } from './subscriptions';
 
 // How long a push service keeps a notification for a device that is offline. The next pull
@@ -11,7 +11,7 @@ const TTL_SECONDS = 24 * 60 * 60;
 const SENDING_AT_ONCE = 10;
 
 /** The server's VAPID keys and subject, which every notification is signed with. */
-export type VapidDetails = webpush.VapidKeys & { subject: string };
+export type VapidDetails = VapidKeys & { subject: string };
 
 /**
  * Sends each of `to` the message `messageOf` writes for it (`null`: none), signed with
@@ -88,12 +88,12 @@ async function eachAtMost<T>(
  * service: it counts as unreachable.
  */
 async function send(
-  subscription: webpush.PushSubscription,
+  subscription: PushSubscription,
   message: PushMessage,
   vapid: VapidDetails,
 ): Promise<number | null> {
   try {
-    const request = webpush.generateRequestDetails(subscription, JSON.stringify(message), {
+    const request = generateRequestDetails(subscription, JSON.stringify(message), {
       vapidDetails: vapid,
       TTL: TTL_SECONDS,
     });
