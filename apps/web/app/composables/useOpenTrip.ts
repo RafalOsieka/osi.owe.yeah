@@ -39,7 +39,8 @@ export interface OpenTrip extends Omit<TripHandle, 'claim' | 'forget'> {
   link: Readonly<Ref<string | null>>;
 }
 
-const openTripKey: InjectionKey<OpenTrip> = Symbol('open-trip');
+/** The key the open Trip is provided under. */
+export const openTripKey: InjectionKey<OpenTrip> = Symbol('open-trip');
 
 export function provideOpenTrip(openTrip: OpenTrip): void {
   provide(openTripKey, openTrip);

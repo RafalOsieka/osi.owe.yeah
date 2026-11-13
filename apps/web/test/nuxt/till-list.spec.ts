@@ -1,10 +1,11 @@
 import { rational, type Participant, type Rational } from '@osi/owe-yeah-domain';
-import { mockNuxtImport, mountSuspended } from '@nuxt/test-utils/runtime';
+import { mountSuspended } from '@nuxt/test-utils/runtime';
 import type { VueWrapper } from '@vue/test-utils';
 import { describe, expect, it } from 'vitest';
 import { defineComponent, h, ref } from 'vue';
 import TillList from '../../app/components/TillList.vue';
 import { draftLineItem, type DraftLineItem } from '../../app/utils/expense-draft';
+import { withOpenTrip } from './open-trip';
 
 const participants: Participant[] = [
   { id: '019a2b3c-4d5e-7f00-8a1b-000000000001', name: 'Kasia' },
@@ -12,7 +13,7 @@ const participants: Participant[] = [
 ];
 
 // A line on the Receipt marks the claimed Participant; nobody is claimed here.
-mockNuxtImport('useOpenTrip', () => () => ({ claim: ref(null) }));
+const openTrip = withOpenTrip({ claim: ref(null) });
 
 /**
  * The Till list as the Receipt form holds it, with `lines` on it and what their unassigned
@@ -37,6 +38,7 @@ async function tillList(
           'onUpdate:pending': (value: boolean) => (pending.value = value),
         }),
     }),
+    openTrip,
   );
   return { wrapper, pending: () => pending.value };
 }

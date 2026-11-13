@@ -1,10 +1,11 @@
 import type { Expense, Participant } from '@osi/owe-yeah-domain';
-import { mockNuxtImport, mountSuspended } from '@nuxt/test-utils/runtime';
+import { mountSuspended } from '@nuxt/test-utils/runtime';
 import { describe, expect, it } from 'vitest';
 import { computed, ref } from 'vue';
 import Conflict from '../../app/pages/trips/[id]/expenses/[expenseId]/conflict.vue';
 import ExpenseDetailPage from '../../app/pages/trips/[id]/expenses/[expenseId]/index.vue';
 import type { LocalExpense } from '../../app/sync/local-trip';
+import { withOpenTrip } from './open-trip';
 
 const kasia: Participant = { id: '019a2b3c-4d5e-7f00-8a1b-000000000001', name: 'Kasia' };
 const marta: Participant = { id: '019a2b3c-4d5e-7f00-8a1b-000000000002', name: 'Marta' };
@@ -50,7 +51,7 @@ const mine: LocalExpense = {
   },
 };
 
-mockNuxtImport('useOpenTrip', () => () => ({
+const openTrip = withOpenTrip({
   trip: computed(() => ({
     id: tripId,
     currency: 'EUR',
@@ -62,12 +63,13 @@ mockNuxtImport('useOpenTrip', () => () => ({
   })),
   claim: ref(kasia),
   everyone: ref([kasia, marta, ewa]),
-}));
+});
 
 describe('a Conflict over an Expense with a removed Participant', () => {
   it('names the removed Participant on both versions and as the other side', async () => {
     const page = await mountSuspended(Conflict, {
       route: `/trips/${tripId}/expenses/${expenseId}/conflict`,
+      ...openTrip,
     });
     const [yours, theirs] = page.findAll('section').map((card) => card.text());
 
@@ -84,6 +86,7 @@ describe("an Expense's detail page with a Conflict from a removed Participant", 
   it('names her in the Conflict notice', async () => {
     const page = await mountSuspended(ExpenseDetailPage, {
       route: `/trips/${tripId}/expenses/${expenseId}`,
+      ...openTrip,
     });
 
     expect(page.text()).toContain('Ewa changed this Expense too');

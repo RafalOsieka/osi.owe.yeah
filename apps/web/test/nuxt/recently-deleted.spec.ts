@@ -1,16 +1,17 @@
 import type { Participant } from '@osi/owe-yeah-domain';
-import { mockNuxtImport, mountSuspended } from '@nuxt/test-utils/runtime';
+import { mountSuspended } from '@nuxt/test-utils/runtime';
 import { describe, expect, it } from 'vitest';
 import { computed, ref } from 'vue';
 import RecentlyDeleted from '../../app/pages/trips/[id]/deleted.vue';
 import type { LocalEdited, LocalExpense } from '../../app/sync/local-trip';
+import { withOpenTrip } from './open-trip';
 
 const kasia: Participant = { id: '019a2b3c-4d5e-7f00-8a1b-000000000001', name: 'Kasia' };
 
 // The page reads the open Trip only; each test sets what it holds.
 const open = { claim: ref<Participant | null>(null), deleted: ref<LocalExpense[]>([]) };
 
-mockNuxtImport('useOpenTrip', () => () => ({
+const openTrip = withOpenTrip({
   trip: computed(() => ({
     id: '019a2b3c-4d5e-7f00-8a1b-2c3d4e5f6a7b',
     deletedExpenses: open.deleted.value,
@@ -18,7 +19,7 @@ mockNuxtImport('useOpenTrip', () => () => ({
   claim: open.claim,
   everyone: ref([kasia]),
   saveExpense: async () => [],
-}));
+});
 
 function deletedLidl(edited: LocalEdited | null): LocalExpense {
   return {
@@ -46,7 +47,7 @@ function deletedLidl(edited: LocalEdited | null): LocalExpense {
 async function deletedLine(claim: Participant | null, edited: LocalEdited | null): Promise<string> {
   open.claim.value = claim;
   open.deleted.value = [deletedLidl(edited)];
-  const wrapper = await mountSuspended(RecentlyDeleted);
+  const wrapper = await mountSuspended(RecentlyDeleted, openTrip);
   return wrapper.find('li').text();
 }
 

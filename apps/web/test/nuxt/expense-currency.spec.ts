@@ -1,8 +1,9 @@
 import { rational, type RateEntry, type RateLookup } from '@osi/owe-yeah-domain';
-import { mockNuxtImport, mountSuspended } from '@nuxt/test-utils/runtime';
+import { mountSuspended } from '@nuxt/test-utils/runtime';
 import { afterEach, describe, expect, it, vi } from 'vitest';
 import { computed, ref } from 'vue';
 import ExpenseCurrency from '../../app/components/ExpenseCurrency.vue';
+import { withOpenTrip } from './open-trip';
 
 // How the server answers each lookup.
 const server = vi.hoisted(() => ({
@@ -12,7 +13,7 @@ const server = vi.hoisted(() => ({
 // The open Trip's rates on the device: none until a lookup brings one.
 const rates = ref<RateEntry[]>([]);
 
-mockNuxtImport('useOpenTrip', () => () => ({
+const openTrip = withOpenTrip({
   trip: computed(() => ({
     id: '019a2b3c-4d5e-7f00-8a1b-2c3d4e5f6a7b',
     currency: 'EUR',
@@ -24,7 +25,7 @@ mockNuxtImport('useOpenTrip', () => () => ({
     if (lookup.status === 'found') rates.value = [...rates.value, lookup.entry];
     return lookup;
   },
-}));
+});
 
 afterEach(() => {
   rates.value = [];
@@ -52,6 +53,7 @@ function mountAt(day: string) {
       currency: 'HUF',
       manualRate: { kind: 'charged', value: '', currency: 'EUR' },
     },
+    ...openTrip,
   });
 }
 
