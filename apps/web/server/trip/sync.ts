@@ -25,7 +25,7 @@ import type { Database, Transaction } from '../db/client';
 import { changes, expenses, participants, revisions, trips } from '../db/schema';
 import { hashTripToken } from '../utils/trip-token';
 import type { Rates } from './rates';
-import { createTripStore, tripPeople, type TripStore, type WholeTrip } from './store';
+import { createTripStore, tripPeople, type WholeTrip } from './store';
 
 /** An Expense change the sync push has just applied (not a retry), with the version it made. */
 export type AppliedExpenseChange = { change: ExpenseChange; version: number };
@@ -49,11 +49,13 @@ export type TooManyTrips = 'tooManyTrips';
 /**
  * The server side of the sync (ADR 0002), mirroring the device's `Transport`: the push and the
  * whole-Trip pull, each for a Trip id and its Trip link's token (ADR 0001). Writes go to `db`;
- * Trips are read through `store`, or a Trip store on a transaction of `db` where a read must be
+ * Trips are read through a Trip store on `db`, or on a transaction of it where a read must be
  * consistent, and converted at `rates`; `notifier` hears of the Expense changes each push
  * applies.
  */
-export function createTripSync(db: Database, store: TripStore, rates: Rates, notifier: Notifier) {
+export function createTripSync(db: Database, rates: Rates, notifier: Notifier) {
+  const store = createTripStore(db);
+
   /** The first result of a change this Trip has applied before, if it has. */
   async function appliedBefore(change: SyncChange, tripId: string): Promise<ChangeResult | null> {
     const [applied] = await db

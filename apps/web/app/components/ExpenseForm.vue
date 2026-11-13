@@ -1,9 +1,9 @@
 <script setup lang="ts">
 import {
+  absolute,
   conversionRate,
   deviceTimeZone,
   multiply,
-  negate,
   rational,
   type Rational,
   type SplitExpense,
@@ -96,7 +96,7 @@ const splitSummary = computed(() => {
   if (count < 2) return null;
   const { total } = reading.value;
   if (!total || total.numerator === 0n) return t('expense.splitPeople', { count });
-  const each = multiply(total.numerator < 0n ? negate(total) : total, rational(1n, BigInt(count)));
+  const each = multiply(absolute(total), rational(1n, BigInt(count)));
   const text = t('expense.splitEach', { amount: money(each) });
   // In another currency, also what that comes to in the Trip currency.
   const { time, manualRate } = reading.value;

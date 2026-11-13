@@ -1,11 +1,5 @@
 <script setup lang="ts">
-import {
-  balances,
-  groupByLocalDay,
-  isSettled,
-  rational,
-  type Rational,
-} from '@osi/owe-yeah-domain';
+import { absolute, balances, groupByLocalDay, isSettled } from '@osi/owe-yeah-domain';
 
 // My Trips: every Trip on this device, most recently opened first, and Settled ones in their
 // own group below the rest. Each row has the Trip's initial on its own tint (none repeated
@@ -37,7 +31,7 @@ const rows = computed(() =>
       if (!mine || sign === 0) return { label: t('myTrips.even', { name }), text: null, tone: '' };
       return {
         label: sign > 0 ? t('myTrips.owed', { name }) : t('myTrips.owes', { name }),
-        text: formatMoney(abs(mine.rounded), local.currency, locale.value),
+        text: formatMoney(absolute(mine.rounded), local.currency, locale.value),
         tone: sign > 0 ? 'text-success' : 'text-error',
       };
     };
@@ -85,9 +79,6 @@ function dateRange(expenses: Parameters<typeof groupByLocalDay>[0]): string | nu
   });
   return format.formatRange(new Date(`${first}T00:00:00Z`), new Date(`${last}T00:00:00Z`));
 }
-
-const abs = ({ numerator, denominator }: Rational) =>
-  rational(numerator < 0n ? -numerator : numerator, denominator);
 
 useHead({ title: () => t('myTrips.title') });
 </script>

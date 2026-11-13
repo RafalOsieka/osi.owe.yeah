@@ -1,8 +1,8 @@
 <script setup lang="ts">
 import {
+  absolute,
   compare,
   decimal,
-  negate,
   roundMoney,
   shareOfSpending,
   type BreakdownPart,
@@ -130,13 +130,7 @@ function outcomeOf(rounded: Rational, provisional: boolean) {
   const sign = shownSign(rounded, currency);
   const you = participant.id === claimId;
   const name = participant.name;
-  const amount = formatMoney(
-    rounded.numerator < 0n ? negate(rounded) : rounded,
-    currency,
-    locale.value,
-    'currency',
-    provisional,
-  );
+  const amount = formatMoney(absolute(rounded), currency, locale.value, 'currency', provisional);
   if (sign < 0) {
     return {
       label: you ? t('balances.owe') : t('breakdown.owes', { name }),

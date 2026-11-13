@@ -1,5 +1,5 @@
 <script setup lang="ts">
-import { negate, type Rational } from '@osi/owe-yeah-domain';
+import { absolute, type Rational } from '@osi/owe-yeah-domain';
 import type { ExpenseDraft } from '~/utils/expense-draft';
 
 // The discard confirm of a changed form (`useDiscardConfirm`): a bottom sheet whose title says
@@ -26,7 +26,7 @@ const summary = computed(() => {
   return [
     draft.title.trim(),
     total && total.numerator !== 0n
-      ? formatMoney(total.numerator < 0n ? negate(total) : total, draft.currency, locale.value)
+      ? formatMoney(absolute(total), draft.currency, locale.value)
       : '',
     lineItems > 0 ? t('discard.lineItems', lineItems) : '',
   ]

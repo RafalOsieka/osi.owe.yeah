@@ -1,6 +1,6 @@
 // The package interface: export only names that `apps/` or `tools/` import. The package tests
 // import anything else from its source module.
-export { add, compare, multiply, negate, rational } from './rational.ts';
+export { absolute, add, compare, multiply, negate, rational } from './rational.ts';
 export type { Rational } from './rational.ts';
 export { fromMinor, minorUnits, parseMoney, roundMoney } from './money.ts';
 export {
