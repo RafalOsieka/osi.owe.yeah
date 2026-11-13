@@ -2,7 +2,7 @@
 
 Owe Yeah is an offline-first, phone-first web app that tracks a travelling group's shared expenses and works out who owes whom. There are no accounts: the secret Trip link is the credential (ADR 0001). Devices keep whole Trips in IndexedDB and sync through the app's own protocol on top of PostgreSQL (ADR 0002).
 
-The MVP (spec #19) is built and in use on the test instance, so changes extend a live app: devices already hold Trips and queued changes, and the database holds their data (see [Device store and sync schema](#device-store-and-sync-schema) and [Database](#database)). New features are planned as a spec or a wayfinder map in GitHub Issues.
+The MVP (spec #19) is built and in use on the test instance, so changes extend a live app: devices already hold Trips and queued changes, and the database holds their data (see [Device store and sync schema](#device-store-and-sync-schema) and [Database](#database)). New features are planned as a spec or a wayfinder map in GitHub Issues. `ROADMAP.md` lists the ideas not yet picked up: when a map or spec postpones a topic, add it there, and move it when the topic is picked up or ships.
 
 Stack: Nuxt 4 SPA (`ssr: false`) with Nuxt UI 4 and Tailwind 4, Dexie for device storage, a Nitro server with Drizzle ORM on PostgreSQL 18, zod, and Vite+ (`vp`) for install, lint (Oxlint), format (Oxfmt) and tests (Vitest). UI journeys run in Playwright.
 

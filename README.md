@@ -38,9 +38,7 @@ The capitalised words have precise meanings in this project. [`GLOSSARY.md`](GLO
 
 ## What's next
 
-Work after the MVP is planned in [GitHub Issues](https://github.com/RafalOsieka/osi.owe.yeah/issues): a feature starts as a map of open questions, which becomes a spec once they are answered.
-
-- **Photos on Expenses and Receipt scanning** ([#274](https://github.com/RafalOsieka/osi.owe.yeah/issues/274), on hold): attach pictures to an Expense, then turn a photo of a Receipt into Line items to check and save.
+[`ROADMAP.md`](ROADMAP.md) collects the ideas Owe Yeah may pursue after the MVP, starting with the work on hold or in progress. Each one is planned in [GitHub Issues](https://github.com/RafalOsieka/osi.owe.yeah/issues) when picked up: a feature starts as a map of open questions, which becomes a spec once they are answered.
 
 ## Getting started
 
