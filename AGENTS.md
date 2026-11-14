@@ -98,6 +98,7 @@ Pick the suite by what the code touches:
 - Let types be inferred where they can be; validate untrusted input with zod schemas (`packages/domain` holds the shared ones).
 - Short doc comments above exported functions and types say what they are for. Keep them in sync with the code.
 - UI copy goes through i18n in both `en.json` and `pl.json`. Polish copy uses each term's _Polish_ word from `GLOSSARY.md`, inflected as needed. If a new term's Polish word is unclear, ask.
+- Browser support: a web platform feature that is Baseline Widely available needs no fallback. A newer one is allowed only as an enhancement that leaves the app working as before where it is missing (usually iOS Safari), and never with a new polyfill.
 
 ## Server code
 
