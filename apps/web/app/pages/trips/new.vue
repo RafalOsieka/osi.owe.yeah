@@ -76,6 +76,7 @@ async function create(): Promise<void> {
           <UInput
             v-model="state.name"
             :placeholder="$t('trip.create.namePlaceholder', { year: new Date().getFullYear() })"
+            enterkeyhint="done"
             class="w-full"
           />
         </UFormField>
@@ -97,6 +98,7 @@ async function create(): Promise<void> {
           <UInput
             v-model="state.me"
             :placeholder="$t('trip.create.mePlaceholder')"
+            enterkeyhint="done"
             class="w-full"
           />
         </UFormField>
@@ -109,6 +111,7 @@ async function create(): Promise<void> {
             <UInput
               v-model="state.others[index]"
               :placeholder="$t('trip.create.othersPlaceholder')"
+              enterkeyhint="done"
               :aria-label="$t('trip.create.participant', { number: index + 2 })"
               :ui="{ trailing: 'pe-0.5' }"
               class="w-full"

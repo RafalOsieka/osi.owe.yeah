@@ -77,7 +77,7 @@ useHead({ title: () => t('trip.details.title') });
       @submit="save"
     >
       <UFormField name="name" :label="$t('trip.create.name')">
-        <UInput v-model="state.name" class="w-full" />
+        <UInput v-model="state.name" enterkeyhint="done" class="w-full" />
       </UFormField>
       <UFormField
         name="currency"
