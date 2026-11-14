@@ -108,6 +108,22 @@ describe('TillList', () => {
     expect(input(wrapper, 'New Line item name').element.value).toBe('');
   });
 
+  it('adds the Line item on Enter, but not on the Enter that picks an IME suggestion', async () => {
+    const { wrapper } = await tillList();
+    await click(wrapper, 'Add a Line item');
+    const name = input(wrapper, 'New Line item name');
+    await name.setValue('水');
+    await input(wrapper, 'New Line item unit price').setValue('2');
+
+    await name.trigger('keydown', { key: 'Enter', isComposing: true });
+    expect(name.element.value).toBe('水');
+    expect(wrapper.text()).not.toContain('水');
+
+    await name.trigger('keydown', { key: 'Enter' });
+    expect(name.element.value).toBe('');
+    expect(wrapper.text()).toContain('水');
+  });
+
   it('says on each unassigned line what it comes to after the Receipt discount', async () => {
     const nobody = (name: string, price: string) =>
       draftLineItem({ name, price, quantity: 1, split: { mode: 'even', participantIds: [] } });

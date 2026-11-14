@@ -43,6 +43,7 @@ function submit(): void {
       <UInput
         v-model="state.name"
         :placeholder="$t('participants.namePlaceholder')"
+        enterkeyhint="done"
         class="w-full"
       />
     </UFormField>

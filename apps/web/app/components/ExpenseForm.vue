@@ -305,6 +305,7 @@ async function submit(): Promise<void> {
           <UInput
             v-model="state.title"
             :placeholder="$t('expense.titlePlaceholder')"
+            enterkeyhint="done"
             class="w-full"
           />
         </UFormField>
@@ -369,6 +370,7 @@ async function submit(): Promise<void> {
           <UInput
             v-model="state.title"
             :placeholder="$t('expense.titlePlaceholder')"
+            enterkeyhint="done"
             class="w-full"
           />
         </UFormField>

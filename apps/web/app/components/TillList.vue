@@ -156,6 +156,15 @@ function addRefund(): void {
   refundAmount.value = '';
 }
 
+// Enter in an add form adds its line rather than saving the Expense, and the keyboard's action
+// key says so ("next"). The Enter that picks an IME's suggestion (Japanese, Chinese, Korean) is
+// still typing, so it adds nothing; Safari tells that one only by its key code.
+function onEnter(event: KeyboardEvent, addLine: () => void): void {
+  event.preventDefault();
+  if (event.isComposing || event.keyCode === 229) return;
+  addLine();
+}
+
 function replace(index: number, line: DraftLineItem): void {
   lineItems.value = lineItems.value.with(index, line);
 }
@@ -241,7 +250,8 @@ const addRow =
             :placeholder="$t('receipt.namePlaceholder')"
             :aria-label="$t('receipt.newName')"
             class="w-full"
-            @keydown.enter.prevent="add"
+            enterkeyhint="next"
+            @keydown.enter="onEnter($event, add)"
           />
         </UFormField>
         <div class="flex gap-2">
@@ -253,7 +263,8 @@ const addRow =
               :aria-label="$t('receipt.newUnitPrice')"
               :color="addError ? 'error' : undefined"
               class="w-full"
-              @keydown.enter.prevent="add"
+              enterkeyhint="next"
+              @keydown.enter="onEnter($event, add)"
             />
           </UFormField>
           <UFormField :label="$t('receipt.quantity')" class="w-36 shrink-0">
@@ -279,7 +290,8 @@ const addRow =
               :currency="currency"
               :aria-label="$t('receipt.newDeposit')"
               class="w-full"
-              @keydown.enter.prevent="add"
+              enterkeyhint="next"
+              @keydown.enter="onEnter($event, add)"
             />
           </UFormField>
           <div class="w-36 shrink-0 pb-2.5 text-end">
@@ -323,7 +335,8 @@ const addRow =
             :aria-label="$t('receipt.newRefundAmount')"
             :color="refundError ? 'error' : undefined"
             class="w-full"
-            @keydown.enter.prevent="addRefund"
+            enterkeyhint="next"
+            @keydown.enter="onEnter($event, addRefund)"
           />
         </UFormField>
         <p v-if="refundError" class="text-sm text-error">{{ refundError }}</p>

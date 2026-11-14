@@ -190,6 +190,7 @@ async function submit(): Promise<void> {
           <UInput
             v-model="state.title"
             :placeholder="$t('repayment.notePlaceholder')"
+            enterkeyhint="done"
             class="w-full"
           />
         </UFormField>
