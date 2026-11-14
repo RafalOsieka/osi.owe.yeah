@@ -61,7 +61,7 @@ services:
 
   # Runs to completion before `app` starts; a failed dump or migration keeps the app down.
   migrate:
-    image: ghcr.io/rafalosieka/owe-yeah-migrator@sha256:acc1a13b83d2f56dfb51c205a20694b8fcf0671b8cfca5a2e46672beb2abe0bc
+    image: ghcr.io/rafalosieka/owe-yeah-migrator@sha256:7391a4b19f2c3d248b8a2b11005dc81e36c9577dea0348766f07304aed016f68
     restart: 'no'
     logging: *logging
     environment:
@@ -73,7 +73,7 @@ services:
         condition: service_completed_successfully
 
   app:
-    image: ghcr.io/rafalosieka/owe-yeah@sha256:d8c9c042dd30eca70638415b1244d741f6f01c8a8029c0386035969e25bc086a
+    image: ghcr.io/rafalosieka/owe-yeah@sha256:1bb9d8d223d21e5f1b1b05d587083259edd125a81f1263e2d1a73782029a0ed4
     restart: unless-stopped
     logging: *logging
     environment:
