@@ -95,7 +95,9 @@
 
 /*
  * Page changes are instant, as on a phone. Form-layout pages slide in from the right and
- * back out: their `viewTransition` meta adds the `forward` and `back` types.
+ * back out: their `viewTransition` meta adds the `forward` and `back` types. Nuxt starts no
+ * view transition for someone who asked for reduced motion, so for them these change instantly
+ * too.
  */
 ::view-transition-old(root),
 ::view-transition-new(root) {
