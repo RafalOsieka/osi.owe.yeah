@@ -35,6 +35,9 @@ export default defineNuxtConfig({
     manifest: {
       name: 'Owe Yeah',
       short_name: 'Owe Yeah',
+      // What makes an installed app this app. Left out, a browser takes the start page for it,
+      // and a later change to the start page would turn every installed app into another one.
+      id: '/',
       description: 'Shared Trip expenses, worked out exactly, even offline.',
       theme_color: '#10b981',
       background_color: '#ffffff',
