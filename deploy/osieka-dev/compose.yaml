@@ -105,7 +105,7 @@ services:
   # Connects out to Cloudflare and forwards the tunnel's public hostname to `http://app:3000`
   # over the compose network. The tunnel is remotely managed: its routes live in Cloudflare.
   cloudflared:
-    image: cloudflare/cloudflared:2026.10.7
+    image: cloudflare/cloudflared:2026.11.0
     restart: unless-stopped
     logging: *logging
     command: ['tunnel', '--no-autoupdate', 'run']
