@@ -40,7 +40,7 @@
     "@nuxt/test-utils": "^4.4.0",
     "@nuxtjs/i18n": "^10.6.0",
     "@osi/owe-yeah-migrator": "workspace:*",
-    "@playwright/test": "^1.65.0",
+    "@playwright/test": "^1.65.1",
     "@total-typescript/shoehorn": "^0.1.2",
     "@types/node": "^26.6.6",
     "@types/web-push": "^3.6.4",
