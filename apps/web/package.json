@@ -45,7 +45,7 @@
     "@types/node": "^26.6.6",
     "@types/web-push": "^3.6.4",
     "@vite-pwa/nuxt": "^1.1.1",
-    "@vue/test-utils": "^2.5.1",
+    "@vue/test-utils": "^2.6.0",
     "drizzle-kit": "^0.31.11",
     "fake-indexeddb": "^6.2.8",
     "happy-dom": "^21.0.4",
