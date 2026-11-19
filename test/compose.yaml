@@ -61,7 +61,7 @@ services:
 
   # Runs to completion before `app` starts; a failed dump or migration keeps the app down.
   migrate:
-    image: ghcr.io/rafalosieka/owe-yeah-migrator@sha256:d77662f28e77128ca16b14d8c063b473ec6455a84b601cae0af548a1a05a3f59
+    image: ghcr.io/rafalosieka/owe-yeah-migrator@sha256:300a37da9eae0bfe4f2895cfd9f65b7f7a97f77a45ce429bb7409973a2535b71
     restart: 'no'
     logging: *logging
     environment:
@@ -73,7 +73,7 @@ services:
         condition: service_completed_successfully
 
   app:
-    image: ghcr.io/rafalosieka/owe-yeah@sha256:cf6a4ff97d9f9a012ca700e36bbae4e8f25d13904bcf717ae6eadbe4010bf480
+    image: ghcr.io/rafalosieka/owe-yeah@sha256:47cf60687b8d471a8eeb2d5977a8d4d29aee348ec08cb757d239f3d2c1d031c5
     restart: unless-stopped
     logging: *logging
     environment:
@@ -105,7 +105,7 @@ services:
   # Connects out to Cloudflare and forwards the tunnel's public hostname to `http://app:3000`
   # over the compose network. The tunnel is remotely managed: its routes live in Cloudflare.
   cloudflared:
-    image: cloudflare/cloudflared:2026.10.7
+    image: cloudflare/cloudflared:2026.11.1
     restart: unless-stopped
     logging: *logging
     command: ['tunnel', '--no-autoupdate', 'run']
