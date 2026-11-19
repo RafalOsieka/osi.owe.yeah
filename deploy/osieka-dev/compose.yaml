@@ -6,19 +6,11 @@
 # setting the host supplies; the README next to this file lists them. POSTGRES_PASSWORD and
 # TUNNEL_TOKEN are required: the stack refuses to start without them.
 
-# Every container's logs stay on the host, rotated at 10 MB × 3.
-x-logging: &logging
-  driver: json-file
-  options:
-    max-size: 10m
-    max-file: '3'
-
 services:
   # A new Postgres major can't open the old one's volume: it needs a dump and restore.
   db:
     image: postgres:18-alpine
     restart: unless-stopped
-    logging: *logging
     environment:
       POSTGRES_USER: postgres
       POSTGRES_PASSWORD: ${POSTGRES_PASSWORD:?POSTGRES_PASSWORD is required}
@@ -39,7 +31,6 @@ services:
   backup:
     image: postgres:18-alpine
     restart: 'no'
-    logging: *logging
     environment:
       PGPASSWORD: ${POSTGRES_PASSWORD:?POSTGRES_PASSWORD is required}
     volumes:
@@ -63,7 +54,6 @@ services:
   migrate:
     image: ${MIGRATOR_IMAGE}
     restart: 'no'
-    logging: *logging
     environment:
       DATABASE_URL: postgres://postgres:${POSTGRES_PASSWORD:?POSTGRES_PASSWORD is required}@db:5432/owe_yeah
     depends_on:
@@ -75,7 +65,6 @@ services:
   app:
     image: ${APP_IMAGE}
     restart: unless-stopped
-    logging: *logging
     environment:
       DATABASE_URL: postgres://postgres:${POSTGRES_PASSWORD:?POSTGRES_PASSWORD is required}@db:5432/owe_yeah
       # Push notifications (#41): the VAPID key pair they are sent with, and the contact the
@@ -107,7 +96,6 @@ services:
   cloudflared:
     image: cloudflare/cloudflared:2026.11.1
     restart: unless-stopped
-    logging: *logging
     command: ['tunnel', '--no-autoupdate', 'run']
     environment:
       # Read from the environment, so the token never shows in the process list.

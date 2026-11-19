@@ -52,7 +52,7 @@ Only once the privacy notice and terms are live in the deployed build, `owe-yeah
 
 - **Did the deploy land?** A failed `verify-deploy` job emails, as any failed run does. If `publish` passed but test still runs the old commit, look at the host's pulls first: once the bot's token expires, they fail as unauthorized. Make it a new token and update the stack's registry credential.
 - **Is it down?** Cloudflare emails when the tunnel goes unhealthy. An app that crashes behind a healthy tunnel shows at the next deploy check.
-- **Logs:** the containers' logs on the host, rotated at 10 MB × 3 per container. Nothing is shipped.
+- **Logs:** the stack sets no log driver, so the containers use the host's default. It writes them to the host's journal, which forwards them to a central log store. The host's limits decide how long they are kept.
 - **Rollback:** fix forward. In an emergency, revert the latest commit on `deploy`; the stack picks it up at its next poll. If the older build breaks on the newer schema, [restore the dump](#restore-a-dump) made before the deploy that broke it, or wipe test's database volume and redeploy.
 - **Wiping test:** allowed at any time, as the test banner tells its users.
 - **Pausing test:** [`pause-worker.js`](pause-worker.js) is a Cloudflare Worker that answers every request with a `503` page, in English and Polish, saying test is unavailable for now and giving `owe-yeah@osieka.dev`. Nothing reaches the tunnel while it runs, so it works with the host down too.
@@ -123,7 +123,7 @@ docker exec -i <db container> psql -U postgres -d owe_yeah -v id=<id> -v token=<
    - Opening the link on a device that doesn't hold the Trip shows "This Trip link doesn't work".
    - A device that holds the Trip keeps its copy and stops syncing, without saying so. It gets no more Notifications, and changes made on it never sync. These copies are on people's devices, out of the operator's reach: the requester should forget the Trip on their devices, and ask the other Participants to do the same.
    - A device whose unsynced changes include the Trip's name or currency (a Trip created offline, or renamed since its last sync) creates the Trip again under the same link on its next sync. The new Trip holds only that device's unsynced changes. Run `find.sql` again a week later, and erase the Trip again if it's back.
-4. Outside the database, container logs hold only warnings, which may quote a query's values, and rotate away (10 MB × 3). The last 5 [dumps](#dumps) still hold the Trip: it leaves them once 5 more deploys have dumped the database after the erasure, and leaves the copy off the host when that copy is next mirrored. Say so in the answer, and erase the Trip again after restoring a dump.
+4. Outside the database, container logs hold only warnings, which may quote a query's values. They leave the host's journal and the central log store when those stores' limits drop them. The last 5 [dumps](#dumps) still hold the Trip: it leaves them once 5 more deploys have dumped the database after the erasure, and leaves the copy off the host when that copy is next mirrored. Say so in the answer, and erase the Trip again after restoring a dump.
 
 **Erasing part of a Trip.** The requester can do part of it in the app, and the change syncs to every device:
 
