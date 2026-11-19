@@ -6,19 +6,11 @@
 # setting the host supplies; the README next to this file lists them. POSTGRES_PASSWORD and
 # TUNNEL_TOKEN are required: the stack refuses to start without them.
 
-# Every container's logs stay on the host, rotated at 10 MB × 3.
-x-logging: &logging
-  driver: json-file
-  options:
-    max-size: 10m
-    max-file: '3'
-
 services:
   # A new Postgres major can't open the old one's volume: it needs a dump and restore.
   db:
     image: postgres:18-alpine
     restart: unless-stopped
-    logging: *logging
     environment:
       POSTGRES_USER: postgres
       POSTGRES_PASSWORD: ${POSTGRES_PASSWORD:?POSTGRES_PASSWORD is required}
@@ -39,7 +31,6 @@ services:
   backup:
     image: postgres:18-alpine
     restart: 'no'
-    logging: *logging
     environment:
       PGPASSWORD: ${POSTGRES_PASSWORD:?POSTGRES_PASSWORD is required}
     volumes:
@@ -61,9 +52,8 @@ services:
 
   # Runs to completion before `app` starts; a failed dump or migration keeps the app down.
   migrate:
-    image: ghcr.io/rafalosieka/owe-yeah-migrator@sha256:300a37da9eae0bfe4f2895cfd9f65b7f7a97f77a45ce429bb7409973a2535b71
+    image: ghcr.io/rafalosieka/owe-yeah-migrator@sha256:585a3a8276bcca69753d8cd463a531ca488dbffec64bb5bb6955bfb043828883
     restart: 'no'
-    logging: *logging
     environment:
       DATABASE_URL: postgres://postgres:${POSTGRES_PASSWORD:?POSTGRES_PASSWORD is required}@db:5432/owe_yeah
     depends_on:
@@ -73,9 +63,8 @@ services:
         condition: service_completed_successfully
 
   app:
-    image: ghcr.io/rafalosieka/owe-yeah@sha256:47cf60687b8d471a8eeb2d5977a8d4d29aee348ec08cb757d239f3d2c1d031c5
+    image: ghcr.io/rafalosieka/owe-yeah@sha256:9bef60a028401f27fe5456330b5af3d38228139f376b039692999282d582db88
     restart: unless-stopped
-    logging: *logging
     environment:
       DATABASE_URL: postgres://postgres:${POSTGRES_PASSWORD:?POSTGRES_PASSWORD is required}@db:5432/owe_yeah
       # Push notifications (#41): the VAPID key pair they are sent with, and the contact the
@@ -107,7 +96,6 @@ services:
   cloudflared:
     image: cloudflare/cloudflared:2026.11.1
     restart: unless-stopped
-    logging: *logging
     command: ['tunnel', '--no-autoupdate', 'run']
     environment:
       # Read from the environment, so the token never shows in the process list.
