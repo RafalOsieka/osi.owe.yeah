@@ -7,7 +7,7 @@
 // A Trip rule the time breaks (`error`) unfolds the field and shows under it, with no Done.
 const local = defineModel<string>('local', { required: true });
 const zone = defineModel<string>('zone', { required: true });
-const { error } = defineProps<{ error?: string }>();
+const { error = '' } = defineProps<{ error?: string }>();
 
 const { locale } = useI18n();
 
