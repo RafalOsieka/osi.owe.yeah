@@ -8,7 +8,7 @@ import type { FormError } from '@nuxt/ui';
 // control. Emits the trimmed name, never an unchanged one, and the parent does the saving.
 // A form for a new name then clears itself; one correcting a name keeps what was typed as its
 // sheet closes.
-const { name, icon = 'i-lucide-user-plus' } = defineProps<{
+const { name = '', icon = 'i-lucide-user-plus' } = defineProps<{
   label: string;
   submitLabel: string;
   icon?: string;
@@ -17,7 +17,7 @@ const { name, icon = 'i-lucide-user-plus' } = defineProps<{
 const emit = defineEmits<{ submit: [name: string] }>();
 
 const { t } = useI18n();
-const state = reactive({ name: name ?? '' });
+const state = reactive({ name });
 const typed = computed(() => {
   const trimmed = state.name.trim();
   return trimmed !== '' && trimmed !== name;
@@ -33,7 +33,7 @@ function submit(): void {
   // Enter submits even while the button is unavailable.
   if (!typed.value) return;
   emit('submit', participantNameSchema.parse(state.name));
-  if (name === undefined) state.name = '';
+  if (name === '') state.name = '';
 }
 </script>
 
