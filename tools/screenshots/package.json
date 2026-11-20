@@ -11,7 +11,7 @@
   },
   "dependencies": {
     "@osi/owe-yeah-domain": "workspace:*",
-    "@playwright/test": "^1.65.0",
+    "@playwright/test": "^1.65.1",
     "uuid": "^14.0.3"
   },
   "devDependencies": {
