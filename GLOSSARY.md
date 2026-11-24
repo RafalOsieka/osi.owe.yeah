@@ -119,7 +119,7 @@ _Avoid_: Attachment, image, file, scan
 _Polish avoid_: Załącznik, obraz, plik, skan
 
 **Draft**:
-A Receipt read from a Photo, waiting for a Participant to check it and save it as an Expense. Not counted in any Share or Balance until it is saved.
+A Receipt read from a Photo, waiting for a Participant to check it and save it as an Expense. Not counted in any Share or Balance until it is saved. Anyone in the Trip can save or discard it, and discarding it is final.
 _Polish_: Szkic
 _Avoid_: Auto expense, pending Expense, scan
 _Polish avoid_: Wersja robocza, wersja wstępna, skan
@@ -157,7 +157,7 @@ _Avoid_: Nudge, ping, dunning
 _Polish avoid_: Ponaglenie, monit
 
 **Notification**:
-A message on a Participant's device saying that someone else added, changed or deleted an Expense that involves them, or carrying a Reminder. Only devices that turned notifications on for the Trip get them.
+A message on a Participant's device saying that someone else added, changed or deleted an Expense that involves them, or carrying a Reminder, or telling the device that scanned a Draft that it is ready to check or couldn't be read. Only devices that turned notifications on for the Trip get them.
 _Polish_: Powiadomienie
 _Avoid_: Push, push notification, alert
 _Polish avoid_: Push, alert, komunikat
