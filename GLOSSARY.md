@@ -112,6 +112,18 @@ _Polish_: Wpływ
 _Avoid_: Revenue, earnings, refund
 _Polish avoid_: Przychód, zarobek, zwrot
 
+**Photo**:
+A picture a Participant attaches to an Expense, such as its paper Receipt, a screenshot of a digital one, or the product bought. Pictures only, never other files.
+_Polish_: Zdjęcie
+_Avoid_: Attachment, image, file, scan
+_Polish avoid_: Załącznik, obraz, plik, skan
+
+**Draft**:
+A Receipt read from a Photo, waiting for a Participant to check it and save it as an Expense. Not counted in any Share or Balance until it is saved.
+_Polish_: Szkic
+_Avoid_: Auto expense, pending Expense, scan
+_Polish avoid_: Wersja robocza, wersja wstępna, skan
+
 ### Settling up
 
 **Share**:
