@@ -11,6 +11,7 @@ import {
   type Rational,
 } from '@osi/owe-yeah-domain';
 import type { LocalExpense, LocalTrip } from '~/sync/local-trip';
+import { usePrototype } from '~/prototype/photos-drafts';
 
 // The Trip's Expenses, newest first, under a heading for each Expense's own local day with
 // what was spent that day in the Trip currency ("spent €54.00": net of Income, without
@@ -35,6 +36,7 @@ const {
 }>();
 
 const { t, locale } = useI18n();
+const proto = usePrototype();
 
 const participants = computed(() => new Map(trip.participants.map((p) => [p.id, p])));
 
@@ -218,6 +220,20 @@ function dayHeading(day: string): string {
                       role="img"
                       :aria-label="$t('receipt.kind')"
                     />
+                  </i>
+                  <!-- PROTOTYPE (#282): a camera glyph and count on an Expense with Photos. -->
+                  <i v-if="proto.state.photos[row.expense.id]?.length" class="me-1 not-italic">
+                    <UIcon
+                      name="i-lucide-camera"
+                      class="inline-block size-3.5 align-[-0.125em]"
+                      role="img"
+                      aria-label="Photos"
+                    />
+                    {{
+                      proto.state.photos[row.expense.id]!.length > 1
+                        ? proto.state.photos[row.expense.id]!.length
+                        : ''
+                    }}
                   </i>
                   <span v-if="row.flag" class="font-medium text-warning">{{ row.flag }}</span>
                   <span>{{ row.summary }}</span>

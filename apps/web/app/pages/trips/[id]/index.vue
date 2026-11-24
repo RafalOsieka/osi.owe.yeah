@@ -27,6 +27,15 @@ const newExpense = computed(() => `/trips/${trip.value.id}/expenses/new`);
 
 <template>
   <NuxtLayout name="trip">
+    <PrototypeTabDrafts place="list" />
+    <PrototypeSwitcher
+      screen="expenses"
+      :names="{
+        A: 'Drafts section, Scan button',
+        B: 'Photo strip, + chooser',
+        C: 'Summary row, Scan in form',
+      }"
+    />
     <ExpenseList
       v-if="trip.expenses.length > 0"
       :trip="trip"
@@ -68,15 +77,7 @@ const newExpense = computed(() => `/trips/${trip.value.id}/expenses/new`);
 
     <!-- While the list is empty, the empty state offers the button instead. -->
     <template v-if="trip.expenses.length > 0" #action>
-      <UButton
-        icon="i-lucide-plus"
-        :label="$t('expense.addShort')"
-        :aria-label="$t('expense.add')"
-        :disabled="!canAdd"
-        :to="newExpense"
-        size="xl"
-        class="rounded-full px-5 shadow-lg shadow-black/15 dark:shadow-black/40"
-      />
+      <PrototypeTabDrafts place="action" />
     </template>
   </NuxtLayout>
 </template>

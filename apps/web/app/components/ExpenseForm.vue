@@ -11,6 +11,7 @@ import {
 import type { FormError } from '@nuxt/ui';
 import type { RouteLocationRaw } from 'vue-router';
 import type { LocalExpense } from '~/sync/local-trip';
+import { usePrototype, type Doubt, type ProtoPhoto } from '~/prototype/photos-drafts';
 import {
   draftChanged,
   draftFromExpense,
@@ -46,11 +47,33 @@ import {
 // the device, to sync later, and returns to `parent`'s screen, or wherever the form was opened
 // from. A refusal the form couldn't foresee shows above Save. Leaving it changed, or with a
 // line typed but not added, asks first (`useDiscardConfirm`).
-const { expense = null, parent } = defineProps<{
+const {
+  expense = null,
+  parent,
+  seed = null,
+  seedPhotos = null,
+  heading = null,
+  formHidden = false,
+  doubtStyle = 'note',
+  draft = false,
+} = defineProps<{
   expense?: Extract<LocalExpense, SplitExpense> | null;
   /** The screen above the form, for back when it was opened from a link. */
   parent: RouteLocationRaw;
+  /** PROTOTYPE (#282): a Draft's reading to start from. */
+  seed?: SplitDraft | null;
+  seedPhotos?: ProtoPhoto[] | null;
+  heading?: string | null;
+  formHidden?: boolean;
+  doubtStyle?: 'note' | 'crop';
+  /** PROTOTYPE (#282): checking a Draft, which keeps its one Photo and has its own switcher. */
+  draft?: boolean;
 }>();
+// PROTOTYPE (#282): the reader's doubts by line key; a line's goes once it was opened.
+const doubts = defineModel<Record<string, Doubt>>('doubts', { default: () => ({}) });
+const emit = defineEmits<{ saved: [id: string] }>();
+const proto = usePrototype();
+const photoVariant = computed(() => (draft ? 'none' : proto.variant('form')));
 
 const { trip, claim, lastCurrency, saveExpense } = useOpenTrip();
 const { t, locale } = useI18n();
@@ -62,15 +85,24 @@ const lineItemName = useLineItemName();
 
 // Read once: the form is mounted afresh each time it opens. What it started with is kept apart,
 // to tell whether anything was changed.
-const start: SplitDraft = expense
-  ? draftFromExpense(expense, trip.value)
-  : newExpenseDraft(trip.value, {
-      now: new Date(),
-      zone: deviceTimeZone(),
-      claimId: claim.value?.id ?? null,
-      lastCurrency: lastCurrency.value,
-    });
+const start: SplitDraft = seed
+  ? seed
+  : expense
+    ? draftFromExpense(expense, trip.value)
+    : newExpenseDraft(trip.value, {
+        now: new Date(),
+        zone: deviceTimeZone(),
+        claimId: claim.value?.id ?? null,
+        lastCurrency: lastCurrency.value,
+      });
 const state = reactive(structuredClone(start));
+// PROTOTYPE (#282): the form's Photos, kept on Save, dropped on Cancel.
+const carried = proto.state.carry;
+proto.state.carry = null;
+const photos = ref<ProtoPhoto[]>(
+  seedPhotos ?? (expense ? [...(proto.state.photos[expense.id] ?? [])] : carried ? [carried] : []),
+);
+const startPhotos = photos.value.map(({ id }) => id).join();
 
 // What is typed, read live and when saving.
 const reading = computed(() => readDraft(state, trip.value));
@@ -139,7 +171,7 @@ function pickPayer(participantId: string): void {
 }
 
 // The Till list's open line, and whether its add form holds a line not on the Receipt yet.
-const openLine = ref<string | null>(null);
+const openLine = defineModel<string | null>('openLine', { default: null });
 const pendingLine = ref(false);
 
 // The amount typed so far becomes the Receipt's first Line item.
@@ -151,7 +183,12 @@ const {
   open: discarding,
   discard,
   leave,
-} = useDiscardConfirm(() => pendingLine.value || draftChanged(start, state));
+} = useDiscardConfirm(
+  () =>
+    pendingLine.value ||
+    draftChanged(start, state) ||
+    photos.value.map(({ id }) => id).join() !== startPhotos,
+);
 
 // The lines with value not assigned yet, by name, for the Receipt total to point at. Read
 // through the draft's reading, which has each readable line's shares.
@@ -196,6 +233,7 @@ async function showLine(key: string): Promise<void> {
 
 // The texts that change when the money was received rather than paid.
 const texts = computed(() => {
+  if (heading) return { heading, save: t('expense.save') };
   if (state.received) {
     return {
       heading: expense ? t('expense.editIncome') : t('expense.newIncome'),
@@ -230,6 +268,12 @@ async function submit(): Promise<void> {
 
   refusals.value = refused.map((problem) => t(`expense.refused.${problem}`));
   if (refused.length > 0) return;
+  proto.state.photos[read.id] = photos.value.map((photo) =>
+    photo.state === 'uploaded' || photo.state === 'refused'
+      ? photo
+      : { ...photo, state: proto.state.online ? 'uploaded' : 'queued' },
+  );
+  emit('saved', read.id);
   leave();
   await back(parent);
 }
@@ -237,7 +281,19 @@ async function submit(): Promise<void> {
 
 <template>
   <NuxtLayout name="form" :title="texts.heading" :parent="parent" :close="!expense">
-    <UForm id="expense-form" :state="state" :validate="validate" class="space-y-5" @submit="submit">
+    <template #actions>
+      <slot name="actions" />
+      <PrototypeFormPhotos v-model="photos" :variant="photoVariant" place="header" />
+    </template>
+    <slot name="top" :total="reading.receipt?.total ?? null" :photos="photos" />
+    <UForm
+      v-show="!formHidden"
+      id="expense-form"
+      :state="state"
+      :validate="validate"
+      class="space-y-5"
+      @submit="submit"
+    >
       <div v-if="reading.receipt" class="card px-4 pt-3 pb-4">
         <div class="flex items-end justify-between gap-3">
           <div class="min-w-0">
@@ -300,6 +356,8 @@ async function submit(): Promise<void> {
         />
       </div>
 
+      <PrototypeFormPhotos v-model="photos" :variant="photoVariant" place="top" />
+
       <div v-if="state.lineItems" class="card p-4">
         <UFormField name="title" :label="$t('expense.title')">
           <UInput
@@ -316,6 +374,8 @@ async function submit(): Promise<void> {
           v-model="state.lineItems"
           v-model:open-key="openLine"
           v-model:pending="pendingLine"
+          v-model:doubts="doubts"
+          :doubt-style="doubtStyle"
           :participants="trip.participants"
           :currency="state.currency"
           :unassigned-after="unassignedAfter"
@@ -443,8 +503,13 @@ async function submit(): Promise<void> {
         />
       </div>
 
-      <div v-if="!reading.receipt" class="card divide-y divide-default overflow-hidden">
+      <div
+        v-if="!reading.receipt || photoVariant === 'C'"
+        class="card divide-y divide-default overflow-hidden"
+      >
+        <PrototypeFormPhotos v-model="photos" :variant="photoVariant" place="options" />
         <USwitch
+          v-if="!reading.receipt"
           v-model="state.received"
           :disabled="state.contributions.length > 0"
           :label="$t('expense.moneyReceived')"
@@ -465,6 +530,9 @@ async function submit(): Promise<void> {
           {{ $t('receipt.itemise') }}
         </button>
       </div>
+
+      <PrototypeFormPhotos v-model="photos" :variant="photoVariant" place="end" />
+      <slot name="end" />
     </UForm>
 
     <DiscardSheet
@@ -475,7 +543,14 @@ async function submit(): Promise<void> {
       @discard="discard"
     />
 
+    <PrototypeSwitcher
+      v-if="!draft"
+      screen="form"
+      :names="{ A: 'Photos card at the end', B: 'Camera in the header', C: 'Row in the options' }"
+    />
+
     <template #action>
+      <slot name="beforeSave" />
       <AttentionNote v-if="pendingLine" role="status" class="mb-3">
         {{ $t('receipt.pendingRefused') }}
       </AttentionNote>

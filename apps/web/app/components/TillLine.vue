@@ -16,6 +16,7 @@ import {
   type DraftLineItem,
   type LineItemField,
 } from '~/utils/expense-draft';
+import { RECEIPT_SIZE, SAMPLE_PICTURE, type Doubt } from '~/prototype/photos-drafts';
 
 // One Line item of the Till list, a row of its card. Folded, it reads as on the paper Receipt,
 // in full rather than cut short: name, quantity × unit price, how it is split, its Line
@@ -35,6 +36,8 @@ const {
   position,
   first,
   last,
+  doubt = null,
+  doubtStyle = 'note',
 } = defineProps<{
   participants: readonly Participant[];
   currency: string;
@@ -47,7 +50,22 @@ const {
   position: number;
   first: boolean;
   last: boolean;
+  /** PROTOTYPE (#282): what the reader doubts on this line. */
+  doubt?: Doubt | null;
+  doubtStyle?: 'note' | 'crop';
 }>();
+// PROTOTYPE (#282): the doubtful line's strip of the Photo, as a CSS background.
+const cropHeight = 90;
+const crop = computed(() =>
+  doubt
+    ? {
+        backgroundImage: `url("${SAMPLE_PICTURE}")`,
+        backgroundSize: '100% auto',
+        backgroundPosition: `0 ${((doubt.y - 40) / (RECEIPT_SIZE.height - cropHeight)) * 100}%`,
+        aspectRatio: `${RECEIPT_SIZE.width} / ${cropHeight}`,
+      }
+    : undefined,
+);
 const line = defineModel<DraftLineItem>('line', { required: true });
 const open = defineModel<boolean>('open', { required: true });
 const emit = defineEmits<{ move: [by: -1 | 1]; remove: [] }>();
@@ -211,7 +229,7 @@ const step = { color: 'neutral', class: 'disabled:opacity-30' } as const;
     class="relative scroll-mt-20"
     :class="{
       'before:absolute before:inset-y-2 before:start-0 before:w-1 before:rounded-e-full before:bg-warning':
-        unassigned || !item || problems.length,
+        unassigned || !item || problems.length || doubt,
     }"
   >
     <button
@@ -269,6 +287,20 @@ const step = { color: 'neutral', class: 'disabled:opacity-30' } as const;
       </span>
     </button>
 
+    <!-- PROTOTYPE (#282): the reader's doubt, folded and open. -->
+    <div v-if="doubt" class="-mt-2 px-4 pb-3" :class="{ 'bg-elevated/60 pt-2': open }">
+      <p class="flex items-start gap-1.5 text-sm font-medium text-warning">
+        <UIcon name="i-lucide-scan-eye" class="mt-0.5 size-4 shrink-0" />
+        {{ doubt.text }}
+      </p>
+      <div
+        v-if="doubtStyle === 'crop' || open"
+        class="mt-2 w-full rounded-md bg-no-repeat ring-1 ring-warning/40"
+        :style="crop"
+        role="img"
+        aria-label="This line on the Photo"
+      />
+    </div>
     <div v-if="open" :id="editorId" class="space-y-3 bg-elevated/60 px-4 pt-0.5 pb-3">
       <UFormField :label="$t('receipt.name')">
         <UInput

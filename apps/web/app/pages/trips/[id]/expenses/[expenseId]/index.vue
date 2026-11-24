@@ -2,6 +2,7 @@
 import type { AlertProps } from '@nuxt/ui';
 import { expenseKind } from '@osi/owe-yeah-domain';
 import { toExpense } from '~/sync/local-trip';
+import { usePrototype } from '~/prototype/photos-drafts';
 
 // An Expense's detail page: the Expense in full, with its total converted into the Trip
 // currency; on top, why it is not synced yet if it isn't; at the bottom, one quiet card with
@@ -21,6 +22,10 @@ const route = useRoute();
 const back = useBack();
 
 const expenseId = String(route.params.expenseId);
+// PROTOTYPE (#282): the Expense's Photos, viewed here; added and removed in Edit.
+const proto = usePrototype();
+const photos = computed(() => proto.state.photos[expenseId] ?? []);
+const viewing = ref<number | null>(null);
 const expense = computed(() => trip.value.expenses.find(({ id }) => id === expenseId));
 const tripPage = computed(() => `/trips/${trip.value.id}`);
 const page = computed(() => `${tripPage.value}/expenses/${expenseId}`);
@@ -146,6 +151,23 @@ useHead({ title: () => expense.value?.title ?? t('expense.notFound') });
       </AttentionNote>
       <UAlert v-if="notSynced" v-bind="notSynced" variant="subtle" class="mb-4" />
       <ExpenseDetails :expense="expense" converted />
+
+      <section v-if="photos.length > 0" class="mt-7">
+        <p class="mb-2 px-1 text-sm font-medium text-muted">Photos</p>
+        <div class="card flex gap-2 p-3">
+          <button
+            v-for="(photo, i) in photos"
+            :key="photo.id"
+            type="button"
+            class="aspect-3/4 w-1/3 cursor-pointer"
+            :aria-label="`Photo ${i + 1}`"
+            @click="viewing = i"
+          >
+            <PrototypePhotoThumb :photo="photo" class="size-full" />
+          </button>
+        </div>
+      </section>
+      <PrototypePhotoViewer v-model="viewing" :photos="photos" @retry="proto.retry" />
 
       <footer class="card mt-7 divide-y divide-default overflow-hidden">
         <NuxtLink

@@ -1,4 +1,5 @@
 <script setup lang="ts">
+import { usePrototype } from '~/prototype/photos-drafts';
 // The Trip's tabs (Expenses · Balances · Trip): the Trip header on top with the sync status
 // (the list's mark while something isn't synced, or the server failed the last sync, as what
 // was pulled may be stale: a cloud with an amber dot; its popover points at it, spans the
@@ -17,6 +18,13 @@ const syncStatus = computed(() =>
   unsynced.value === 0 && serverFailed.value
     ? t('sync.serverFailed')
     : t('sync.unsynced', unsynced.value),
+);
+
+// PROTOTYPE (#282): the Expenses tab's badge, while a Draft is ready to check or couldn't be read.
+const proto = usePrototype();
+const draftBadge = computed(
+  () =>
+    proto.state.drafts.filter(({ state }) => ['ready', 'failed', 'refused'].includes(state)).length,
 );
 
 const tabs = computed(() => {
@@ -144,7 +152,15 @@ const tabs = computed(() => {
           <span
             class="grid h-7 w-14 place-items-center rounded-full transition-colors group-aria-[current=page]:bg-primary/12 group-aria-[current=page]:text-primary"
           >
-            <UIcon :name="tab.icon" class="size-5" />
+            <span class="relative">
+              <UIcon :name="tab.icon" class="block size-5" />
+              <span
+                v-if="tab.to === `/trips/${trip.id}` && draftBadge > 0"
+                class="absolute -end-2.5 -top-1.5 grid h-4 min-w-4 place-items-center rounded-full bg-primary px-1 text-[0.625rem] font-bold text-inverted"
+              >
+                {{ draftBadge }}
+              </span>
+            </span>
           </span>
           {{ tab.label }}
         </NuxtLink>

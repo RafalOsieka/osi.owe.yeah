@@ -14,6 +14,7 @@ import {
   type DraftLineItem,
   type LineItemReason,
 } from '~/utils/expense-draft';
+import type { Doubt } from '~/prototype/photos-drafts';
 
 // A Receipt's Line items as the Till list enters them, at the till, as one card under its
 // heading: one line after the other, each opened in place to edit it (one at a time, `openKey`),
@@ -29,6 +30,7 @@ const {
   participants,
   currency,
   unassignedAfter = null,
+  doubtStyle = 'note',
 } = defineProps<{
   participants: readonly Participant[];
   currency: string;
@@ -37,12 +39,21 @@ const {
    * (`TillLine`'s `after`); `null` without a Receipt discount.
    */
   unassignedAfter?: ReadonlyMap<string, Rational> | null;
+  doubtStyle?: 'note' | 'crop';
 }>();
 const lineItems = defineModel<DraftLineItem[]>({ required: true });
 /** The key of the line open for editing; `null` while none is. */
 const openKey = defineModel<string | null>('openKey', { default: null });
 /** Whether an add form holds a line that isn't on the Receipt yet. */
 const pending = defineModel<boolean>('pending', { default: false });
+// PROTOTYPE (#282): the reader's doubts by line key; a line's doubt goes once it was opened and
+// closed again (checked).
+const doubts = defineModel<Record<string, Doubt>>('doubts', { default: () => ({}) });
+watch(openKey, (_, closed) => {
+  if (!closed || !doubts.value[closed]) return;
+  const { [closed]: _checked, ...rest } = doubts.value;
+  doubts.value = rest;
+});
 
 const { t, locale } = useI18n();
 const { lineItemReason } = useDraftReasons();
@@ -205,6 +216,8 @@ const addRow =
           :position="index + 1"
           :first="index === 0"
           :last="index === lineItems.length - 1"
+          :doubt="doubts[line.key] ?? null"
+          :doubt-style="doubtStyle"
           @update:line="replace(index, $event)"
           @update:open="openKey = $event ? line.key : null"
           @move="move(index, $event)"
