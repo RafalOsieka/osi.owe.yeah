@@ -6,7 +6,7 @@ When a map or spec postpones something, add it here. When one picks an idea up, 
 
 ## On hold or in progress
 
-- **Photos on Expenses and Receipt scanning** ([#274](https://github.com/RafalOsieka/osi.owe.yeah/issues/274), in progress since 2026-11-24): attach pictures to an Expense, then turn a photo of a Receipt into Line items to check and save. Its open tickets are [#281](https://github.com/RafalOsieka/osi.owe.yeah/issues/281) to [#285](https://github.com/RafalOsieka/osi.owe.yeah/issues/285). Still unspecified on the map: the scan flow on the phone, abuse on the public instance, and rate limits for scanning.
+- **Photos on Expenses and Receipt scanning** ([#274](https://github.com/RafalOsieka/osi.owe.yeah/issues/274), in progress since 2026-11-24): attach pictures to an Expense, then turn a photo of a Receipt into Line items to check and save. Its open tickets are [#283](https://github.com/RafalOsieka/osi.owe.yeah/issues/283) to [#285](https://github.com/RafalOsieka/osi.owe.yeah/issues/285). Still unspecified on the map: abuse on the public instance, and rate limits for scanning.
 
 ## Trips and Participants
 
