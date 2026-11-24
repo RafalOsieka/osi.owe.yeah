@@ -89,7 +89,7 @@ _Avoid_: Net, sum, goods total
 _Polish avoid_: Suma częściowa, netto
 
 **Revision**:
-One saved version of an Expense, with who made it and when. Editing, deleting or restoring an Expense adds a Revision; Revisions are never changed or removed.
+One saved version of an Expense, with who made it and when. Editing, deleting or restoring an Expense adds a Revision; adding or removing a Photo adds none. Revisions are never changed or removed.
 _Polish_: Wersja
 _Avoid_: Version, snapshot, edit
 _Polish avoid_: Rewizja, migawka, edycja
@@ -113,7 +113,7 @@ _Avoid_: Revenue, earnings, refund
 _Polish avoid_: Przychód, zarobek, zwrot
 
 **Photo**:
-A picture a Participant attaches to an Expense, such as its paper Receipt, a screenshot of a digital one, or the product bought. Pictures only, never other files.
+A picture a Participant attaches to an Expense, such as its paper Receipt, a screenshot of a digital one, or the product bought. Pictures only, never other files. Anyone in the Trip can remove a Photo, and removing it is final.
 _Polish_: Zdjęcie
 _Avoid_: Attachment, image, file, scan
 _Polish avoid_: Załącznik, obraz, plik, skan
