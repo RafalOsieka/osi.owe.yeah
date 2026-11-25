@@ -6,7 +6,7 @@ When a map or spec postpones something, add it here. When one picks an idea up, 
 
 ## On hold or in progress
 
-- **Photos on Expenses and Receipt scanning** ([#274](https://github.com/RafalOsieka/osi.owe.yeah/issues/274), in progress since 2026-11-24): attach pictures to an Expense, then turn a photo of a Receipt into Line items to check and save. Its open tickets are [#283](https://github.com/RafalOsieka/osi.owe.yeah/issues/283) to [#285](https://github.com/RafalOsieka/osi.owe.yeah/issues/285). Still unspecified on the map: abuse on the public instance, and rate limits for scanning.
+- **Photos on Expenses and Receipt scanning** ([#274](https://github.com/RafalOsieka/osi.owe.yeah/issues/274), in progress since 2026-11-24): attach pictures to an Expense, then turn a photo of a Receipt into Line items to check and save. Its open tickets are [#284](https://github.com/RafalOsieka/osi.owe.yeah/issues/284) and [#285](https://github.com/RafalOsieka/osi.owe.yeah/issues/285). Still unspecified on the map: abuse on the public instance, and rate limits for scanning.
 
 ## Trips and Participants
 
@@ -31,6 +31,8 @@ When a map or spec postpones something, add it here. When one picks an idea up, 
 - **Line item translation** on demand: a separate effort after scanning. A printed-text ("as printed") field on a Line item returns only together with it. [#14](https://github.com/RafalOsieka/osi.owe.yeah/issues/14), [#274](https://github.com/RafalOsieka/osi.owe.yeah/issues/274)
 - **A Draft read from several Photos**, for receipts too long for one shot; a Draft is read from exactly one Photo until then. [#274](https://github.com/RafalOsieka/osi.owe.yeah/issues/274), [#280](https://github.com/RafalOsieka/osi.owe.yeah/issues/280)
 - **Training on corrected Drafts** to improve the reader: needs consent. [#274](https://github.com/RafalOsieka/osi.owe.yeah/issues/274)
+- **Recovering diacritics in scanned names**: the scanner (RapidOCR) drops many Polish marks (ł read as t); a second reader on the name strips only could restore them. [#283](https://github.com/RafalOsieka/osi.owe.yeah/issues/283), [ADR 0006](docs/adr/0006-receipt-scanning-in-an-optional-stateless-scanner.md)
+- **Turning a sideways Photo upright before reading**: a receipt photographed at 90° reads badly; add it if real Drafts show the need. [#283](https://github.com/RafalOsieka/osi.owe.yeah/issues/283)
 
 ## Sync
 
