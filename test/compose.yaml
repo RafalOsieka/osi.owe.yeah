@@ -52,7 +52,7 @@ services:
 
   # Runs to completion before `app` starts; a failed dump or migration keeps the app down.
   migrate:
-    image: ghcr.io/rafalosieka/owe-yeah-migrator@sha256:ec77ca045f62dee598225be52249985f276200e463467e118e974cd6510617b6
+    image: ghcr.io/rafalosieka/owe-yeah-migrator@sha256:8b653893b08cc72ebf07d6ab099aa6188fa50ab84cd4db9cefc31997e254f6bd
     restart: 'no'
     environment:
       DATABASE_URL: postgres://postgres:${POSTGRES_PASSWORD:?POSTGRES_PASSWORD is required}@db:5432/owe_yeah
@@ -63,7 +63,7 @@ services:
         condition: service_completed_successfully
 
   app:
-    image: ghcr.io/rafalosieka/owe-yeah@sha256:07ceee1956308a6af7f2b8bc29134ebd562f628d5e843ec083a6387e19d2995b
+    image: ghcr.io/rafalosieka/owe-yeah@sha256:539cfc014dc4b4b6b84dd0e14a0dcc1606f7ef5bbda6197fddab9de5414f51f4
     restart: unless-stopped
     environment:
       DATABASE_URL: postgres://postgres:${POSTGRES_PASSWORD:?POSTGRES_PASSWORD is required}@db:5432/owe_yeah
