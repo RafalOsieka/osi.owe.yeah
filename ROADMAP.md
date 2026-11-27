@@ -6,7 +6,7 @@ When a map or spec postpones something, add it here. When one picks an idea up, 
 
 ## On hold or in progress
 
-Nothing right now.
+- **Accounts**: sign-in through external providers, an allowlist until prod, Trip admins, and the Trip link no longer a credential; it supersedes [ADR 0001](docs/adr/0001-trip-link-is-the-credential.md). Being charted in [#305](https://github.com/RafalOsieka/osi.owe.yeah/issues/305). [#5](https://github.com/RafalOsieka/osi.owe.yeah/issues/5), [#88](https://github.com/RafalOsieka/osi.owe.yeah/issues/88), [#98](https://github.com/RafalOsieka/osi.owe.yeah/issues/98)
 
 ## Trips and Participants
 
@@ -49,7 +49,7 @@ Nothing right now.
 
 The MVP optimises for our own group, and public-phase hosting was left past its destination ([#1](https://github.com/RafalOsieka/osi.owe.yeah/issues/1)). The test environment work ([#88](https://github.com/RafalOsieka/osi.owe.yeah/issues/88), [#98](https://github.com/RafalOsieka/osi.owe.yeah/issues/98)) and its legal research ([#93](https://github.com/RafalOsieka/osi.owe.yeah/issues/93), [#94](https://github.com/RafalOsieka/osi.owe.yeah/issues/94)) named what prod needs on top of test:
 
-- **Accounts**: a product effort of its own, planned before prod. Accounts would hold Trip links and Claims rather than replace them ([ADR 0001](docs/adr/0001-trip-link-is-the-credential.md)). [#5](https://github.com/RafalOsieka/osi.owe.yeah/issues/5), [#88](https://github.com/RafalOsieka/osi.owe.yeah/issues/88), [#98](https://github.com/RafalOsieka/osi.owe.yeah/issues/98)
+- **Deleting an account in the app**: an operator request until then ([#305](https://github.com/RafalOsieka/osi.owe.yeah/issues/305)).
 - **A Photo limit per person in a Trip**, once accounts exist; until then Photos are limited per Photo, per Expense and per Trip. [#274](https://github.com/RafalOsieka/osi.owe.yeah/issues/274), [#279](https://github.com/RafalOsieka/osi.owe.yeah/issues/279)
 - **Data retention with automatic deletion**, and a real server-side Trip delete. Purging Revisions and deleted Expenses, which are kept forever today, belongs here too. [#16](https://github.com/RafalOsieka/osi.owe.yeah/issues/16), [#88](https://github.com/RafalOsieka/osi.owe.yeah/issues/88), [#93](https://github.com/RafalOsieka/osi.owe.yeah/issues/93), [#98](https://github.com/RafalOsieka/osi.owe.yeah/issues/98)
 - **Legal review**: a lawyer's review, or else a second pass against official guidance, deciding explicitly the service worker under PKE art. 399 ust. 4, the GPL-2.0 source offer for the Alpine layer, the legal basis, and push services as recipients; plus updates for accounts. [#88](https://github.com/RafalOsieka/osi.owe.yeah/issues/88), [#93](https://github.com/RafalOsieka/osi.owe.yeah/issues/93), [#94](https://github.com/RafalOsieka/osi.owe.yeah/issues/94)
