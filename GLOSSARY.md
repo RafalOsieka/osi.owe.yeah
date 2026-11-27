@@ -15,16 +15,22 @@ _Avoid_: Group, tab, event, tricount
 _Polish avoid_: Wyjazd, grupa, wydarzenie
 
 **Participant**:
-A person taking part in a Trip who can pay for Expenses or share their cost, whether or not they use the app. Names need not be unique within a Trip. Anyone in the Trip can correct a Participant's name, and the last change wins.
+A person taking part in a Trip who can pay for Expenses or share their cost, whether or not they use the app. A Participant has at most one account; a Participant without an account (_Uczestnik bez konta_) is someone others enter Expenses for. Names need not be unique within a Trip. Anyone in the Trip can correct a Participant's name, and the last change wins.
 _Polish_: Uczestnik
-_Avoid_: Member, user, friend
-_Polish avoid_: Członek, użytkownik, znajomy
+_Avoid_: Member, user, friend; for one without an account: guest, placeholder, ghost
+_Polish avoid_: Członek, użytkownik, znajomy, gość
 
 **Trip link**:
 The secret link to a Trip. Whoever has it can see and edit everything in the Trip.
 _Polish_: Link do podróży
-_Avoid_: Invite link, share link, code
-_Polish avoid_: Zaproszenie, kod
+_Avoid_: Share link, code
+_Polish avoid_: Kod
+
+**Invitation**:
+A link an admin creates for one Participant without an account. Signing in with the email it names joins the Trip as that Participant; without an account, it shows the Trip read-only as them.
+_Polish_: Zaproszenie
+_Avoid_: Invite link, guest link, invite code
+_Polish avoid_: Kod zaproszenia
 
 **Claim**:
 Which Participant a person says they are, on one device and for one Trip. The app shows that Participant's Share and Balance as theirs, calls them "you", and uses them for defaults such as the Main payer of new Expenses. It grants no extra rights.

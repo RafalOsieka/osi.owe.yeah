@@ -1,6 +1,6 @@
 # Roadmap
 
-Ideas Owe Yeah may pursue after the MVP: everything a spec, a map or its tickets postponed, with the constraints already decided and where they were decided. Nothing here is committed or ordered. Picking an idea up means charting it as a map or writing a spec in [GitHub Issues](https://github.com/RafalOsieka/osi.owe.yeah/issues), as usual; the linked tickets hold the decisions, this file only points at them.
+Ideas Owe Yeah may pursue after the MVP: everything a spec, a map or its tickets postponed, with the constraints already decided and where they were decided. Nothing here is committed or ordered, except that an entry marked _high priority_ comes first. Picking an idea up means charting it as a map or writing a spec in [GitHub Issues](https://github.com/RafalOsieka/osi.owe.yeah/issues), as usual; the linked tickets hold the decisions, this file only points at them.
 
 When a map or spec postpones something, add it here. When one picks an idea up, move it to [On hold or in progress](#on-hold-or-in-progress), and drop it once it ships.
 
@@ -11,7 +11,7 @@ When a map or spec postpones something, add it here. When one picks an idea up, 
 ## Trips and Participants
 
 - **Merging duplicate Participants** (two offline phones each add "Kasia"). Workaround today: move the Expenses by hand, then remove the empty duplicate. [#5](https://github.com/RafalOsieka/osi.owe.yeah/issues/5), [#17](https://github.com/RafalOsieka/osi.owe.yeah/issues/17)
-- **Regenerating a Trip link** (revocation). The token is independent of the Trip id, so it needs no migration ([ADR 0001](docs/adr/0001-trip-link-is-the-credential.md)). [#5](https://github.com/RafalOsieka/osi.owe.yeah/issues/5), [#17](https://github.com/RafalOsieka/osi.owe.yeah/issues/17)
+- **Emailing the Invitation** (_high priority_): the app sends the Invitation link to the email it names. Until then the admin shares the link, and the Invitation waits in My Trips for whoever signs in with that email. [#309](https://github.com/RafalOsieka/osi.owe.yeah/issues/309)
 - **Archiving a Trip**: read-only, reversible by anyone; queued edits get a rule rejection ("not synced: Trip archived"). [#16](https://github.com/RafalOsieka/osi.owe.yeah/issues/16), [#17](https://github.com/RafalOsieka/osi.owe.yeah/issues/17)
 - **Deleting a Trip for everyone**, alongside archiving. Until then the operator does it by hand ([`erase.sql`](deploy/osieka-dev/requests/erase.sql)). Also needed before prod, see [Going public and prod](#going-public-and-prod). [#17](https://github.com/RafalOsieka/osi.owe.yeah/issues/17), [#98](https://github.com/RafalOsieka/osi.owe.yeah/issues/98)
 - **Payment details on a Participant** (IBAN, BLIK phone, Revtag). No glossary term yet. [#17](https://github.com/RafalOsieka/osi.owe.yeah/issues/17)
