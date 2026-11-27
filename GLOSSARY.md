@@ -89,7 +89,7 @@ _Avoid_: Net, sum, goods total
 _Polish avoid_: Suma częściowa, netto
 
 **Revision**:
-One saved version of an Expense, with who made it and when. Editing, deleting or restoring an Expense adds a Revision; adding or removing a Photo adds none. Revisions are never changed or removed.
+One saved version of an Expense, with who made it and when. Editing, deleting or restoring an Expense adds a Revision. Revisions are never changed or removed.
 _Polish_: Wersja
 _Avoid_: Version, snapshot, edit
 _Polish avoid_: Rewizja, migawka, edycja
@@ -111,18 +111,6 @@ Money received by a Participant on behalf of some Participants, e.g. a cash Depo
 _Polish_: Wpływ
 _Avoid_: Revenue, earnings, refund
 _Polish avoid_: Przychód, zarobek, zwrot
-
-**Photo**:
-A picture a Participant attaches to an Expense, such as its paper Receipt, a screenshot of a digital one, or the product bought. Pictures only, never other files. Anyone in the Trip can remove a Photo, and removing it is final.
-_Polish_: Zdjęcie
-_Avoid_: Attachment, image, file, scan
-_Polish avoid_: Załącznik, obraz, plik, skan
-
-**Draft**:
-A Receipt read from a Photo, waiting for a Participant to check it and save it as an Expense. Not counted in any Share or Balance until it is saved. Anyone in the Trip can save or discard it, and discarding it is final.
-_Polish_: Szkic
-_Avoid_: Auto expense, pending Expense, scan
-_Polish avoid_: Wersja robocza, wersja wstępna, skan
 
 ### Settling up
 
@@ -157,7 +145,7 @@ _Avoid_: Nudge, ping, dunning
 _Polish avoid_: Ponaglenie, monit
 
 **Notification**:
-A message on a Participant's device saying that someone else added, changed or deleted an Expense that involves them, or carrying a Reminder, or telling the device that scanned a Draft that it is ready to check or couldn't be read. Only devices that turned notifications on for the Trip get them.
+A message on a Participant's device saying that someone else added, changed or deleted an Expense that involves them, or carrying a Reminder. Only devices that turned notifications on for the Trip get them.
 _Polish_: Powiadomienie
 _Avoid_: Push, push notification, alert
 _Polish avoid_: Push, alert, komunikat

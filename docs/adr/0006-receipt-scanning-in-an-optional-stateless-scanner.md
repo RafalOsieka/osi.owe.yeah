@@ -1,4 +1,10 @@
+---
+status: deprecated
+---
+
 # Receipt scanning reads in an optional, stateless scanner; the app queues Drafts in PostgreSQL
+
+_Shelved on 2026-11-27 with Receipt scanning, before any of it was built: the rule-based parser it relies on didn't meet expectations. Kept as the record of the engine and queue choices for when scanning is picked up again._
 
 Scanning a Receipt is split in two. The app owns the queue: it claims waiting Drafts in its own PostgreSQL (`FOR UPDATE SKIP LOCKED`, a lease with an attempt count), reads the Photo from its volume, and posts the picture to the scanner. The scanner is a separate, optional container that only reads text: picture in, text lines with their boxes and confidences out. It has no database, no Photo volume, no Trip rules and no internet access. Everything that knows the domain stays in the app: the Receipt parser, writing the Draft, bumping the Trip version for the whole-Trip pull, and the Notification. An instance that runs no scanner has scanning switched off.
 

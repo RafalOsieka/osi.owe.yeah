@@ -6,7 +6,7 @@ When a map or spec postpones something, add it here. When one picks an idea up, 
 
 ## On hold or in progress
 
-- **Photos on Expenses and Receipt scanning** ([#274](https://github.com/RafalOsieka/osi.owe.yeah/issues/274), in progress since 2026-11-24): attach pictures to an Expense, then turn a photo of a Receipt into Line items to check and save. Its open tickets are [#284](https://github.com/RafalOsieka/osi.owe.yeah/issues/284) and [#285](https://github.com/RafalOsieka/osi.owe.yeah/issues/285). Still unspecified on the map: abuse on the public instance, and rate limits for scanning.
+Nothing right now.
 
 ## Trips and Participants
 
@@ -25,8 +25,9 @@ When a map or spec postpones something, add it here. When one picks an idea up, 
 - **Export** (CSV/JSON). Losing Tricount's export was one of the reasons for Owe Yeah ([#19](https://github.com/RafalOsieka/osi.owe.yeah/issues/19)); today only the operator can export a Trip ([`export.sql`](deploy/osieka-dev/requests/export.sql)). [#17](https://github.com/RafalOsieka/osi.owe.yeah/issues/17)
 - **Trip-wide activity feed** ("what changed since I last looked"): a query across Revisions plus a per-device "last seen". [#16](https://github.com/RafalOsieka/osi.owe.yeah/issues/16), [#17](https://github.com/RafalOsieka/osi.owe.yeah/issues/17)
 
-## Receipts, after scanning
+## Photos and Receipt scanning
 
+- **Photos on Expenses and Receipt scanning**: attach pictures to an Expense, then turn a photo of a Receipt into Line items to check and save. Its decisions so far, the scanner in [ADR 0006](docs/adr/0006-receipt-scanning-in-an-optional-stateless-scanner.md) among them, stay as input. ([#274](https://github.com/RafalOsieka/osi.owe.yeah/issues/274), first attempt rejected on 2026-11-27)
 - **Printed total** with a "matches / off by X" check: an optional field that never affects balances, meant to come with Receipt scanning. [#14](https://github.com/RafalOsieka/osi.owe.yeah/issues/14)
 - **Line item translation** on demand: a separate effort after scanning. A printed-text ("as printed") field on a Line item returns only together with it. [#14](https://github.com/RafalOsieka/osi.owe.yeah/issues/14), [#274](https://github.com/RafalOsieka/osi.owe.yeah/issues/274)
 - **A Draft read from several Photos**, for receipts too long for one shot; a Draft is read from exactly one Photo until then. [#274](https://github.com/RafalOsieka/osi.owe.yeah/issues/274), [#280](https://github.com/RafalOsieka/osi.owe.yeah/issues/280)
