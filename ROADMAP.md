@@ -16,6 +16,12 @@ When a map or spec postpones something, add it here. When one picks an idea up, 
 - **Deleting a Trip for everyone**, alongside archiving. Until then the operator does it by hand ([`erase.sql`](deploy/osieka-dev/requests/erase.sql)). Also needed before prod, see [Going public and prod](#going-public-and-prod). [#17](https://github.com/RafalOsieka/osi.owe.yeah/issues/17), [#98](https://github.com/RafalOsieka/osi.owe.yeah/issues/98)
 - **Payment details on a Participant** (IBAN, BLIK phone, Revtag). No glossary term yet. [#17](https://github.com/RafalOsieka/osi.owe.yeah/issues/17)
 
+## Accounts
+
+- **Linking sign-ins by hand**: one Account that signs in with Google and Microsoft. Until then an Account has one sign-in, and a sign-in whose verified email belongs to another Account is refused. Linking starts from a signed-in session and re-proves the new provider; never automatically by email ([research](https://github.com/RafalOsieka/osi.owe.yeah/blob/research/account-linking/docs/research/account-linking.md)). [#307](https://github.com/RafalOsieka/osi.owe.yeah/issues/307), [#316](https://github.com/RafalOsieka/osi.owe.yeah/issues/316)
+- **Work and school Microsoft accounts**: only personal Microsoft accounts sign in until a real sign-in shows they carry a verified email on our registration. [#307](https://github.com/RafalOsieka/osi.owe.yeah/issues/307), [#316](https://github.com/RafalOsieka/osi.owe.yeah/issues/316)
+- **Sign in with Apple**: needs a paid membership and maybe an App Store app; its relay addresses never match a real email, so its Accounts stay separate until linking exists. [#306](https://github.com/RafalOsieka/osi.owe.yeah/issues/306), [#307](https://github.com/RafalOsieka/osi.owe.yeah/issues/307)
+
 ## Expenses and the Expense list
 
 - **Shares Split mode** (free weights, e.g. 2:1 for a couple). The weights engine supports it at no cost. [#2](https://github.com/RafalOsieka/osi.owe.yeah/issues/2), [#19](https://github.com/RafalOsieka/osi.owe.yeah/issues/19)
@@ -44,12 +50,14 @@ When a map or spec postpones something, add it here. When one picks an idea up, 
 ## Platform
 
 - **Native wrappers** (TWA for Android, Capacitor or similar for iOS), once the PWA has proven itself. [#1](https://github.com/RafalOsieka/osi.owe.yeah/issues/1), [#19](https://github.com/RafalOsieka/osi.owe.yeah/issues/19)
+- **Signing in from an app installed to an iPhone's Home Screen**: unchecked, since no one in the group has an iPhone. The installed app has its own cookie jar, and iOS may finish the provider's page in Safari, where the plain redirect's cookies are missing. If it fails, keep the sign-in attempt on the server and let the installed app redeem it when it comes back into view, with a confirmation step against the phishing risk that pattern carries ([research](https://github.com/RafalOsieka/osi.owe.yeah/blob/research/oauth-sign-in/docs/research/oauth-sign-in.md#ios-and-installed-apps)). [#314](https://github.com/RafalOsieka/osi.owe.yeah/issues/314)
 
 ## Going public and prod
 
 The MVP optimises for our own group, and public-phase hosting was left past its destination ([#1](https://github.com/RafalOsieka/osi.owe.yeah/issues/1)). The test environment work ([#88](https://github.com/RafalOsieka/osi.owe.yeah/issues/88), [#98](https://github.com/RafalOsieka/osi.owe.yeah/issues/98)) and its legal research ([#93](https://github.com/RafalOsieka/osi.owe.yeah/issues/93), [#94](https://github.com/RafalOsieka/osi.owe.yeah/issues/94)) named what prod needs on top of test:
 
 - **Deleting an account in the app**: an operator request until then ([#305](https://github.com/RafalOsieka/osi.owe.yeah/issues/305)).
+- **Signing out everywhere and a list of signed-in devices**: a lost phone is an operator request until then (the Account's sessions are deleted). [#307](https://github.com/RafalOsieka/osi.owe.yeah/issues/307)
 - **A Photo limit per person in a Trip**, once accounts exist; until then Photos are limited per Photo, per Expense and per Trip. [#274](https://github.com/RafalOsieka/osi.owe.yeah/issues/274), [#279](https://github.com/RafalOsieka/osi.owe.yeah/issues/279)
 - **Data retention with automatic deletion**, and a real server-side Trip delete. Purging Revisions and deleted Expenses, which are kept forever today, belongs here too. [#16](https://github.com/RafalOsieka/osi.owe.yeah/issues/16), [#88](https://github.com/RafalOsieka/osi.owe.yeah/issues/88), [#93](https://github.com/RafalOsieka/osi.owe.yeah/issues/93), [#98](https://github.com/RafalOsieka/osi.owe.yeah/issues/98)
 - **Legal review**: a lawyer's review, or else a second pass against official guidance, deciding explicitly the service worker under PKE art. 399 ust. 4, the GPL-2.0 source offer for the Alpine layer, the legal basis, and push services as recipients; plus updates for accounts. [#88](https://github.com/RafalOsieka/osi.owe.yeah/issues/88), [#93](https://github.com/RafalOsieka/osi.owe.yeah/issues/93), [#94](https://github.com/RafalOsieka/osi.owe.yeah/issues/94)
