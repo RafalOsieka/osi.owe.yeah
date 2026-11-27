@@ -32,6 +32,18 @@ _Polish_: Zaproszenie
 _Avoid_: Invite link, guest link, invite code
 _Polish avoid_: Kod zaproszenia
 
+**Admin**:
+An account in a Trip that manages its people and the Trip's details. Every account in the Trip, Admin or not, can edit every Expense.
+_Polish_: Administrator (shown as "Admin" on a badge)
+_Avoid_: Organiser, moderator
+_Polish avoid_: Organizator, moderator
+
+**Owner**:
+The one account in a Trip that is always its Admin and can hand the Trip over to another account. It is the Trip's creator until they hand it over.
+_Polish_: Właściciel
+_Avoid_: Creator, main admin, host
+_Polish avoid_: Twórca, gospodarz
+
 **Claim**:
 Which Participant a person says they are, on one device and for one Trip. The app shows that Participant's Share and Balance as theirs, calls them "you", and uses them for defaults such as the Main payer of new Expenses. It grants no extra rights.
 _Polish_: Przypisanie (a term for code and docs only; the UI asks "Kim jesteś?" and never shows the word)
