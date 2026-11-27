@@ -15,10 +15,16 @@ _Avoid_: Group, tab, event, tricount
 _Polish avoid_: Wyjazd, grupa, wydarzenie
 
 **Participant**:
-A person taking part in a Trip who can pay for Expenses or share their cost, whether or not they use the app. A Participant has at most one account; a Participant without an account (_Uczestnik bez konta_) is someone others enter Expenses for. Names need not be unique within a Trip. Anyone in the Trip can correct a Participant's name, and the last change wins.
+A person taking part in a Trip who can pay for Expenses or share their cost, whether or not they use the app. A Participant has at most one Account; a Participant without an Account (_Uczestnik bez konta_) is someone others enter Expenses for. Names need not be unique within a Trip. Anyone in the Trip can correct a Participant's name, and the last change wins.
 _Polish_: Uczestnik
-_Avoid_: Member, user, friend; for one without an account: guest, placeholder, ghost
+_Avoid_: Member, user, friend; for one without an Account: guest, placeholder, ghost
 _Polish avoid_: Członek, użytkownik, znajomy, gość
+
+**Account**:
+A person's sign-in to Owe Yeah through an external provider such as Google or Microsoft. In each Trip it belongs to, an Account is one Participant, the one the app calls "you".
+_Polish_: Konto
+_Avoid_: User, profile, login, identity
+_Polish avoid_: Użytkownik, profil
 
 **Trip link**:
 The secret link to a Trip. Whoever has it can see and edit everything in the Trip.
@@ -27,19 +33,19 @@ _Avoid_: Share link, code
 _Polish avoid_: Kod
 
 **Invitation**:
-A link an admin creates for one Participant without an account. Signing in with the email it names joins the Trip as that Participant; without an account, it shows the Trip read-only as them.
+A link an Admin creates for one Participant without an Account. Signing in with the email it names joins the Trip as that Participant; without an Account, it shows the Trip read-only as them.
 _Polish_: Zaproszenie
 _Avoid_: Invite link, guest link, invite code
 _Polish avoid_: Kod zaproszenia
 
 **Admin**:
-An account in a Trip that manages its people and the Trip's details. Every account in the Trip, Admin or not, can edit every Expense.
+An Account in a Trip that manages its people and the Trip's details. Every Account in the Trip, Admin or not, can edit every Expense.
 _Polish_: Administrator (shown as "Admin" on a badge)
 _Avoid_: Organiser, moderator
 _Polish avoid_: Organizator, moderator
 
 **Owner**:
-The one account in a Trip that is always its Admin and can hand the Trip over to another account. It is the Trip's creator until they hand it over.
+The one Account in a Trip that is always its Admin and can hand the Trip over to another Account. It is the Trip's creator until they hand it over.
 _Polish_: Właściciel
 _Avoid_: Creator, main admin, host
 _Polish avoid_: Twórca, gospodarz
