@@ -26,6 +26,12 @@ _Polish_: Konto
 _Avoid_: User, profile, login, identity
 _Polish avoid_: Użytkownik, profil
 
+**Allowlist**:
+The emails the operator lets create an Account while Owe Yeah is open only to invited people. An Account that already exists always signs in, and an Invitation never adds its email.
+_Polish_: Lista dopuszczonych
+_Avoid_: Whitelist, waitlist, beta list
+_Polish avoid_: Biała lista
+
 **Trip link**:
 The secret link to a Trip. Whoever has it can see and edit everything in the Trip.
 _Polish_: Link do podróży
